@@ -1,7 +1,15 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module AMPLTypes where
 
 import Data.Word
 import Data.Array
+import Data.Coerce
+import Data.List
+
+-- CODE GENERATION REMARK 
+-- We do use arrays, and indeed the empty array is an erorr in Haskell!
+-- When generating empry arrays, we need to create a bounds like (1,0) for it 
+-- to be empty..
 
 newtype LocalChanID = LocalChanID Word  -- Local channel id
     deriving (Show, Eq)
@@ -13,7 +21,15 @@ newtype PhysicalChanId = PhysicalChanID Word  -- global channel id
     deriving (Show, Eq)
 
 newtype FunID = FunID Word  -- function id
-    deriving (Show, Eq)
+    deriving (Show, Eq, Ord, Ix, Enum)
+
+-- indexing constructors...
+newtype ConsIx = ConsIx Word
+    deriving (Show, Eq, Ord, Ix)
+
+-- indexing codata destructors...
+newtype DesIx = DesIx Word
+    deriving (Show, Eq, Ord, Ix)
 
 data Polarity = Input | Output
     deriving (Show, Eq)
@@ -28,9 +44,14 @@ type Translation = (Polarity, (LocalChanID, GlobalChanID))
 
 -- instruction type.. (splits into parallel, and sequential)
 data Instr =
-    ConcurrentInstr
-    | SequentialInstr
-    deriving (Show, Eq)
+    ConcurrentInstr ConcurrentInstr
+    | SequentialInstr SequentialInstr
+    deriving Eq
+
+instance Show Instr where
+    show (ConcurrentInstr cs) = show cs
+    show (SequentialInstr cs) = show cs
+
 
 -- SEQUENTIAL INSTURCTIONS..
 data SequentialInstr =
@@ -48,15 +69,57 @@ data SequentialInstr =
     | ILeqInt
 
     -- data instructions...
-    | ICons Word Word 
+    | ICons ConsIx Word 
         -- pushes the i'th constructor onto the stack with the top n elements in the stack
-    | ICase (Array Word [Instr])
+    | ICase (Array ConsIx [Instr])
 
     -- Codata instructions
-    | IRec (Array Word [Instr]) -- create a record on the stack
-    | IDest Word Word
+    | IRec (Array DesIx [Instr]) -- create a record on the stack
+    | IDest DesIx Word
         -- destructs the record by choosing the ith funciton closure with the top n elements of the stack
     deriving (Show, Eq)
+
+-- smart consturctors...
+iStore :: Instr
+iStore = SequentialInstr IStore
+
+iAccess :: Word -> Instr
+iAccess = SequentialInstr . IAccess 
+
+iRet :: Instr
+iRet = SequentialInstr IRet
+
+iCall :: FunID -> Word -> Instr
+iCall id = SequentialInstr . ICall id
+
+iConstInt :: Int -> Instr 
+iConstInt = SequentialInstr . IConstInt
+
+iAddInt :: Instr
+iAddInt = SequentialInstr IAddInt
+
+iMulInt :: Instr
+iMulInt = SequentialInstr IMulInt
+
+iLeqInt :: Instr
+iLeqInt = SequentialInstr ILeqInt
+
+iCons :: Word -> Word -> Instr
+iCons ix n = SequentialInstr (ICons (coerce ix) n)
+
+iCase :: [[Instr]] -> Instr
+iCase [] = SequentialInstr (ICase (listArray (coerce (1 :: Word) :: ConsIx, coerce (0 :: Word) :: ConsIx) []))
+iCase cs = SequentialInstr 
+    (ICase (listArray (coerce (0 :: Word) :: ConsIx, coerce (genericLength cs - 1 :: Word) :: ConsIx) cs))
+
+
+iRec :: [[Instr]] -> Instr
+iRec [] = SequentialInstr (IRec (listArray (coerce (1 :: Word) :: DesIx, coerce (0 :: Word) :: DesIx) []))
+iRec cs = SequentialInstr 
+    (IRec (listArray (coerce (0 :: Word) :: DesIx, coerce (genericLength cs - 1 :: Word) :: DesIx) cs))
+
+iDest :: Word -> Word -> Instr
+iDest ix n = SequentialInstr (IDest (coerce ix)  n)
 
 
 -- CONCURRENT INSTRUCTIONS
@@ -86,4 +149,12 @@ data ConcurrentInstr =
 
 data Val = 
     VClos ([Instr], [Val])
+
+    -- Primitive data types..
     | VInt Int
+    | VBool Bool
+
+    -- User defined data types..
+    | VCons (ConsIx, [Val])
+    | VRec (Array DesIx [Instr], [Val])
+    deriving (Show, Eq)

@@ -1,8 +1,16 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TupleSections #-}
 module AMPL where
 
+-- projet dependencies...
 import AMPLTypes 
+import AMPLEnv
 
+-- base...
+import Data.List
+import Data.Array
+import Control.Arrow
 
-stepSequential :: SequentialInstr -> ([Instr], [Val], [Val])
-stepSequential = undefined
+-- external dependencies...
+import Control.Monad.Reader
 
