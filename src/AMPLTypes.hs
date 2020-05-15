@@ -6,10 +6,7 @@ import Data.Array
 import Data.Coerce
 import Data.List
 
--- CODE GENERATION REMARK 
--- We do use arrays, and indeed the empty array is an erorr in Haskell!
--- When generating empry arrays, we need to create a bounds like (1,0) for it 
--- to be empty..
+-- ASSUMES ALL ARRAYS ARE INDEXED AT 0
 
 newtype LocalChanID = LocalChanID Word  -- Local channel id
     deriving (Show, Eq)

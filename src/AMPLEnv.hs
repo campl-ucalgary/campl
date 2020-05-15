@@ -12,7 +12,6 @@ class HasSuperCombinators a where
 class HasLog a where
     getLog :: a -> (String -> IO ())
 
-
 -- Environment that the machine runs in the entire time
 -- includes: supercombinator defintions, data for locks and queues
 data AmplEnv = AmplEnv
@@ -23,8 +22,8 @@ data AmplEnv = AmplEnv
     }
 
 -- smart constructor for the environment
-amplEnv :: [(String, [Instr])] -> 
-    (String -> IO ()) ->
+amplEnv :: [(FunID, (String, [Instr]))] ->  -- association list of funciton ids and its name / instruction
+    (String -> IO ()) ->                    -- logger..
     AmplEnv
 amplEnv [] g = 
     AmplEnv
@@ -32,7 +31,7 @@ amplEnv [] g =
         g
 amplEnv defs g = 
     AmplEnv
-        (array (FunID 0, FunID (genericLength defs - 1)) (zip [FunID 0 .. ] defs))
+        (array (FunID 0, FunID (genericLength defs - 1)) defs)
         g
 
 instance HasSuperCombinators AmplEnv where

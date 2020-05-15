@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 module AMPLSequential where
 
 -- projet dependencies...
@@ -12,11 +13,7 @@ import Control.Arrow
 -- external dependencies...
 import Control.Monad.Reader
 
-
-isSequentialFinished :: ([Instr], [Val], [Val]) -> Bool
-isSequentialFinished ([], [], [v]) = True
-isSequentialFinished _ = False
-
+-- executes one step in a sequential machine..
 stepSequential :: 
     ( MonadReader r m
     , HasSuperCombinators r ) => 
@@ -53,7 +50,7 @@ stepSequential (IDest i n) (c, e, VRec (cs, e') : s)
     = return (cs ! i, vs ++ e', VClos (c, e) : s')
     where
         -- in the CMachine, it reverses the vs, but in Prashant's code, he does
-        -- not. When testing this, not reversing it is the correct thing to do
+        -- not. When testing this, _not_ reversing it is the correct thing to do
         (vs, s') = genericSplitAt n s
 
 -- Constant instructions...
@@ -64,8 +61,14 @@ stepSequential ILeqInt (c, e, VInt n : VInt m : s) = return (c, e, VBool (n <= m
 
 stepSequential n mach = error ("Illegal sequential step with instruction:" ++ show n ++ "\nAnd machine: " ++ show mach)
 
+-- tests if a sequential machine is finished
+isSequentialFinished :: ([Instr], [Val], [Val]) -> Bool
+isSequentialFinished ([], [], [v]) = True
+isSequentialFinished _ = False
 
--- Runs a sequential machine 
+-- Runs a sequential machine  -- WARNING unsafe and mainly used for testing..
+-- Will assume that the machine has 0 concurrent instructions (will error when 
+-- there is a concurrent instruciton)
 runSequential :: 
     ( MonadReader r m
     , HasSuperCombinators r ) =>
