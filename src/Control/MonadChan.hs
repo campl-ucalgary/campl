@@ -24,7 +24,7 @@ class MonadIO m => MonadChan m where
 
 -- usual IO instance...
 instance MonadChan IO where
-    newChan = liftIO Control.Concurrent.Chan.newChan
-    writeChan c = liftIO . Control.Concurrent.Chan.writeChan c
-    readChan = liftIO . Control.Concurrent.Chan.readChan
-    dupChan = liftIO . Control.Concurrent.Chan.dupChan
+    newChan = Control.Concurrent.Chan.newChan
+    writeChan = Control.Concurrent.Chan.writeChan 
+    readChan = Control.Concurrent.Chan.readChan
+    dupChan = Control.Concurrent.Chan.dupChan

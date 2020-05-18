@@ -5,8 +5,13 @@ import AMPLTypes
 import AMPLEnv
 import Control.MonadChan
 import Control.MonadIORef
+import Data.Queue (Queue)
+import qualified Data.Queue as Queue
+import Data.Map (Map)
+import qualified Data.Map as Map
 
 import Control.Monad.Reader
+import Control.Arrow
 import Data.Maybe
 import Data.Functor
 import Data.List
@@ -51,16 +56,16 @@ stepConcurrent ::
         -- 2 implies the process has been plugged
 stepConcurrent (IGet a) pr@(s, t, e, c) = do
     let ta = fromJust (lookupLocalChanIDToGlobalChanID a t)
-    chan <- asks getBroadcastChan
-    writeChan chan (BGet ta pr)
+    env <- ask 
+    writeBroadcastChan env (BGet ta pr)
 
     env <- ask ; predNumProcesses env 
     return []
 
 stepConcurrent (IPut a) pr@(v:s, t, e, c) = do
     let ta = fromJust (lookupLocalChanIDToGlobalChanID a t)
-    chan <- asks getBroadcastChan
-    writeChan chan (BPut ta v)
+    env <- ask 
+    writeBroadcastChan env (BPut ta v)
 
     return [(s, t, e, c)]
 
@@ -68,28 +73,27 @@ stepConcurrent (IPut a) pr@(v:s, t, e, c) = do
 stepConcurrent (ISplit a (a1, a2)) (s, t, e, c) = do
     let ta@(pol, _) = fromJust (lookupLocalChanIDToGlobalChanID a t)
     env <- ask ; b1 <- getNewChannelName env ; b2 <- getNewChannelName env
-    chan <- asks getBroadcastChan
-    writeChan chan (BSplit ta (b1, b2))
+    writeBroadcastChan env (BSplit ta (b1, b2))
 
     return [(s, (pol, (a1, b1)):(pol, (a2, b2)):t, e, c)]
     -- new translations should have the same polarity as the orignal translation
 
 stepConcurrent (IClose a) (s, t, e, c) = do 
     let ta = fromJust (lookupLocalChanIDToGlobalChanID a t)
-    chan <- asks getBroadcastChan
-    writeChan chan (BClose ta)
+    env <- ask 
+    writeBroadcastChan env (BClose ta)
 
     return [(s, deleteTranslation a t, e, c)]
 
 stepConcurrent (IFork a ((a1, g1, c1), (a2, g2, c2))) (s, t, e, c) = do
     let ta = fromJust (lookupLocalChanIDToGlobalChanID a t)
-    chan <- asks getBroadcastChan
-    writeChan chan 
+    env <- ask
+    writeBroadcastChan env 
         (BFork ta (t, e, (a1, restrictTranslation g1 t, c1), (a2, restrictTranslation g2 t, c2)))
         -- remark: we could do the restriction in the channel manager,
         -- but since the channel manager will probably be very busy managing
         -- channels for other processes, we make each process do it itself..
-    env <- ask ; predNumProcesses env 
+    predNumProcesses env 
     return []
 
 -- c should be empty (as said in Table 2)
@@ -102,10 +106,10 @@ stepConcurrent (IFork a ((a1, g1, c1), (a2, g2, c2))) (s, t, e, c) = do
 stepConcurrent (IId a b) (s, t, e, c) = do
     let (pa, ta) = fromJust (lookupLocalChanIDToGlobalChanID a t)
         (pb, tb) = fromJust (lookupLocalChanIDToGlobalChanID b t)
-    chan <- asks getBroadcastChan
+    env <- ask
     if pa == pb 
         then do
-            writeChan chan (BId (pa, ta) (ta, tb))
+            writeBroadcastChan env (BId (pa, ta) (ta, tb))
             env <- ask ; predNumProcesses env 
             return []
         else error "invalid IId instruction"
@@ -118,7 +122,7 @@ stepConcurrent (IPlug as ((g1, c1), (g2, c2))) (s, t, e, c) = do
     -- and (g2, c2) is the input channel
     let t1 = zipWith (curry (Output,)) as as' ++ restrictTranslation g1 t
         t2 = zipWith (curry (Input,)) as as' ++ restrictTranslation g2 t
-    writeChan (getBroadcastChan env) (BPlug as')
+    writeBroadcastChan env (BPlug as')
     succNumProcesses env ; succNumProcesses env
     return [(s, t1, e, c1), (s, t2, e, c2)]
 
@@ -126,7 +130,7 @@ stepConcurrent (IPlug as ((g1, c1), (g2, c2))) (s, t, e, c) = do
 stepConcurrent (IHalt as) (s, t, e, c) = do
     let as' = map (fromJust . flip lookupLocalChanIDToGlobalChanID t) as
     env <- ask
-    mapM_ (writeChan (getBroadcastChan env) . BHalt) as'
+    mapM_ (writeBroadcastChan env . BHalt) as'
     predNumProcesses env
     return [] 
 
@@ -142,13 +146,13 @@ stepConcurrent (IRun t' fid args) (s, t, e, c) = do
 stepConcurrent (IHPut a n) (s, t, e, c) = do
     let ta = fromJust (lookupLocalChanIDToGlobalChanID a t)
     env <- ask
-    writeChan (getBroadcastChan env) (BHPut ta n)
+    writeBroadcastChan env (BHPut ta n)
     return [(s, t, e, c)]
     
 stepConcurrent (IHCase b arr) (s, t, e, []) = do
     let tb = fromJust (lookupLocalChanIDToGlobalChanID b t)
     env <- ask
-    writeChan (getBroadcastChan env) (BHCase tb arr)
+    writeBroadcastChan env (BHCase tb arr)
     predNumProcesses env
     return [] 
 
@@ -160,5 +164,24 @@ stepConcurrent (IRace rcs) (s, t, e, []) = do
   where
     f env (lch, cs) = do
         let lch' = fromJust (lookupLocalChanIDToGlobalChanID lch t)
-        writeChan (getBroadcastChan env) (BRace lch' (delete lch (map fst rcs), (s,t,e,cs)))
+        writeBroadcastChan env (BRace lch' (delete lch (map fst rcs), (s,t,e,cs)))
 
+
+-- | Puts the QInstr to the back of the queue
+-- corresponding to the polarity. Recall by convention
+-- (i.e., Prashant) the output queue is to the left
+-- and the input queue is to the right.
+enqueueQInstr :: 
+    Polarity ->
+    QInstr ->
+    (Queue QInstr, Queue QInstr) ->
+    (Queue QInstr, Queue QInstr)
+enqueueQInstr Output qinstr = first (`Queue.append` qinstr)
+enqueueQInstr Input qinstr = second (`Queue.append` qinstr)
+
+addCommandToChannelManager :: 
+    BInstr ->
+    Map GlobalChanID (Queue QInstr, Queue QInstr) ->
+    Map GlobalChanID (Queue QInstr, Queue QInstr) 
+addCommandToChannelManager (BGet (pol, gch) n) 
+    = Map.adjust (enqueueQInstr pol (QGet n)) gch 

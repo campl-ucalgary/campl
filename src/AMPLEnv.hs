@@ -8,10 +8,11 @@ import Control.Arrow
 import Control.Monad.IO.Class
 
 import qualified Data.Map as Map
-import Control.Concurrent
+import Control.Concurrent (MVar, newMVar)
 
 
 import Control.MonadIORef
+import Control.MonadChan
 import Data.Queue (Queue (..))
 import Data.Stream (Stream)
 import qualified Data.Stream as Stream
@@ -43,11 +44,28 @@ class HasProcessCounter a where
     -- | Decreases the number of processes running
     predNumProcesses :: MonadAtomicIORef m => a -> m ()
 
+-- | Functions relating to manipulating the broadcast channel.
+-- NOte that an exception CANNOT be thrown during any function or the
+-- size invariant may be violated..
 class HasBroadcastChan a where
     -- | Gets the broadcast channel. The bradcast channel is the 
     -- almighty channel (FIFO queue) that communicates between the 
-    -- processes, and the channel manager.
-    getBroadcastChan :: a -> Chan BInstr
+    -- processes, and the channel manager. This should NOT be used,
+    -- since it will nto change the counter for the numbr of elements
+    -- in the channel...
+    -- getBroadcastChan :: a -> Chan BInstr
+
+    -- | Wrapper around writeChan that keeps track of the number
+    -- of elements in the Chan.
+    writeBroadcastChan :: (MonadChan m, MonadAtomicIORef m) => a -> BInstr -> m ()
+
+    -- | Wrapper around readChan that keeps track of the number
+    -- of elements in the Chan.
+    readBroadcastChan :: (MonadChan m, MonadAtomicIORef m) => a -> m BInstr
+
+    -- | Gets the size of the broadcast channel (helpful as a termination 
+    -- condition..
+    getSizeOfBroadcastChan :: MonadAtomicIORef m => a -> m Word
 
 -- | Type class for getting a channel name (note that multiple threads
 -- may want to create a channel name at the same time, hence the dependency
@@ -71,8 +89,10 @@ data AmplEnv = AmplEnv
         , channelManager :: MVar (Map GlobalChanID (Queue QInstr, Queue QInstr))
         -- | seed for the channel name
         , channelNameGenerator :: IORef (Stream Word)
-        -- | a channel to broadcast commands to the channel manager...
+        -- | a channel to broadcast commands to the channel manager. We call this the broadcast channel...
         , broadcastChan :: Chan BInstr
+        -- | Corresponding to the size of the broadcase channel..
+        , broadcastChanSize :: IORef Word
         -- | number of running processes (used for testing temrination...)
         , numRunningProcesses :: IORef Word
     }
@@ -92,6 +112,8 @@ amplEnv defs lg chm nmg pr = do
     nmg' <- newIORef nmg
     -- every program starts with running just the main process..
     numrunpr <- newIORef 1  
+    -- every program starts with nothing in the broadcast channel
+    broadcastchansize <- newIORef 0  
     return AmplEnv
             {
                 supercombinators = if null defs
@@ -101,6 +123,7 @@ amplEnv defs lg chm nmg pr = do
                                     else array (FunID 0, FunID (genericLength defs - 1)) defs
                 , amplLog = lg
                 , broadcastChan = chan
+                , broadcastChanSize = broadcastchansize
                 , channelManager = mchm
                 , channelNameGenerator = nmg'
                 , numRunningProcesses = numrunpr
@@ -122,7 +145,19 @@ instance HasProcessCounter AmplEnv where
     predNumProcesses env = atomicModifyIORef' (numRunningProcesses env) (pred &&& const ())
 
 instance HasBroadcastChan AmplEnv where
-    getBroadcastChan = broadcastChan
+    -- getBroadcastChan = broadcastChan
+
+        --  Note the ordering for writeBroadcastChan and readBroadcastChan
+    writeBroadcastChan AmplEnv{ broadcastChan = bch, broadcastChanSize = bchsz } n =
+        writeChan bch n >> atomicModifyIORef' bchsz (succ &&& const ()) 
+
+    readBroadcastChan AmplEnv{ broadcastChan = bch, broadcastChanSize = bchsz } = do
+        n <- readChan bch 
+        atomicModifyIORef' bchsz (pred &&& const ()) 
+        return n
+
+    getSizeOfBroadcastChan AmplEnv{ broadcastChanSize = bchsz } = 
+        readIORef bchsz
 
 instance HasChannelNameGenerator AmplEnv where
     getNewChannelName AmplEnv{ channelNameGenerator = chg } = 

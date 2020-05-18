@@ -9,10 +9,10 @@ import Data.List
 -- ASSUMES ALL ARRAYS ARE INDEXED AT 0
 
 newtype LocalChanID = LocalChanID Word  -- Local channel id
-    deriving (Show, Eq)
+    deriving (Show, Eq, Ord, Ix)
 
 newtype GlobalChanID = GlobalChanID Word  -- global channel id
-    deriving (Show, Eq)
+    deriving (Show, Eq, Ord, Ix)
 
 newtype PhysicalChanId = PhysicalChanID Word  -- global channel id
     deriving (Show, Eq)
@@ -37,7 +37,9 @@ newtype ConsIx = ConsIx Word
 newtype DesIx = DesIx Word
     deriving (Show, Eq, Ord, Ix)
 
-data Polarity = Input | Output
+-- By convention (i.e., Prashant), the output queue is the left queue
+-- and the input queue is the right queue
+data Polarity = Output | Input 
     deriving (Show, Eq)
 
 newtype HCaseIx = HCaseIx Word

@@ -32,13 +32,13 @@ class MonadAtomicIORef m => MonadIORef m where
     modifyIORef' :: IORef a -> (a -> a) -> m ()
     
 instance MonadAtomicIORef IO where
-    newIORef = liftIO . IORef.newIORef
-    readIORef = liftIO . IORef.readIORef
-    atomicModifyIORef r f = liftIO (IORef.atomicModifyIORef r f)
-    atomicModifyIORef' r f = liftIO (IORef.atomicModifyIORef' r f)
+    newIORef = IORef.newIORef
+    readIORef = IORef.readIORef
+    atomicModifyIORef = IORef.atomicModifyIORef 
+    atomicModifyIORef' = IORef.atomicModifyIORef'
 
 instance MonadIORef IO where
-    writeIORef r f = liftIO (IORef.writeIORef r f)
-    modifyIORef r f = liftIO (IORef.modifyIORef r f)
-    modifyIORef' r f = liftIO (IORef.modifyIORef' r f)
+    writeIORef = IORef.writeIORef 
+    modifyIORef = IORef.modifyIORef 
+    modifyIORef' = IORef.modifyIORef' 
 

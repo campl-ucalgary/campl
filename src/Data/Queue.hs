@@ -128,14 +128,14 @@ infixr 7 <|
 
 infixl 7 |>
 (|>) :: Queue a -> a -> Queue a
-(|>) = flip append
+(|>) = append
 
 prepend :: a -> Queue a -> Queue a
 prepend e (Queue l lsz r rsz lu ru) 
     = mkQueue (e:l) (succ lsz) r rsz lu ru
 
-append :: a -> Queue a -> Queue a
-append e (Queue l lsz r rsz lu ru) 
+append :: Queue a -> a -> Queue a
+append (Queue l lsz r rsz lu ru) e  
     = mkQueue l lsz (e:r) (succ rsz) lu ru
 
 head :: Queue a -> Maybe (Queue a, a)
