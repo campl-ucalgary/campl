@@ -19,7 +19,7 @@ stepSequential ::
     , HasSuperCombinators r ) => 
     SequentialInstr -> 
     ([Instr], [Val], [Val]) -> 
-    m ([Instr], [Val], [Val])
+    m ([Instr], [Val], [Val]) -- ^ (c, e, s)
 
 stepSequential IStore (c, e, v:s) = return (c, v:e, s)
 

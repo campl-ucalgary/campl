@@ -7,6 +7,8 @@ import AMPLTypes
 import AMPLEnv
 
 import Control.Monad.Reader
+import Data.Map (Map (..))
+import qualified Data.Map as Map
 
 codataTestSequential 
     = [ iConstInt 2
@@ -17,10 +19,12 @@ codataTestSequential
         , iDest 2 1
         ]
 
+{-
 runProgramWithEnv :: 
     ReaderT AmplEnv IO ( ([Instr], [Val], [Val]), [([Instr],[Val], [Val])]) -> 
     IO ( ([Instr], [Val], [Val]), [([Instr],[Val], [Val])])
-runProgramWithEnv = flip runReaderT (amplEnv [] undefined)
+runProgramWithEnv reader = 
+    amplEnv [] putStrLn Map.empty undefined >>= runReaderT reader 
 
 printSteps :: 
     IO (([Instr], [Val], [Val]), [([Instr],[Val], [Val])]) ->
@@ -30,7 +34,7 @@ printSteps a =
         (a', as) <- a
         print a'
         mapM_ print as
-
+        -}
 
 main :: IO ()
 main = do

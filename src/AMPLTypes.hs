@@ -20,6 +20,15 @@ newtype PhysicalChanId = PhysicalChanID Word  -- global channel id
 newtype FunID = FunID Word  -- function id
     deriving (Show, Eq, Ord, Ix, Enum)
 
+-- guaranteed distinct from the rest of the function ids for
+-- the special main function
+mainFunID :: FunID
+mainFunID = FunID 0
+
+-- inifinite stream of function ids..
+funIDStream :: [FunID]
+funIDStream = [FunID 1 ..]
+
 -- indexing constructors...
 newtype ConsIx = ConsIx Word
     deriving (Show, Eq, Ord, Ix)
@@ -31,15 +40,56 @@ newtype DesIx = DesIx Word
 data Polarity = Input | Output
     deriving (Show, Eq)
 
-data Service = Internal Word | External Word
-    deriving (Show, Eq)
-        -- corresponds to  IHPut -- either we put a request for
+newtype HCaseIx = HCaseIx Word
+    deriving (Show, Eq, Ord, Ix)
+        -- corresponds to  IHPut / IHCase -- either we put a request for
         -- an internal protocol (one given by the program itself) 
         -- or one for the external world (think IO action)
 
 type Translation = (Polarity, (LocalChanID, GlobalChanID))
 
--- instruction type.. (splits into parallel, and sequential)
+-- look up the LocalChanID to the corresponding (Polarity, GlobalChanID)
+lookupLocalChanIDToGlobalChanID :: 
+    LocalChanID -> 
+    [Translation] -> 
+    Maybe (Polarity, GlobalChanID)
+lookupLocalChanIDToGlobalChanID lch ts =
+    (\(p, (l, g)) -> (p, g)) <$> find ((== lch) . fst . snd) ts
+
+-- | Deletes all translations given LocalChanID
+deleteTranslation :: LocalChanID -> [Translation] -> [Translation]
+deleteTranslation lc = 
+    foldr 
+        (\(p, (lc', gc)) acc -> if lc == lc' then acc else (p, (lc', gc)):acc) 
+        []
+
+-- | restrict translations to certain LocalChannel ids
+restrictTranslation :: 
+    [LocalChanID] -> -- ^ List of local channel ids to restrict the translations to
+    [Translation] -> -- ^ translations to be restricted
+    [Translation]
+restrictTranslation lcls = filter (\(p, (lc, gc)) -> lc `elem` lcls)
+
+-- | Composes translations i.e. if f and g are translations, we get 
+-- a translation which is f . g (f after g).
+composeTranslation :: [Translation] -> [Translation] -> Maybe [Translation]
+composeTranslation as bs = foldr f g bs as
+  where
+    f :: Translation -> 
+        ([Translation] -> Maybe [Translation]) -> 
+        [Translation] -> 
+        Maybe [Translation]
+    f (p, (lc, gc)) h ts = do
+        t' <- (\(p', (lc', gc')) -> (p', (lc, gc'))) <$> 
+                find (\(p', (lc', gc')) -> p == p' 
+                    && (coerce gc :: Word) == (coerce lc' :: Word))
+                ts
+        (t':) <$> h ts
+
+    g :: [Translation] -> Maybe [Translation]
+    g _ = Just []
+
+-- Process instruction type.. (splits into parallel, and sequential)
 data Instr =
     ConcurrentInstr ConcurrentInstr
     | SequentialInstr SequentialInstr
@@ -48,7 +98,9 @@ data Instr =
 instance Show Instr where
     show (ConcurrentInstr cs) = show cs
     show (SequentialInstr cs) = show cs
-
+    -- We want to show instructions without
+    -- the extra ConcurrentInstr, and SequentialInstr
+    -- constructors..
 
 -- SEQUENTIAL INSTURCTIONS..
 data SequentialInstr =
@@ -119,6 +171,19 @@ iDest :: Word -> Word -> Instr
 iDest ix n = SequentialInstr (IDest (coerce ix)  n)
 
 
+data Val = 
+    VClos ([Instr], [Val])
+
+    -- Primitive data types..
+    | VInt Int
+    | VBool Bool
+
+    -- User defined data types..
+    | VCons (ConsIx, [Val])
+    | VRec (Array DesIx [Instr], [Val])
+    deriving (Show, Eq)
+
+
 -- CONCURRENT INSTRUCTIONS
 data ConcurrentInstr =
     IGet LocalChanID
@@ -135,23 +200,137 @@ data ConcurrentInstr =
 
     | IId LocalChanID LocalChanID
 
+    -- We have [a1, .., a_n], and by convention (i.e., Prashant) we have (out channel, in channel)
+    | IPlug [LocalChanID] (([LocalChanID], [Instr]), ([LocalChanID], [Instr]))
+
+
     | IRun [Translation] FunID Word
         -- Translations, FunctionID and number of arguments to call with this function..
 
-    | IHPut LocalChanID Service
-    | IHCase LocalChanID (Array Word [Instr])
+    | IHPut LocalChanID HCaseIx
+    | IHCase LocalChanID (Array HCaseIx [Instr])
 
     | IRace [(LocalChanID, [Instr])]
     deriving (Show, Eq)
 
-data Val = 
-    VClos ([Instr], [Val])
+-- smart constructors for ConcurrentInstr
+iGet :: LocalChanID -> Instr
+iGet = ConcurrentInstr . IGet
 
-    -- Primitive data types..
-    | VInt Int
-    | VBool Bool
+iPut :: LocalChanID -> Instr
+iPut = ConcurrentInstr . IGet
 
-    -- User defined data types..
-    | VCons (ConsIx, [Val])
-    | VRec (Array DesIx [Instr], [Val])
-    deriving (Show, Eq)
+iSplit :: LocalChanID -> (LocalChanID, LocalChanID) -> Instr
+iSplit a bc = ConcurrentInstr $ ISplit a bc
+
+iFork :: LocalChanID -> ((LocalChanID, [LocalChanID], [Instr]) , (LocalChanID, [LocalChanID], [Instr])) -> Instr
+iFork a bc = ConcurrentInstr $ IFork a bc
+
+iClose :: LocalChanID -> Instr
+iClose = ConcurrentInstr . IClose
+
+iPlug :: [LocalChanID] -> (([LocalChanID], [Instr]), ([LocalChanID], [Instr])) -> Instr
+iPlug lcs =  ConcurrentInstr . IPlug lcs
+
+iHalt :: [LocalChanID] -> Instr
+iHalt = ConcurrentInstr . IHalt
+
+iRun :: [Translation] -> FunID -> Word -> Instr
+iRun ts f w = ConcurrentInstr $ IRun ts f w
+
+iHPut :: LocalChanID -> HCaseIx -> Instr
+iHPut a b = ConcurrentInstr $ IHPut a b
+
+iHCase :: LocalChanID -> [[Instr]] -> Instr
+iHCase n [] = ConcurrentInstr $ IHCase n (listArray (coerce (1 :: Word) :: HCaseIx , coerce (0 :: Word) :: HCaseIx) [])
+iHCase n is = ConcurrentInstr $ IHCase n (listArray (coerce (0 :: Word) :: HCaseIx, coerce (genericLength is - 1 :: Word) :: HCaseIx) is)
+
+iRace :: [(LocalChanID, [Instr])] -> Instr
+iRace = ConcurrentInstr . IRace
+
+data QInstr =
+    QGet ([Val], [Translation], [Val], [Instr])
+        -- (s, t, e ,c)
+    | QPut Val
+    | QSplit (GlobalChanID, GlobalChanID)
+    | QFork ([Translation], [Val] 
+        -- t, e,
+                , (LocalChanID, [Translation], [Instr])    
+                    -- alpha_1, \Gamma_1, code_1
+                , (LocalChanID, [Translation], [Instr])    
+                    -- alpha_2, \Gamma_2, code_2
+                )
+    | QId (GlobalChanID, GlobalChanID)
+
+    | QClose
+    | QHalt
+
+    | QHPut HCaseIx
+    | QHCase (Array Word [Instr])
+
+    | QRace ([LocalChanID], ([Val], [Translation], [Val], [Instr]))
+        -- other channels to race, (s,t,e,c)
+
+-- | Broadcast channel instructions (used internally to transfer messages from
+-- a process to a channel).. This is a layer of indirection for 
+-- the Chan in order for the channel to update similar to QInstr
+data BInstr =
+    BGet 
+        -- Polarity and GlobalChanID to place QGet on
+        (Polarity, GlobalChanID) 
+        ([Val], [Translation], [Val], [Instr])
+
+    | BPut (Polarity, GlobalChanID) Val
+
+    | BSplit (Polarity, GlobalChanID) (GlobalChanID, GlobalChanID)
+
+    | BFork (Polarity, GlobalChanID) 
+        ([Translation], [Val] 
+                , (LocalChanID, [Translation], [Instr])    
+                , (LocalChanID, [Translation], [Instr])    
+                )
+
+    | BId (Polarity, GlobalChanID) (GlobalChanID, GlobalChanID)
+
+    | BClose (Polarity, GlobalChanID)
+    | BHalt (Polarity, GlobalChanID)
+
+
+    | BPlug [GlobalChanID]
+
+    | BHPut (Polarity, GlobalChanID) HCaseIx
+    | BHCase (Polarity, GlobalChanID) (Array HCaseIx [Instr])
+
+    | BRace (Polarity, GlobalChanID) ([LocalChanID], ([Val], [Translation], [Val], [Instr]))
+
+-- smart constructors..
+qGet :: ([Val], [Translation], [Val], [Instr]) -> QInstr
+qGet = QGet
+
+qPut :: Val -> QInstr
+qPut = QPut
+
+qSplit :: (GlobalChanID, GlobalChanID) -> QInstr
+qSplit = QSplit
+
+qFork :: ([Translation], [Val], (LocalChanID, [Translation], [Instr]), (LocalChanID, [Translation], [Instr])) -> QInstr
+qFork = QFork
+
+qId :: (GlobalChanID, GlobalChanID) -> QInstr
+qId = QId 
+
+qClose :: QInstr
+qClose = QClose
+
+qHalt :: QInstr
+qHalt = QHalt
+
+qHPut :: Word -> QInstr
+qHPut = QHPut . HCaseIx
+
+qHCase :: [[Instr]] -> QInstr
+qHCase [] = QHCase (listArray (1, 0) [])
+qHCase is = QHCase (listArray (0, genericLength is - 1) is)
+
+qRace :: ([LocalChanID], ([Val], [Translation], [Val], [Instr])) -> QInstr
+qRace = QRace

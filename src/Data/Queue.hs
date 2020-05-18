@@ -1,16 +1,14 @@
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
-module Queue where
+module Data.Queue where
 
 import Data.Word
 import Prelude hiding (head, length)
 import Data.List
 
-import Debug.Trace
-
 {- 
     Technically a double ended queue
     Completely based off of Chris Okasaki's work with O(1) queues...
-    We include a short summary of what Chris writes in his papers..
+    We include a short summary of what Chris writes in his papers...
 -}
 
 data Queue a = Queue [a] !Word [a] !Word [a] [a]
@@ -68,7 +66,7 @@ data Queue a = Queue [a] !Word [a] !Word [a] [a]
     incrementally, then we will have our O(1) queue.
 
     We do this by distributing the reverse, drop, and append 
-    in two phases.
+    in two phases with the rotate1 and rotate2 functions.
 
     The first phase, corresponds to drop.
 
@@ -83,7 +81,26 @@ data Queue a = Queue [a] !Word [a] !Word [a] [a]
     left overs of R 
 
     Notice, that if we incrementally do things like this, the size of
-    the reverse, drop, take, (++) is all bounded by c + 1 steps -- a constant
+    the reverse, drop, take, (++) is all bounded by c + 1 steps -- a constant.
+    This is exactly what the rotate1 and rotate2 functions do.
+
+    We make some remarks about the unevaluted queues used for preevaluation. 
+    After a rotation, we set Lu to L and Ru to R, and by evaluating Lu and Ru,
+    we can incrementally prevalute the aforementioned steps (rotations).
+    
+    Notice that if the two lists are each of size n, we can see that 
+    the next rotation can occur after only about n - n/c operations (given
+    they are repeatedly removed from the same side).
+
+    So, to ensure Lu and Ru are completed evaluated, we need to advance them
+    by 2 positions each. This demands the following invariant...
+        |Lu| <= max(2j + 2 - k, 0)
+        |Ru| <= max(2j + 2 - k, 0)
+    Where j = min(|L|, |R|) and k = min(|L|, |R|).
+
+    It is easy to establish the bound 2j + 2 - k after a rotation (|L| and |R| differ
+    by at most one), and is reduced by at most one every insert and at most
+    two every removal.
 -}
 
 showQueue :: Show a => Queue a -> String
@@ -96,11 +113,14 @@ c = 3
 empty :: Queue a
 empty = Queue [] 0 [] 0 [] []
 
-length :: Queue a -> Word
-length (Queue l lsz r rsz lu ru) = lsz + rsz
+length :: Queue a -> Int
+length (Queue l lsz r rsz lu ru) = fromIntegral (lsz + rsz)
+
+genericLength :: Integral n => Queue a -> n
+genericLength (Queue l lsz r rsz lu ru) = fromIntegral (lsz + rsz)
 
 isEmpty :: Queue a -> Bool
-isEmpty = (==0) . Queue.length
+isEmpty = (==0) . Data.Queue.length
 
 infixr 7 <|
 (<|) :: a -> Queue a -> Queue a
@@ -128,6 +148,8 @@ head (Queue (l:ls) lsz r rsz lu ru)
         ls' = lu' `seq` ls
         ru' = drop 2 ru
         r' = ru' `seq` ls
+    -- the seq is here to ensure that by taking the head,
+    -- we prevalute...
 {-
 head (Queue (l:ls) lsz r rsz lu re) 
     = Just (mkQueue ls (pred lsz) r rsz (drop 2 lu) (drop 2 re), l)
@@ -143,6 +165,8 @@ last (Queue l lsz (r:rs) rsz lu ru)
         lu' = drop 2 lu
         rs' = ru' `seq` rs
         ru' = drop 2 ru
+    -- the seq is here to ensure that by taking the head,
+    -- we prevalute...
 {-
 last (Queue l lsz (r:rs) rsz lu ru) 
     = Just (mkQueue l lsz rs (pred rsz) (drop 2 lu) (drop 2 ru), r)
@@ -158,6 +182,7 @@ mkQueue l lsz r rsz lu ru
               r' = rotate1 n r rsz l lsz
               rsz' = rsz + (lsz - n)
           in Queue l' lsz' r' rsz' l' r'
+    -- this case is similiar to above...
     | rsz > c * lsz + 1
         = let n = (lsz + rsz) `div` 2 
               l' = rotate1 n l lsz r rsz

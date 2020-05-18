@@ -37,8 +37,10 @@ executables:
         - -with-rtsopts=-N
     dependencies:
         - containers
-        - network
         - process
+        - network
         - array
         - mtl
+        - async
+        - stm
 
