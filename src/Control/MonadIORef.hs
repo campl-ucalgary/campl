@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 module Control.MonadIORef 
     ( IORef
     , MonadIORef 
@@ -15,6 +16,8 @@ module Control.MonadIORef
 import qualified Data.IORef as IORef
 import Data.IORef (IORef)
 import Control.Monad.IO.Class
+
+import Control.Monad.Reader
 
 {-
     Wrapper for Data.IORef for type safety in monads..

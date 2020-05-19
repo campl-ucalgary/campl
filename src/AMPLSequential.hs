@@ -90,3 +90,4 @@ runSequential cde
                                 -> let m'' = stepSequential c (cs, e, v)
                                     in (:) <$> m'' <*> rec m''
                             _ -> error ("bad SequentialInstr" ++ show m')
+

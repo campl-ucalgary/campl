@@ -110,8 +110,8 @@ amplEnv defs lg chm nmg pr = do
     chan <- newChan
     mchm <- newMVar chm
     nmg' <- newIORef nmg
-    -- every program starts with running just the main process..
-    numrunpr <- newIORef 1  
+    -- every program starts with running 0 processes
+    numrunpr <- newIORef 0  
     -- every program starts with nothing in the broadcast channel
     broadcastchansize <- newIORef 0  
     return AmplEnv
@@ -145,9 +145,6 @@ instance HasProcessCounter AmplEnv where
     predNumProcesses env = atomicModifyIORef' (numRunningProcesses env) (pred &&& const ())
 
 instance HasBroadcastChan AmplEnv where
-    -- getBroadcastChan = broadcastChan
-
-        --  Note the ordering for writeBroadcastChan and readBroadcastChan
     writeBroadcastChan AmplEnv{ broadcastChan = bch, broadcastChanSize = bchsz } n =
         writeChan bch n >> atomicModifyIORef' bchsz (succ &&& const ()) 
 

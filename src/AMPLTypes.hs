@@ -50,6 +50,13 @@ newtype HCaseIx = HCaseIx Word
 
 type Translation = (Polarity, (LocalChanID, GlobalChanID))
 
+-- Stack, translations, environment, code
+type Stec = ([Val], [Translation], [Val], [Instr])
+
+-- Code, environment, stack
+type Ces = ([Instr], [Val], [Val])
+
+
 -- look up the LocalChanID to the corresponding (Polarity, GlobalChanID)
 lookupLocalChanIDToGlobalChanID :: 
     LocalChanID -> 
@@ -268,10 +275,11 @@ data QInstr =
     | QHalt
 
     | QHPut HCaseIx
-    | QHCase (Array Word [Instr])
+    | QHCase ([Val], [Translation], [Val], Array HCaseIx [Instr])
 
     | QRace ([LocalChanID], ([Val], [Translation], [Val], [Instr]))
         -- other channels to race, (s,t,e,c)
+    deriving (Show, Eq)
 
 -- | Broadcast channel instructions (used internally to transfer messages from
 -- a process to a channel).. This is a layer of indirection for 
@@ -295,15 +303,22 @@ data BInstr =
     | BId (Polarity, GlobalChanID) (GlobalChanID, GlobalChanID)
 
     | BClose (Polarity, GlobalChanID)
-    | BHalt (Polarity, GlobalChanID)
+    | BHalt [(Polarity, GlobalChanID)]
 
 
     | BPlug [GlobalChanID]
 
     | BHPut (Polarity, GlobalChanID) HCaseIx
-    | BHCase (Polarity, GlobalChanID) (Array HCaseIx [Instr])
+    | BHCase (Polarity, GlobalChanID) ([Val], [Translation], [Val], Array HCaseIx [Instr])
 
-    | BRace (Polarity, GlobalChanID) ([LocalChanID], ([Val], [Translation], [Val], [Instr]))
+    | BRace 
+        -- polarity, GlobalChanID to map to; and the list
+        -- corresponding to the table; and the instructions c1, c2,..,cn
+        -- Note that these are the only things that change between
+        -- each channel
+        [(Polarity, GlobalChanID, [LocalChanID], [Instr])] 
+        -- (s, t, e) (these are the same for all races...)
+        ([Val], [Translation], [Val])
 
 -- smart constructors..
 qGet :: ([Val], [Translation], [Val], [Instr]) -> QInstr
@@ -330,9 +345,9 @@ qHalt = QHalt
 qHPut :: Word -> QInstr
 qHPut = QHPut . HCaseIx
 
-qHCase :: [[Instr]] -> QInstr
-qHCase [] = QHCase (listArray (1, 0) [])
-qHCase is = QHCase (listArray (0, genericLength is - 1) is)
+qHCase :: ([Val], [Translation], [Val], [[Instr]]) -> QInstr
+qHCase (s, t, e, []) = QHCase (s,t,e,listArray (coerce (1 :: Word) :: HCaseIx, coerce (0 :: Word) :: HCaseIx) [])
+qHCase (s,t,e,is) = QHCase (s,t,e, listArray (coerce (0 :: Word) :: HCaseIx, coerce (genericLength is - 1 :: Word) :: HCaseIx) is)
 
 qRace :: ([LocalChanID], ([Val], [Translation], [Val], [Instr])) -> QInstr
 qRace = QRace
