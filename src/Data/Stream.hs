@@ -11,17 +11,17 @@ module Data.Stream
     Functions simliar to Data.List are implemented here..
 -}
 
-data Stream a = Cons a (Stream a)
+data Stream a = Stream a (Stream a)
     deriving (Show, Eq)
 
 head :: Stream a -> a
-head (Cons a _) = a
+head (Stream a _) = a
 
 tail :: Stream a -> Stream a
-tail (Cons _ as) = as
+tail (Stream _ as) = as
 
 unfoldr :: (b -> (a, b)) -> b -> Stream a
-unfoldr f b = Cons a (unfoldr f b')
+unfoldr f b = Stream a (unfoldr f b')
   where
     (a, b') = f b
 

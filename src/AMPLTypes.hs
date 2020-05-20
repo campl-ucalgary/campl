@@ -1,3 +1,4 @@
+-- Used to derive Out from Text.PrettyPrint.GenericPretty
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
 module AMPLTypes where
@@ -11,7 +12,10 @@ import Text.PrettyPrint.GenericPretty
 import Text.PrettyPrint
 
 import Data.Map (Map)
+import qualified Data.Map as Map
 import Data.Queue (Queue)
+import Data.Stream (Stream)
+import qualified Data.Stream as Stream
 
 -- ASSUMES ALL ARRAYS ARE INDEXED AT 0
 
@@ -21,8 +25,9 @@ newtype LocalChanID = LocalChanID Word  -- Local channel id
 newtype GlobalChanID = GlobalChanID Word  -- global channel id
     deriving (Show, Eq, Ord, Ix, Generic, Out)
 
-newtype PhysicalChanId = PhysicalChanID Word  -- global channel id
+newtype PhysicalChanId = PhysicalChanID Word  -- physical channel id
     deriving (Show, Eq, Generic, Out)
+    -- unused...
 
 newtype FunID = FunID Word  -- function id
     deriving (Show, Eq, Ord, Ix, Generic, Out)
@@ -34,7 +39,11 @@ mainFunID = FunID 0
 
 -- inifinite stream of function ids..
 funIDStream :: [FunID]
-funIDStream = unfoldr (\(FunID n) -> Just (FunID n, FunID (n + 1))) (FunID 1)
+funIDStream = unfoldr (\(FunID n) -> Just (FunID n, FunID (n + 1))) (FunID 1) 
+
+-- | inifinite stream of channel ids (reserves 0 for the console)
+chanIdStream :: Stream Word
+chanIdStream = Stream.iterate succ 0
 
 -- indexing constructors...
 newtype ConsIx = ConsIx Word
@@ -64,6 +73,10 @@ type Stec = ([Val], [Translation], [Val], [Instr])
 type Ces = ([Instr], [Val], [Val])
 
 type Chm = Map GlobalChanID (Queue QInstr, Queue QInstr)
+
+-- | Helper function for constructing a channel manager from a list
+mkChm :: [(GlobalChanID, (Queue QInstr, Queue QInstr))] -> Chm
+mkChm = Map.fromAscList . sortBy (\(a,_) (b,_) -> compare a b)
 
 
 -- look up the LocalChanID to the corresponding (Polarity, GlobalChanID)
@@ -236,7 +249,7 @@ iGet :: LocalChanID -> Instr
 iGet = ConcurrentInstr . IGet
 
 iPut :: LocalChanID -> Instr
-iPut = ConcurrentInstr . IGet
+iPut = ConcurrentInstr . IPut
 
 iSplit :: LocalChanID -> (LocalChanID, LocalChanID) -> Instr
 iSplit a bc = ConcurrentInstr $ ISplit a bc
@@ -361,7 +374,9 @@ qHCase (s,t,e,is) = QHCase (s,t,e, listArray (coerce (0 :: Word) :: HCaseIx, coe
 qRace :: ([LocalChanID], ([Val], [Translation], [Val], [Instr])) -> QInstr
 qRace = QRace
 
--- instances for deriving the pretty printer...
+-- instances for deriving the pretty printer since the array does
+-- not have a Generics instance, so we cannot automatically derive
+-- the Out instance. So we write it ourselves...
 instance (Ix i, Out a) => Out (Array i a) where
     docPrec _ arr = doc (elems arr)
     doc = docPrec 0 

@@ -19,19 +19,8 @@ import Control.Monad.Reader
 import Data.List
 import Control.Exception
 
--- | Wrapper around runAMPLMach specifically for the AmplEnv type...
-execAMPLMach :: 
-    ([Instr], [Translation]) ->                         -- ^ Main function
-    ([(FunID, (String, [Instr]))]                       -- ^ Function definitions..
-    , String -> IO ()                                   -- ^ logger
-    , Chm                                               -- ^ channel manager..
-    , Stream Word ) ->                                  -- ^ Channel name generator..
-    IO ()
-execAMPLMach mainf (fs, lg, chm, chmnmeg) = do
-    env <- amplEnv fs lg chm chmnmeg
-    runReaderT (runAMPLMach mainf :: ReaderT AmplEnv IO ()) env
 
--- | Call runAMPLMach to run the machine. 
+-- | runAMPLMach will run the machine. 
 runAMPLMach :: 
     ( HasBroadcastChan r 
     , HasChannelManager r 
@@ -61,9 +50,17 @@ amplMACHLoop = do
     bdcmds <- sequence (genericReplicate bdchsz (readBroadcastChan env))
 
     chm <- readIORef (getChannelManager env)
-    logChm chm
-    let (ps, chm') = stepChannelManager (foldr addCommandToChannelManager chm bdcmds)
-    writeIORef (getChannelManager env) chm'
+
+    let chm' = foldl (flip addCommandToChannelManager) chm bdcmds
+        -- remark: this MUST be foldl and correspond to the order of
+        -- which commands were put in otherwise this will not play well
+        -- with the plug command for example...
+        (ps, chm'') = stepChannelManager chm'
+        
+    writeIORef (getChannelManager env) chm''
+
+    logChm chm'
+    logChm chm''
 
     mapM_ amplForkProcess ps
 
@@ -94,8 +91,6 @@ amplForkProcess ::
     Stec -> ReaderT r IO ThreadId
 amplForkProcess stec = do
     env <- ask
-    -- here is the only reason why the whole thing is 
-    -- in the IO monad...
     liftIO $ bracket_ 
         (succNumProcesses env) 
         (predNumProcesses env) 
@@ -112,9 +107,8 @@ amplProcessLoop ::
     ReaderT r IO ()
 amplProcessLoop stec = logProcess stec >> f stec
   where
-    f stec
-        | isProcessFinished stec = return ()
-        | otherwise = case stec of
+    f stec = 
+        case stec of
             (s,t,e,ConcurrentInstr c:cs) -> do
                 ps <- stepConcurrent c (s,t,e,cs)
                 case ps of 
@@ -127,10 +121,11 @@ amplProcessLoop stec = logProcess stec >> f stec
             (s,t,e,SequentialInstr c:cs) -> do
                 (cs', e', s') <- stepSequential c (cs, e, s)
                 amplProcessLoop (s',t,e',cs')
-            _ -> error "illegal state"
+            _ -> return ()
 
 -- | process temrination condition as given in
--- Prashant's thesis..
+-- Prashant's thesis.. ( we don't actually use it
+-- and have a more lenient termination condition..)
 isProcessFinished :: Stec -> Bool
 isProcessFinished (_, [], [], []) = True
 isProcessFinished _ = False

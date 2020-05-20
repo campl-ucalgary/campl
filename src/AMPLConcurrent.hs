@@ -21,6 +21,7 @@ import Data.Coerce
 import Data.Function
 import Data.Semigroup
 import Data.Tuple 
+import Debug.Trace
 
 {- 
     A first draft of the Concurrent machine

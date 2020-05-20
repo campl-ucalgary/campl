@@ -16,32 +16,61 @@ import qualified Data.Queue as Queue
 import Control.Monad.Reader
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Set (Set)
+import qualified Data.Set as Set
 import Control.Exception
+import System.Environment
 
-codataTestSequential 
-    = [ iConstInt 2
+codataMain = 
+    [ iConstInt 2
         , iRec [[iConstInt 1, iAccess 0, iAddInt, iRet]         -- 0
                 , [iConstInt 100, iAccess 0, iAddInt, iRet]     -- 1
                 , [iConstInt 200, iAccess 0, iAddInt, iRet]     -- 2
                 ]
         , iDest 2 1
         ]
+sequentialCodataTest = execAMPLMachWithDefaultLogger 
+    (codataMain, [])
+    ([], (Services Set.empty Set.empty, Map.empty, Stream.iterate succ 1))
 
-execAMPLMachWithDefaultLogger :: 
-    ([Instr], [Translation]) ->                         -- ^ Main function
-    ([(FunID, (String, [Instr]))]                       -- ^ Function definitions..
-    , Map GlobalChanID (Queue QInstr, Queue QInstr)     -- ^ channel manager..
-    , Stream Word ) ->                                  -- ^ Channel name generator..
-    IO ()
-execAMPLMachWithDefaultLogger mainf (fdefs, chm, chmg) = 
-    bracket 
-        (initLogger "logs" "log.txt")
-        closeLogger 
-        (\lgger -> execAMPLMach mainf (fdefs, fileLogger lgger, chm, chmg))
 
-test = execAMPLMachWithDefaultLogger 
-    (codataTestSequential, [])
-    ([], Map.empty, Stream.iterate succ 1)
+plugMain = (
+    [ iPlug 
+        [LocalChanID 3] 
+        (
+            ([LocalChanID 1], 
+                [iConstInt 3, iStore, iAccess 0, iPut (LocalChanID 3)] )
+                -- Puts ConstInt 3 on top of the stack
+                -- Stores it to the environment
+                -- Accesses it so it goes back on the stack
+                -- Since 3 is on the top of the stack, using the shared channel, send it off to the channel manager
+            , ([LocalChanID 2], 
+                [iGet (LocalChanID 3)] )
+        )
+    ]
+    ,   -- translations
+        [ (Input,  (LocalChanID 1, GlobalChanID 1))
+        , (Input,  (LocalChanID 2, GlobalChanID 2))
+        ] 
+    )
+simplePlugTest = execAMPLMachWithDefaultLogger 
+    plugMain
+    ([], 
+        ( Services Set.empty Set.empty
+        , mkChm 
+            [ (GlobalChanID 1, emptyQInstrQueues)
+            , (GlobalChanID 2, emptyQInstrQueues)
+            ]
+        , Stream.iterate succ 3)
+        )
+
+testchm = 
+        mkChm 
+            [ (GlobalChanID 1, emptyQInstrQueues)
+            , (GlobalChanID 2, emptyQInstrQueues)
+            ]
+
+
 
 main :: IO ()
 main = do

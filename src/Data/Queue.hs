@@ -12,7 +12,7 @@ import Data.List
 -}
 
 data Queue a = Queue [a] !Word [a] !Word [a] [a]
-    deriving (Show, Eq)
+    deriving (Eq)
 {-
     The datatype is as follows...
         Queue L, |L|, R, |R|, Lu, Ru
@@ -110,6 +110,9 @@ showQueue (Queue l lsz r rsz lu ru)
 showQueueWith :: Queue a -> ([a] -> String) -> String
 showQueueWith (Queue l lsz r rsz lu ru) s
     = "Queue (" ++ show (lsz + rsz) ++ "): " ++ s (l ++ reverse r)
+
+instance Show a => Show (Queue a) where
+    show = showQueue
 
 c :: Word
 c = 3

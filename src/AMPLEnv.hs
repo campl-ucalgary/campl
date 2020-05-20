@@ -3,12 +3,14 @@ module AMPLEnv where
 import Data.Array
 import Data.Coerce
 import Data.List
-import Data.Map (Map (..))
+import Data.Map (Map)
+import Data.Set (Set)
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 import Control.Arrow
 import Control.Monad.IO.Class
-
-import qualified Data.Map as Map
 import Control.Exception
+import Data.Function
 
 import Control.MonadIORef
 import Control.MonadChan
@@ -16,6 +18,8 @@ import Data.Queue (Queue)
 import Data.Stream (Stream)
 import qualified Data.Stream as Stream
 import qualified Data.Queue as Queue
+
+import Debug.Trace
 
 import AMPLTypes
 
@@ -82,8 +86,10 @@ data AmplEnv = AmplEnv
     {
         -- | function definitions (supercombinators is the terminolgy Simon Peyton Jones uses)
         supercombinators :: Array FunID (String, [Instr])
+        -- | Sets to determine 
+        , amplServices :: Services
         -- | Used to log strings (all to IO)..
-        , amplLog :: String -> IO ()
+        , amplLogger :: String -> IO ()
         -- | channel manager -- map from GlobalChanID to input and output queues..
         -- Note: this could be pure and moved to a state monad (but we will
         -- stick to everything being crammed in a reader monad for now...)
@@ -98,14 +104,28 @@ data AmplEnv = AmplEnv
         , numRunningProcesses :: IORef Word
     }
 
+data Services = Services {
+    intTerminal    :: Set GlobalChanID
+    , charTerminal :: Set GlobalChanID
+}
+-- | smart constructor for Services
+services :: 
+    [GlobalChanID] ->   -- int terminal
+    [GlobalChanID] ->   -- char terminal
+    Services
+services intterm charterm = Services  intterm' charterm'
+  where
+    intterm' = Set.fromAscList (sort intterm)
+    charterm' = Set.fromAscList (sort charterm)
+    
+
 -- | Smart constructor for the environment
 amplEnv :: 
-    [(FunID, (String, [Instr]))] ->             -- ^ association list of funciton ids and its name / instruction
-    (String -> IO ()) ->                        -- ^ logger.
-    Chm ->                                      -- ^ Channel manager (services should be preinitialized)...
-    Stream Word ->                              -- ^ the head should be a fresh name..
+    ([(FunID, (String, [Instr]))]             -- ^ association list of funciton ids and its name / instruction
+    , String -> IO ()                         -- ^ logger.
+    , (Services, Chm, Stream Word)) ->                            -- ^ Services
     IO AmplEnv
-amplEnv defs lg chm nmg = do
+amplEnv (defs, lg, (svs, chm, nmg)) = do
     chan <- newChan
     mchm <- newIORef chm
     nmg' <- newIORef nmg
@@ -120,7 +140,8 @@ amplEnv defs lg chm nmg = do
                                     then array (FunID 1, FunID 0) []
                                     -- otherwise, fill up the array with the definitions..
                                     else array (FunID 0, FunID (genericLength defs - 1)) defs
-                , amplLog = lg
+                , amplServices = svs
+                , amplLogger = lg
                 , broadcastChan = chan
                 , broadcastChanSize = broadcastchansize
                 , channelManager = mchm
@@ -133,7 +154,7 @@ instance HasSuperCombinators AmplEnv where
     superCombNameLookup env ix = fst (supercombinators env ! ix)
 
 instance HasLog AmplEnv where
-    getLog = amplLog
+    getLog = amplLogger
 
 instance HasChannelManager AmplEnv where
     getChannelManager = channelManager
@@ -160,5 +181,5 @@ instance HasChannelNameGenerator AmplEnv where
         GlobalChanID <$> atomicModifyIORef' chg (Stream.tail &&& Stream.head) 
 
     returnChannelName AmplEnv{ channelNameGenerator = chg } chid = 
-        atomicModifyIORef' chg  (Stream.Cons (coerce chid) &&& const ()) 
+        atomicModifyIORef' chg  (Stream.Stream (coerce chid) &&& const ()) 
 

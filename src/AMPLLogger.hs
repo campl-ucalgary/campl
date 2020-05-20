@@ -32,7 +32,7 @@ initLogger filepath filename = do
     return $ Logger m (fp, h)
 
 closeLogger :: Logger -> IO ()
-closeLogger Logger{ loggerLock = mvar, logTo = lgto } = 
+closeLogger Logger{ loggerLock = mvar, logTo = lgto } =
     withMVar mvar (const (hClose (snd lgto)))
 
 fileLogger :: 

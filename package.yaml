@@ -22,7 +22,7 @@ dependencies:
     - base >= 4.7 && < 5
 
 executables:
-  mpl:
+  ampl:
     main: Main.hs
     source-dirs:
         - src
@@ -32,15 +32,18 @@ executables:
         - -with-rtsopts=-N
     dependencies:
         - containers
+          # needed for services..
         - process
         - network
+          # for some reason this was removed from base
         - array
-          # usual monad transformer library..
+          # a usual monad transformer library..
         - mtl
           # for pretty printing..
         - pretty
         - GenericPretty
-
           # used for the default logger
         - time
+
+        - stm
 
