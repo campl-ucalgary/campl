@@ -40,8 +40,18 @@ instance MonadAtomicIORef IO where
     atomicModifyIORef = IORef.atomicModifyIORef 
     atomicModifyIORef' = IORef.atomicModifyIORef'
 
+instance MonadAtomicIORef m => MonadAtomicIORef (ReaderT r m) where
+    newIORef = lift . newIORef
+    readIORef = lift . readIORef 
+    atomicModifyIORef a = lift . atomicModifyIORef a
+    atomicModifyIORef' a = lift . atomicModifyIORef' a
+
 instance MonadIORef IO where
     writeIORef = IORef.writeIORef 
     modifyIORef = IORef.modifyIORef 
     modifyIORef' = IORef.modifyIORef' 
 
+instance MonadIORef m => MonadIORef (ReaderT r m) where
+    writeIORef a = lift . writeIORef a
+    modifyIORef a = lift . modifyIORef a
+    modifyIORef' a = lift . modifyIORef' a

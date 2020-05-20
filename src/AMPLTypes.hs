@@ -1,4 +1,5 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 module AMPLTypes where
 
 import Data.Word
@@ -6,19 +7,25 @@ import Data.Array
 import Data.Coerce
 import Data.List
 
+import Text.PrettyPrint.GenericPretty
+import Text.PrettyPrint
+
+import Data.Map (Map)
+import Data.Queue (Queue)
+
 -- ASSUMES ALL ARRAYS ARE INDEXED AT 0
 
 newtype LocalChanID = LocalChanID Word  -- Local channel id
-    deriving (Show, Eq, Ord, Ix)
+    deriving (Show, Eq, Ord, Ix, Generic, Out)
 
 newtype GlobalChanID = GlobalChanID Word  -- global channel id
-    deriving (Show, Eq, Ord, Ix)
+    deriving (Show, Eq, Ord, Ix, Generic, Out)
 
 newtype PhysicalChanId = PhysicalChanID Word  -- global channel id
-    deriving (Show, Eq)
+    deriving (Show, Eq, Generic, Out)
 
 newtype FunID = FunID Word  -- function id
-    deriving (Show, Eq, Ord, Ix, Enum)
+    deriving (Show, Eq, Ord, Ix, Generic, Out)
 
 -- guaranteed distinct from the rest of the function ids for
 -- the special main function
@@ -27,23 +34,23 @@ mainFunID = FunID 0
 
 -- inifinite stream of function ids..
 funIDStream :: [FunID]
-funIDStream = [FunID 1 ..]
+funIDStream = unfoldr (\(FunID n) -> Just (FunID n, FunID (n + 1))) (FunID 1)
 
 -- indexing constructors...
 newtype ConsIx = ConsIx Word
-    deriving (Show, Eq, Ord, Ix)
+    deriving (Show, Eq, Ord, Ix, Generic, Out)
 
 -- indexing codata destructors...
 newtype DesIx = DesIx Word
-    deriving (Show, Eq, Ord, Ix)
+    deriving (Show, Eq, Ord, Ix, Generic, Out)
 
 -- By convention (i.e., Prashant), the output queue is the left queue
 -- and the input queue is the right queue
 data Polarity = Output | Input 
-    deriving (Show, Eq)
+    deriving (Show, Eq, Generic, Out)
 
 newtype HCaseIx = HCaseIx Word
-    deriving (Show, Eq, Ord, Ix)
+    deriving (Show, Eq, Ord, Ix, Generic, Out)
         -- corresponds to  IHPut / IHCase -- either we put a request for
         -- an internal protocol (one given by the program itself) 
         -- or one for the external world (think IO action)
@@ -55,6 +62,8 @@ type Stec = ([Val], [Translation], [Val], [Instr])
 
 -- Code, environment, stack
 type Ces = ([Instr], [Val], [Val])
+
+type Chm = Map GlobalChanID (Queue QInstr, Queue QInstr)
 
 
 -- look up the LocalChanID to the corresponding (Polarity, GlobalChanID)
@@ -102,7 +111,7 @@ composeTranslation as bs = foldr f g bs as
 data Instr =
     ConcurrentInstr ConcurrentInstr
     | SequentialInstr SequentialInstr
-    deriving Eq
+    deriving (Eq, Generic, Out)
 
 instance Show Instr where
     show (ConcurrentInstr cs) = show cs
@@ -135,7 +144,7 @@ data SequentialInstr =
     | IRec (Array DesIx [Instr]) -- create a record on the stack
     | IDest DesIx Word
         -- destructs the record by choosing the ith funciton closure with the top n elements of the stack
-    deriving (Show, Eq)
+    deriving (Show, Eq, Generic, Out)
 
 -- smart consturctors...
 iStore :: Instr
@@ -190,7 +199,7 @@ data Val =
     -- User defined data types..
     | VCons (ConsIx, [Val])
     | VRec (Array DesIx [Instr], [Val])
-    deriving (Show, Eq)
+    deriving (Show, Eq, Generic, Out)
 
 
 -- CONCURRENT INSTRUCTIONS
@@ -220,7 +229,7 @@ data ConcurrentInstr =
     | IHCase LocalChanID (Array HCaseIx [Instr])
 
     | IRace [(LocalChanID, [Instr])]
-    deriving (Show, Eq)
+    deriving (Show, Eq, Generic, Out)
 
 -- smart constructors for ConcurrentInstr
 iGet :: LocalChanID -> Instr
@@ -279,7 +288,7 @@ data QInstr =
 
     | QRace ([LocalChanID], ([Val], [Translation], [Val], [Instr]))
         -- other channels to race, (s,t,e,c)
-    deriving (Show, Eq)
+    deriving (Show, Eq, Generic, Out)
 
 -- | Broadcast channel instructions (used internally to transfer messages from
 -- a process to a channel).. This is a layer of indirection for 
@@ -303,8 +312,7 @@ data BInstr =
     | BId (Polarity, GlobalChanID) (GlobalChanID, GlobalChanID)
 
     | BClose (Polarity, GlobalChanID)
-    | BHalt [(Polarity, GlobalChanID)]
-
+    | BHalt [(Polarity, GlobalChanID)] 
 
     | BPlug [GlobalChanID]
 
@@ -319,6 +327,7 @@ data BInstr =
         [(Polarity, GlobalChanID, [LocalChanID], [Instr])] 
         -- (s, t, e) (these are the same for all races...)
         ([Val], [Translation], [Val])
+    deriving (Show, Eq, Generic, Out)
 
 -- smart constructors..
 qGet :: ([Val], [Translation], [Val], [Instr]) -> QInstr
@@ -351,3 +360,12 @@ qHCase (s,t,e,is) = QHCase (s,t,e, listArray (coerce (0 :: Word) :: HCaseIx, coe
 
 qRace :: ([LocalChanID], ([Val], [Translation], [Val], [Instr])) -> QInstr
 qRace = QRace
+
+-- instances for deriving the pretty printer...
+instance (Ix i, Out a) => Out (Array i a) where
+    docPrec _ arr = doc (elems arr)
+    doc = docPrec 0 
+
+instance Out Word where
+    docPrec _ = text . show 
+    doc = docPrec 0

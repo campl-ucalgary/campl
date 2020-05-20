@@ -8,12 +8,11 @@ import Control.Arrow
 import Control.Monad.IO.Class
 
 import qualified Data.Map as Map
-import Control.Concurrent (MVar, newMVar)
-
+import Control.Exception
 
 import Control.MonadIORef
 import Control.MonadChan
-import Data.Queue (Queue (..))
+import Data.Queue (Queue)
 import Data.Stream (Stream)
 import qualified Data.Stream as Stream
 import qualified Data.Queue as Queue
@@ -32,7 +31,7 @@ class HasLog a where
 
 -- | Type class for functions getting the channel manager
 class HasChannelManager a where
-    getChannelManager :: a -> MVar (Map GlobalChanID (Queue QInstr, Queue QInstr))
+    getChannelManager :: a -> IORef Chm
 
 -- | Type class for counting the number of alive processes (threads).
 class HasProcessCounter a where
@@ -86,7 +85,9 @@ data AmplEnv = AmplEnv
         -- | Used to log strings (all to IO)..
         , amplLog :: String -> IO ()
         -- | channel manager -- map from GlobalChanID to input and output queues..
-        , channelManager :: MVar (Map GlobalChanID (Queue QInstr, Queue QInstr))
+        -- Note: this could be pure and moved to a state monad (but we will
+        -- stick to everything being crammed in a reader monad for now...)
+        , channelManager :: IORef Chm
         -- | seed for the channel name
         , channelNameGenerator :: IORef (Stream Word)
         -- | a channel to broadcast commands to the channel manager. We call this the broadcast channel...
@@ -101,14 +102,12 @@ data AmplEnv = AmplEnv
 amplEnv :: 
     [(FunID, (String, [Instr]))] ->             -- ^ association list of funciton ids and its name / instruction
     (String -> IO ()) ->                        -- ^ logger.
-    Map GlobalChanID 
-        (Queue QInstr, Queue QInstr) ->         -- ^ Channel manager (services should be preinitialized)...
+    Chm ->                                      -- ^ Channel manager (services should be preinitialized)...
     Stream Word ->                              -- ^ the head should be a fresh name..
-    ([Instr], [Translation], [Val], [Val]) ->   -- (main function...)
     IO AmplEnv
-amplEnv defs lg chm nmg pr = do
+amplEnv defs lg chm nmg = do
     chan <- newChan
-    mchm <- newMVar chm
+    mchm <- newIORef chm
     nmg' <- newIORef nmg
     -- every program starts with running 0 processes
     numrunpr <- newIORef 0  
@@ -145,10 +144,10 @@ instance HasProcessCounter AmplEnv where
     predNumProcesses env = atomicModifyIORef' (numRunningProcesses env) (pred &&& const ())
 
 instance HasBroadcastChan AmplEnv where
-    writeBroadcastChan AmplEnv{ broadcastChan = bch, broadcastChanSize = bchsz } n =
-        writeChan bch n >> atomicModifyIORef' bchsz (succ &&& const ()) 
+    writeBroadcastChan AmplEnv{ broadcastChan = bch, broadcastChanSize = bchsz } n = liftIO $ 
+        uninterruptibleMask_ (writeChan bch n >> atomicModifyIORef' bchsz (succ &&& const ()))
 
-    readBroadcastChan AmplEnv{ broadcastChan = bch, broadcastChanSize = bchsz } = do
+    readBroadcastChan AmplEnv{ broadcastChan = bch, broadcastChanSize = bchsz } = liftIO $ uninterruptibleMask_ $ do
         n <- readChan bch 
         atomicModifyIORef' bchsz (pred &&& const ()) 
         return n
@@ -162,3 +161,4 @@ instance HasChannelNameGenerator AmplEnv where
 
     returnChannelName AmplEnv{ channelNameGenerator = chg } chid = 
         atomicModifyIORef' chg  (Stream.Cons (coerce chid) &&& const ()) 
+

@@ -5,10 +5,18 @@ import AMPLSequential
 import AMPLConcurrent
 import AMPLTypes
 import AMPLEnv
+import AMPLMach
+import AMPLLogger
+
+import Data.Stream (Stream)
+import qualified Data.Stream as Stream
+import Data.Queue (Queue)
+import qualified Data.Queue as Queue
 
 import Control.Monad.Reader
-import Data.Map (Map (..))
+import Data.Map (Map)
 import qualified Data.Map as Map
+import Control.Exception
 
 codataTestSequential 
     = [ iConstInt 2
@@ -19,22 +27,21 @@ codataTestSequential
         , iDest 2 1
         ]
 
-{-
-runProgramWithEnv :: 
-    ReaderT AmplEnv IO ( ([Instr], [Val], [Val]), [([Instr],[Val], [Val])]) -> 
-    IO ( ([Instr], [Val], [Val]), [([Instr],[Val], [Val])])
-runProgramWithEnv reader = 
-    amplEnv [] putStrLn Map.empty undefined >>= runReaderT reader 
-
-printSteps :: 
-    IO (([Instr], [Val], [Val]), [([Instr],[Val], [Val])]) ->
+execAMPLMachWithDefaultLogger :: 
+    ([Instr], [Translation]) ->                         -- ^ Main function
+    ([(FunID, (String, [Instr]))]                       -- ^ Function definitions..
+    , Map GlobalChanID (Queue QInstr, Queue QInstr)     -- ^ channel manager..
+    , Stream Word ) ->                                  -- ^ Channel name generator..
     IO ()
-printSteps a = 
-    do 
-        (a', as) <- a
-        print a'
-        mapM_ print as
-        -}
+execAMPLMachWithDefaultLogger mainf (fdefs, chm, chmg) = 
+    bracket 
+        (initLogger "logs" "log.txt")
+        closeLogger 
+        (\lgger -> execAMPLMach mainf (fdefs, fileLogger lgger, chm, chmg))
+
+test = execAMPLMachWithDefaultLogger 
+    (codataTestSequential, [])
+    ([], Map.empty, Stream.iterate succ 1)
 
 main :: IO ()
 main = do

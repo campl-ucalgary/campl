@@ -9,7 +9,9 @@ module Control.MonadChan
     where
 
 import Control.Monad.IO.Class
-import Control.Concurrent.Chan
+import Control.Concurrent.Chan (Chan)
+import qualified Control.Concurrent.Chan
+import Control.Monad.Reader
 
 {-
     Wrapper for the Channel operations for 
@@ -28,3 +30,10 @@ instance MonadChan IO where
     writeChan = Control.Concurrent.Chan.writeChan 
     readChan = Control.Concurrent.Chan.readChan
     dupChan = Control.Concurrent.Chan.dupChan
+
+instance MonadChan m => MonadChan (ReaderT r m) where
+    newChan = lift newChan
+    writeChan a = lift . writeChan a
+    readChan = lift . readChan
+    dupChan = lift . dupChan 
+

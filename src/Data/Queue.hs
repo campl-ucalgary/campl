@@ -107,6 +107,10 @@ showQueue :: Show a => Queue a -> String
 showQueue (Queue l lsz r rsz lu ru)
     = "Queue (" ++ show (lsz + rsz) ++ "): " ++ show (l ++ reverse r)
 
+showQueueWith :: Queue a -> ([a] -> String) -> String
+showQueueWith (Queue l lsz r rsz lu ru) s
+    = "Queue (" ++ show (lsz + rsz) ++ "): " ++ s (l ++ reverse r)
+
 c :: Word
 c = 3
 

@@ -21,11 +21,6 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
     - base >= 4.7 && < 5
 
-default-extensions:
-    - DeriveFunctor
-    - TypeFamilies
-    - TemplateHaskell
-
 executables:
   mpl:
     main: Main.hs
@@ -40,7 +35,12 @@ executables:
         - process
         - network
         - array
+          # usual monad transformer library..
         - mtl
-        - async
-        - stm
+          # for pretty printing..
+        - pretty
+        - GenericPretty
+
+          # used for the default logger
+        - time
 
