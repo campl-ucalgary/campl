@@ -60,9 +60,25 @@ data Polarity = Output | Input
 
 newtype HCaseIx = HCaseIx Word
     deriving (Show, Eq, Ord, Ix, Generic, Out)
-        -- corresponds to  IHPut / IHCase -- either we put a request for
+        -- corresponds to IHPut / IHCase -- either we put a request for
         -- an internal protocol (one given by the program itself) 
         -- or one for the external world (think IO action)
+
+        {-
+            THIS IS VERY CONFUSING READ THIS PORTION FOR WHAT
+            THE INDICES MEAN.
+            If we have a IHPut / IHCase scenario, then this 
+            is simply indexing the IHCase (as given in the table)
+            Otherwise, if it is not an IHPut / IHCase scenario,
+            then this a service request (think IO action) that
+            is defined by which global channel the IHPut HCaseIx
+            is in.
+
+            Then, by Prashant, we know that if HCaseIx is:
+                - 1 then it corresponds to get (i.e., enter a number in the terminal)
+                - 2 then it corresponds to put (i.e., enter a number on the terminal)
+                - 3 then it corresponds to close (i.e., close the service)
+        -}
 
 type Translation = (Polarity, (LocalChanID, GlobalChanID))
 

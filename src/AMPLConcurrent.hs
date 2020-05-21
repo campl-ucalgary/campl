@@ -274,10 +274,6 @@ stepChannelManager =
     -- Don't be intimidated by this type signature! The first argument is the recursion (as it usually 
     -- is with the fix operations), the second argument is the zipper of channels to process with the 
     -- suspended processes to run
-     f :: (([Stec], ([(GlobalChanID, (Queue QInstr, Queue QInstr))], [(GlobalChanID, (Queue QInstr, Queue QInstr))])) 
-            -> ([Stec], ([(GlobalChanID, (Queue QInstr, Queue QInstr))], [(GlobalChanID, (Queue QInstr, Queue QInstr))]))) -> 
-            ([Stec], ([(GlobalChanID, (Queue QInstr, Queue QInstr))], [(GlobalChanID, (Queue QInstr, Queue QInstr))])) -> 
-            ([Stec], ([(GlobalChanID, (Queue QInstr, Queue QInstr))], [(GlobalChanID, (Queue QInstr, Queue QInstr))]))
      f rec (ps, (chs', [])) = (ps, (chs', []))
      f rec (ps, (chs', (gch, qs@(q1,q2)):chs)) 
         = case headQInstrs qs of

@@ -79,12 +79,9 @@ simplePlugTest = execAMPLMachWithDefaultLogger
 -- parallel or test...
 -------------------------
 {-
-    Plugs two processes together. Sends the number 3 over channel 3...
-    
-    the program would look something like this -- minus the services to the 
-    real world, but we just write service  to indicate that it should be a
-    serviceN
-
+    A parallel or program would look something like this -- (note that since
+    services have not been written at the time we implemented this, so
+    we just write services as serviceN)
 
     -- a is channel 1
     -- b is channel 2
@@ -165,7 +162,7 @@ p2 = [ iRace [ (LocalChanID 1, a), (LocalChanID 2, b) ] ]
                 , iOrBool
                 , iStore
                 , iAccess 0
-                , iAccess 0
+                , iAccess 0             -- makes the if statement happy
                 , iPut (LocalChanID 3)
                 , iClose (LocalChanID 1)
                 , iClose (LocalChanID 2) 
@@ -231,6 +228,7 @@ paralelOrExec = execAMPLMachWithDefaultLogger
         , Stream.iterate succ 4)
         )
 
+
 main :: IO ()
 main = do
-    putStrLn "hello world"
+    paralelOrExec

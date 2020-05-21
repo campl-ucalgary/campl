@@ -4,11 +4,11 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a690fe2a4eea4dee131b60ba286969456fef717b64973909312078a325a5206b
+-- hash: 2f626d3370af8537262b7742d04c7ec9b96f84d89db4262413b285f5ce4853a7
 
 name:           AMPL
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/mi#readme>
+description:    Please see the README on GitHub at <https://github.com/githubuser/AMPL#readme>
 homepage:       https://github.com/githubuser/AMPL#readme
 bug-reports:    https://github.com/githubuser/AMPL/issues
 author:         Author name here

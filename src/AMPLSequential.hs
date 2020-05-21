@@ -59,6 +59,7 @@ stepSequential IAddInt (c, e, VInt n : VInt m : s) = return (c, e, VInt (n + m) 
 stepSequential IMulInt (c, e, VInt n : VInt m : s) = return (c, e, VInt (n * m) : s)
 stepSequential ILeqInt (c, e, VInt n : VInt m : s) = return (c, e, VBool (n <= m) : s)
 
+-- From the CES machine in 521....
 stepSequential (IConstBool k) (c, e, s) = return (c, e, VBool k : s)
 stepSequential IOrBool (c, e, VBool n : VBool m : s) = return (c, e, VBool (n || m) : s)
 stepSequential IEqBool (c, e, VBool n : VBool m : s) = return (c, e, VBool (n == m) : s)
