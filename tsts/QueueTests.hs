@@ -58,27 +58,54 @@ prop_appendPrependTakeEq :: NonEmptyList Int -> Property
 prop_appendPrependTakeEq lst = 
     forAll (choose (0, length xs - 1)) $ \i ->
     forAll (choose (0, length xs - 1)) $ \j ->
+        uncurry (==) (appendPrependTakeEq xs i j)
+  where
+    xs = getNonEmpty lst
+
+prop_appendPrependInvariants :: NonEmptyList Int -> Property
+prop_appendPrependInvariants lst = 
+    forAll (choose (0, length xs - 1)) $ \i ->
+    forAll (choose (0, length xs - 1)) $ \j ->
+        Queue.invariantCheck (fst (appendPrependTakeEq xs i j))
+  where
+    xs = getNonEmpty lst
+
+appendPrependTakeEq :: [a] -> Int -> Int -> (Queue a, Queue a)
+appendPrependTakeEq xs i j =
     let (q', tls) = Queue.takeLast i q 
         q'' = Queue.appends q' tls
         (q''', hds) = Queue.takeHead j q'' 
         q'''' = Queue.prepends hds q'''
-    in q'''' == q
+    in (q'''', q)
   where
-    xs = getNonEmpty lst
     q = foldr Queue.prepend Queue.empty xs
 
 prop_prependAppendTakeEq :: NonEmptyList Int -> Property
 prop_prependAppendTakeEq lst = 
     forAll (choose (0, length xs - 1)) $ \i ->
     forAll (choose (0, length xs - 1)) $ \j ->
+        uncurry (==) (prependAppendTake xs i j)
+  where
+    xs = getNonEmpty lst
+
+prependAppendTake :: [a] -> Int -> Int -> (Queue a, Queue a)
+prependAppendTake xs i j =
     let (q', hds) = Queue.takeHead i q 
         q'' = Queue.prepends hds q' 
         (q''', tls) = Queue.takeLast j q'' 
         q'''' = Queue.appends q''' tls 
-    in q'''' == q
+    in (q'''', q)
+  where
+    q = foldr Queue.prepend Queue.empty xs
+
+
+prop_prependAppendInvariants :: NonEmptyList Int -> Property
+prop_prependAppendInvariants lst = 
+    forAll (choose (0, length xs - 1)) $ \i ->
+    forAll (choose (0, length xs - 1)) $ \j ->
+        Queue.invariantCheck (fst (prependAppendTake xs i j))
   where
     xs = getNonEmpty lst
-    q = foldr Queue.prepend Queue.empty xs
 
 return []
 runTests = $quickCheckAll

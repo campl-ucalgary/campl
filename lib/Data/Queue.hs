@@ -126,10 +126,8 @@ invariantCheck (Queue l lsz r rsz lu ru)
         && L.genericLength r == rsz 
         && L.genericLength l <= c * L.genericLength r + 1
         && L.genericLength r <= c * L.genericLength l + 1
-        -- We actualyl don't include these invairants because
-        -- they do not always hold..
-        -- && L.genericLength lu <= max (2 * j + 2 - k) 0
-        -- && L.genericLength ru <= max (2 * j + 2 - k) 0
+        && L.genericLength lu <= max (2 * j + 2 - k) 0
+        && L.genericLength ru <= max (2 * j + 2 - k) 0
   where
     j = min (L.genericLength l) (L.genericLength r)
     k = max (L.genericLength l) (L.genericLength r)
@@ -149,9 +147,7 @@ c :: Word
 c = 3
 
 empty :: Queue a
-empty = Queue [] 0 [] 0 [] []
-
-
+empty = Queue [] 0 [] 0 [] [] 
 
 length :: Queue a -> Int
 length (Queue l lsz r rsz lu ru) = fromIntegral (lsz + rsz)
@@ -172,14 +168,14 @@ infixl 7 |>
 
 prepend :: a -> Queue a -> Queue a
 prepend e (Queue l lsz r rsz lu ru) 
-    = mkQueue (e:l) (succ lsz) r rsz lu ru
+    = mkQueue (e:l) (succ lsz) r rsz (drop 1 lu) (drop 1 ru)
 
 prepends :: [a] -> Queue a -> Queue a
 prepends lst q = foldr prepend q lst
 
 append :: Queue a -> a -> Queue a
 append (Queue l lsz r rsz lu ru) e  
-    = mkQueue l lsz (e:r) (succ rsz) lu ru
+    = mkQueue l lsz (e:r) (succ rsz) (drop 1 lu) (drop 1 ru)
 
 -- this litearlly just adjoints it at the end
 appends :: Queue a -> [a] -> Queue a
