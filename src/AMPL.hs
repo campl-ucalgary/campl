@@ -20,12 +20,23 @@ import qualified Data.Set as Set
 import Control.Exception
 import System.Environment
 
+{-
+    This file includes helpful wrappers around 
+    runAMPLMach from AMPLMach to make running the
+    machine easier..
+-}
+
 -- |  wrapper around execAMPLMach specifically designed for the AmplEnv type
 -- with a default logger
 execAMPLMachWithDefaultLogger :: 
     ([Instr], [Translation]) ->                         -- ^ Main function
     ([(FunID, (String, [Instr]))]                       -- ^ Function definitions..
-    , (Services, Chm, Stream Word) ) ->        
+    , (Services, Chm, Stream Word) ) ->                 -- ^ note that Services and Chm 
+                                                        -- must correspond (i.e., if a global channel is in
+                                                        -- Services, then there should be corresponding
+                                                        -- empty queues with that global channel id
+                                                        -- and each of these MUST be distinct from the elemnts in
+                                                        -- Stream Word
     IO ()
 execAMPLMachWithDefaultLogger mainf (fdefs, (svs, chm, chmg)) = 
     bracket 

@@ -19,6 +19,13 @@ import Control.Monad.Reader
 import Data.List
 import Control.Exception
 
+{-
+    This file is for the AMPL machine. 
+
+    It includes the loops and state update to actually
+    run the thing...
+-}
+
 -- | runAMPLMach will run the machine. 
 runAMPLMach :: 
     ( HasBroadcastChan r 

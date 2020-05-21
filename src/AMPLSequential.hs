@@ -59,6 +59,12 @@ stepSequential IAddInt (c, e, VInt n : VInt m : s) = return (c, e, VInt (n + m) 
 stepSequential IMulInt (c, e, VInt n : VInt m : s) = return (c, e, VInt (n * m) : s)
 stepSequential ILeqInt (c, e, VInt n : VInt m : s) = return (c, e, VBool (n <= m) : s)
 
+stepSequential (IConstBool k) (c, e, s) = return (c, e, VBool k : s)
+stepSequential IOrBool (c, e, VBool n : VBool m : s) = return (c, e, VBool (n || m) : s)
+stepSequential IEqBool (c, e, VBool n : VBool m : s) = return (c, e, VBool (n == m) : s)
+stepSequential (IIf c0 c1 ) (c, e, VBool True : s) = return (c0, e, VClos (c, e) : s)
+stepSequential (IIf c0 c1 ) (c, e, VBool False : s) = return (c1, e, VClos (c, e) : s)
+
 stepSequential n mach = error ("Illegal sequential step with instruction:" ++ show n ++ "\nAnd machine: " ++ show mach)
 
 -- tests if a sequential machine is finished

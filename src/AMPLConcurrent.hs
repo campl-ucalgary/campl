@@ -21,22 +21,18 @@ import Data.Coerce
 import Data.Function
 import Data.Semigroup
 import Data.Tuple 
-import Debug.Trace
 
 {- 
     A first draft of the Concurrent machine
 -} 
 
--- | Options of a concurrent list result
+-- | Options of a stepConcurrent result...
 data ConcurrentStepResult = 
     ProcessEnd
     | ProcessContinue Stec
     | ProcessDiverge Stec Stec
 
 -- | steps a process by the focused concurrent instruction...
--- If an asynchronous exception is thrown to this thread, it will
--- put the whole system in an undefined state -- ensure that 
--- mask is used to ensure that this does not happen..
 stepConcurrent :: 
     ( MonadReader r m
     , MonadChan m 
@@ -154,6 +150,7 @@ stepConcurrent (IRace rcs) (s, t, e, []) = do
     f (lch, cs) = 
         let (pol, gch) = fromJust (lookupLocalChanIDToGlobalChanID lch t)
         in (pol, gch, delete lch (map fst rcs), cs)
+stepConcurrent a b = error ("bad stepConcurrent with: " ++ show a ++ " and " ++ show b)
 
 -- | Puts the QInstr to the back of the queue
 -- corresponding to the polarity. Recall by convention
@@ -326,7 +323,7 @@ stepChannelManager =
                     let nchs' = map (\(a', (q, q')) -> if a' == a && Queue.isEmpty q' then (a', (q, q2)) else (a', (q, q'))) chs'
                     in rec (ps, swap (([(gch, qs) | nchs' == chs'], const nchs') <*> (chs, chs')))
 
-            (qs', (Just (QPut v), Just (QRace (rcs, (s,t,e,c))))) -> 
+            ((_, q2''), (Just (QPut v), Just (QRace (rcs, (s,t,e,c))))) -> 
                 let grcs = map snd (fromJust (mapM (`lookupLocalChanIDToGlobalChanID` t) rcs))
                     rmvrace (gch', (q1', q2')) 
                         | gch' `elem` grcs 
@@ -335,8 +332,9 @@ stepChannelManager =
                                 q2' (\(q2'', hq) -> case hq of QRace _ -> q2'' ; _ -> q2') 
                                 (Queue.head q2'))
                         | otherwise = (gch', (q1', q2'))
-                in rec (ps, ((gch,qs) : map rmvrace chs', map rmvrace chs))
-            (qs', (Just (QRace (rcs, (s,t,e,c))), Just (QPut v))) -> 
+                in rec ((s,t,e,c):ps, ((gch,(q1,q2'')) : map rmvrace chs', map rmvrace chs))
+
+            ((q1'', _), (Just (QRace (rcs, (s,t,e,c))), Just (QPut v))) -> 
                 let grcs = map snd (fromJust (mapM (`lookupLocalChanIDToGlobalChanID` t) rcs))
                     rmvrace (gch', (q1', q2')) 
                         | gch' `elem` grcs 
@@ -345,7 +343,7 @@ stepChannelManager =
                                 q1' (\(q1'', hq) -> case hq of QRace _ -> q1'' ; _ -> q1') 
                                 (Queue.head q1'))
                         | otherwise = (gch', (q1', q2'))
-                in rec (ps, ((gch,qs) : map rmvrace chs', map rmvrace chs))
+                in rec ((s,t,e,c):ps, ((gch,(q1'', q2)) : map rmvrace chs', map rmvrace chs))
 
             (qs', _) -> rec (ps, ((gch, qs):chs', chs))
             

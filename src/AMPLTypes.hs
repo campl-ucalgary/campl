@@ -142,11 +142,18 @@ data SequentialInstr =
     | ICall FunID Word
         -- Call function FunID with Word arguments..
 
-    -- built in instructions..
+    -- built in int instrucitons...
     | IConstInt Int
     | IAddInt
     | IMulInt
     | ILeqInt
+
+    -- built in bool instructions
+    | IConstBool Bool
+    | IOrBool
+    | IEqBool
+    | IIf [Instr] [Instr]
+        -- if then [Instr] else [Instr]
 
     -- data instructions...
     | ICons ConsIx Word 
@@ -162,6 +169,18 @@ data SequentialInstr =
 -- smart consturctors...
 iStore :: Instr
 iStore = SequentialInstr IStore
+
+iConstBool :: Bool -> Instr
+iConstBool = SequentialInstr . IConstBool
+
+iEqBool :: Instr
+iEqBool = SequentialInstr IEqBool
+
+iOrBool :: Instr
+iOrBool = SequentialInstr IOrBool
+
+iIf :: [Instr] -> [Instr] -> Instr
+iIf as = SequentialInstr . IIf as
 
 iAccess :: Word -> Instr
 iAccess = SequentialInstr . IAccess 
