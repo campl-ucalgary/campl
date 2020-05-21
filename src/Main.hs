@@ -180,7 +180,7 @@ p2 = [ iRace [ (LocalChanID 1, a), (LocalChanID 2, b) ] ]
         , iIf [
                 iAccess 0
                 , iPut (LocalChanID 3)
-                , iGet (LocalChanID 2)
+                , iGet (LocalChanID 1)
                 , iStore
                 , iAccess 0
                 , iClose (LocalChanID 1)
