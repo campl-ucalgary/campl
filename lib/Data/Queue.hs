@@ -3,7 +3,8 @@ module Data.Queue where
 
 import Data.Word
 import Prelude hiding (head, length)
-import Data.List
+import Control.Arrow
+import Data.List as L
 
 {- 
     Technically a double ended queue
@@ -14,7 +15,18 @@ import Data.List
 -}
 
 data Queue a = Queue [a] !Word [a] !Word [a] [a]
-    deriving (Eq)
+    deriving Show
+
+{-
+instance Show a => Show (Queue a) where
+    show = showQueue
+    -}
+
+instance Eq a => Eq (Queue a) where
+    Queue l1 lsz1 r1 rsz1 _ _ == Queue l2 lsz2 r2 rsz2 _ _
+        = (lsz1 + rsz1) == (lsz2 + rsz2) && l1 ++ reverse r1 == l2 ++ reverse r2
+
+
 {-
     The datatype is as follows...
         Queue L, |L|, R, |R|, Lu, Ru
@@ -98,12 +110,31 @@ data Queue a = Queue [a] !Word [a] !Word [a] [a]
     by 2 positions each. This demands the following invariant...
         |Lu| <= max(2j + 2 - k, 0)
         |Ru| <= max(2j + 2 - k, 0)
-    Where j = min(|L|, |R|) and k = min(|L|, |R|).
+
+    Where j = min(|L|, |R|) and k = max(|L|, |R|).
 
     It is easy to establish the bound 2j + 2 - k after a rotation (|L| and |R| differ
     by at most one), and is reduced by at most one every insert and at most
     two every removal.
 -}
+
+
+-- | helpful for desiging / debugging..
+invariantCheck :: Queue a -> Bool
+invariantCheck (Queue l lsz r rsz lu ru)
+    = L.genericLength l == lsz 
+        && L.genericLength r == rsz 
+        && L.genericLength l <= c * L.genericLength r + 1
+        && L.genericLength r <= c * L.genericLength l + 1
+        -- We actualyl don't include these invairants because
+        -- they do not always hold..
+        -- && L.genericLength lu <= max (2 * j + 2 - k) 0
+        -- && L.genericLength ru <= max (2 * j + 2 - k) 0
+  where
+    j = min (L.genericLength l) (L.genericLength r)
+    k = max (L.genericLength l) (L.genericLength r)
+
+
 
 showQueue :: Show a => Queue a -> String
 showQueue (Queue l lsz r rsz lu ru)
@@ -113,14 +144,14 @@ showQueueWith :: Queue a -> ([a] -> String) -> String
 showQueueWith (Queue l lsz r rsz lu ru) s
     = "Queue (" ++ show (lsz + rsz) ++ "): " ++ s (l ++ reverse r)
 
-instance Show a => Show (Queue a) where
-    show = showQueue
 
 c :: Word
 c = 3
 
 empty :: Queue a
 empty = Queue [] 0 [] 0 [] []
+
+
 
 length :: Queue a -> Int
 length (Queue l lsz r rsz lu ru) = fromIntegral (lsz + rsz)
@@ -143,13 +174,21 @@ prepend :: a -> Queue a -> Queue a
 prepend e (Queue l lsz r rsz lu ru) 
     = mkQueue (e:l) (succ lsz) r rsz lu ru
 
+prepends :: [a] -> Queue a -> Queue a
+prepends lst q = foldr prepend q lst
+
 append :: Queue a -> a -> Queue a
 append (Queue l lsz r rsz lu ru) e  
     = mkQueue l lsz (e:r) (succ rsz) lu ru
 
+-- this litearlly just adjoints it at the end
+appends :: Queue a -> [a] -> Queue a
+appends q lst = foldr (flip append) q lst
+
 head :: Queue a -> Maybe (Queue a, a)
 head (Queue [] _ [] _ _ _) = Nothing
-head (Queue [] _ [r] _ _ _) = Just (empty, r)
+head (Queue [] _ (r:_) _ _ _) = Just (empty, r)
+{-
 head (Queue (l:ls) lsz r rsz lu ru) 
     = Just (mkQueue ls' (pred lsz) r' rsz lu' ru', l)
     where
@@ -159,14 +198,14 @@ head (Queue (l:ls) lsz r rsz lu ru)
         r' = ru' `seq` r
     -- the seq is here to ensure that by taking the head,
     -- we prevalute...
-{-
+    -}
 head (Queue (l:ls) lsz r rsz lu re) 
     = Just (mkQueue ls (pred lsz) r rsz (drop 2 lu) (drop 2 re), l)
-    -}
 
 last :: Queue a -> Maybe (Queue a, a)
 last (Queue [] _ [] _ _ _) = Nothing
-last (Queue [l] _ [] _ _ _) = Just (empty, l)
+last (Queue (l:_) _ [] _ _ _) = Just (empty, l)
+{-
 last (Queue l lsz (r:rs) rsz lu ru) 
     = Just (mkQueue l' lsz rs' (pred rsz) lu' ru', r)
     where
@@ -176,10 +215,25 @@ last (Queue l lsz (r:rs) rsz lu ru)
         ru' = drop 2 ru
     -- the seq is here to ensure that by taking the head,
     -- we prevalute...
-{-
+    -}
 last (Queue l lsz (r:rs) rsz lu ru) 
     = Just (mkQueue l lsz rs (pred rsz) (drop 2 lu) (drop 2 ru), r)
-    -}
+
+takeHead :: Int -> Queue a -> (Queue a, [a])
+takeHead n q
+    | n < 0 = error ("invalid number " ++ show n ++ " for Queue.takeHead.")
+    | n == 0 = (q, [])
+    | otherwise = case Data.Queue.head q of
+                    Nothing -> (q, [])
+                    Just (q', a) -> second (a :) (takeHead (n-1) q')
+
+takeLast :: Int -> Queue a -> (Queue a, [a])
+takeLast n q
+    | n < 0 = error ("invalid number " ++ show n ++ " for Queue.takeHead.")
+    | n == 0 = (q, [])
+    | otherwise = case Data.Queue.last q of
+                    Nothing -> (q, [])
+                    Just (q', a) -> second (a:) (takeLast (n-1) q')
 
 mkQueue :: [a] -> Word -> [a] -> Word -> [a] -> [a] -> Queue a
 mkQueue l lsz r rsz lu ru 
@@ -203,24 +257,29 @@ mkQueue l lsz r rsz lu ru
 
 rotate1 :: Word -> [a] -> Word -> [a] -> Word -> [a]
 rotate1 n (l:ls) lsz r rsz 
-    -- | n >= c = l : rotate1 (n - c) ls (pred lsz) (genericDrop c r) (rsz - c)
+    | n >= c = l : rotate1 (n - c) ls (pred lsz) (genericDrop c r) (rsz - c)
+    {-
     | n >= c = l' : rotate1 (n - c) ls (pred lsz) r' (rsz - c)
     where
         r' = genericDrop c r
         l' = r' `seq` l
--- rotate1 n l lsz r rsz = rotate2 l lsz (genericDrop n r) (rsz - n) []
+        -}
+rotate1 n l lsz r rsz = rotate2 l lsz (genericDrop n r) (rsz - n) []
+{-
 rotate1 n l lsz r rsz = rotate2 l lsz r' (rsz - n) []
     where
         l' = r' `seq` l
-        r' = genericDrop n r
+        r' = genericDrop n r-}
 
 rotate2 :: [a] -> Word -> [a] -> Word -> [a] -> [a]
 rotate2 (l:ls) lsz r rsz acc 
-    -- | rsz >= c = l : rotate2 ls (pred lsz) (genericDrop c r) (rsz - c) (reverse (genericTake c r) ++ acc)
+    | rsz >= c = l : rotate2 ls (pred lsz) (genericDrop c r) (rsz - c) (reverse (genericTake c r) ++ acc)
+    {-
     | rsz >= c = l' : rotate2 ls (pred lsz) r' (rsz - c) r'''
     where
         r' = genericDrop c r
         r'' = reverse (genericTake c r)
         r''' = r'' ++ acc
         l' = ((r'' `seq` r''') `seq` r') `seq` l
+        -}
 rotate2 l lsz r rsz acc = l ++ reverse r ++ acc

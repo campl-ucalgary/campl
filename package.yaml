@@ -20,6 +20,10 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
     - base >= 4.7 && < 5
+    - mtl
+
+library:
+    source-dirs: lib/
 
 executables:
   ampl:
@@ -31,19 +35,30 @@ executables:
         - -rtsopts
         - -with-rtsopts=-N
     dependencies:
+        - AMPL
+
         - containers
           # needed for services..
         - process
         - network
           # for some reason this was removed from base
         - array
-          # a usual monad transformer library..
-        - mtl
           # for pretty printing..
         - pretty
         - GenericPretty
           # used for the default logger
         - time
 
-        - stm
+
+tests: 
+    queue-tests:
+        main:                QueueTests.hs
+        source-dirs:         tsts
+        ghc-options:         
+            - -threaded 
+            - -rtsopts 
+            - -with-rtsopts=-N
+        dependencies:       
+            - AMPL
+            - QuickCheck
 

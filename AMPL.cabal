@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f3cd72059f7901f4474dc8395883f8952353ef549f6fbf2db1ced7a5e4e6eb9f
+-- hash: a690fe2a4eea4dee131b60ba286969456fef717b64973909312078a325a5206b
 
 name:           AMPL
 version:        0.1.0.0
@@ -24,6 +24,23 @@ source-repository head
   type: git
   location: https://github.com/githubuser/AMPL
 
+library
+  exposed-modules:
+      Control.MonadChan
+      Control.MonadConcurrent
+      Control.MonadIORef
+      Control.MonadMVar
+      Data.Queue
+      Data.Stream
+  other-modules:
+      Paths_AMPL
+  hs-source-dirs:
+      lib/
+  build-depends:
+      base >=4.7 && <5
+    , mtl
+  default-language: Haskell2010
+
 executable ampl
   main-is: Main.hs
   other-modules:
@@ -34,18 +51,13 @@ executable ampl
       AMPLMach
       AMPLSequential
       AMPLTypes
-      Control.MonadChan
-      Control.MonadConcurrent
-      Control.MonadIORef
-      Control.MonadMVar
-      Data.Queue
-      Data.Stream
       Paths_AMPL
   hs-source-dirs:
       src
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      GenericPretty
+      AMPL
+    , GenericPretty
     , array
     , base >=4.7 && <5
     , containers
@@ -53,6 +65,20 @@ executable ampl
     , network
     , pretty
     , process
-    , stm
     , time
+  default-language: Haskell2010
+
+test-suite queue-tests
+  type: exitcode-stdio-1.0
+  main-is: QueueTests.hs
+  other-modules:
+      Paths_AMPL
+  hs-source-dirs:
+      tsts
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      AMPL
+    , QuickCheck
+    , base >=4.7 && <5
+    , mtl
   default-language: Haskell2010
