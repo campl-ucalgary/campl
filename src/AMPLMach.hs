@@ -53,7 +53,10 @@ amplMACHLoop ::
 amplMACHLoop = do
     env <- ask 
     bdchsz <- getSizeOfBroadcastChan env
-    bdcmds <- sequence (genericReplicate bdchsz (readBroadcastChan env))
+    -- reads multiple at once 
+    --bdcmds <- sequence (genericReplicate bdchsz (readBroadcastChan env))
+    bdcmds <- if bdchsz > 0 then pure <$> readBroadcastChan env else return []
+    -- we can use either or...
 
     chm <- readIORef (getChannelManager env)
 
