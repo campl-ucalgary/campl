@@ -9,6 +9,8 @@ import Data.List
     Technically a double ended queue
     Completely based off of Chris Okasaki's work with O(1) queues...
     We include a short summary of what Chris writes in his papers...
+
+    TODO -- fix the seq calls (they do not prevaluate properly)..
 -}
 
 data Queue a = Queue [a] !Word [a] !Word [a] [a]
@@ -154,7 +156,7 @@ head (Queue (l:ls) lsz r rsz lu ru)
         lu' = drop 2 lu 
         ls' = lu' `seq` ls
         ru' = drop 2 ru
-        r' = ru' `seq` ls
+        r' = ru' `seq` r
     -- the seq is here to ensure that by taking the head,
     -- we prevalute...
 {-
