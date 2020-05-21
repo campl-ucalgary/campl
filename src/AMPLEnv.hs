@@ -41,7 +41,7 @@ class HasChannelManager a where
 class HasProcessCounter a where
     -- | tells us if no process is running (useful for termination
     -- checking)
-    noProcessesRunning :: MonadAtomicIORef m => a -> m Bool
+    getNumRunningProcesses :: MonadAtomicIORef m => a -> m Word
     -- | Increases the number of processes running
     succNumProcesses :: MonadAtomicIORef m => a -> m ()
     -- | Decreases the number of processes running
@@ -160,7 +160,7 @@ instance HasChannelManager AmplEnv where
     getChannelManager = channelManager
 
 instance HasProcessCounter AmplEnv where
-    noProcessesRunning env = (==0) <$> readIORef (numRunningProcesses env)
+    getNumRunningProcesses env = readIORef (numRunningProcesses env)
     succNumProcesses env = atomicModifyIORef' (numRunningProcesses env) (succ &&& const ())
     predNumProcesses env = atomicModifyIORef' (numRunningProcesses env) (pred &&& const ())
 
