@@ -65,7 +65,7 @@ amplMACHLoop = do
         -- which commands were put in otherwise this will not play well
         -- with certain commands. For example, if it is foldr, with the
         -- plug command, this will silently drop certain commands...
-        (ps, chm'') = stepChannelManager chm'
+        ((ps, ngchs, svs), chm'') = stepChannelManager chm'
         
     writeIORef (getChannelManager env) chm''
 

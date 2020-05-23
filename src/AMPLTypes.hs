@@ -19,10 +19,12 @@ import qualified Data.Stream as Stream
 
 -- ASSUMES ALL ARRAYS ARE INDEXED AT 0
 
-newtype LocalChanID = LocalChanID Word  -- Local channel id
+type ChannelIdRep = Int
+
+newtype LocalChanID = LocalChanID ChannelIdRep  -- Local channel id
     deriving (Show, Eq, Ord, Ix, Generic, Out)
 
-newtype GlobalChanID = GlobalChanID Word  -- global channel id
+newtype GlobalChanID = GlobalChanID ChannelIdRep  -- global channel id
     deriving (Show, Eq, Ord, Ix, Generic, Out)
 
 newtype PhysicalChanId = PhysicalChanID Word  -- physical channel id
@@ -31,19 +33,6 @@ newtype PhysicalChanId = PhysicalChanID Word  -- physical channel id
 
 newtype FunID = FunID Word  -- function id
     deriving (Show, Eq, Ord, Ix, Generic, Out)
-
--- guaranteed distinct from the rest of the function ids for
--- the special main function
-mainFunID :: FunID
-mainFunID = FunID 0
-
--- inifinite stream of function ids..
-funIDStream :: [FunID]
-funIDStream = unfoldr (\(FunID n) -> Just (FunID n, FunID (n + 1))) (FunID 1) 
-
--- | inifinite stream of channel ids (reserves 0 for the console)
-chanIdStream :: Stream Word
-chanIdStream = Stream.iterate succ 0
 
 -- indexing constructors...
 newtype ConsIx = ConsIx Word
@@ -79,6 +68,11 @@ newtype HCaseIx = HCaseIx Word
                 - 2 then it corresponds to put (i.e., enter a number on the terminal)
                 - 3 then it corresponds to close (i.e., close the service)
         -}
+
+-- external services to the real world
+data Service = Service GlobalChanID Int
+    -- GlobalChanID (the service corresponding to that channel)
+    -- the int confusingly corresponds to 1,2,3 as mentioned above
 
 type Translation = (Polarity, (LocalChanID, GlobalChanID))
 
@@ -129,7 +123,7 @@ composeTranslation as bs = foldr f g bs as
     f (p, (lc, gc)) h ts = do
         t' <- (\(p', (lc', gc')) -> (p', (lc, gc'))) <$> 
                 find (\(p', (lc', gc')) -> p == p' 
-                    && (coerce gc :: Word) == (coerce lc' :: Word))
+                    && (coerce gc :: Int) == (coerce lc' :: Int))
                 ts
         (t':) <$> h ts
 

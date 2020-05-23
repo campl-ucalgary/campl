@@ -1,4 +1,5 @@
 {-# LANGUAGE TupleSections #-}
+    -- TupleSections lets us write (,a) which is the same as \b -> (b,a)
 module AMPLSequential where
 
 -- projet dependencies...

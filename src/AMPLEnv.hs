@@ -4,13 +4,12 @@ import Data.Array
 import Data.Coerce
 import Data.List
 import Data.Map (Map)
-import Data.Set (Set)
 import qualified Data.Map as Map
-import qualified Data.Set as Set
 import Control.Arrow
 import Control.Monad.IO.Class
-import Control.Exception
 import Data.Function
+import Control.Exception
+import System.IO
 
 import Control.MonadIORef
 import Control.MonadChan
@@ -19,9 +18,8 @@ import Data.Stream (Stream)
 import qualified Data.Stream as Stream
 import qualified Data.Queue as Queue
 
-import Debug.Trace
-
 import AMPLTypes
+import AMPLServices
 
 -- | Type class for looking up supercombinators
 class HasSuperCombinators a where
@@ -95,7 +93,7 @@ data AmplEnv = AmplEnv
         -- stick to everything being crammed in a reader monad for now...)
         , channelManager :: IORef Chm
         -- | seed for the channel name
-        , channelNameGenerator :: IORef (Stream Word)
+        , channelNameGenerator :: IORef (Stream ChannelIdRep)
         -- | a channel to broadcast commands to the channel manager. We call this the broadcast channel...
         , broadcastChan :: Chan BInstr
         -- | Corresponding to the size of the broadcase channel..
@@ -104,26 +102,13 @@ data AmplEnv = AmplEnv
         , numRunningProcesses :: IORef Word
     }
 
-data Services = Services {
-    intTerminal    :: Set GlobalChanID
-    , charTerminal :: Set GlobalChanID
-}
--- | smart constructor for Services
-services :: 
-    [GlobalChanID] ->   -- int terminal
-    [GlobalChanID] ->   -- char terminal
-    Services
-services intterm charterm = Services  intterm' charterm'
-  where
-    intterm' = Set.fromAscList (sort intterm)
-    charterm' = Set.fromAscList (sort charterm)
     
 
 -- | Smart constructor for the environment
 amplEnv :: 
     ([(FunID, (String, [Instr]))]             -- ^ association list of funciton ids and its name / instruction
     , String -> IO ()                         -- ^ logger.
-    , (Services, Chm, Stream Word)) ->                            -- ^ Services
+    , (Services, Chm, Stream ChannelIdRep)) ->                            -- ^ Services
     IO AmplEnv
 amplEnv (defs, lg, (svs, chm, nmg)) = do
     chan <- newChan

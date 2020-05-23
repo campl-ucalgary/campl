@@ -4,6 +4,7 @@ import AMPL
 import AMPLSequential
 import AMPLConcurrent
 import AMPLTypes
+import AMPLServices
 import AMPLEnv
 import AMPLMach
 import AMPLLogger
@@ -16,11 +17,10 @@ import qualified Data.Queue as Queue
 import Control.Monad.Reader
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Set (Set)
-import qualified Data.Set as Set
 import Control.Exception
 import System.Environment
 
+{-
 -------------------------
 -- Codata test
 -------------------------
@@ -37,7 +37,7 @@ codataMain =
         ]
 sequentialCodataTest = execAMPLMachWithDefaultLogger 
     (codataMain, [])
-    ([], (Services Set.empty Set.empty, Map.empty, Stream.iterate succ 1))
+    ([], (Services Map.empty Map.empty, Map.empty, Stream.iterate succ 1))
 
 
 -------------------------
@@ -68,7 +68,7 @@ plugMain = (
 simplePlugTest = execAMPLMachWithDefaultLogger 
     plugMain
     ([], 
-        ( Services Set.empty Set.empty
+        ( undefined
         , mkChm 
             [ (GlobalChanID 1, emptyQInstrQueues)
             , (GlobalChanID 2, emptyQInstrQueues)
@@ -220,7 +220,7 @@ paralelOrMain = (
 paralelOrExec = execAMPLMachWithDefaultLogger 
     paralelOrMain
     ([], 
-        ( Services Set.empty Set.empty
+        ( Services Map.empty Map.empty
         , mkChm 
             [ (GlobalChanID 0, emptyQInstrQueues)
             , (GlobalChanID 3, emptyQInstrQueues)
@@ -228,7 +228,7 @@ paralelOrExec = execAMPLMachWithDefaultLogger
         , Stream.iterate succ 4)
         )
 
-
+-}
 main :: IO ()
 main = do
-    paralelOrExec
+    undefined

@@ -45,10 +45,8 @@ stepConcurrent ::
     Stec ->               
         -- ^ (s, t, e, c) of focused process...
     m ConcurrentStepResult
-        -- ^ Either a list of 0, 1, or 2 elements..
-        -- 0 implies the process is suspended..
-        -- 1 implies the process is continuing..
-        -- 2 implies the process has been plugged
+        -- ^ result of the concurrent step.. Either the process ends,
+        -- the process continues, or the process diverges..
 stepConcurrent (IGet a) pr@(s, t, e, c) = do
     let ta = fromJust (lookupLocalChanIDToGlobalChanID a t)
     env <- ask 
@@ -75,7 +73,7 @@ stepConcurrent (IClose a) (s, t, e, c) = do
     writeBroadcastChan env (BClose ta)
     return $ ProcessContinue (s, deleteTranslation a t, e, c)
 
-stepConcurrent (IFork a ((a1, g1, c1), (a2, g2, c2))) (s, t, e, c) = do
+stepConcurrent (IFork a ((a1, g1, c1), (a2, g2, c2))) (s, t, e, []) = do
     let ta = fromJust (lookupLocalChanIDToGlobalChanID a t)
     env <- ask
     writeBroadcastChan env 
@@ -92,7 +90,7 @@ stepConcurrent (IFork a ((a1, g1, c1), (a2, g2, c2))) (s, t, e, c) = do
 -- to use this to help identify services -- BUT we do not do that
 -- in this machine -- this machine wants services and process' to 
 -- be no different!
-stepConcurrent (IId a b) (s, t, e, c) = do
+stepConcurrent (IId a b) (s, t, e, []) = do
     let (pa, ta) = fromJust (lookupLocalChanIDToGlobalChanID a t)
         (pb, tb) = fromJust (lookupLocalChanIDToGlobalChanID b t)
     env <- ask
@@ -101,9 +99,10 @@ stepConcurrent (IId a b) (s, t, e, c) = do
             writeBroadcastChan env (BId (pa, ta) (ta, tb))
             return ProcessEnd
         else error "invalid IId instruction"
+    -- ID SHOULD BE THE LAST INSTRUCTION.
 
--- s should be empty here too
-stepConcurrent (IPlug as ((g1, c1), (g2, c2))) (s, t, e, c) = do
+-- c should be empty here too
+stepConcurrent (IPlug as ((g1, c1), (g2, c2))) (s, t, e, []) = do
     env <- ask
     as' <- mapM (const (getNewChannelName env)) as
     -- by convention (i.e., Prashant), the (g1,c1) is the output channel
@@ -114,14 +113,14 @@ stepConcurrent (IPlug as ((g1, c1), (g2, c2))) (s, t, e, c) = do
     return $ ProcessDiverge (s, t1, e, c1) (s, t2, e, c2)
 
 -- c should be empty here too
-stepConcurrent (IHalt as) (s, t, e, c) = do
+stepConcurrent (IHalt as) (s, t, e, []) = do
     let as' = map (fromJust . flip lookupLocalChanIDToGlobalChanID t) as
     env <- ask
     writeBroadcastChan env (BHalt as')
     return ProcessEnd
 
 -- c should be empty
-stepConcurrent (IRun t' fid args) (s, t, e, c) = do
+stepConcurrent (IRun t' fid args) (s, t, e, []) = do
     env <- ask
     let e' = genericTake args s
         s' = genericDrop args s
@@ -250,7 +249,7 @@ addCommandToChannelManager (BRace ds (s, t, e)) chm =
 -- | Steps the channel manager (corresponding to Table 3)
 stepChannelManager :: 
     Map GlobalChanID (Queue QInstr, Queue QInstr) ->
-    ([Stec] , Map GlobalChanID (Queue QInstr, Queue QInstr))   -- ^ new processes, and new map
+    (([Stec], [GlobalChanID], [Service]), Map GlobalChanID (Queue QInstr, Queue QInstr))   -- ^ new processes, and new map
 stepChannelManager = 
     second (Map.fromAscList . fst)
                         -- get all the proccesed channels, and since they are in ascending order,
@@ -262,8 +261,8 @@ stepChannelManager =
                         -- (i.e., in ascending order now since we started in descending order) so the precondition 
                         -- of Map.fromAscList list above will be satisfied.
 
-    . ([],)             -- list for the processes to be spawned i.e. 
-                        -- (processes to be spawned, (channels already procssed, channels to process))
+    . (([],[],[]),)     -- list for the processes to be spawned, globalchannel ids that can be returned, and
+                        -- services to spawn. i.e.  ((processes to be spawned, names to return, Services ), (channels already procssed, channels to process))
                         -- when starting to process the channels, not processes are to be spawned yet...
 
     . ([],)             -- creates a zipper (channels already processed, channels to process)
@@ -271,53 +270,77 @@ stepChannelManager =
 
     . Map.toDescList    -- converts the map into a descending list...
   where
-    -- Don't be intimidated by this type signature! The first argument is the recursion (as it usually 
-    -- is with the fix operations), the second argument is the zipper of channels to process with the 
-    -- suspended processes to run
-     f rec (ps, (chs', [])) = (ps, (chs', []))
-     f rec (ps, (chs', (gch, qs@(q1,q2)):chs)) 
-        = case headQInstrs qs of
+    {- 
+        Don't be afraid of this scary type signature! The first argument is the recursion (as usual with
+        fixed point operators) and second argument is ((processes to be spawned, names to return, Services ), (channels already procssed, channels to process))
+    -}
+    f :: ((([Stec], [GlobalChanID], [Service]), ([(GlobalChanID, (Queue QInstr, Queue QInstr))], [(GlobalChanID, (Queue QInstr, Queue QInstr))]))
+           -> (([Stec], [GlobalChanID], [Service]),
+               ([(GlobalChanID, (Queue QInstr, Queue QInstr))], [(GlobalChanID, (Queue QInstr, Queue QInstr))])))
+          -> (([Stec], [GlobalChanID], [Service]),
+              ([(GlobalChanID, (Queue QInstr, Queue QInstr))], [(GlobalChanID, (Queue QInstr, Queue QInstr))]))
+          -> (([Stec], [GlobalChanID], [Service]), ([(GlobalChanID, (Queue QInstr, Queue QInstr))], [(GlobalChanID, (Queue QInstr, Queue QInstr))]))
+    f rec (res, (chs', [])) = (res, (chs', []))
+    f rec (res, (chs', (gch, qs@(q1,q2)):chs)) = 
+        case headQInstrs qs of
             (qs', (Just (QPut v), Just (QGet (s,t,e,c))))
-                -> rec ((v:s,t,e,c):ps, ((gch, qs'):chs', chs))
+                -> rec (([(v:s,t,e,c)],[],[]) <> res, ((gch, qs'):chs', chs))
             (qs', (Just (QGet (s,t,e,c)), Just (QPut v)))
-                -> rec ((v:s,t,e,c):ps, ((gch, qs'):chs', chs))
-
+                -> rec (([(v:s,t,e,c)],[],[]) <> res, ((gch, qs'):chs', chs))
             (qs', (Just (QHPut i), Just (QHCase (s,t,e,arr))))
-                -> rec ((s,t,e,arr ! i):ps, ((gch, qs'):chs', chs))
+                -> rec (([(s,t,e,arr ! i)],[],[]) <> res, ((gch, qs'):chs', chs))
             (qs', (Just (QHCase (s,t,e,arr)), Just (QHPut i)))
-                -> rec ((s,t,e,arr ! i):ps, ((gch, qs'):chs', chs))
+                -> rec (([(s,t,e,arr ! i)],[],[]) <> res, ((gch, qs'):chs', chs))
 
             -- From Prashant, if QSplit is on the left, and QFork is on 
             -- the right then they are both Input. Otherwise, they are both
             -- Output
             (qs', (Just (QSplit (b1, b2)), Just (QFork (t, e, (a1, g1, c1), (a2, g2, c2)))))
-                -> rec (([], (Input, (a1,b1)):t, e, c1):([], (Input, (a2,b2)):t, e, c2):ps, ((gch, qs'):chs', chs))
+                -> rec (([([], (Input, (a1,b1)):t, e, c1), ([], (Input, (a2,b2)):t, e, c2)],[],[]) <> res
+                    , ((gch, qs'):chs', chs))
             (qs', (Just (QFork (t, e, (a1, g1, c1), (a2, g2, c2))), Just (QSplit (b1, b2))))
-                -> rec (([], (Output, (a1,b1)):t, e, c1):([], (Output, (a2,b2)):t, e, c2):ps, ((gch, qs'):chs', chs))
+                -> rec (([([], (Output, (a1,b1)):t, e, c1),([], (Output, (a2,b2)):t, e, c2)],[],[]) <> res
+                    , ((gch, qs'):chs', chs))
 
             (qs', (Just QClose, Just QHalt))
-                -> rec (ps, (chs', chs))
+                -> rec (([],[gch],[]) <> res, (chs', chs))
             (qs', (Just QHalt, Just QClose))
-                -> rec (ps, (chs', chs))
+                -> rec (([],[gch],[]) <> res, (chs', chs))
 
+            -- invariant: b == gch (actually, I don't think we need b at all and it can be removed
+            -- from the QId constructor, but we leave it there because Table 2 says it should be 
+            -- there)
             (qs', (_, Just (QId (b, a))))
                 | b < a -> 
-                    -- a must be further ahead, so merge b with a
-                    let nchs = map (\(a', (q, q')) -> if a' == a && Queue.isEmpty q then (a', (q1, q')) else (a', (q, q'))) chs
-                    in rec (ps, ([(gch, qs) | nchs == chs], const nchs) <*> (chs', chs))
+                    -- a must be further ahead
+                    let nchs = map g chs
+                        isIdExecuted = nchs == chs
+                    in rec ( ([],[b | isIdExecuted],[]) <> res, ([(gch, qs) | isIdExecuted], const nchs) <*> (chs', chs))
                     -- b must be behind a...
                 | otherwise -> 
-                    let nchs' = map (\(a', (q, q')) -> if a' == a && Queue.isEmpty q then (a', (q1, q')) else (a', (q, q'))) chs'
-                    in rec (ps, swap (([(gch, qs) | nchs' == chs'], const nchs') <*> (chs, chs')))
+                    let nchs' = map g chs'
+                        isIdExecuted = nchs' == chs'
+                    in rec ( ([], [b | isIdExecuted],[]) <> res, ([(gch, qs) | isIdExecuted] ++ nchs', chs))
+              where
+                g (a', (q, q')) = if a' == a && Queue.isEmpty q then (a', (q1, q')) else (a', (q, q'))
+
+            -- invariant: b == gch (actually, I don't think we need b at all and it can be removed
+            -- from the QId constructor, but we leave it there because Table 2 says it should be 
+            -- there)
             (qs', (Just (QId (b, a)), _))
                 | b < a -> 
-                    -- a must be further ahead, so merge b with a
-                    let nchs = map (\(a', (q, q')) -> if a' == a && Queue.isEmpty q' then (a', (q, q2)) else (a', (q, q'))) chs
-                    in rec (ps, ([(gch, qs) | nchs == chs], const nchs) <*> (chs', chs))
+                    -- a must be further ahead 
+                    let nchs = map g chs
+                        isIdExecuted = nchs == chs
+                    in rec ( ([],[b | isIdExecuted],[]) <> res, ([(gch, qs) | isIdExecuted], const nchs) <*> (chs', chs))
                     -- b must be behind a...
                 | otherwise -> 
-                    let nchs' = map (\(a', (q, q')) -> if a' == a && Queue.isEmpty q' then (a', (q, q2)) else (a', (q, q'))) chs'
-                    in rec (ps, swap (([(gch, qs) | nchs' == chs'], const nchs') <*> (chs, chs')))
+                    let nchs' = map g chs'
+                        isIdExecuted = nchs' == chs'
+                    in rec ( ([], [b | isIdExecuted],[]) <> res, ([(gch, qs) | isIdExecuted] ++ nchs', chs))
+              where
+                g (a', (q, q')) = if a' == a && Queue.isEmpty q then (a', (q, q2)) else (a', (q, q'))
+
 
             ((_, q2''), (Just (QPut v), Just (QRace (rcs, (s,t,e,c))))) -> 
                 let grcs = map snd (fromJust (mapM (`lookupLocalChanIDToGlobalChanID` t) rcs))
@@ -328,7 +351,7 @@ stepChannelManager =
                                 q2' (\(q2'', hq) -> case hq of QRace _ -> q2'' ; _ -> q2') 
                                 (Queue.head q2'))
                         | otherwise = (gch', (q1', q2'))
-                in rec ((s,t,e,c):ps, ((gch,(q1,q2'')) : map rmvrace chs', map rmvrace chs))
+                in rec (([(s,t,e,c)],[],[]) <> res, ((gch,(q1,q2'')) : map rmvrace chs', map rmvrace chs))
 
             ((q1'', _), (Just (QRace (rcs, (s,t,e,c))), Just (QPut v))) -> 
                 let grcs = map snd (fromJust (mapM (`lookupLocalChanIDToGlobalChanID` t) rcs))
@@ -339,7 +362,6 @@ stepChannelManager =
                                 q1' (\(q1'', hq) -> case hq of QRace _ -> q1'' ; _ -> q1') 
                                 (Queue.head q1'))
                         | otherwise = (gch', (q1', q2'))
-                in rec ((s,t,e,c):ps, ((gch,(q1'', q2)) : map rmvrace chs', map rmvrace chs))
+                in rec ( ([(s,t,e,c)],[],[]) <> res, ((gch,(q1'', q2)) : map rmvrace chs', map rmvrace chs))
 
-            (qs', _) -> rec (ps, ((gch, qs):chs', chs))
-            
+            (qs', _) -> rec (res, ((gch, qs):chs', chs))

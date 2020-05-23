@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2f626d3370af8537262b7742d04c7ec9b96f84d89db4262413b285f5ce4853a7
+-- hash: 9e162720955064c9006a55f2bcbac2555d4ccc703ed803090e2ba887ced409d6
 
 name:           AMPL
 version:        0.1.0.0
@@ -37,7 +37,7 @@ library
   hs-source-dirs:
       lib/
   build-depends:
-      base >=4.7 && <5
+      base
     , mtl
   default-language: Haskell2010
 
@@ -50,6 +50,7 @@ executable ampl
       AMPLLogger
       AMPLMach
       AMPLSequential
+      AMPLServices
       AMPLTypes
       Paths_AMPL
   hs-source-dirs:
@@ -59,7 +60,7 @@ executable ampl
       AMPL
     , GenericPretty
     , array
-    , base >=4.7 && <5
+    , base
     , containers
     , mtl
     , network
@@ -79,6 +80,6 @@ test-suite queue-tests
   build-depends:
       AMPL
     , QuickCheck
-    , base >=4.7 && <5
+    , base
     , mtl
   default-language: Haskell2010
