@@ -165,7 +165,7 @@ amplRunTCPServer = do
     let tcpserver = getTCPServerInfo env
         queuedclients = getQueuedClients env
     liftIO $ do
-        logStdAndFile env "Waiting for a connection..."
+        logStdAndFile env "Server is waiting for a connection..."
         (clientsock, clientaddr) <- accept (serverSocket tcpserver)
         logStdAndFile env ("Accepted connection: " ++ show clientaddr)
         clienthandle <- socketToHandle clientsock ReadWriteMode

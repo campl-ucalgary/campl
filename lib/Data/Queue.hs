@@ -209,7 +209,6 @@ headTuple (q1, q2) = ((q1', q2'), (n1, n2))
 -- this is a pattern to get the head instructions of a tuple of queues (if
 -- they exist of course...)
 pattern heads :<|| tails <- 
-    -- ((\case ((q1s,q2s), (Just q1, Just q2)) -> ((q1,q2), (q1s, q2s))) . headTuple -> (heads, tails)) 
     (headTuplePatternHelper . headTuple -> Just (heads, tails)) 
 
 headTuplePatternHelper ((q1s,q2s), (Just q1, Just q2)) = Just ((q1,q2), (q1s, q2s))

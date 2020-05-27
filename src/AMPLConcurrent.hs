@@ -91,11 +91,8 @@ stepConcurrent (IFork a ((a1, g1, c1), (a2, g2, c2))) (s, t, e, []) = do
 
 -- c should be empty (as said in Table 2)
 -- NOTE -- Prashant does some weird stuff with this command.
--- LOOK INTO WHAT HE IS DOING AND HOW HE IS GENERATING THE CODE
--- SO IT WORKS WITH THIS ABSTRACT MACHINE -- I believe he wants
--- to use this to help identify services -- BUT we do not do that
--- in this machine -- this machine wants services and process' to 
--- be no different!
+-- He checks to see if we are identifying service channels
+-- and throws an error otherwise... (we do not do that here!)
 stepConcurrent (IId a b) (s, t, e, []) = do
     let (pa, ta) = fromJust (lookupLocalChanIDToGlobalChanID a t)
         (pb, tb) = fromJust (lookupLocalChanIDToGlobalChanID b t)
@@ -105,9 +102,7 @@ stepConcurrent (IId a b) (s, t, e, []) = do
             writeBroadcastChan env (BId (pa, ta) (ta, tb))
             return ProcessEnd
         else error "invalid IId instruction"
-    -- ID SHOULD BE THE LAST INSTRUCTION.
 
--- c should be empty here too
 stepConcurrent (IPlug as ((g1, c1), (g2, c2))) (s, t, e, []) = do
     env <- ask
     as' <- mapM (const (getNewChannelName env)) as
@@ -118,7 +113,6 @@ stepConcurrent (IPlug as ((g1, c1), (g2, c2))) (s, t, e, []) = do
     writeBroadcastChan env (BPlug as')
     return $ ProcessDiverge (s, t1, e, c1) (s, t2, e, c2)
 
--- c should be empty here too
 stepConcurrent (IHalt as) (s, t, e, []) = do
     let as' = map (fromJust . flip lookupLocalChanIDToGlobalChanID t) as
     env <- ask
