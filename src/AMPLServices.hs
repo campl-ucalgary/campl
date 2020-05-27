@@ -1,155 +1,134 @@
-{-# LANGUAGE DeriveAnyClass #-}
-    -- DeriveAnyClass is used to be more clear about
-    -- writing instances for the Exception class.
-    -- i.e., instead of writing: 
-    -- data MyException = ...
-    -- instance Exception MyException where ...
-    -- We can write: 
-    -- data MyException = ... deriving Exception
 module AMPLServices where
 
 import AMPLTypes
 
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Control.Monad
 
-import Control.Concurrent 
-import System.IO
+import Control.Monad 
 import Control.Exception
+import Control.Concurrent 
+import Control.Concurrent.Chan
+import Data.List
+import Data.Maybe
+import Data.IORef
+import System.IO
 import System.Process
 import Network.Socket
-import Data.List
-import Data.IORef
+import Text.Read
 
 {-
     File for Services for AMPL. Services are processes that interact
     with the real world.. All init*ServiceHandle functions given
     do not handle exceptions and MOST LIKELY WILL THROW AN EXCEPTION
 -}
-newtype Services = Services { getServices :: ServiceTypes (Map GlobalChanID ServiceHandle) }
 
--- | A service handle.. it is recommended to use the 
--- concurrentReadHandle / concurrentWriteHandle to ensure that 
--- services are accessed properly. 
-data ServiceHandle = ServiceHandle {
-        shLock :: MVar ()
-        , isOpened :: IO Bool
-        , openService :: IO ()
-        , closeService :: IO ()
-        , readHandle :: IO String
-        , writeHandle :: String -> IO ()
-    }
+data ServiceDataType = 
+    IntService
+    | CharService
+    deriving Show
 
-concurrentIsOpened :: ServiceHandle -> IO Bool
-concurrentIsOpened ServiceHandle{ shLock = lock, isOpened = isopn } =
-    withMVar lock (const isopn)
+-- external services require a Key..
+newtype Key = Key String
+    deriving (Show, Eq, Ord)
 
-concurrentOpenService :: ServiceHandle -> IO ()
-concurrentOpenService ServiceHandle{ shLock = lock, openService = opn } =
-    withMVar lock (const opn)
+data ServiceType = 
+    StdService                                  -- ^ standard service
+    | NetworkedService Key                      -- ^ external network service
+    | TerminalNetworkedService String Key       -- ^ external network service that opens a terminal (command, and key)
+    deriving Show
 
-concurrentCloseService :: ServiceHandle -> IO ()
-concurrentCloseService ServiceHandle{ shLock = lock, closeService = cls } =
-    withMVar lock (const cls)
+-- Information for querying a service...
+type ServiceQuery = (GlobalChanID, ServiceRequest Val)
+    -- GlobalChanID (the service corresponding to that channel)
 
-concurrentReadHandle :: ServiceHandle -> IO String
-concurrentReadHandle ServiceHandle{ shLock = lock, readHandle = rdhdle} =
-    withMVar lock (const rdhdle)
+    -- Then, from data in AMPLService, we can deduce where we want to get
+    -- the data from, and the type of the data we would like to get (e.g., int, char, etc)...
 
-concurrentWriteHandle :: ServiceHandle -> String -> IO ()
-concurrentWriteHandle ServiceHandle{ shLock = lock, writeHandle = wrthdle} str =
-    withMVar lock (const (wrthdle str))
+data ServiceOpen = 
+    ServiceIsOpen 
+    | ServiceIsClosed
+    deriving Show
 
--- product type of all the service types..
-data ServiceTypes a = ServiceTypes {
-        intTerm :: a
-        , charTerm :: a
-    } deriving Show
+data ServiceRequest a = 
+    ServiceGet Polarity     -- ^ get a value from a service e.g., ask for input for a terminal...
+                            -- Note that this requires the Polarity to put our gotten value on...
+                            -- 1 corresponds to this
 
--- | tests if a GlobalChanID is a service..
-isService :: GlobalChanID -> Services -> Bool
-isService gch (Services (ServiceTypes intterm charterm)) =
-    gch `Map.member` intterm || gch `Map.member` charterm
-    --  Could use SYB Typeable
+    | ServicePut a          -- ^ put a value on the service e.g., putStrLn on a terminal..
+                            -- 2 corresponds to this 
 
--- | Standard input and io service handle
-initStdServiceHandle :: IO ServiceHandle
-initStdServiceHandle = do
-    lock <- newMVar ()
-    return $ ServiceHandle {
-        shLock = lock
-        -- stdin/stdout cannot be opened or closed / it is always
-        -- open too
-        , isOpened = return True
-        , openService = return ()
-        , closeService = return ()
-        , readHandle = getLine
-        , writeHandle = putStrLn
-    }
+    | ServiceClose          -- ^ closes a service..
+                            -- ^ 3 corresponds to this
+    deriving (Show, Eq)
 
-data TerminalProcessHandleException =
-    FailedToCloseTerminal
-    | FailedToOpenTerminalReadHandle
-    | FailedToOpenTerminalWriteHandle
-    deriving (Show, Exception)
+data ServiceEnv = ServiceEnv {
+        serviceType :: ServiceType
+        , serviceDataType :: ServiceDataType
+        , serviceOpen ::  MVar ServiceOpen
+        , serviceRequest :: Chan (ServiceRequest Val)
+    } 
 
--- this actually just runs a command and does not really do anything..
-initTerminalProcessHandle :: 
-    String ->           -- ^ command to open up a terminal
-    IO ServiceHandle
-initTerminalProcessHandle cmd = do
-    lock <- newMVar ()
-    -- starts off unopened..
-    isopen <- newIORef False
+type Services = Map GlobalChanID ServiceEnv
+    -- Maps GlobalChanID to (ServiceType, ServiceDataType, (MVar Bool, MVar [Int])).
+    -- We have the ServiceDataType (e.g. either int or char, etc), the ServiceType (
+    -- internal services are different form external services)
+    -- MVar ServiceIsOpen corresponds if it the service has been opened already or it
+    -- is closed (note that StdService is always open by default)
 
-    readhdle <- newIORef Nothing
-    writehdle <- newIORef Nothing
-    prhdle <- newIORef Nothing
+    -- MVar [ServiceRequest Val] get, put, and close requests. Recall the confusing
+    -- convention from Prashant where 1,2, and 3 are get, put and close respecitvely
 
-    return $ ServiceHandle {
-        shLock = lock
-        , isOpened = readIORef isopen
-        , openService = do
-            -- Maybe input handle, Maybe output handle, maybe error handle, process handle
-            (inhdle, outhdle, errhdle, prhdle') <- createProcess (shell cmd)
-            writeIORef readhdle inhdle
-            writeIORef writehdle outhdle
-            writeIORef prhdle (Just prhdle')
-            writeIORef isopen True
+emptyAmplServices :: Services
+emptyAmplServices = Map.empty
 
-        , closeService = do 
-            -- From the documentation, "this should not be used
-            -- under normal circumstances because -- no guarantees
-            -- are given regarding how cleanly the process is 
-            -- terminate", but in this system, we don't really care
-            -- and we just want to close the process.
-            readIORef prhdle >>= maybe (throw FailedToCloseTerminal) terminateProcess
-            writeIORef readhdle Nothing
-            writeIORef writehdle Nothing
-            writeIORef prhdle Nothing
-            writeIORef isopen False
-        , readHandle = 
-            readIORef readhdle >>= maybe (throw FailedToOpenTerminalReadHandle) hGetLine
-        , writeHandle = \str -> 
-            readIORef writehdle >>= maybe (throw FailedToOpenTerminalWriteHandle) (`hPutStrLn` str)
-    }
+-- | Each Key has an associated Queued clients.
+-- This is important for networked connections where
+-- each networked connection has a unique key.
+type QueuedClients = Map Key (MVar (Handle, SockAddr))
+
+-- | Get all the networking keys
+initQueuedClients :: Services -> IO QueuedClients
+initQueuedClients = 
+    (Map.fromList <$>)
+    . sequence
+    . mapMaybe (f . serviceType)
+    . Map.elems
+  where
+    f StdService = Nothing
+    f (NetworkedService k) = Just $ do
+        m <- newEmptyMVar
+        return (k, m)
+    f (TerminalNetworkedService _ k) = Just $ do
+        m <- newEmptyMVar
+        return (k, m)
+
+initAmplServices :: 
+    [(GlobalChanID, (ServiceDataType, ServiceType))] -> 
+    IO Services 
+initAmplServices svs = 
+    Map.fromAscList <$> mapM f (sortBy (\a b -> compare (fst a) (fst b)) svs)
+  where
+    f (gch, (svdt, svt)) = do
+        opn <- newMVar ServiceIsClosed
+        rqs <- newChan
+        return (gch, ServiceEnv svt svdt opn rqs)
 
 -- | wrapper for a TCP server's state (needed for
 -- the clients)
-data AMPLTCPServer = AMPLTCPServer { 
+data AmplTCPServer = AmplTCPServer { 
     tcpServerLock :: MVar ()
+    , serverAddress :: SockAddr
     , serverPort :: String
     , serverSocket :: Socket 
-    
-    -- , MVar []
 }
 
+
 -- | Opens a TCP server... 
-initAMPLTCPServer :: 
-    String ->           -- ^ port e.g. 514
-    IO AMPLTCPServer           -- ^ handle (read write) to the socket
-initAMPLTCPServer port = withSocketsDo $ do
+initAmplTCPServer :: 
+    String ->                  -- ^ port e.g. 514
+    IO AmplTCPServer           -- ^ handle (read write) to the socket
+initAmplTCPServer port = withSocketsDo $ do
     -- look up the port..  From the documentation, 
     -- raises an exception or returns a non empty list
     addrinfos <- getAddrInfo 
@@ -173,5 +152,9 @@ initAMPLTCPServer port = withSocketsDo $ do
 
     lock <- newMVar ()
 
-    undefined
-    -- return handle
+    return $ AmplTCPServer {
+        tcpServerLock = lock
+        , serverAddress = addrAddress serveraddr
+        , serverPort = port
+        , serverSocket = sock
+    }

@@ -1,11 +1,18 @@
 {-# LANGUAGE TupleSections #-}
+    -- This allows us to use syntax like
+    -- (,b) to denote (\a -> (a,b))
+{-# LANGUAGE PatternSynonyms #-}
+    -- this is needed to import the 
+    -- pattern synonyms from Data.Queue..
 module AMPLConcurrent where
 
 import AMPLTypes
 import AMPLEnv
-import Control.MonadChan
-import Control.MonadIORef
-import Data.Queue (Queue)
+import AMPLServices
+
+import ServiceConstants
+
+import Data.Queue ( Queue, pattern (:<||), pattern (:<|), pattern Empty )
 import qualified Data.Queue as Queue
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -27,26 +34,25 @@ import Data.Tuple
 -} 
 
 -- | Options of a stepConcurrent result...
-data ConcurrentStepResult = 
+data ProcessConcurrentStepResult = 
     ProcessEnd
     | ProcessContinue Stec
     | ProcessDiverge Stec Stec
 
 -- | steps a process by the focused concurrent instruction...
 stepConcurrent :: 
-    ( MonadReader r m
-    , MonadChan m 
-    , MonadAtomicIORef m
-    , HasBroadcastChan r 
+    ( HasBroadcastChan r 
     , HasSuperCombinators r 
     , HasChannelNameGenerator r) =>
     ConcurrentInstr ->                                      
         -- ^ concurrent instruction to execute
     Stec ->               
-        -- ^ (s, t, e, c) of focused process...
-    m ConcurrentStepResult
+        -- ^ (s, t, e, c) of the focused process...
+    ReaderT r IO ProcessConcurrentStepResult
         -- ^ result of the concurrent step.. Either the process ends,
         -- the process continues, or the process diverges..
+        -- Note we need IO here because we are modifying the broadcast 
+        -- channel, and need unique names...
 stepConcurrent (IGet a) pr@(s, t, e, c) = do
     let ta = fromJust (lookupLocalChanIDToGlobalChanID a t)
     env <- ask 
@@ -175,24 +181,6 @@ prependQInstr ::
 prependQInstr Output qinstr = first (qinstr `Queue.prepend`)
 prependQInstr Input qinstr = second (qinstr `Queue.prepend`)
 
--- | Gets the head instructions (if they exist..) and 
--- the moodified queue from the head instruction...
-headQInstrs :: 
-    (Queue QInstr, Queue QInstr) ->
-    ((Queue QInstr, Queue QInstr), (Maybe QInstr, Maybe QInstr))
-headQInstrs (q1, q2) = ((q1', q2'), (mqinstr1, mqinstr2))
-  where
-    (q1', mqinstr1) = f q1
-    (q2', mqinstr2) = f q2
-
-    f q = 
-        case Queue.head q of
-            Nothing -> (q, Nothing)
-            Just (q', v) -> (q', Just v)
-
-emptyQInstrQueues :: (Queue QInstr, Queue QInstr)
-emptyQInstrQueues = (Queue.empty, Queue.empty)
-
 -- | Given a broadcast channel command, and a channel manager 
 -- (recall the type is: Map GlobalChanID (Queue, Queue)),
 -- this returns a new channel manger with the appropriate 
@@ -246,10 +234,20 @@ addCommandToChannelManager (BRace ds (s, t, e)) chm =
     f (pol, gch, lchs, cs) = 
         Map.adjust (prependQInstr pol (QRace (lchs, (s, t, e, cs)))) gch 
 
+data StepChannelManagerResult = StepChannelManagerResult {
+        chmNewProcesses :: [Stec]
+        , chmFreeChannelNames :: [GlobalChanID]
+        , chmNewServices :: [ServiceQuery]
+    } deriving (Show, Eq)
+
+emptyStepChannelManagerResult :: StepChannelManagerResult
+emptyStepChannelManagerResult = StepChannelManagerResult [] [] []
+
+
 -- | Steps the channel manager (corresponding to Table 3)
 stepChannelManager :: 
     Map GlobalChanID (Queue QInstr, Queue QInstr) ->
-    (([Stec], [GlobalChanID], [Service]), Map GlobalChanID (Queue QInstr, Queue QInstr))   -- ^ new processes, and new map
+    (StepChannelManagerResult, Map GlobalChanID (Queue QInstr, Queue QInstr))   -- ^ new processes, and new map
 stepChannelManager = 
     second (Map.fromAscList . fst)
                         -- get all the proccesed channels, and since they are in ascending order,
@@ -261,7 +259,7 @@ stepChannelManager =
                         -- (i.e., in ascending order now since we started in descending order) so the precondition 
                         -- of Map.fromAscList list above will be satisfied.
 
-    . (([],[],[]),)     -- list for the processes to be spawned, globalchannel ids that can be returned, and
+    . (emptyStepChannelManagerResult,)     -- list for the processes to be spawned, globalchannel ids that can be returned, and
                         -- services to spawn. i.e.  ((processes to be spawned, names to return, Services ), (channels already procssed, channels to process))
                         -- when starting to process the channels, not processes are to be spawned yet...
 
@@ -274,75 +272,95 @@ stepChannelManager =
         Don't be afraid of this scary type signature! The first argument is the recursion (as usual with
         fixed point operators) and second argument is ((processes to be spawned, names to return, Services ), (channels already procssed, channels to process))
     -}
-    f :: ((([Stec], [GlobalChanID], [Service]), ([(GlobalChanID, (Queue QInstr, Queue QInstr))], [(GlobalChanID, (Queue QInstr, Queue QInstr))]))
-           -> (([Stec], [GlobalChanID], [Service]),
+    f :: ((StepChannelManagerResult, ([(GlobalChanID, (Queue QInstr, Queue QInstr))], [(GlobalChanID, (Queue QInstr, Queue QInstr))]))
+           -> (StepChannelManagerResult,
                ([(GlobalChanID, (Queue QInstr, Queue QInstr))], [(GlobalChanID, (Queue QInstr, Queue QInstr))])))
-          -> (([Stec], [GlobalChanID], [Service]),
+          -> (StepChannelManagerResult,
               ([(GlobalChanID, (Queue QInstr, Queue QInstr))], [(GlobalChanID, (Queue QInstr, Queue QInstr))]))
-          -> (([Stec], [GlobalChanID], [Service]), ([(GlobalChanID, (Queue QInstr, Queue QInstr))], [(GlobalChanID, (Queue QInstr, Queue QInstr))]))
+          -> (StepChannelManagerResult, ([(GlobalChanID, (Queue QInstr, Queue QInstr))], [(GlobalChanID, (Queue QInstr, Queue QInstr))]))
     f rec (res, (chs', [])) = (res, (chs', []))
-    f rec (res, (chs', (gch, qs@(q1,q2)):chs)) = 
-        case headQInstrs qs of
-            (qs', (Just (QPut v), Just (QGet (s,t,e,c))))
-                -> rec (([(v:s,t,e,c)],[],[]) <> res, ((gch, qs'):chs', chs))
-            (qs', (Just (QGet (s,t,e,c)), Just (QPut v)))
-                -> rec (([(v:s,t,e,c)],[],[]) <> res, ((gch, qs'):chs', chs))
-            (qs', (Just (QHPut i), Just (QHCase (s,t,e,arr))))
-                -> rec (([(s,t,e,arr ! i)],[],[]) <> res, ((gch, qs'):chs', chs))
-            (qs', (Just (QHCase (s,t,e,arr)), Just (QHPut i)))
-                -> rec (([(s,t,e,arr ! i)],[],[]) <> res, ((gch, qs'):chs', chs))
+    -- f rec (res, (chs', (gch, qs@(q1,q2)):chs)) = 
+    f rec (res, (chs', (gch, qs) : chs)) = case qs of
+            (QPut v, QGet (s,t,e,c)) :<|| qs' 
+                -> rec ( res { chmNewProcesses = (v:s,t,e,c) : chmNewProcesses res }
+                    , ((gch, qs'):chs', chs))
+            (QGet (s,t,e,c), QPut v) :<|| qs' 
+                -> rec ( res { chmNewProcesses = (v:s,t,e,c) : chmNewProcesses res }
+                    , ((gch, qs'):chs', chs))
+
+            (QHPut i, QHCase (s,t,e,arr)) :<|| qs'
+                -> rec (res { chmNewProcesses = (s,t,e,arr ! i) : chmNewProcesses res }
+                    , ((gch, qs'):chs', chs))
+            (QHCase (s,t,e,arr), QHPut i) :<|| qs'
+                -> rec (res { chmNewProcesses = (s,t,e,arr ! i) : chmNewProcesses res }
+                    , ((gch, qs'):chs', chs))
 
             -- From Prashant, if QSplit is on the left, and QFork is on 
             -- the right then they are both Input. Otherwise, they are both
             -- Output
-            (qs', (Just (QSplit (b1, b2)), Just (QFork (t, e, (a1, g1, c1), (a2, g2, c2)))))
-                -> rec (([([], (Input, (a1,b1)):t, e, c1), ([], (Input, (a2,b2)):t, e, c2)],[],[]) <> res
+            (QSplit (b1, b2), QFork (t, e, (a1, g1, c1), (a2, g2, c2))) :<|| qs'
+                -> rec ( res { chmNewProcesses = [([], (Input, (a1,b1)):t, e, c1), ([], (Input, (a2,b2)):t, e, c2)] ++ chmNewProcesses res } 
                     , ((gch, qs'):chs', chs))
-            (qs', (Just (QFork (t, e, (a1, g1, c1), (a2, g2, c2))), Just (QSplit (b1, b2))))
-                -> rec (([([], (Output, (a1,b1)):t, e, c1),([], (Output, (a2,b2)):t, e, c2)],[],[]) <> res
+            (QFork (t, e, (a1, g1, c1), (a2, g2, c2)), QSplit (b1, b2)) :<|| qs'
+                -> rec ( res { chmNewProcesses = [([], (Output, (a1,b1)):t, e, c1),([], (Output, (a2,b2)):t, e, c2)] ++ chmNewProcesses res }
                     , ((gch, qs'):chs', chs))
 
-            (qs', (Just QClose, Just QHalt))
-                -> rec (([],[gch],[]) <> res, (chs', chs))
-            (qs', (Just QHalt, Just QClose))
-                -> rec (([],[gch],[]) <> res, (chs', chs))
+            (QClose, QHalt) :<|| qs'
+                -> rec ( res { chmFreeChannelNames = gch : chmFreeChannelNames res }
+                    , (chs', chs))
+            (QHalt, QClose) :<|| qs'
+                -> rec ( res { chmFreeChannelNames = gch : chmFreeChannelNames res }
+                    , (chs', chs))
+            -- Technically, the (close, close) and (halt, halt) commands are not in the 
+            -- table, but we borrow this from Prashant again...
+            (QClose, QClose) :<|| qs'
+                -> rec ( res { chmFreeChannelNames = gch : chmFreeChannelNames res }
+                    , (chs', chs))
+            (QHalt, QHalt) :<|| qs'
+                -> rec ( res { chmFreeChannelNames = gch : chmFreeChannelNames res }
+                    , (chs', chs))
+
 
             -- invariant: b == gch (actually, I don't think we need b at all and it can be removed
             -- from the QId constructor, but we leave it there because Table 2 says it should be 
             -- there)
-            (qs', (_, Just (QId (b, a))))
+            (q1, QId (b, a) :<| Queue.Empty) 
                 | b < a -> 
                     -- a must be further ahead
                     let nchs = map g chs
                         isIdExecuted = nchs == chs
-                    in rec ( ([],[b | isIdExecuted],[]) <> res, ([(gch, qs) | isIdExecuted], const nchs) <*> (chs', chs))
+                    in rec ( res { chmFreeChannelNames = [b | isIdExecuted] ++ chmFreeChannelNames res }
+                        , ([(gch, qs) | isIdExecuted], const nchs) <*> (chs', chs))
                     -- b must be behind a...
                 | otherwise -> 
                     let nchs' = map g chs'
                         isIdExecuted = nchs' == chs'
-                    in rec ( ([], [b | isIdExecuted],[]) <> res, ([(gch, qs) | isIdExecuted] ++ nchs', chs))
+                    in rec ( res { chmFreeChannelNames = [b | isIdExecuted] ++ chmFreeChannelNames res }
+                        , ([(gch, qs) | isIdExecuted] ++ nchs', chs))
               where
                 g (a', (q, q')) = if a' == a && Queue.isEmpty q then (a', (q1, q')) else (a', (q, q'))
-
             -- invariant: b == gch (actually, I don't think we need b at all and it can be removed
             -- from the QId constructor, but we leave it there because Table 2 says it should be 
             -- there)
-            (qs', (Just (QId (b, a)), _))
+            -- (qs', (Just (QId (b, a)), _))
+            (QId (b, a) :<| Queue.Empty, q2)
                 | b < a -> 
                     -- a must be further ahead 
                     let nchs = map g chs
                         isIdExecuted = nchs == chs
-                    in rec ( ([],[b | isIdExecuted],[]) <> res, ([(gch, qs) | isIdExecuted], const nchs) <*> (chs', chs))
+                    in rec ( res { chmFreeChannelNames = [b | isIdExecuted] ++ chmFreeChannelNames res }
+                        , ([(gch, qs) | isIdExecuted], const nchs) <*> (chs', chs))
                     -- b must be behind a...
                 | otherwise -> 
                     let nchs' = map g chs'
                         isIdExecuted = nchs' == chs'
-                    in rec ( ([], [b | isIdExecuted],[]) <> res, ([(gch, qs) | isIdExecuted] ++ nchs', chs))
+                    in rec ( res { chmFreeChannelNames = [b | isIdExecuted] ++ chmFreeChannelNames res }
+                        , ([(gch, qs) | isIdExecuted] ++ nchs', chs))
               where
                 g (a', (q, q')) = if a' == a && Queue.isEmpty q then (a', (q, q2)) else (a', (q, q'))
 
 
-            ((_, q2''), (Just (QPut v), Just (QRace (rcs, (s,t,e,c))))) -> 
+            (q1@(QPut v :<| _), QRace (rcs, (s,t,e,c)) :<| q2) -> 
                 let grcs = map snd (fromJust (mapM (`lookupLocalChanIDToGlobalChanID` t) rcs))
                     rmvrace (gch', (q1', q2')) 
                         | gch' `elem` grcs 
@@ -351,9 +369,9 @@ stepChannelManager =
                                 q2' (\(q2'', hq) -> case hq of QRace _ -> q2'' ; _ -> q2') 
                                 (Queue.head q2'))
                         | otherwise = (gch', (q1', q2'))
-                in rec (([(s,t,e,c)],[],[]) <> res, ((gch,(q1,q2'')) : map rmvrace chs', map rmvrace chs))
-
-            ((q1'', _), (Just (QRace (rcs, (s,t,e,c))), Just (QPut v))) -> 
+                in rec ( res { chmNewProcesses = (s,t,e,c) : chmNewProcesses res}
+                    , ((gch,(q1,q2)) : map rmvrace chs', map rmvrace chs))
+            (QRace (rcs, (s,t,e,c)) :<| q1, q2@(QPut v :<| _ ))  -> 
                 let grcs = map snd (fromJust (mapM (`lookupLocalChanIDToGlobalChanID` t) rcs))
                     rmvrace (gch', (q1', q2')) 
                         | gch' `elem` grcs 
@@ -362,6 +380,31 @@ stepChannelManager =
                                 q1' (\(q1'', hq) -> case hq of QRace _ -> q1'' ; _ -> q1') 
                                 (Queue.head q1'))
                         | otherwise = (gch', (q1', q2'))
-                in rec ( ([(s,t,e,c)],[],[]) <> res, ((gch,(q1'', q2)) : map rmvrace chs', map rmvrace chs))
+                in rec ( res { chmNewProcesses = (s,t,e,c) : chmNewProcesses res }
+                        , ((gch,(q1, q2)) : map rmvrace chs', map rmvrace chs))
 
-            (qs', _) -> rec (res, ((gch, qs):chs', chs))
+            {- opening services... Recall from Prashant that 
+                - 1 then it corresponds to get (i.e., enter a number in the terminal)
+                    (we write this as IxGet with PatternSynonyms and ViewPatterns)
+                - 2 then it corresponds to put (i.e., enter a number on the terminal)
+                    (we write this as IxPut with PatternSynonyms and ViewPatterns)
+                - 3 then it corresponds to close (i.e., close the service)
+                    (we write this as IxClose with PatternSynonyms and ViewPatterns)
+            -}
+            (Queue.Empty, QHPut (HCaseIx IxGet) :<| q2@(QGet (s,t,e,c) :<| _)) -> rec
+                (res { chmNewServices = (gch, ServiceGet Output) : chmNewServices res } , ((gch, (Queue.empty, q2)):chs' , chs) )
+            (QHPut (HCaseIx IxGet) :<| q1@(QGet (s,t,e,c) :<| _), Queue.Empty) -> rec
+                (res { chmNewServices = (gch, ServiceGet Input) : chmNewServices res } , ((gch, (q1, Queue.empty)):chs' , chs) )
+
+            (Queue.Empty, QHPut (HCaseIx IxPut) :<| (QPut v :<| q2)) -> rec
+                (res { chmNewServices = (gch, ServicePut v) : chmNewServices res } , ((gch, (Queue.empty, q2)):chs' , chs) )
+            (QHPut (HCaseIx IxPut) :<| (QPut v :<| q1), Queue.Empty) -> rec
+                (res { chmNewServices = (gch, ServicePut v) : chmNewServices res } , ((gch, (q1, Queue.empty)):chs' , chs) )
+
+            (Queue.Empty, QHPut (HCaseIx IxClose) :<| q2) -> rec
+                (res { chmNewServices = (gch, ServiceClose) : chmNewServices res } , ((gch, (Queue.empty, q2)):chs' , chs) )
+            (QHPut (HCaseIx IxClose) :<| q1, Queue.Empty) -> rec
+                (res { chmNewServices = (gch, ServiceClose) : chmNewServices res } , ((gch, (q1, Queue.empty)):chs' , chs) )
+
+            -- fall back catch all case.
+            qs -> rec (res, ((gch, qs):chs', chs))

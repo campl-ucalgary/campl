@@ -1,4 +1,4 @@
-module AMPL where
+ module AMPL where
 
 import AMPLSequential
 import AMPLConcurrent
@@ -21,73 +21,78 @@ import qualified Data.Set as Set
 import Control.Exception
 import System.Environment
 import Data.List
+import Data.Bool
+
+import Network.Socket
 
 {-
     This file includes helpful wrappers around 
-    runAMPLMach from AMPLMach (and more!) to make running the
+    runAmplMach from AmplMach (and more!) to make running the
     machine easier..
 -}
 
--- |  wrapper around execAMPLMach specifically designed for the AmplEnv type
--- with a default logger
-execAMPLMachWithDefaultLogger :: 
+-- |  wrapper around execAmplMach specifically designed for the AmplEnv type
+-- with a default logger and server
+execAmplMachWithDefaults :: 
     ([Instr], [Translation]) ->                         -- ^ Main function
-    ([(FunID, (String, [Instr]))]                       -- ^ Function definitions..
-    , (Services, Chm, Stream ChannelIdRep) ) ->                 -- ^ note that Services and Chm 
+    [(FunID, (String, [Instr]))] ->                     -- ^ Function definitions..
+    String ->                                           -- ^ AmplTCPServer port
+    (Services, Chm, Stream ChannelIdRep) ->             -- ^ note that Services and Chm 
                                                         -- must correspond (i.e., if a global channel is in
                                                         -- Services, then there should be corresponding
                                                         -- empty queues with that global channel id
                                                         -- and each of these MUST be distinct from the elemnts in
                                                         -- Stream ChannelIdRep
     IO ()
-execAMPLMachWithDefaultLogger mainf (fdefs, (svs, chm, chmg)) = 
+execAmplMachWithDefaults mainf fdefs tcpsvr svs = 
     bracket 
-        (do prgname <- getProgName ;  initLogger "logs" (prgname ++ "_log.txt"))
-        closeLogger 
-        (\lgger -> execAMPLMach mainf (fdefs, fileLogger lgger, (svs, chm, chmg)))
+        (do prgname <- getProgName ;  initAmplLogger "logs" (prgname ++ "_log.txt"))
+        closeAmplLoggerWithTimeStamp
+        (\lgger -> execAmplMach mainf fdefs tcpsvr lgger svs)
 
--- | Wrapper around runAMPLMach specifically for the AmplEnv type...
-execAMPLMach :: 
-    ([Instr], [Translation]) ->                         -- ^ Main function
-    ([(FunID, (String, [Instr]))]                       -- ^ Function definitions..
-    , String -> IO ()                                   -- ^ logger
-    , (Services, Chm, Stream ChannelIdRep)) ->
+-- | Wrapper around runAmplMach specifically for the AmplEnv type...
+execAmplMach :: 
+    ([Instr], [Translation]) ->                     -- ^ Main function
+    [(FunID, (String, [Instr]))] ->                 -- ^ Function definitions..
+    String ->                                       -- ^ AmplTCPServer Port
+    AmplLogger ->                                   -- ^ logger
+    (Services, Chm, Stream ChannelIdRep) ->
     IO ()
-execAMPLMach mainf amplenv = do
-    env <- amplEnv amplenv
-    runReaderT (runAMPLMach mainf :: ReaderT AmplEnv IO ()) env
+execAmplMach mainf fdefs tcpsv lgr svs = 
+    bracket 
+        (initAmplTCPServer tcpsv)
+        (close' . serverSocket)
+        $ \tcp -> do 
+            env <- amplEnv fdefs tcp lgr svs
+            runReaderT (runAmplMach mainf :: ReaderT AmplEnv IO ()) env
 
--- | Default way to generate services. Expects all channels
--- to be negative (throws error).
--- By convention (Prashant), 0 is stdin/stdout int terminal
--- and -100 is the stdin/sdtout char terminal
+-- | Default way to generate services. Expects all SERVICE channels
+-- to be less than or equal to 0 (throws error). Then, all internal
+-- channels should be positive (this is unchecked)...
+
+-- Service Channels will have a ``(ServiceDataType, ServiceType)"
+-- Note that by convention (Prashant), 0 should be the stdin/stdout 
+-- int terminal and -100 is the stdin/sdtout char terminal
 genServicesChmAndStream :: 
-    String ->                           -- ^ command to open the terminals
-    ServiceTypes [GlobalChanID] ->      -- ^ services types
-    IO (Services, Chm, Stream ChannelIdRep)
-genServicesChmAndStream cmd svstyps@(ServiceTypes intids charids) 
-    | checkValidChannels intids && checkValidChannels charids = do
-        stdhandle <- initStdServiceHandle
-        undefined
-        
-        {-
-        return (Services (ServiceTypes 
-                            (Map.insert stdintchan stdhandle intids') 
-                            (Map.insert stdcharchan stdhandle charids')
-                            )
-                , chm, stream)
-                -}
-    | otherwise = error 
-        ("Invalid channel with genServicesChmAndStream. All channels must be negative and not equal to -100. " ++ show svstyps)
-
+    [GlobalChanID] ->                                       -- ^ internal channels
+    [(GlobalChanID, (ServiceDataType, ServiceType))] ->     -- ^ external channels
+    IO (Services, Chm, Stream ChannelIdRep)                 
+genServicesChmAndStream internal externalassocs 
+    | all checkValid externalassocs = do
+        svs <- initAmplServices externalassocs 
+        return (svs, chm, strm)
+    | otherwise = error ermsg
   where
-    stdintchan = GlobalChanID 0
-    stdcharchan = GlobalChanID (-100)
+    checkValid = (<= GlobalChanID 0) . fst
 
-    allterminalglobalchannelids = stdintchan : stdcharchan : intids ++ charids
+    strm = Stream.iterate succ imax
 
-    chm = Map.fromAscList (zip (sort allterminalglobalchannelids) (repeat emptyQInstrQueues))
-    stream = Stream.iterate succ 1
+    imax = succ $ case map (\(GlobalChanID n) -> n) internal of
+        [] -> 0
+        xs -> maximum xs
 
-    checkValidChannels = all isValidChannel
-    isValidChannel a = a < GlobalChanID 0 && a /= stdintchan && a /= stdcharchan
+    chm = initChm (map fst externalassocs ++ internal)
+
+    ermsg = "User error: Invalid channel -- all channels should be negative, but we have: \n" 
+        ++ show externalassocs
+    

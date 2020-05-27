@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9e162720955064c9006a55f2bcbac2555d4ccc703ed803090e2ba887ced409d6
+-- hash: 25d0dc0a9b289358f2259a7ceb99052c38890bca03991ca9f43f618c7e365f2f
 
 name:           AMPL
 version:        0.1.0.0
@@ -26,12 +26,9 @@ source-repository head
 
 library
   exposed-modules:
-      Control.MonadChan
-      Control.MonadConcurrent
-      Control.MonadIORef
-      Control.MonadMVar
       Data.Queue
       Data.Stream
+      ServiceConstants
   other-modules:
       Paths_AMPL
   hs-source-dirs:
@@ -52,6 +49,7 @@ executable ampl
       AMPLSequential
       AMPLServices
       AMPLTypes
+      Tests
       Paths_AMPL
   hs-source-dirs:
       src

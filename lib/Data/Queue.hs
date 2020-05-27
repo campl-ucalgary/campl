@@ -1,5 +1,32 @@
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
-module Data.Queue where
+{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE PatternSynonyms #-}
+    -- this allows us to define our own 
+    -- pattern matching syntax which 
+    -- is useful for the channel manager..
+{-# LANGUAGE LambdaCase #-}
+    -- allows us to write \case x:xs -> ... ; [] -> ...
+    -- instead of (\lst -> case lst of x:xs -> ... ; [] -> ...)
+module Data.Queue 
+    ( Data.Queue.Queue
+    , Data.Queue.empty
+    , Data.Queue.head
+    , Data.Queue.last
+    , Data.Queue.prepends
+    , Data.Queue.prepend
+    , Data.Queue.append
+    , Data.Queue.appends
+    , Data.Queue.isEmpty
+    , Data.Queue.invariantCheck
+    , Data.Queue.takeHead
+    , Data.Queue.takeLast
+    , (<|) 
+    , (|>) 
+    , pattern (:<|)
+    , pattern (:<||)
+    , pattern Empty
+    )
+    where
 
 import Data.Word
 import Prelude hiding (head, length)
@@ -15,12 +42,9 @@ import Data.List as L
 -}
 
 data Queue a = Queue [a] !Word [a] !Word [a] [a]
-    deriving Show
 
-{-
 instance Show a => Show (Queue a) where
     show = showQueue
-    -}
 
 instance Eq a => Eq (Queue a) where
     Queue l1 lsz1 r1 rsz1 _ _ == Queue l2 lsz2 r2 rsz2 _ _
@@ -162,9 +186,47 @@ infixr 7 <|
 (<|) :: a -> Queue a -> Queue a
 (<|) = prepend
 
+-- cons for the front of the queue pattern
+infixr 7 :<|
+pattern Front a as <- (Data.Queue.head -> Just (as, a))
+pattern a :<| as <- (Data.Queue.head -> Just (as, a))
+
+-- | Gets the heads of two queues (if they exist..) and 
+-- with the modified queues...
+headTuple :: 
+    (Queue a, Queue a) ->
+    ((Queue a, Queue a), (Maybe a, Maybe a))
+headTuple (q1, q2) = ((q1', q2'), (n1, n2))
+  where
+    (q1', n1) = f q1
+    (q2', n2) = f q2
+
+    f q = 
+        case Data.Queue.head q of
+            Nothing -> (q, Nothing)
+            Just (q', v) -> (q', Just v)
+
+-- this is a pattern to get the head instructions of a tuple of queues (if
+-- they exist of course...)
+pattern heads :<|| tails <- 
+    -- ((\case ((q1s,q2s), (Just q1, Just q2)) -> ((q1,q2), (q1s, q2s))) . headTuple -> (heads, tails)) 
+    (headTuplePatternHelper . headTuple -> Just (heads, tails)) 
+
+headTuplePatternHelper ((q1s,q2s), (Just q1, Just q2)) = Just ((q1,q2), (q1s, q2s))
+headTuplePatternHelper _ = Nothing
+    
+
+-- snoc for the back of the queue pattern
+infixl 7 :|>
+pattern Rear as a <- (Data.Queue.last -> Just (as, a))
+pattern a :|> as <- (Data.Queue.last -> Just (as, a))
+
 infixl 7 |>
 (|>) :: Queue a -> a -> Queue a
 (|>) = append
+
+-- pattern for empty queue
+pattern Empty <- (Data.Queue.isEmpty -> True)
 
 prepend :: a -> Queue a -> Queue a
 prepend e (Queue l lsz r rsz lu ru) 

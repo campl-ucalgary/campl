@@ -1,7 +1,6 @@
 module AMPLLogger where
 
 import AMPLTypes
-import AMPLEnv
 
 import Data.Time
 import Data.List
@@ -16,66 +15,63 @@ import Text.PrettyPrint.GenericPretty
 {-
     Small / simple thread safe logger for AMPL
 -}
-data Logger = Logger {
-        loggerLock :: MVar ()
-        , logTo :: (FilePath, Handle)
+data AmplLogger = AmplLogger {
+        stdLock :: MVar ()                              -- lock for standard input and output
+        , fileLogger :: (FilePath, Handle, MVar String) -- for logging to files.. 
     }
 
-initLogger :: 
+-- intialize the ampl logger (mainly used to create the file..)
+initAmplLogger :: 
     FilePath ->     -- ^ directory to create the file..
     String ->       -- ^ name of the file. e.g. foo.ext will become fooXXX.ext
-    IO Logger
-initLogger filepath filename = do
+    IO AmplLogger
+initAmplLogger filepath filename = do
     (fp, h) <- openTempFile filepath filename
-    m <- newMVar ()
+    lglck <- newMVar ()
+    m <- newMVar ""
     putStrLn ("Logging to file: " ++ fp)
-    return $ Logger m (fp, h)
+    return $ AmplLogger lglck (fp, h, m)
 
-closeLogger :: Logger -> IO ()
-closeLogger Logger{ loggerLock = mvar, logTo = lgto } =
-    withMVar mvar (const (hClose (snd lgto)))
+closeAmplLoggerWithTimeStamp :: AmplLogger -> IO ()
+closeAmplLoggerWithTimeStamp lger@AmplLogger{ stdLock = stdlk, fileLogger = (fp, h, flk) } = do
+    tme <- getCurrentTime
+    nonRedundantFileAmplLogger lger dashesTimeStampLn (return dashesLn) ""
+    withMVar flk (const (hClose h))
 
-fileLogger :: 
-    Logger -> 
-    String ->       -- ^ String to log
+-- Wrapper to log things to stdout
+amplLogStdOut :: 
+    AmplLogger ->
+    String ->
     IO ()
-fileLogger Logger{ loggerLock = mvar, logTo = lgto } str =
-    withMVar mvar (const (hPutStr (snd lgto) str))
+amplLogStdOut AmplLogger{  stdLock = stdlk, fileLogger = (fp, h, flk) } str = 
+    withMVar stdlk (const (putStrLn str))
 
-logProcess :: HasLog r => Stec -> ReaderT r IO ()
-logProcess (s,t,e,c) = do
-    env <- ask
-    thid <- liftIO myThreadId
-    tme <- liftIO getCurrentTime
-    liftIO $ getLog env
-        (intercalate "\n" 
-            [ dashes
-            , show tme
-            , "Process on: " ++ show thid
-            , "Stack:"
-            , render (doc s)
-            , "Translations:"
-            , render (doc t)
-            , "Environment:"
-            , render (doc e)
-            , "Code:"
-            , render (doc c)
-            , dashes
-            ]
-        )
+-- This logs only the different strings....
+nonRedundantFileAmplLogger :: 
+    AmplLogger -> 
+    IO String ->       -- ^ Before log string
+    IO String ->       -- ^ After log string
+    String ->          -- ^ String to log
+    IO ()
+nonRedundantFileAmplLogger AmplLogger{  stdLock = stdlk, fileLogger = (fp, h, flk) } before after str =
+    modifyMVar flk f
+  where
+    f s = if str == s
+            then return (s, ())
+            else do
+                b <- before
+                a <- after
+                hPutStr h (b ++ str ++ a)
+                return (str, ())
 
-logChm :: HasLog r => Chm -> ReaderT r IO ()
-logChm chm = do
-    env <- ask
-    tme <- liftIO getCurrentTime
-    liftIO $ getLog env
-        (intercalate "\n" $
-            [ dashes
-            , show tme
-            , "Channel Manager: "]
-            ++ map show (Map.toList chm)
-            ++ [ dashes ]
-        )
+timeStampLn :: IO String
+timeStampLn = (++"\n"). show <$> getCurrentTime
+
+dashesLn :: String
+dashesLn = '\n':dashes ++"\n"
+
+dashesTimeStampLn :: IO String
+dashesTimeStampLn = (dashesLn++) <$> timeStampLn 
 
 dashes :: String
 dashes = replicate 20 '-'

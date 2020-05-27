@@ -1,12 +1,16 @@
 -- Used to derive Out from Text.PrettyPrint.GenericPretty
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 module AMPLTypes where
 
 import Data.Word
+import Data.Typeable
 import Data.Array
 import Data.Coerce
 import Data.List
+import Control.Arrow
+import Control.Exception
 
 import Text.PrettyPrint.GenericPretty
 import Text.PrettyPrint
@@ -14,6 +18,7 @@ import Text.PrettyPrint
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Queue (Queue)
+import qualified Data.Queue as Queue
 import Data.Stream (Stream)
 import qualified Data.Stream as Stream
 
@@ -22,33 +27,33 @@ import qualified Data.Stream as Stream
 type ChannelIdRep = Int
 
 newtype LocalChanID = LocalChanID ChannelIdRep  -- Local channel id
-    deriving (Show, Eq, Ord, Ix, Generic, Out)
+    deriving (Show, Eq, Ord, Ix, Generic, Out, Typeable)
 
 newtype GlobalChanID = GlobalChanID ChannelIdRep  -- global channel id
-    deriving (Show, Eq, Ord, Ix, Generic, Out)
+    deriving (Show, Eq, Ord, Ix, Generic, Out, Typeable)
 
 newtype PhysicalChanId = PhysicalChanID Word  -- physical channel id
-    deriving (Show, Eq, Generic, Out)
+    deriving (Show, Eq, Generic, Out, Typeable)
     -- unused...
 
 newtype FunID = FunID Word  -- function id
-    deriving (Show, Eq, Ord, Ix, Generic, Out)
+    deriving (Show, Eq, Ord, Ix, Generic, Out, Typeable)
 
 -- indexing constructors...
 newtype ConsIx = ConsIx Word
-    deriving (Show, Eq, Ord, Ix, Generic, Out)
+    deriving (Show, Eq, Ord, Ix, Generic, Out, Typeable)
 
 -- indexing codata destructors...
 newtype DesIx = DesIx Word
-    deriving (Show, Eq, Ord, Ix, Generic, Out)
+    deriving (Show, Eq, Ord, Ix, Generic, Out, Typeable)
 
 -- By convention (i.e., Prashant), the output queue is the left queue
 -- and the input queue is the right queue
 data Polarity = Output | Input 
-    deriving (Show, Eq, Generic, Out)
+    deriving (Show, Eq, Generic, Out, Typeable)
 
 newtype HCaseIx = HCaseIx Word
-    deriving (Show, Eq, Ord, Ix, Generic, Out)
+    deriving (Show, Eq, Ord, Ix, Generic, Out, Typeable)
         -- corresponds to IHPut / IHCase -- either we put a request for
         -- an internal protocol (one given by the program itself) 
         -- or one for the external world (think IO action)
@@ -65,14 +70,10 @@ newtype HCaseIx = HCaseIx Word
 
             Then, by Prashant, we know that if HCaseIx is:
                 - 1 then it corresponds to get (i.e., enter a number in the terminal)
-                - 2 then it corresponds to put (i.e., enter a number on the terminal)
+                - 2 then it corresponds to put (i.e., put a number on the terminal)
                 - 3 then it corresponds to close (i.e., close the service)
         -}
 
--- external services to the real world
-data Service = Service GlobalChanID Int
-    -- GlobalChanID (the service corresponding to that channel)
-    -- the int confusingly corresponds to 1,2,3 as mentioned above
 
 type Translation = (Polarity, (LocalChanID, GlobalChanID))
 
@@ -84,9 +85,14 @@ type Ces = ([Instr], [Val], [Val])
 
 type Chm = Map GlobalChanID (Queue QInstr, Queue QInstr)
 
--- | Helper function for constructing a channel manager from a list
-mkChm :: [(GlobalChanID, (Queue QInstr, Queue QInstr))] -> Chm
-mkChm = Map.fromAscList . sortBy (\(a,_) (b,_) -> compare a b)
+emptyQInstrQueues :: (Queue QInstr, Queue QInstr)
+emptyQInstrQueues = (Queue.empty, Queue.empty)
+
+-- | Helper function for constructing an empty channel manager from a list
+initChm :: [GlobalChanID] -> Chm
+initChm = Map.fromAscList 
+    . sortBy (\(a,_) (b,_) -> compare a b) 
+    . flip zip (unfoldr (Just <<< const emptyQInstrQueues &&& id) ())
 
 
 -- look up the LocalChanID to the corresponding (Polarity, GlobalChanID)
@@ -134,7 +140,7 @@ composeTranslation as bs = foldr f g bs as
 data Instr =
     ConcurrentInstr ConcurrentInstr
     | SequentialInstr SequentialInstr
-    deriving (Eq, Generic, Out)
+    deriving (Eq, Generic, Out, Typeable)
 
 instance Show Instr where
     show (ConcurrentInstr cs) = show cs
@@ -152,18 +158,21 @@ data SequentialInstr =
     | ICall FunID Word
         -- Call function FunID with Word arguments..
 
+    | IConst Val
+
     -- built in int instrucitons...
-    | IConstInt Int
     | IAddInt
     | IMulInt
     | ILeqInt
 
     -- built in bool instructions
-    | IConstBool Bool
     | IOrBool
     | IEqBool
     | IIf [Instr] [Instr]
         -- if then [Instr] else [Instr]
+
+    -- built in char instructions
+    | IEqChar 
 
     -- data instructions...
     | ICons ConsIx Word 
@@ -174,20 +183,20 @@ data SequentialInstr =
     | IRec (Array DesIx [Instr]) -- create a record on the stack
     | IDest DesIx Word
         -- destructs the record by choosing the ith funciton closure with the top n elements of the stack
-    deriving (Show, Eq, Generic, Out)
+    deriving (Show, Eq, Generic, Out, Typeable)
 
 -- smart consturctors...
 iStore :: Instr
 iStore = SequentialInstr IStore
-
-iConstBool :: Bool -> Instr
-iConstBool = SequentialInstr . IConstBool
 
 iEqBool :: Instr
 iEqBool = SequentialInstr IEqBool
 
 iOrBool :: Instr
 iOrBool = SequentialInstr IOrBool
+
+iEqChar :: Instr
+iEqChar = SequentialInstr IEqChar
 
 iIf :: [Instr] -> [Instr] -> Instr
 iIf as = SequentialInstr . IIf as
@@ -201,8 +210,8 @@ iRet = SequentialInstr IRet
 iCall :: FunID -> Word -> Instr
 iCall id = SequentialInstr . ICall id
 
-iConstInt :: Int -> Instr 
-iConstInt = SequentialInstr . IConstInt
+iConst :: Val -> Instr
+iConst = SequentialInstr . IConst 
 
 iAddInt :: Instr
 iAddInt = SequentialInstr IAddInt
@@ -237,11 +246,12 @@ data Val =
     -- Primitive data types..
     | VInt Int
     | VBool Bool
+    | VChar Char
 
     -- User defined data types..
     | VCons (ConsIx, [Val])
     | VRec (Array DesIx [Instr], [Val])
-    deriving (Show, Eq, Generic, Out)
+    deriving (Show, Eq, Generic, Out, Typeable)
 
 
 -- CONCURRENT INSTRUCTIONS
@@ -271,7 +281,7 @@ data ConcurrentInstr =
     | IHCase LocalChanID (Array HCaseIx [Instr])
 
     | IRace [(LocalChanID, [Instr])]
-    deriving (Show, Eq, Generic, Out)
+    deriving (Show, Eq, Generic, Out, Typeable)
 
 -- smart constructors for ConcurrentInstr
 iGet :: LocalChanID -> Instr
@@ -330,7 +340,7 @@ data QInstr =
 
     | QRace ([LocalChanID], ([Val], [Translation], [Val], [Instr]))
         -- other channels to race, (s,t,e,c)
-    deriving (Show, Eq, Generic, Out)
+    deriving (Show, Eq, Generic, Out, Typeable)
 
 -- | Broadcast channel instructions (used internally to transfer messages from
 -- a process to a channel).. This is a layer of indirection for 
@@ -369,7 +379,7 @@ data BInstr =
         [(Polarity, GlobalChanID, [LocalChanID], [Instr])] 
         -- (s, t, e) (these are the same for all races...)
         ([Val], [Translation], [Val])
-    deriving (Show, Eq, Generic, Out)
+    deriving (Show, Eq, Generic, Out, Typeable)
 
 -- smart constructors..
 qGet :: ([Val], [Translation], [Val], [Instr]) -> QInstr
@@ -402,6 +412,10 @@ qHCase (s,t,e,is) = QHCase (s,t,e, listArray (coerce (0 :: Word) :: HCaseIx, coe
 
 qRace :: ([LocalChanID], ([Val], [Translation], [Val], [Instr])) -> QInstr
 qRace = QRace
+
+
+data AmplExit = AmplExit
+    deriving (Show, Exception)
 
 -- instances for deriving the pretty printer since the array does
 -- not have a Generics instance, so we cannot automatically derive

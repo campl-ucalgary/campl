@@ -47,8 +47,7 @@ executables:
         - pretty
         - GenericPretty
           # used for the default logger
-        - time
-
+        - time 
 
 tests: 
     queue-tests:
