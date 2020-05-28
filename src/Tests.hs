@@ -411,7 +411,7 @@ p2run = [
 chartfToBool = [
     iAccess 0             
     , iConst (VChar 't')    -- put a 't' on the stack...
-    , iEqChar
+    , iEq
     , iStore                  -- 
     , iAccess 0
     , iRet
@@ -692,7 +692,7 @@ aPOr = 1
 bPOr = 2
 
 
-parallelServiceOrTest = do
+parallelOrServiceTest = do
     svs <- genServicesChmAndStream 
                     [] 
                     [ 

@@ -63,12 +63,13 @@ stepSequential ILeqInt (c, e, VInt n : VInt m : s) = return (c, e, VBool (n <= m
 
 -- From the CES machine in 521....
 stepSequential IOrBool (c, e, VBool n : VBool m : s) = return (c, e, VBool (n || m) : s)
-stepSequential IEqBool (c, e, VBool n : VBool m : s) = return (c, e, VBool (n == m) : s)
 stepSequential (IIf c0 c1 ) (c, e, VBool True : s) = return (c0, e, VClos (c, e) : s)
 stepSequential (IIf c0 c1 ) (c, e, VBool False : s) = return (c1, e, VClos (c, e) : s)
 
 -- Char constant instructions
-stepSequential IEqChar (c, e, VChar n : VChar m : s) = return (c, e, VBool (n == m) : s)
+stepSequential IEq (c, e, VChar n : VChar m : s) = return (c, e, VBool (n == m) : s)
+stepSequential IEq (c, e, VBool n : VBool m : s) = return (c, e, VBool (n == m) : s)
+stepSequential IEq (c, e, VInt n : VInt m : s) = return (c, e, VBool (n == m) : s)
 
 stepSequential n mach = error ("Illegal sequential step with instruction:" ++ show n ++ "\nAnd machine: " ++ show mach)
 

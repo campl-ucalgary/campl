@@ -86,7 +86,7 @@ amplMACHLoop = do
     let chm' = foldl (flip addCommandToChannelManager) chm bdcmds
         -- remark: this MUST be foldl and correspond to the order of
         -- which commands were put in otherwise this will not play well
-        -- with certain commands. For example, if it is foldr, with the
+        -- with certain commands. For example, if it is foldr, then, with the
         -- plug command, this will silently drop certain commands...
         (StepChannelManagerResult { 
             chmNewProcesses = ps
@@ -94,11 +94,13 @@ amplMACHLoop = do
             , chmNewServices = svs
             }, chm'') = stepChannelManager chm'
         
+    -- update the channel manager...
     liftIO $ writeIORef (getChannelManager env) chm''
 
     amplLogChm chm'
     amplLogChm chm''
 
+    -- Fork the new processes, and run new services...
     mapM_ amplForkProcess ps
     mapM_ amplRunService svs
 
@@ -430,7 +432,7 @@ amplLogChm chm = do
     liftIO $ getFileLog env
         (intercalate "\n" $
             "Channel Manager: ": map show (Map.toList chm) ++
-            [ "\nbNumber of running processes: "
+            [ "\nNumber of running processes: "
             , show numrningprs
             ]
         )

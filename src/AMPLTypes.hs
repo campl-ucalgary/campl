@@ -171,8 +171,8 @@ data SequentialInstr =
     | IIf [Instr] [Instr]
         -- if then [Instr] else [Instr]
 
-    -- built in char instructions
-    | IEqChar 
+    -- Tests if two Vals are equal
+    | IEq 
 
     -- data instructions...
     | ICons ConsIx Word 
@@ -189,14 +189,11 @@ data SequentialInstr =
 iStore :: Instr
 iStore = SequentialInstr IStore
 
-iEqBool :: Instr
-iEqBool = SequentialInstr IEqBool
-
 iOrBool :: Instr
 iOrBool = SequentialInstr IOrBool
 
-iEqChar :: Instr
-iEqChar = SequentialInstr IEqChar
+iEq :: Instr
+iEq = SequentialInstr IEq
 
 iIf :: [Instr] -> [Instr] -> Instr
 iIf as = SequentialInstr . IIf as
