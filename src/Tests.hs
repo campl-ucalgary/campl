@@ -1,7 +1,7 @@
 module Tests where
 
 import AMPL
-import AMPLSequential
+import AMPLSequential 
 import AMPLConcurrent
 import AMPLTypes
 import AMPLServices
@@ -23,7 +23,7 @@ import System.Environment
 
 import Network.Socket
 
-testAmplTCPServer = "5000"
+testAmplTCPServer = "5000" 
 
 -------------------------
 -- Codata test
@@ -290,7 +290,7 @@ serviceGetIntTermAndPrintToStdOutTest = do
     svs <- genServicesChmAndStream 
                     [] 
                     [ 
-                      (GlobalChanID (-1), (IntService, TerminalNetworkedService "xterm -e ' /home/jared/.local/bin/amplc -hn 127.0.0.1 -p 5000 -k c-1  ; read'"  (Key "c-1")))
+                      (GlobalChanID (-1), (IntService, TerminalNetworkedService "xterm -e ' amplc -hn 127.0.0.1 -p 5000 -k c-1  ; read'"  (Key "c-1")))
                     , (GlobalChanID 0, (IntService, StdService) )
                     ]
     execAmplMachWithDefaults 
@@ -318,7 +318,7 @@ getStdIntToServiceOutTest = do
     svs <- genServicesChmAndStream 
                     [] 
                     [ 
-                      (GlobalChanID (-1), (IntService, TerminalNetworkedService "xterm -e ' /home/jared/.local/bin/amplc -hn 127.0.0.1 -p 5000 -k c-1  ; read'"  (Key "c-1")))
+                      (GlobalChanID (-1), (IntService, TerminalNetworkedService "xterm -e ' amplc -hn 127.0.0.1 -p 5000 -k c-1  ; read'"  (Key "c-1")))
                     , (GlobalChanID 0, (IntService, StdService) )
                     ]
     execAmplMachWithDefaults 
@@ -435,7 +435,7 @@ getStdCharAndRunToServiceOutTest = do
     svs <- genServicesChmAndStream 
                     [] 
                     [ 
-                      (GlobalChanID (-1), (CharService, TerminalNetworkedService "xterm -e ' /home/jared/.local/bin/amplc -hn 127.0.0.1 -p 5000 -k c-1  ; read'"  (Key "c-1")))
+                      (GlobalChanID (-1), (CharService, TerminalNetworkedService "xterm -e ' amplc -hn 127.0.0.1 -p 5000 -k c-1  ; read'"  (Key "c-1")))
                     , (GlobalChanID 0, (CharService, StdService) )
                     ]
     execAmplMachWithDefaults 
@@ -696,8 +696,8 @@ parallelServiceOrTest = do
     svs <- genServicesChmAndStream 
                     [] 
                     [ 
-                      (GlobalChanID (-1), (CharService, TerminalNetworkedService "xterm -e '/home/jared/.local/bin/amplc -hn 127.0.0.1 -p 5000 -k c-1  ; read'"  (Key "c-1")))
-                    , (GlobalChanID (-2), (CharService, TerminalNetworkedService "xterm -e '/home/jared/.local/bin/amplc -hn 127.0.0.1 -p 5000 -k c-2  ; read'"  (Key "c-2")))
+                      (GlobalChanID (-1), (CharService, TerminalNetworkedService "xterm -e 'amplc -hn 127.0.0.1 -p 5000 -k c-1  ; read'"  (Key "c-1")))
+                    , (GlobalChanID (-2), (CharService, TerminalNetworkedService "xterm -e 'amplc -hn 127.0.0.1 -p 5000 -k c-2  ; read'"  (Key "c-2")))
                     , (GlobalChanID 0, (CharService, StdService) )
                     ]
     execAmplMachWithDefaults 

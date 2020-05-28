@@ -60,8 +60,6 @@ runAmplMach (mainf, maint) = do
     tcpid <- liftIO $ forkIO (catch (runReaderT amplRunTCPServer env ) (\(e :: AmplExit) ->  return ()))
     liftIO $ putTcpThreadId env tcpid
 
-    liftIO $ threadDelay 100000
-
     amplMACHLoop 
 
 -- | main loop for the channel manager...
@@ -232,7 +230,6 @@ amplOpenService sv@(_, svenv) = do
         NetworkedService k -> void $ liftIO $ forkIO (runReaderT (amplOpenNetworkedService k sv) env)
         TerminalNetworkedService cmd k -> liftIO $ do
             forkIO (runReaderT (amplOpenNetworkedService k sv) env)
-            threadDelay 500000
             void $ createProcess (shell cmd) 
 
 amplOpenNetworkedService :: 
@@ -323,12 +320,12 @@ amplStdServiceLoop sv@(gch, ServiceEnv{ serviceDataType = svdty, serviceOpen = o
     rq <- liftIO (readChan svrq)
     case rq of
         ServiceGet pol -> do
-            v <- liftIO $ withMVar stdsvlk (const stdGet)
+            v <- liftIO $ withMVar stdsvlk (const (stdGet env))
             writeBroadcastChan env (BPut (pol, gch) v)
             amplStdServiceLoop sv
 
         ServicePut v -> do
-            liftIO (withMVar stdsvlk (const (stdPut v)))
+            liftIO (withMVar stdsvlk (const (stdPut env v)))
             amplStdServiceLoop sv
 
         ServiceClose -> do
@@ -337,29 +334,28 @@ amplStdServiceLoop sv@(gch, ServiceEnv{ serviceDataType = svdty, serviceOpen = o
             return ()
             -- do not recurse..
   where
-    stdGet :: IO Val
-    stdGet = case svdty of 
+    stdGet env = case svdty of 
                 IntService -> do
-                    putStrLn "Please enter an integer..."
-                    stdGetInt
+                    getStdLog env "Please enter an integer..."
+                    stdGetInt env
                 CharService -> 
-                    stdGetChar
+                    stdGetChar env
 
 
-    stdGetInt = do
+    stdGetInt env = do
         mint <- readMaybe <$> getLine 
         case mint of
             Just int -> return (VInt int)
-            Nothing -> putStrLn "Please try again (invalid int).." >> stdGetInt
+            Nothing -> getStdLog env "Please try again (invalid int).." >> stdGetInt env
 
-    stdGetChar = do
-        putStrLn "Please enter a character..."
+    stdGetChar env = do
+        getStdLog env "Please enter a character..."
         chars <- getLine 
         case chars of
             [c] -> return (VChar c)
-            _ -> putStrLn "Please try again (invalid char).." >> stdGetChar
+            _ -> getStdLog env "Please try again (invalid char).." >> stdGetChar env
 
-    stdPut = print 
+    stdPut env = getStdLog env . show
 
     
     
