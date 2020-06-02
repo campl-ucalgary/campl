@@ -8,7 +8,7 @@ import AMPLServices
 import AMPLEnv
 import AMPLMach
 import AMPLLogger
-import Tests
+import InteractiveTests
 
 import Data.Stream (Stream)
 import qualified Data.Stream as Stream
@@ -20,6 +20,8 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Control.Exception
 import System.Environment
+
+-- Look at InteractiveTests to see how to run..
 
 main :: IO ()
 main = undefined

@@ -1,4 +1,4 @@
-module Tests where
+module InteractiveTests where
 
 import AMPL
 import AMPLSequential 
@@ -24,6 +24,19 @@ import System.Environment
 import Network.Socket
 
 testAmplTCPServer = "5000" 
+
+{-
+The general structure for writing the program is as follows...
+main = do
+    svs <- genServicesChmAndStream 
+                    [ {- List of non service channels -} ] 
+                    [ {- List of services -} ]
+    execAmplMachWithDefaults 
+        {- main function -}
+        {- function definitions -}
+        {- Port to run TCP server on e.g. 5000 -}
+        svs
+-}
 
 -------------------------
 -- Codata test

@@ -20,7 +20,7 @@ data AmplLogger = AmplLogger {
         , fileLogger :: (FilePath, Handle, MVar String) -- for logging to files.. 
     }
 
--- intialize the ampl logger (mainly used to create the file..)
+-- | intialize the ampl logger (mainly used to create the file..)
 initAmplLogger :: 
     FilePath ->     -- ^ directory to create the file..
     String ->       -- ^ name of the file. e.g. foo.ext will become fooXXX.ext
@@ -38,7 +38,7 @@ closeAmplLoggerWithTimeStamp lger@AmplLogger{ stdLock = stdlk, fileLogger = (fp,
     nonRedundantFileAmplLogger lger dashesTimeStampLn (return dashesLn) ""
     withMVar flk (const (hClose h))
 
--- Wrapper to log things to stdout
+-- | Wrapper to log things to stdout
 amplLogStdOut :: 
     AmplLogger ->
     String ->
@@ -46,7 +46,7 @@ amplLogStdOut ::
 amplLogStdOut AmplLogger{  stdLock = stdlk, fileLogger = (fp, h, flk) } str = 
     withMVar stdlk (const (putStrLn str))
 
--- This logs only the different strings....
+-- | This logs only the different strings....
 nonRedundantFileAmplLogger :: 
     AmplLogger -> 
     IO String ->       -- ^ Before log string

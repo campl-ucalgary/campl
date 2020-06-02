@@ -30,14 +30,16 @@ import Data.Semigroup
 import Data.Tuple 
 
 {- 
-    A first draft of the Concurrent machine
+    A first draft of the Concurrent machine. 
+    Contains functions to do exactly ONE concurrent step for a process
+    and the channel manager.
 -} 
 
 -- | Options of a stepConcurrent result...
 data ProcessConcurrentStepResult = 
-    ProcessEnd
-    | ProcessContinue Stec
-    | ProcessDiverge Stec Stec
+    ProcessEnd                      -- ^ process has ended
+    | ProcessContinue Stec          -- ^ process will continue running
+    | ProcessDiverge Stec Stec      -- ^ process splits into two processes (e.g. from plug)
 
 -- | steps a process by the focused concurrent instruction...
 stepConcurrent :: 
@@ -65,7 +67,7 @@ stepConcurrent (IPut a) pr@(v:s, t, e, c) = do
     writeBroadcastChan env (BPut ta v)
     return $ ProcessContinue (s, t, e, c)
 
--- Technically the s must be empty from Table 2..
+-- Technically the s must be empty from Table 2, but we leave it open for non empty stacks
 stepConcurrent (ISplit a (a1, a2)) (s, t, e, c) = do
     let ta@(pol, _) = fromJust (lookupLocalChanIDToGlobalChanID a t)
     env <- ask ; b1 <- getNewChannelName env ; b2 <- getNewChannelName env
@@ -97,11 +99,8 @@ stepConcurrent (IId a b) (s, t, e, []) = do
     let (pa, ta) = fromJust (lookupLocalChanIDToGlobalChanID a t)
         (pb, tb) = fromJust (lookupLocalChanIDToGlobalChanID b t)
     env <- ask
-    if pa == pb 
-        then do
-            writeBroadcastChan env (BId (pa, ta) (ta, tb))
-            return ProcessEnd
-        else error "invalid IId instruction"
+    writeBroadcastChan env (BId (pa, ta) (ta, tb))
+    return ProcessEnd
 
 stepConcurrent (IPlug as ((g1, c1), (g2, c2))) (s, t, e, []) = do
     env <- ask
@@ -127,6 +126,7 @@ stepConcurrent (IRun t' fid args) (s, t, e, []) = do
         t'' = fromJust (composeTranslation t' t)
         c' = superCombInstrLookup env fid
     return $ ProcessContinue ([], t'', e', c')
+    -- this step is similar to Prashant's code.
 
 stepConcurrent (IHPut a n) (s, t, e, c) = do
     let ta = fromJust (lookupLocalChanIDToGlobalChanID a t)
@@ -180,10 +180,9 @@ prependQInstr Input qinstr = second (qinstr `Queue.prepend`)
 -- this returns a new channel manger with the appropriate 
 -- modifcations of the broadcast command
 addCommandToChannelManager :: 
-    BInstr ->
-    Map GlobalChanID (Queue QInstr, Queue QInstr) ->
-    Map GlobalChanID (Queue QInstr, Queue QInstr) 
-
+    BInstr ->       -- ^ Broadcast channel instruction
+    Chm ->          -- ^ old channel manager
+    Chm             -- ^ new channel manager
 addCommandToChannelManager (BGet (pol, gch) n) chm = 
     Map.adjust (appendQInstr pol (QGet n)) gch chm
 
@@ -228,12 +227,14 @@ addCommandToChannelManager (BRace ds (s, t, e)) chm =
     f (pol, gch, lchs, cs) = 
         Map.adjust (prependQInstr pol (QRace (lchs, (s, t, e, cs)))) gch 
 
+-- | Result of one step of the channel manager
 data StepChannelManagerResult = StepChannelManagerResult {
-        chmNewProcesses :: [Stec]
-        , chmFreeChannelNames :: [GlobalChanID]
-        , chmNewServices :: [ServiceQuery]
+        chmNewProcesses :: [Stec]                   -- ^ new processes could spawn
+        , chmFreeChannelNames :: [GlobalChanID]     -- ^ we could have some new free channel names
+        , chmNewServices :: [ServiceQuery]          -- ^ New services could be spawned as well
     } deriving (Show, Eq)
 
+-- | An empty StepChannelManagerResult.
 emptyStepChannelManagerResult :: StepChannelManagerResult
 emptyStepChannelManagerResult = StepChannelManagerResult [] [] []
 
@@ -254,8 +255,7 @@ stepChannelManager =
                         -- of Map.fromAscList list above will be satisfied.
 
     . (emptyStepChannelManagerResult,)     -- list for the processes to be spawned, globalchannel ids that can be returned, and
-                        -- services to spawn. i.e.  ((processes to be spawned, names to return, Services ), (channels already procssed, channels to process))
-                        -- when starting to process the channels, not processes are to be spawned yet...
+                                            -- services to spawn. i.e.  (emptyStepChannelManagerResult, (channels already procssed, channels to process))
 
     . ([],)             -- creates a zipper (channels already processed, channels to process)
                         -- no channel has been processed to begin with (hence the empty list)
@@ -266,14 +266,21 @@ stepChannelManager =
         Don't be afraid of this scary type signature! The first argument is the recursion (as usual with
         fixed point operators) and second argument is ((processes to be spawned, names to return, Services ), (channels already procssed, channels to process))
     -}
-    f :: ((StepChannelManagerResult, ([(GlobalChanID, (Queue QInstr, Queue QInstr))], [(GlobalChanID, (Queue QInstr, Queue QInstr))]))
-           -> (StepChannelManagerResult,
-               ([(GlobalChanID, (Queue QInstr, Queue QInstr))], [(GlobalChanID, (Queue QInstr, Queue QInstr))])))
-          -> (StepChannelManagerResult,
-              ([(GlobalChanID, (Queue QInstr, Queue QInstr))], [(GlobalChanID, (Queue QInstr, Queue QInstr))]))
-          -> (StepChannelManagerResult, ([(GlobalChanID, (Queue QInstr, Queue QInstr))], [(GlobalChanID, (Queue QInstr, Queue QInstr))]))
+    f :: 
+        ((StepChannelManagerResult, ([(GlobalChanID, (Queue QInstr, Queue QInstr))], [(GlobalChanID, (Queue QInstr, Queue QInstr))]))
+           -> (StepChannelManagerResult, ([(GlobalChanID, (Queue QInstr, Queue QInstr))], [(GlobalChanID, (Queue QInstr, Queue QInstr))]))) -> 
+        (StepChannelManagerResult, ([(GlobalChanID, (Queue QInstr, Queue QInstr))], [(GlobalChanID, (Queue QInstr, Queue QInstr))])) -> 
+        (StepChannelManagerResult, ([(GlobalChanID, (Queue QInstr, Queue QInstr))], [(GlobalChanID, (Queue QInstr, Queue QInstr))]))
     f rec (res, (chs', [])) = (res, (chs', []))
-    -- f rec (res, (chs', (gch, qs@(q1,q2)):chs)) = 
+
+    {- 
+        Notes about notation: 
+          - :<|| means to pattern match against the front of a tuple of queues.
+            e.g. given (q1:q1s, q2:q2s), we can do (q1,q2) :<|| (q1s,q2s); but given (Empty, q2) pattern matching will fail.
+
+          - :<| means to pattern match against the front of a single queue
+            e.g. given (q1:q1s), we can do (q1 :<| q1s); but given Empty pattern matching will fail.
+    -}
     f rec (res, (chs', (gch, qs) : chs)) = case qs of
             (QPut v, QGet (s,t,e,c)) :<|| qs' 
                 -> rec ( res { chmNewProcesses = (v:s,t,e,c) : chmNewProcesses res }
@@ -306,7 +313,7 @@ stepChannelManager =
                 -> rec ( res { chmFreeChannelNames = gch : chmFreeChannelNames res }
                     , (chs', chs))
             -- Technically, the (close, close) and (halt, halt) commands are not in the 
-            -- table, but we borrow this from Prashant again...
+            -- table, but we borrow this from Prashant 
             (QClose, QClose) :<|| qs'
                 -> rec ( res { chmFreeChannelNames = gch : chmFreeChannelNames res }
                     , (chs', chs))
@@ -315,9 +322,7 @@ stepChannelManager =
                     , (chs', chs))
 
 
-            -- invariant: b == gch (actually, I don't think we need b at all and it can be removed
-            -- from the QId constructor, but we leave it there because Table 2 says it should be 
-            -- there)
+            -- invariant: b == gch 
             (q1, QId (b, a) :<| Queue.Empty) 
                 | b < a -> 
                     -- a must be further ahead
@@ -333,10 +338,7 @@ stepChannelManager =
                         , ([(gch, qs) | isIdExecuted] ++ nchs', chs))
               where
                 g (a', (q, q')) = if a' == a && Queue.isEmpty q then (a', (q1, q')) else (a', (q, q'))
-            -- invariant: b == gch (actually, I don't think we need b at all and it can be removed
-            -- from the QId constructor, but we leave it there because Table 2 says it should be 
-            -- there)
-            -- (qs', (Just (QId (b, a)), _))
+            -- invariant: b == gch 
             (QId (b, a) :<| Queue.Empty, q2)
                 | b < a -> 
                     -- a must be further ahead 

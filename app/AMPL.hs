@@ -32,7 +32,7 @@ import Network.Socket
 -}
 
 -- |  wrapper around execAmplMach specifically designed for the AmplEnv type
--- with a default logger and server
+-- with a default logger (logs to logs/filnameXX_log.txt) and opens the server for you
 execAmplMachWithDefaults :: 
     ([Instr], [Translation]) ->                         -- ^ Main function
     [(FunID, (String, [Instr]))] ->                     -- ^ Function definitions..
@@ -41,8 +41,9 @@ execAmplMachWithDefaults ::
                                                         -- must correspond (i.e., if a global channel is in
                                                         -- Services, then there should be corresponding
                                                         -- empty queues with that global channel id
-                                                        -- and each of these MUST be distinct from the elemnts in
-                                                        -- Stream ChannelIdRep
+                                                        -- and each of these MUST be distinct from the elements in
+                                                        -- Stream ChannelIdRep. Use genServicesChmAndStream to generate
+                                                        -- this triple)
     IO ()
 execAmplMachWithDefaults mainf fdefs tcpsvr svs = 
     bracket 
@@ -67,15 +68,17 @@ execAmplMach mainf fdefs tcpsv lgr svs =
             runReaderT (runAmplMach mainf :: ReaderT AmplEnv IO ()) env
 
 -- | Default way to generate services. Expects all SERVICE channels
--- to be less than or equal to 0 (throws error). Then, all internal
--- channels should be positive (this is unchecked)...
+-- to be less than or equal to 0 (throws error if this is not the case). 
+-- Moreover, all internal channels should be positive (this is unchecked)....
 
--- Service Channels will have a ``(ServiceDataType, ServiceType)"
+-- Service Channels will have a corresponding ``(ServiceDataType, ServiceType)."
+
 -- Note that by convention (Prashant), 0 should be the stdin/stdout 
--- int terminal and -100 is the stdin/sdtout char terminal
+-- int terminal and -100 is the stdin/sdtout char terminal (although, this machine
+-- will run programs perfectly fine if this is not the case)
 genServicesChmAndStream :: 
     [GlobalChanID] ->                                       -- ^ internal channels
-    [(GlobalChanID, (ServiceDataType, ServiceType))] ->     -- ^ external channels
+    [(GlobalChanID, (ServiceDataType, ServiceType))] ->     -- ^ external channels (services)
     IO (Services, Chm, Stream ChannelIdRep)                 
 genServicesChmAndStream internal externalassocs 
     | all checkValid externalassocs = do

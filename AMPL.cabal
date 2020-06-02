@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 25d0dc0a9b289358f2259a7ceb99052c38890bca03991ca9f43f618c7e365f2f
+-- hash: 83985453e693c12f64f0f22597141555b1ca380297fa62482e404aef8bc6b2ba
 
 name:           AMPL
 version:        0.1.0.0
@@ -26,22 +26,6 @@ source-repository head
 
 library
   exposed-modules:
-      Data.Queue
-      Data.Stream
-      ServiceConstants
-  other-modules:
-      Paths_AMPL
-  hs-source-dirs:
-      lib/
-  build-depends:
-      base
-    , mtl
-  default-language: Haskell2010
-
-executable ampl
-  main-is: Main.hs
-  other-modules:
-      AMPL
       AMPLConcurrent
       AMPLEnv
       AMPLLogger
@@ -49,10 +33,33 @@ executable ampl
       AMPLSequential
       AMPLServices
       AMPLTypes
-      Tests
+      Data.Queue
+      Data.Stream
+      ServiceConstants
+  other-modules:
       Paths_AMPL
   hs-source-dirs:
-      src
+      src/
+  build-depends:
+      GenericPretty
+    , array
+    , base
+    , containers
+    , mtl
+    , network
+    , pretty
+    , process
+    , time
+  default-language: Haskell2010
+
+executable ampl
+  main-is: Main.hs
+  other-modules:
+      AMPL
+      InteractiveTests
+      Paths_AMPL
+  hs-source-dirs:
+      app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       AMPL
@@ -67,17 +74,26 @@ executable ampl
     , time
   default-language: Haskell2010
 
-test-suite queue-tests
+test-suite spec
   type: exitcode-stdio-1.0
-  main-is: QueueTests.hs
+  main-is: Spec.hs
   other-modules:
+      Data.QueueSpec
       Paths_AMPL
   hs-source-dirs:
-      tsts
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+      test
   build-depends:
       AMPL
+    , GenericPretty
     , QuickCheck
+    , array
     , base
+    , containers
+    , hspec ==2.*
     , mtl
+    , network
+    , pretty
+    , process
+    , time
   default-language: Haskell2010
+  build-tool-depends: hspec-discover:hspec-discover == 2.*

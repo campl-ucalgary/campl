@@ -14,7 +14,7 @@ import Control.Arrow
 -- external dependencies...
 import Control.Monad.Reader
 
--- executes one step in a sequential machine..
+-- | executes one step in a sequential machine..
 stepSequential :: 
     ( MonadReader r m
     , HasSuperCombinators r ) => 
@@ -78,7 +78,7 @@ isSequentialFinished :: ([Instr], [Val], [Val]) -> Bool
 isSequentialFinished ([], [], [v]) = True
 isSequentialFinished _ = False
 
--- Runs a sequential machine  -- WARNING unsafe and mainly used for testing..
+-- | Runs a sequential machine  -- WARNING unsafe and mainly used for testing..
 -- Will assume that the machine has 0 concurrent instructions (will error when 
 -- there is a concurrent instruciton)
 runSequential :: 

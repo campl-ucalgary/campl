@@ -23,15 +23,17 @@ import Text.Read
     do not handle exceptions and MOST LIKELY WILL THROW AN EXCEPTION
 -}
 
+-- | Sum type for the possible data types a service may accept and not accept
 data ServiceDataType = 
     IntService
     | CharService
     deriving Show
 
--- external services require a Key..
+-- | External services require a Key..
 newtype Key = Key String
     deriving (Show, Eq, Ord)
 
+-- | Sum type for the different kind of services..
 data ServiceType = 
     StdService                                  -- ^ standard service
     | NetworkedService Key                      -- ^ external network service
@@ -45,11 +47,13 @@ type ServiceQuery = (GlobalChanID, ServiceRequest Val)
     -- Then, from data in AMPLService, we can deduce where we want to get
     -- the data from, and the type of the data we would like to get (e.g., int, char, etc)...
 
+-- | Sum type for telling if a service is open or not
 data ServiceOpen = 
     ServiceIsOpen 
     | ServiceIsClosed
     deriving Show
 
+-- | Different kind of requests for a service. Services can either: get, put, or be closed.
 data ServiceRequest a = 
     ServiceGet Polarity     -- ^ get a value from a service e.g., ask for input for a terminal...
                             -- Note that this requires the Polarity to put our gotten value on...
@@ -69,8 +73,9 @@ data ServiceEnv = ServiceEnv {
         , serviceRequest :: Chan (ServiceRequest Val)
     } 
 
+-- | Map for the dfifferent kinds of services
 type Services = Map GlobalChanID ServiceEnv
-    -- Maps GlobalChanID to (ServiceType, ServiceDataType, (MVar Bool, MVar [Int])).
+    -- Maps GlobalChanID to a ServiceEnv
     -- We have the ServiceDataType (e.g. either int or char, etc), the ServiceType (
     -- internal services are different form external services)
     -- MVar ServiceIsOpen corresponds if it the service has been opened already or it
@@ -103,6 +108,7 @@ initQueuedClients =
         m <- newEmptyMVar
         return (k, m)
 
+-- | Helpful wrapper to generate the Services (recall Services is a map)
 initAmplServices :: 
     [(GlobalChanID, (ServiceDataType, ServiceType))] -> 
     IO Services 
@@ -117,17 +123,17 @@ initAmplServices svs =
 -- | wrapper for a TCP server's state (needed for
 -- the clients)
 data AmplTCPServer = AmplTCPServer { 
-    tcpServerLock :: MVar ()
-    , serverAddress :: SockAddr
-    , serverPort :: String
-    , serverSocket :: Socket 
+    tcpServerLock :: MVar ()            -- ^ lock for the TCP server's state (not needed actually because later only one thread is accessing the server at at time)
+    , serverAddress :: SockAddr         -- ^ Server address
+    , serverPort :: String              -- ^ port the server is running on
+    , serverSocket :: Socket            -- ^ Socket listening for connections
 }
 
 
 -- | Opens a TCP server... 
 initAmplTCPServer :: 
     String ->                  -- ^ port e.g. 514
-    IO AmplTCPServer           -- ^ handle (read write) to the socket
+    IO AmplTCPServer 
 initAmplTCPServer port = withSocketsDo $ do
     -- look up the port..  From the documentation, 
     -- raises an exception or returns a non empty list

@@ -20,6 +20,7 @@ module Data.Queue
     , Data.Queue.invariantCheck
     , Data.Queue.takeHead
     , Data.Queue.takeLast
+    , Data.Queue.toList
     , (<|) 
     , (|>) 
     , pattern (:<|)
@@ -166,9 +167,11 @@ showQueueWith :: Queue a -> ([a] -> String) -> String
 showQueueWith (Queue l lsz r rsz lu ru) s
     = "Queue (" ++ show (lsz + rsz) ++ "): " ++ s (l ++ reverse r)
 
-
 c :: Word
 c = 3
+
+toList :: Queue a -> [a]
+toList (Queue l1 lsz1 r1 rsz1 _ _) = l1 ++ reverse r1
 
 empty :: Queue a
 empty = Queue [] 0 [] 0 [] [] 

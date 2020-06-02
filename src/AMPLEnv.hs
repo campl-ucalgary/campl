@@ -36,7 +36,6 @@ class HasSuperCombinators a where
     superCombNameLookup :: a -> FunID -> String
 
 -- | type class for getting a logger.
--- e.g. putStrLn is a valid implementation of getAppLog.
 -- By convention, we adopt that: 
 --  - getFileLog is used for logging the application state... (normally
 --      logging to a file..)
@@ -91,8 +90,8 @@ class HasChannelNameGenerator a where
     returnChannelName :: MonadIO m => a -> GlobalChanID -> m ()
 
 -- | Type class related to things to do with Ampl services..
--- i.e., this gives you lookups for services' information, and the
--- TCP server for external services.
+-- i.e., this gives you lookups for services' information, and
+-- a lock for printing stuff to stdout
 class HasAmplServices a where
     -- | given a GlobalChanID, we can look up the corresponding environment for that Service...
     lookupServiceEnv :: GlobalChanID -> a -> Maybe ServiceEnv

@@ -1,7 +1,8 @@
--- Used to derive Out from Text.PrettyPrint.GenericPretty
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
+    -- Used to derive Out from Text.PrettyPrint.GenericPretty
 {-# LANGUAGE DeriveDataTypeable #-}
+    -- Used to derive the Typeable class (which we don't actually use later!)
 module AMPLTypes where
 
 import Data.Word
@@ -22,7 +23,7 @@ import qualified Data.Queue as Queue
 import Data.Stream (Stream)
 import qualified Data.Stream as Stream
 
--- ASSUMES ALL ARRAYS ARE INDEXED AT 0
+-- ASSUMES ALL ARRAYS ARE INDEXED STARTING AT 0
 
 type ChannelIdRep = Int
 
@@ -32,7 +33,7 @@ newtype LocalChanID = LocalChanID ChannelIdRep  -- Local channel id
 newtype GlobalChanID = GlobalChanID ChannelIdRep  -- global channel id
     deriving (Show, Eq, Ord, Ix, Generic, Out, Typeable)
 
-newtype PhysicalChanId = PhysicalChanID Word  -- physical channel id
+newtype PhysicalChanId = PhysicalChanID ChannelIdRep  -- physical channel id
     deriving (Show, Eq, Generic, Out, Typeable)
     -- unused...
 
@@ -75,6 +76,7 @@ newtype HCaseIx = HCaseIx Word
         -}
 
 
+-- Polarity, LocalChanID and corresponding GlobalChanID
 type Translation = (Polarity, (LocalChanID, GlobalChanID))
 
 -- Stack, translations, environment, code
@@ -410,7 +412,7 @@ qHCase (s,t,e,is) = QHCase (s,t,e, listArray (coerce (0 :: Word) :: HCaseIx, coe
 qRace :: ([LocalChanID], ([Val], [Translation], [Val], [Instr])) -> QInstr
 qRace = QRace
 
-
+-- | Data type used for terminating the TCP server by throwing an exception
 data AmplExit = AmplExit
     deriving (Show, Exception)
 

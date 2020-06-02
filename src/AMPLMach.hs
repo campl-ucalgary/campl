@@ -1,4 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 module AMPLMach where
 
 import AMPLEnv
@@ -56,8 +55,9 @@ runAmplMach (mainf, maint) = do
     -- starts the main process...
     amplForkProcess ([], maint, [], mainf) 
 
-    -- Opens the tcp server...
-    tcpid <- liftIO $ forkIO (catch (runReaderT amplRunTCPServer env ) (\(e :: AmplExit) ->  return ()))
+    -- Opens the tcp server and get its threadid (needed to terminate the server)
+    tcpid <- liftIO $ forkIO (catch (runReaderT amplRunTCPServer env ) (\e ->  return (const () (e :: AmplExit)))) 
+                    -- runs the server, and catches if it recieves an AmplExit exception
     liftIO $ putTcpThreadId env tcpid
 
     amplMACHLoop 
@@ -79,7 +79,8 @@ amplMACHLoop = do
     -- reads multiple at once 
     --bdcmds <- sequence (genericReplicate bdchsz (readBroadcastChan env))
     bdcmds <- if bdchsz > 0 then pure <$> readBroadcastChan env else return []
-    -- we can use either or...
+    -- we can use either of the two... Although, the latter is a little more
+    -- fair with how commands get processed since we only processes exactly one at a time.
 
     chm <- liftIO $ readIORef (getChannelManager env)
 
@@ -97,6 +98,7 @@ amplMACHLoop = do
     -- update the channel manager...
     liftIO $ writeIORef (getChannelManager env) chm''
 
+    -- logging
     amplLogChm chm'
     amplLogChm chm''
 
@@ -177,14 +179,17 @@ amplRunTCPServer = do
         logStdAndFile env ("Key received: " ++ show k)
 
         case Map.lookup k queuedclients of
+            -- if it is a valid key, proceed with connecting the channel manager to it
             Just client -> do
                 logStdAndFile env ("Key authenticated with " ++ show clientaddr ++ " and " ++ show k)
                 putMVar client (clienthandle, clientaddr)
+            -- Otherwise, just say its an invalid connection
             Nothing -> do 
                 logStdAndFile env ("Invalid connection from " ++ show clientaddr ++ " with key " ++ show k)
                 hPutStrLn clienthandle "Invalid client connection..."
                 hClose clienthandle
 
+    -- recurse..
     amplRunTCPServer
 
 -- | Runs a service. It will open the service again if it has not already been
@@ -234,6 +239,7 @@ amplOpenService sv@(_, svenv) = do
             forkIO (runReaderT (amplOpenNetworkedService k sv) env)
             void $ createProcess (shell cmd) 
 
+-- | This will open a networked service.
 amplOpenNetworkedService :: 
     ( HasProcessCounter r
     , HasAmplServices r
@@ -248,6 +254,7 @@ amplOpenNetworkedService k sv = do
     clientconnection <- liftIO $ takeMVar mclientinfo
     amplNetworkedServiceLoop clientconnection sv
 
+-- | Main loop for a networked service
 amplNetworkedServiceLoop :: 
     ( HasProcessCounter r
     , HasAmplServices r
@@ -310,6 +317,7 @@ amplNetworkedServiceLoop client@(clienthandle, clientaddr) sv@(gch, ServiceEnv{ 
 
     networkPut = hPutStrLn clienthandle
         
+-- Main loop for a stadnard input and output service
 amplStdServiceLoop ::
     ( HasProcessCounter r
     , HasAmplServices r
@@ -406,6 +414,7 @@ amplProcessLoop stec = amplLogProcess stec >> f stec
             _ -> return ()
 
 
+-- | Logs a process
 amplLogProcess :: HasLog r => Stec -> ReaderT r IO ()
 amplLogProcess (s,t,e,c) = do
     env <- ask
@@ -425,6 +434,7 @@ amplLogProcess (s,t,e,c) = do
             ]
         )
 
+-- | Logs the channel manager
 amplLogChm :: ( HasLog r, HasProcessCounter r ) => Chm -> ReaderT r IO ()
 amplLogChm chm = do
     env <- ask
