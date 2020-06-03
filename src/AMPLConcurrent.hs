@@ -3,7 +3,7 @@
     -- (,b) to denote (\a -> (a,b))
 {-# LANGUAGE PatternSynonyms #-}
     -- this is needed to import the 
-    -- pattern synonyms from Data.Queue..
+    -- pattern synonyms from Data.Queue and ServiceConstants
 module AMPLConcurrent where
 
 import AMPLTypes
@@ -12,7 +12,12 @@ import AMPLServices
 
 import ServiceConstants
 
-import Data.Queue ( Queue, pattern (:<||), pattern (:<|), pattern Empty )
+import Data.Queue 
+    ( Queue
+    , pattern (:<||)
+    , pattern (:<|)
+    , pattern Empty
+    )
 import qualified Data.Queue as Queue
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -123,7 +128,13 @@ stepConcurrent (IRun t' fid args) (s, t, e, []) = do
     env <- ask
     let e' = genericTake args s
         s' = genericDrop args s
-        t'' = fromJust (composeTranslation t' t)
+            -- unused...
+        t'' = fromJust (composeTranslation t t')
+            -- note that Prashant writes composeTranslation t' t
+            -- but our composeTranslation function differs in the sense
+            -- that `composeTranslation f g` is the translation f after 
+            -- the translation g, whereas his is the translation g after 
+            -- the translation f.
         c' = superCombInstrLookup env fid
     return $ ProcessContinue ([], t'', e', c')
     -- this step is similar to Prashant's code.
@@ -149,7 +160,7 @@ stepConcurrent (IRace rcs) (s, t, e, []) = do
     f (lch, cs) = 
         let (pol, gch) = fromJust (lookupLocalChanIDToGlobalChanID lch t)
         in (pol, gch, delete lch (map fst rcs), cs)
-stepConcurrent a b = error ("bad stepConcurrent with: " ++ show a ++ " and " ++ show b)
+stepConcurrent a b = error ("Bad stepConcurrent with: " ++ show a ++ " and " ++ show b)
 
 -- | Puts the QInstr to the back of the queue
 -- corresponding to the polarity. Recall by convention
@@ -389,6 +400,7 @@ stepChannelManager =
             -}
             (Queue.Empty, QHPut (HCaseIx IxGet) :<| q2@(QGet (s,t,e,c) :<| _)) -> rec
                 (res { chmNewServices = (gch, ServiceGet Output) : chmNewServices res } , ((gch, (Queue.empty, q2)):chs' , chs) )
+
             (QHPut (HCaseIx IxGet) :<| q1@(QGet (s,t,e,c) :<| _), Queue.Empty) -> rec
                 (res { chmNewServices = (gch, ServiceGet Input) : chmNewServices res } , ((gch, (q1, Queue.empty)):chs' , chs) )
 

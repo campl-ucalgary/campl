@@ -116,15 +116,31 @@ class HasNetworkedConnections a where
     getQueuedClients :: a -> QueuedClients
 
 
+-- | newtype wrapper for an array of supercombinators
+-- (supercombinators is the terminolgy Simon Peyton Jones uses for functions)
+newtype Supercombinators = Supercombinators (Array FunID (String, [Instr]))
+
+-- | Smart constructor for supercombinators
+mkSupercombinators :: 
+    [(FunID, (String, [Instr]))] ->          -- ^ association list of funciton ids and its name / instruction
+    Supercombinators 
+mkSupercombinators defs 
+    | null defs = Supercombinators (array (FunID 1, FunID 0) [])
+        -- create empty array -- NOTE: from the Data.Array documentation,
+        -- it says to create an empty array, we create an array with bounds
+        -- exclusive of any values.
+    | otherwise = Supercombinators (array (FunID 0, FunID (genericLength defs - 1)) defs)
+        -- otherwise, fill up the array with the definitions..
+
 -- Environment that the machine runs in.
 -- Includes: supercombinator defintions, data for locks and queues
 data AmplEnv = AmplEnv
     {
-        -- | function definitions (supercombinators is the terminolgy Simon Peyton Jones uses)
-        supercombinators :: Array FunID (String, [Instr])
+        -- | function definitions 
+        supercombinators :: Supercombinators
         -- | AMPL TCP server....
         , amplTCPServer :: (MVar ThreadId, AmplTCPServer)
-        -- | Map from global channel ids to (ServiceDataType, ServiceType, MVar ServiceOpen, MVar [Int])
+        -- | Map from global channel ids to ServiceEnv
         , amplServices :: Services
         -- | Maps the keys to connected clients..
         , amplQueuedClients :: QueuedClients
@@ -175,11 +191,7 @@ amplEnv defs tcpsv lg (svs, chm, nmg) = do
 
     return AmplEnv
             {
-                supercombinators = if null defs
-                                    -- create empty array..
-                                    then array (FunID 1, FunID 0) []
-                                    -- otherwise, fill up the array with the definitions..
-                                    else array (FunID 0, FunID (genericLength defs - 1)) defs
+                supercombinators = mkSupercombinators defs
                 , amplServices = svs
                 , amplStdServiceLock = stdsvlock
                 , amplTCPServer = (tcpmvarid, tcpsv)
@@ -192,9 +204,13 @@ amplEnv defs tcpsv lg (svs, chm, nmg) = do
                 , numRunningProcesses = numrunpr
             }
 
+instance HasSuperCombinators Supercombinators where
+    superCombInstrLookup (Supercombinators arr) ix = snd (arr ! ix)
+    superCombNameLookup (Supercombinators arr) ix = fst (arr ! ix)
+
 instance HasSuperCombinators AmplEnv where
-    superCombInstrLookup env ix = snd (supercombinators env ! ix)
-    superCombNameLookup env ix = fst (supercombinators env ! ix)
+    superCombInstrLookup env ix = (`superCombInstrLookup`ix) (supercombinators env)
+    superCombNameLookup env ix = (`superCombNameLookup`ix) (supercombinators env)
 
 instance HasLog AmplEnv where
     getFileLog AmplEnv { amplLogger = logger } = nonRedundantFileAmplLogger logger dashesTimeStampLn (return dashesLn) 

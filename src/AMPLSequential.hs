@@ -21,38 +21,34 @@ stepSequential ::
     SequentialInstr -> 
     Ces -> 
     m Ces -- ^ (c, e, s)
-
 stepSequential IStore (c, e, v:s) = return (c, v:e, s)
 
 stepSequential (IAccess n) (c, e, s) = return (c, e, genericIndex e n : s)
 
-stepSequential (ICall funid numargs) (c', e, s) 
-    = do 
-        env <- ask 
-        return (superCombInstrLookup env funid, args, VClos (c', e) : s')
-    where
-        (args, s') = genericSplitAt numargs s
+stepSequential (ICall funid numargs) (c', e, s) = do 
+    env <- ask 
+    return (superCombInstrLookup env funid, args, VClos (c', e) : s')
+  where
+    (args, s') = genericSplitAt numargs s
 
-stepSequential IRet (c, e, v:VClos(c', e'):s) 
-    = return (c', e', v : s)
+stepSequential IRet (c, e, v:VClos(c', e'):s) = return (c', e', v : s)
 
-stepSequential (ICons i n) (c, e, s) 
-    = return (c, e, VCons (i, vs) : s')
-    where
-        (vs, s') = genericSplitAt n s
+stepSequential (ICons i n) (c, e, s) = return (c, e, VCons (i, vs) : s')
+  where
+    (vs, s') = genericSplitAt n s
 
-stepSequential (ICase arr) (c, e, VCons (i, vs) : s) 
-    = return (arr ! i, vs ++ e, VClos (c,e) : s)
+stepSequential (ICase arr) (c, e, VCons (i, vs) : s) = 
+    return (arr ! i, vs ++ e, VClos (c,e) : s)
 
-stepSequential (IRec arr) (c, e, s) 
-    = return (c, e, VRec (arr, e) : s)
+stepSequential (IRec arr) (c, e, s) = 
+    return (c, e, VRec (arr, e) : s)
 
-stepSequential (IDest i n) (c, e, VRec (cs, e') : s)
-    = return (cs ! i, vs ++ e', VClos (c, e) : s')
-    where
-        -- in the CMachine, it reverses the vs, but in Prashant's code, he does
-        -- not. When testing this, _not_ reversing it is the correct thing to do
-        (vs, s') = genericSplitAt n s
+stepSequential (IDest i n) (c, e, VRec (cs, e') : s) = 
+    return (cs ! i, vs ++ e', VClos (c, e) : s')
+  where
+    -- in the CMachine, it reverses the vs, but in Prashant's code, he does
+    -- not. When testing this, _not_ reversing it is the correct thing to do
+    (vs, s') = genericSplitAt n s
 
 stepSequential (IConst k) (c, e, s) = return (c, e, k : s)
 
@@ -86,20 +82,20 @@ runSequential ::
     , HasSuperCombinators r ) =>
     [Instr] -> 
     m ( ([Instr], [Val], [Val]), [([Instr],[Val], [Val])])
-runSequential cde
-    = let m = (cde, [], []) in (m,) <$> fix f (return m)
-    where
-        f :: ( MonadReader r m , HasSuperCombinators r ) =>
-                (m ([Instr], [Val], [Val]) -> m [([Instr], [Val], [Val])]) -> 
-                m ([Instr], [Val], [Val]) -> m [([Instr], [Val], [Val])]
-        f rec m 
-            = do 
-                m' <- m
-                if isSequentialFinished m'
-                    then return [m']
-                    else case m' of
-                            (SequentialInstr c : cs, e, v)
-                                -> let m'' = stepSequential c (cs, e, v)
-                                    in (:) <$> m'' <*> rec m''
-                            _ -> error ("bad SequentialInstr" ++ show m')
+runSequential cde = 
+    let m = (cde, [], []) in (m,) <$> fix f (return m)
+  where
+    f :: ( MonadReader r m , HasSuperCombinators r ) =>
+            (m ([Instr], [Val], [Val]) -> m [([Instr], [Val], [Val])]) -> 
+            m ([Instr], [Val], [Val]) -> m [([Instr], [Val], [Val])]
+    f rec m 
+        = do 
+            m' <- m
+            if isSequentialFinished m'
+                then return [m']
+                else case m' of
+                        (SequentialInstr c : cs, e, v)
+                            -> let m'' = stepSequential c (cs, e, v)
+                                in (:) <$> m'' <*> rec m''
+                        _ -> error ("bad SequentialInstr" ++ show m')
 

@@ -72,9 +72,6 @@ data ServiceEnv = ServiceEnv {
         , serviceOpen ::  MVar ServiceOpen
         , serviceRequest :: Chan (ServiceRequest Val)
     } 
-
--- | Map for the dfifferent kinds of services
-type Services = Map GlobalChanID ServiceEnv
     -- Maps GlobalChanID to a ServiceEnv
     -- We have the ServiceDataType (e.g. either int or char, etc), the ServiceType (
     -- internal services are different form external services)
@@ -83,6 +80,9 @@ type Services = Map GlobalChanID ServiceEnv
 
     -- MVar [ServiceRequest Val] get, put, and close requests. Recall the confusing
     -- convention from Prashant where 1,2, and 3 are get, put and close respecitvely
+
+-- | Map for the dfifferent kinds of services
+type Services = Map GlobalChanID ServiceEnv
 
 emptyAmplServices :: Services
 emptyAmplServices = Map.empty

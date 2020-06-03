@@ -3,10 +3,9 @@ module Data.QueueSpec (spec) where
 
 import Test.Hspec
 import Test.QuickCheck
+import Test.HUnit
 import Data.Queue (Queue (..), (<|), (|>))
 import qualified Data.Queue as Queue
---import Test.QuickCheck
-
 
 import Control.Monad
 import Data.Maybe
@@ -116,8 +115,11 @@ spec = do
                         uncurry (==) (prependAppendTake xs i j)
 
     describe "Examples" $ do
-        it "Queue.toList (5 <| 4 <| 3 <| Queue.empty) == [5,4,3]" $ do
-            Queue.toList (5 <| 4 <| 3 <| Queue.empty) `shouldBe` [5,4,3]
+        it "Manipulating a q = 5 <| 4 <| 3 <| Queue.empty and taking the head" $ do
+            let q = 5 <| 4 <| 3 <| Queue.empty
+            assertEqual "Queue.toList q == [5,4,3]" (Queue.toList q) [5,4,3]
+            assertEqual "Queue.head q == Just (4 <| 3 <| Queue.empty, 5)" (Queue.head q) (Just (4 <| 3 <| Queue.empty, 5))
+
 
         it "Queue.toList (Queue.empty |> 5 |> 4 |> 3) == [5,4,3]" $ do
             Queue.toList (Queue.empty |> 5 |> 4 |> 3) `shouldBe` [5,4,3]

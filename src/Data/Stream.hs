@@ -3,6 +3,7 @@ module Data.Stream
     , unfoldr
     , Data.Stream.iterate
     , Data.Stream.head
+    , Data.Stream.take
     , Data.Stream.tail )
     where
 
@@ -16,6 +17,12 @@ data Stream a = Stream a (Stream a)
 
 head :: Stream a -> a
 head (Stream a _) = a
+
+take :: Int -> Stream a -> [a]
+take n (Stream a as) 
+    | n < 0 = error ("Stream.take negative input of " ++ show n)
+    | n == 0 = []
+    | otherwise = a : Data.Stream.take (n - 1) as
 
 tail :: Stream a -> Stream a
 tail (Stream _ as) = as

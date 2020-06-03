@@ -351,7 +351,6 @@ amplStdServiceLoop sv@(gch, ServiceEnv{ serviceDataType = svdty, serviceOpen = o
                 CharService -> 
                     stdGetChar env
 
-
     stdGetInt env = do
         mint <- readMaybe <$> getLine 
         case mint of

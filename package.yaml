@@ -49,12 +49,11 @@ executables:
         - -rtsopts
         - -with-rtsopts=-N
     dependencies:
-        - AMPL
-
-
+        - AMPL 
 tests: 
     spec:
         defaults: hspec/hspec@master
         dependencies: 
             - AMPL
             - QuickCheck
+            - HUnit

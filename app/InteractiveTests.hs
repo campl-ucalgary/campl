@@ -29,11 +29,11 @@ testAmplTCPServer = "5000"
 The general structure for writing the program is as follows...
 main = do
     svs <- genServicesChmAndStream 
-                    [ {- List of non service channels -} ] 
-                    [ {- List of services -} ]
+                    [ {- Non service channels -} ] 
+                    [ {- Service channels -} ]
     execAmplMachWithDefaults 
-        {- main function -}
-        {- function definitions -}
+        {- (main function instructions, translations) -}
+        [ {- (function index, function name, function definition) -} ]
         {- Port to run TCP server on e.g. 5000 -}
         svs
 -}
@@ -43,6 +43,7 @@ main = do
 -------------------------
 {-
     Small sequential co data test
+    See logs to see what it is doing...
 -}
 codataMain = 
     [ iConst (VInt 2)
@@ -252,7 +253,7 @@ p2 = [ iRace [ (LocalChanID 1, a), (LocalChanID 2, b) ] ]
                 , iOrBool
                 , iStore
                 , iAccess 0
-                , iAccess 0             -- this other access is here to make the if statement and return happy.
+                , iAccess 0             -- this other access is here to make the if and return happy.
                 , iPut (LocalChanID 3)
                 , iClose (LocalChanID 1)
                 , iClose (LocalChanID 2) 
@@ -341,16 +342,16 @@ getStdIntToServiceOutTest = do
         svs
 
 -------------------------
--- Run example....
+-- Call example....
 -------------------------
 {-
-Example using run with services to print the output...
+Example using call with services to print the output...
 This will open a service, get a character from the service and
  - if the character is 't', it will print 't' on the stdout
  - otherwise, it will print 'f' on the stdout
 Note that this uses a bool to communciate between the two internal channels..
 
-runExampleMain:
+callExampleMain:
 plug a b
     p1 | service1 => a
     p2 | a => service0
@@ -368,7 +369,7 @@ function boolToChartf(a :: Bool)
         then return 't'
         else return 'f'
 
-proc p1run
+proc p1call
     | service1  => a -> do
         -- this part can be rearranged
         hput CharGet on service1
@@ -377,7 +378,7 @@ proc p1run
         put x on a
         close service1
         close a
-proc p2run
+proc p2call
     | a => service0 -> do
         get x on a
         let x = boolToChartf(x)
@@ -387,16 +388,16 @@ proc p2run
         close service0 
 -}
 
-getStdCharAndRunToServiceOutMain = (
+getStdCharAndcallToServiceOutMain = (
     [ iPlug 
         [LocalChanID 1] 
-        ( ([LocalChanID (-1)], p1run)
-        , ([LocalChanID 0], p2run)
+        ( ([LocalChanID (-1)], p1call)
+        , ([LocalChanID 0], p2call)
         )
     ],
     [(Output, (LocalChanID (-1), GlobalChanID (-1))), (Input, (LocalChanID 0, GlobalChanID 0))])
 
-p1run = [
+p1call = [
       iHPut (LocalChanID (-1)) (HCaseIx hCaseIxGet)
     , iGet (LocalChanID (-1))
     , iStore
@@ -408,7 +409,7 @@ p1run = [
     , iHPut (LocalChanID (-1)) (HCaseIx hCaseIxClose)
     , iClose (LocalChanID 1)
     ]
-p2run = [
+p2call = [
       iGet (LocalChanID 1)
     , iStore
     , iAccess 0
@@ -442,9 +443,9 @@ boolToChartf = [
     , iRet
     ]
 
-getStdCharAndRunToServiceOutFunDefs = [ (FunID 0, ("chartfToBool", chartfToBool)), (FunID 1, ("boolToChartf",boolToChartf)) ]
+getStdCharAndcallToServiceOutFunDefs = [ (FunID 0, ("chartfToBool", chartfToBool)), (FunID 1, ("boolToChartf",boolToChartf)) ]
 
-getStdCharAndRunToServiceOutTest = do
+getStdCharAndcallToServiceOutTest = do
     svs <- genServicesChmAndStream 
                     [] 
                     [ 
@@ -452,17 +453,20 @@ getStdCharAndRunToServiceOutTest = do
                     , (GlobalChanID 0, (CharService, StdService) )
                     ]
     execAmplMachWithDefaults 
-        getStdCharAndRunToServiceOutMain    
-        getStdCharAndRunToServiceOutFunDefs
+        getStdCharAndcallToServiceOutMain    
+        getStdCharAndcallToServiceOutFunDefs
         testAmplTCPServer
         svs
 
 
 
 -------------------------
--- Parallel or with services...
+-- BAD Parallel or with services...
 -------------------------
 {-
+    -- Note that this parallel or is bad! What this gets compiled down to
+    -- does not type check! see the next example for a valid parallel or...
+    -- When I wrote this, I forgot about the fork and split instruction.
 
     -- service1 and service2 are external char services..
     -- service0 is stdout
@@ -472,6 +476,14 @@ getStdCharAndRunToServiceOutTest = do
         p1ServiceOr | service1, service2 => a, b
         p2ServiceOr | a,b => service0
     -- actually wasn't too sure about how to write this out....
+    -- Ideally, we want something like:
+    -- plug a,b
+    --     p1ServiceOr | service1 => a
+    --     p2ServiceOr | service2 => b
+    --     p3ServiceOr | a,b => service0
+    -- But, plug only takes 2 arguments! So we have to do 
+    -- some weird work around to get this to work..
+        
 
     proc p1ServiceOr
         | service1, service2  => a,b -> do
@@ -704,19 +716,483 @@ service0POr = 0
 aPOr = 1
 bPOr = 2
 
-
 parallelOrServiceTest = do
     svs <- genServicesChmAndStream 
                     [] 
                     [ 
-                      (GlobalChanID (-1), (CharService, TerminalNetworkedService "xterm -e 'amplc -hn 127.0.0.1 -p 5000 -k c-1  ; read'"  (Key "c-1")))
-                    , (GlobalChanID (-2), (CharService, TerminalNetworkedService "xterm -e 'amplc -hn 127.0.0.1 -p 5000 -k c-2  ; read'"  (Key "c-2")))
-                    , (GlobalChanID 0, (CharService, StdService) )
+                      (GlobalChanID service1POr, (CharService, TerminalNetworkedService "xterm -e 'amplc -hn 127.0.0.1 -p 5000 -k c-1  ; read'"  (Key "c-1")))
+                    , (GlobalChanID service2POr, (CharService, TerminalNetworkedService "xterm -e 'amplc -hn 127.0.0.1 -p 5000 -k c-2  ; read'"  (Key "c-2")))
+                    , (GlobalChanID service0POr, (CharService, StdService) )
                     ]
     execAmplMachWithDefaults 
         parallelOrServiceMain
-        getStdCharAndRunToServiceOutFunDefs         -- use the same function definitions from above..
+        getStdCharAndcallToServiceOutFunDefs         -- use the same function definitions from above..
+        testAmplTCPServer
+        svs
+
+-------------------------
+-- Parallel or with services and fork and split
+-------------------------
+{-
+    -- This is a proper implememtation of a parallel or. using
+    -- fork and split.. It reuses many of the functions in the
+    -- previous improper implementation.
+
+    -- service1 and service2 are external char services..
+    -- service0 is stdout
+
+    parallelOrServiceMain':
+    plug s
+        p1ServiceOr' | service1, service2 => s
+        p2ServiceOr' | s => service0
+        
+    proc p1ServiceOr'
+        | service1,service2 => s -> do
+        -- this type should be tensor or par?
+            fork s as
+                a with service1 -> do
+                    hPut GetChar service1
+                    get x on service1
+                    let x = chartfToBool(x)
+                    put x on a
+                    close a
+                    hPut CloseService service1
+                b with service2 -> do
+                    hPut GetChar service2
+                    get x on service2
+                    let x = chartfToBool(x)
+                    put x on b
+                    close b
+                    hPut CloseService service2
+
+    proc p2ServiceOr'
+        | s => service0 -> do
+            split s into a b
+            race
+                a -> 
+                    get va from a
+                    if va
+                        then
+                            put va on service0
+                            get _ from b
+                            close a,b
+                            end service0
+                        else
+                            get vb on b
+                            put (va || vb) on service0
+                            close a,b
+                            end service0
+                b -> get vb from b
+                    if vb 
+                        then
+                            put vb on service0
+                            get _ from a
+                            close a,b
+                            end service0
+                        else
+                            get va on a
+                            put (va || vb) on service0
+                            close a,b
+                            end service0 
+
+-}
+
+
+{-
+parallelOrServiceMain':
+plug s
+    p1ServiceOr' | service1, service2 => s
+    p2ServiceOr' | s => service0
+-}
+parallelOrServiceMain' =
+    (
+        [ iPlug [LocalChanID sPOr]
+            ( ([LocalChanID service1POr, LocalChanID service2POr], p1ServiceOr')
+            , ([LocalChanID sPOr, LocalChanID service0POr], p2ServiceOr'))
+        ]
+    ,
+        [ (Output, (LocalChanID service0POr, GlobalChanID service0POr)) 
+        , (Input, (LocalChanID service1POr, GlobalChanID service1POr)) 
+        , (Input, (LocalChanID service2POr, GlobalChanID service2POr)) 
+        ]
+    )
+
+{-
+proc p1ServiceOr'
+    | service1,service2 => s -> do
+        fork s as
+            a with [service1] -> do
+                hPut GetChar service1
+                get x on service1
+                let x = chartfToBool(x)
+                put x on a
+                close a
+                hPut CloseService service1
+            b with [service2] -> do
+                hPut GetChar service2
+                get x on service2
+                let x = chartfToBool(x)
+                put x on b
+                close b
+                hPut CloseService service2
+-}
+p1ServiceOr' = 
+    [ iFork (LocalChanID sPOr) 
+        (
+            (LocalChanID aPOr, [LocalChanID service1POr], p11ServiceOr)
+            , (LocalChanID bPOr, [LocalChanID service2POr], p12ServiceOr)
+        )
+
+    ]
+
+p2ServiceOr' = iSplit (LocalChanID sPOr) (LocalChanID aPOr, LocalChanID bPOr) : p2ServiceOr
+
+sPOr = 3
+
+parallelOrServiceTest' = do
+    svs <- genServicesChmAndStream 
+                    [] 
+                    [ 
+                      (GlobalChanID service1POr, (CharService, TerminalNetworkedService "xterm -e 'amplc -hn 127.0.0.1 -p 5000 -k c-1  ; read'"  (Key "c-1")))
+                    , (GlobalChanID service2POr, (CharService, TerminalNetworkedService "xterm -e 'amplc -hn 127.0.0.1 -p 5000 -k c-2  ; read'"  (Key "c-2")))
+                    , (GlobalChanID service0POr, (CharService, StdService) )
+                    ]
+    execAmplMachWithDefaults 
+        parallelOrServiceMain'
+        getStdCharAndcallToServiceOutFunDefs
+        testAmplTCPServer
+        svs
+
+-------------------------
+-- Repeatedly ask for a number, and add it to the previous number and print the result. 
+-- Mainly used to test recursively calling iRun.
+-- Enter 0 to exit
+-------------------------
+{-
+    -- service0 is StdInt
+    repeatedlyAskAndAddMain:
+        hPut GetChar service0
+        get x on service0
+        if x == 0
+            then hPut Close service0
+            else repeatedlyAskAndAddMain (| => service0)
+-}
+repeatedlyAskAndAddMain = 
+    ( iConst (VInt 0) : iStore : repeatedlyAskAndAddFun
+    , [(Input, (LocalChanID 0, GlobalChanID 0))]
+    )
+repeatedlyAskAndAddFun = 
+        [ iHPut (LocalChanID 0) (HCaseIx hCaseIxGet)
+        , iGet (LocalChanID 0)
+        , iStore
+        , iAccess 0
+        , iConst (VInt 0)
+        , iEq
+        , iIf 
+            [ iAccess 0, iHPut (LocalChanID 0) (HCaseIx hCaseIxClose), iRet ]
+            [ iHPut (LocalChanID 0) (HCaseIx hCaseIxPut)
+            , iAccess 0
+            , iAccess 1
+            , iAddInt
+            , iStore
+            , iAccess 0
+            , iPut (LocalChanID 0)
+            , iAccess 0
+            , iRun [(Input, (LocalChanID 0, GlobalChanID 0))] (FunID 0) 1
+            ]
+        ]
+
+repeatedlyAskAndAddTest = do
+    svs <- genServicesChmAndStream 
+                    [] 
+                    [(GlobalChanID service0POr, (IntService, StdService) )]
+    execAmplMachWithDefaults 
+        repeatedlyAskAndAddMain
+        [(FunID 0, ("repeatedlyAskAndAddFun", repeatedlyAskAndAddFun))]
         testAmplTCPServer
         svs
 
 
+-------------------------
+-- Ticket booking
+-------------------------
+{-
+    -- equivalent program looks something like this...
+
+    ticketNum = 0
+
+    ticketBookingMain:
+    plug s
+        ticketClients | service1, service2, service3 => s
+        ticketServer  ticketNum | s => service0
+
+    proc ticketClients  | service1, service2, service3 => s -> do
+        fork s as 
+            a with service1 -> do
+                bookClient (| service1 => a)
+            s' with [service2, service3] -> do
+                fork s' as 
+                    b with service2 -> do
+                        bookClient (| service2 => b)
+                    c with service3 -> do
+                        bookClient (| service3 => c)
+
+    proc bookClient
+        | serviceN => n -> do
+            -- any input gives a ticket (but in the future, change it
+            -- so that we have 0 for no tickets, 1 for a ticket
+            hPut GetInt serviceN
+            get x on serviceN
+
+            -- Send it back to the server..
+            put x on n
+
+            -- Get the ticket number and put it on the service..
+            get x on n
+            hPut putInt serviceN
+            put x on n
+
+            -- recurse indefinetly
+            bookClient (| service0POr => n)
+
+            -- close n
+            -- hPut CloseService serviceN
+
+    proc ticketServer
+        n | s => service0 -> do
+            split s into a s'
+            split s' into b c
+
+            tickerServerHelper(n | a,b,c => service0)
+
+    proc tickerServerHelper 
+        n | a,b,c => service0 -> do
+            hPut PutInt service0
+            put n on service0
+            race
+                a -> ticketServerHelper'(n | a,b,c -> service0)
+                b -> ticketServerHelper'(n | b,a,c -> service0)
+                c -> ticketServerHelper'(n | c,a,b -> service0)
+
+    proc ticketServerHelper'
+        n | s,t,q => service0 -> do 
+            get _ from s
+            put n on s
+            hPut IntPut on service0
+            let n' = n + 1
+            put n' on service0
+            tickerServerHelper(n' | s,t,q => service0)
+-}
+
+ticketBookService0 = 0
+ticketBookService1 = -1
+ticketBookService2 = -2
+ticketBookService3 = -3
+ticketBookChS = 1
+ticketBookChS' = 2
+ticketBookA = 3
+ticketBookB = 4
+ticketBookC = 5
+
+ticketNum = 0
+
+ticketBookingMain =
+    ( 
+        [ iPlug [LocalChanID ticketBookChS]
+            ( 
+                ( 
+                    [ LocalChanID ticketBookService1
+                    , LocalChanID ticketBookService2
+                    , LocalChanID ticketBookService3 ]
+                    , ticketClients
+                )
+                ,
+                ( 
+                    [ LocalChanID ticketBookService0 ]
+                    , 
+                    [ iConst (VInt ticketNum)
+                    , iStore
+                    , iAccess 0
+                    , iRun 
+                        [ (Output, (LocalChanID ticketBookService0, GlobalChanID ticketBookService0)) 
+                        , (Input, (LocalChanID ticketBookChS, GlobalChanID ticketBookChS)) 
+                        ] 
+                        ticketServerFunId 
+                        1 
+                    ]
+                )
+            )
+        ]
+    , 
+        [ (Input, (LocalChanID ticketBookService1, GlobalChanID ticketBookService1))
+        , (Input, (LocalChanID ticketBookService2, GlobalChanID ticketBookService2))
+        , (Input, (LocalChanID ticketBookService3, GlobalChanID ticketBookService3))
+        , (Output, (LocalChanID ticketBookService0, GlobalChanID ticketBookService0))
+        ]
+    )
+
+-- we inline this function..
+ticketClients = 
+    [ iFork (LocalChanID ticketBookChS) 
+        (
+            ( LocalChanID ticketBookA
+            , [ LocalChanID ticketBookService1 ]
+            , [ iRun 
+                    [ (Input, (LocalChanID ticketServiceN, GlobalChanID ticketBookService1))
+                    , (Output, (LocalChanID ticketn, GlobalChanID ticketBookA)) 
+                    ] 
+                    bookClientFunId 
+                    0
+              ]
+            )
+        , ( LocalChanID ticketBookChS'
+          , [ LocalChanID ticketBookService2, LocalChanID ticketBookService3 ]
+          , [ iFork (LocalChanID ticketBookChS')
+                (
+                        ( LocalChanID ticketBookB
+                        , [ LocalChanID ticketBookService2 ]
+                        , [ iRun 
+                            [ (Input, (LocalChanID ticketServiceN, GlobalChanID ticketBookService2))
+                            , (Output, (LocalChanID ticketn, GlobalChanID ticketBookB)) 
+                            ] 
+                            bookClientFunId
+                            0
+                        ]
+                        )
+                    ,
+                        ( LocalChanID ticketBookC
+                        , [ LocalChanID ticketBookService3 ]
+                        , [ iRun 
+                            [ (Input, (LocalChanID ticketServiceN, GlobalChanID ticketBookService3))
+                            , (Output, (LocalChanID ticketn, GlobalChanID ticketBookC)) 
+                            ] 
+                            bookClientFunId
+                            0
+                        ]
+                        )
+                )
+            ]
+          )
+        )
+    ]
+
+ticketServiceN = 1
+ticketn = 2
+bookClient =
+    [ iHPut (LocalChanID ticketServiceN) (HCaseIx hCaseIxGet)
+    , iGet (LocalChanID ticketServiceN)
+    , iStore
+    , iAccess 0
+    , iPut (LocalChanID ticketn)
+    , iGet (LocalChanID ticketn)
+    , iStore
+    , iAccess 0
+    , iHPut (LocalChanID ticketServiceN) (HCaseIx hCaseIxPut)
+    , iPut (LocalChanID ticketServiceN)
+    , iRun 
+        [ (Output, (LocalChanID ticketServiceN, GlobalChanID ticketServiceN)) 
+        , (Input, (LocalChanID ticketn, GlobalChanID ticketn))
+        ]
+        bookClientFunId
+        0
+    ]
+bookClientFunId = FunID 1
+
+ticketServer = 
+    [ iSplit (LocalChanID ticketBookChS) (LocalChanID ticketBookA, LocalChanID ticketBookChS')
+    , iSplit (LocalChanID ticketBookChS') (LocalChanID ticketBookB, LocalChanID ticketBookC)
+    , iAccess 0
+    , iRun 
+        [ (Output, (LocalChanID ticketBookChS, GlobalChanID ticketBookA))
+        , (Output, (LocalChanID ticketBookChT, GlobalChanID ticketBookB))
+        , (Output, (LocalChanID ticketBookChQ, GlobalChanID ticketBookC))
+        , (Output, (LocalChanID ticketBookService0, GlobalChanID ticketBookService0))
+        ]
+        ticketServerHelperFunId 
+        1
+    ]
+ticketServerFunId = FunID 0
+
+ticketServerHelper = 
+    [ iHPut (LocalChanID ticketBookService0) (HCaseIx hCaseIxPut)
+    , iAccess 0
+    , iPut (LocalChanID ticketBookService0)
+    , iRace 
+        [ (LocalChanID ticketBookChS
+            , [ iAccess 0
+              , iRun  
+                    [ (Output, (LocalChanID ticketBookChS, GlobalChanID ticketBookChS))
+                    , (Output, (LocalChanID ticketBookChT, GlobalChanID ticketBookChT))
+                    , (Output, (LocalChanID ticketBookChQ, GlobalChanID ticketBookChQ))
+                    ,  (Output, (LocalChanID ticketBookService0, GlobalChanID ticketBookService0))]
+                    ticketServerHelperId'
+                    1
+              ]
+            )
+        , (LocalChanID ticketBookChT
+            , [ iAccess 0
+              , iRun  
+                    [ (Output, (LocalChanID ticketBookChS, GlobalChanID ticketBookChT))
+                    , (Output, (LocalChanID ticketBookChT, GlobalChanID ticketBookChS))
+                    , (Output, (LocalChanID ticketBookChQ, GlobalChanID ticketBookChQ))
+                    ,  (Output, (LocalChanID ticketBookService0, GlobalChanID ticketBookService0))]
+                    ticketServerHelperId'
+                    1
+              ]
+            )
+        , (LocalChanID ticketBookChQ
+            , [ iAccess 0
+              , iRun  
+                    [ (Output, (LocalChanID ticketBookChS, GlobalChanID ticketBookChQ))
+                    , (Output, (LocalChanID ticketBookChT, GlobalChanID ticketBookChS))
+                    , (Output, (LocalChanID ticketBookChQ, GlobalChanID ticketBookChT))
+                    ,  (Output, (LocalChanID ticketBookService0, GlobalChanID ticketBookService0))]
+                    ticketServerHelperId'
+                    1
+              ]
+            )
+
+        ]
+    ]
+ticketServerHelperFunId = FunID 2
+
+ticketBookChT = 8
+ticketBookChQ = 9
+
+ticketServerHelper' = 
+    [ iGet (LocalChanID ticketBookChS)
+    , iAccess 0
+    , iPut (LocalChanID ticketBookChS)
+    , iAccess 0
+    , iConst (VInt 1)
+    , iAddInt
+    , iStore
+    , iAccess 0
+    , iRun
+        [ (Output, (LocalChanID ticketBookChS, GlobalChanID ticketBookChS))
+        , (Output, (LocalChanID ticketBookChT, GlobalChanID ticketBookChT))
+        , (Output, (LocalChanID ticketBookChQ, GlobalChanID ticketBookChQ))
+        ,  (Output, (LocalChanID ticketBookService0, GlobalChanID ticketBookService0))
+        ]
+        ticketServerHelperFunId
+        1
+    ]
+ticketServerHelperId' = FunID 3
+
+ticketBookingTest = do
+    svs <- genServicesChmAndStream 
+                    [] 
+                    [ (GlobalChanID ticketBookService0, (IntService, StdService) )
+                    , (GlobalChanID ticketBookService1, (IntService, TerminalNetworkedService "xterm -e 'amplc -hn 127.0.0.1 -p 5000 -k c1  ; read'"  (Key "c1")))
+                    , (GlobalChanID ticketBookService2, (IntService, TerminalNetworkedService "xterm -e 'amplc -hn 127.0.0.1 -p 5000 -k c2  ; read'"  (Key "c2")))
+                    , (GlobalChanID ticketBookService3, (IntService, TerminalNetworkedService "xterm -e 'amplc -hn 127.0.0.1 -p 5000 -k c3  ; read'"  (Key "c3")))
+                    ]
+    execAmplMachWithDefaults 
+        ticketBookingMain
+        [ (bookClientFunId, ("bookClient", bookClient))
+        , (ticketServerFunId, ("ticketServer", ticketServer))
+        , (ticketServerHelperFunId, ("ticketServerHelper", ticketServerHelper))
+        , (ticketServerHelperId', ("ticketServerHelper", ticketServerHelper'))
+        ]
+        testAmplTCPServer
+        svs

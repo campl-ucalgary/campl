@@ -130,8 +130,10 @@ composeTranslation as bs = foldr f g bs as
         Maybe [Translation]
     f (p, (lc, gc)) h ts = do
         t' <- (\(p', (lc', gc')) -> (p', (lc, gc'))) <$> 
-                find (\(p', (lc', gc')) -> p == p' 
-                    && (coerce gc :: Int) == (coerce lc' :: Int))
+                find (\(p', (lc', gc')) -> 
+                    -- p == p' && 
+                    --  TODO: Remove the relaxed composition condition for run...
+                    (coerce gc :: Int) == (coerce lc' :: Int))
                 ts
         (t':) <$> h ts
 
