@@ -78,6 +78,16 @@ newtype HCaseIx = HCaseIx Word
 
 -- Polarity, LocalChanID and corresponding GlobalChanID
 type Translation = (Polarity, (LocalChanID, GlobalChanID))
+type TranslationMapping = (Polarity, (LocalChanID, LocalChanID))
+    -- A translation mapping is a mapping from a LocalChanID to 
+    -- another LocalChanID. This is useful for the IRun instruction.
+
+    -- Note about TranslationMappings and the IRun instruction...
+    -- We have translation mappings because we want to ``pass translations as an argument", 
+    -- so that requires mapping local channel ids of the function to local channel ids in the context 
+    -- the function is being called in which can map to the required global channel ids.
+    -- See AMPLConcurrent.hs in stepConcurrent on the IRun pattern match case...
+
 
 -- Stack, translations, environment, code
 type Stec = ([Val], [Translation], [Val], [Instr])
@@ -112,19 +122,13 @@ deleteTranslation lc =
         (\(p, (lc', gc)) acc -> if lc == lc' then acc else (p, (lc', gc)):acc) 
         []
 
--- | restrict translations to certain LocalChannel ids
-restrictTranslation :: 
-    [LocalChanID] -> -- ^ List of local channel ids to restrict the translations to
-    [Translation] -> -- ^ translations to be restricted
-    [Translation]
-restrictTranslation lcls = filter (\(p, (lc, gc)) -> lc `elem` lcls)
-
--- | Composes translations i.e. if f and g are translations, we get 
--- a translation which is f . g (f after g).
-composeTranslation :: [Translation] -> [Translation] -> Maybe [Translation]
-composeTranslation as bs = foldr f g bs as
+-- | Composes a translation with its mapping
+-- i.e, given a translation f and a translation mapping g,
+-- we have the translation f applied after the translation mapping g (f after g).
+composeTranslationWithTranslationMapping :: [Translation] -> [TranslationMapping] -> Maybe [Translation]
+composeTranslationWithTranslationMapping as bs = foldr f g bs as
   where
-    f :: Translation -> 
+    f :: (Polarity, (LocalChanID, LocalChanID)) -> 
         ([Translation] -> Maybe [Translation]) -> 
         [Translation] -> 
         Maybe [Translation]
@@ -137,8 +141,16 @@ composeTranslation as bs = foldr f g bs as
                 ts
         (t':) <$> h ts
 
-    g :: [Translation] -> Maybe [Translation]
-    g _ = Just []
+g :: [Translation] -> Maybe [Translation]
+g _ = Just []
+
+-- | restrict translations to certain LocalChannel ids
+restrictTranslation :: 
+    [LocalChanID] -> -- ^ List of local channel ids to restrict the translations to
+    [Translation] -> -- ^ translations to be restricted
+    [Translation]
+restrictTranslation lcls = filter (\(p, (lc, gc)) -> lc `elem` lcls)
+
 
 -- Process instruction type.. (splits into parallel, and sequential)
 data Instr =
@@ -275,8 +287,8 @@ data ConcurrentInstr =
     | IPlug [LocalChanID] (([LocalChanID], [Instr]), ([LocalChanID], [Instr]))
 
 
-    | IRun [Translation] FunID Word
-        -- Translations, FunctionID and number of arguments to call with this function..
+    | IRun [TranslationMapping] FunID Word
+        -- Translation mappings, FunctionID and number of arguments to call with this function..
 
     | IHPut LocalChanID HCaseIx
     | IHCase LocalChanID (Array HCaseIx [Instr])
@@ -306,7 +318,7 @@ iPlug lcs =  ConcurrentInstr . IPlug lcs
 iHalt :: [LocalChanID] -> Instr
 iHalt = ConcurrentInstr . IHalt
 
-iRun :: [Translation] -> FunID -> Word -> Instr
+iRun :: [TranslationMapping] -> FunID -> Word -> Instr
 iRun ts f w = ConcurrentInstr $ IRun ts f w
 
 iHPut :: LocalChanID -> HCaseIx -> Instr

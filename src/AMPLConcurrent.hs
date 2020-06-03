@@ -129,7 +129,7 @@ stepConcurrent (IRun t' fid args) (s, t, e, []) = do
     let e' = genericTake args s
         s' = genericDrop args s
             -- unused...
-        t'' = fromJust (composeTranslation t t')
+        t'' = fromJust (composeTranslationWithTranslationMapping t t')
             -- note that Prashant writes composeTranslation t' t
             -- but our composeTranslation function differs in the sense
             -- that `composeTranslation f g` is the translation f after 
@@ -138,6 +138,7 @@ stepConcurrent (IRun t' fid args) (s, t, e, []) = do
         c' = superCombInstrLookup env fid
     return $ ProcessContinue ([], t'', e', c')
     -- this step is similar to Prashant's code.
+    
 
 stepConcurrent (IHPut a n) (s, t, e, c) = do
     let ta = fromJust (lookupLocalChanIDToGlobalChanID a t)

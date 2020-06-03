@@ -898,7 +898,7 @@ repeatedlyAskAndAddFun =
             , iAccess 0
             , iPut (LocalChanID 0)
             , iAccess 0
-            , iRun [(Input, (LocalChanID 0, GlobalChanID 0))] (FunID 0) 1
+            , iRun [(Input, (LocalChanID 0, LocalChanID 0))] (FunID 0) 1
             ]
         ]
 
@@ -1014,8 +1014,8 @@ ticketBookingMain =
                     , iStore
                     , iAccess 0
                     , iRun 
-                        [ (Output, (LocalChanID ticketBookService0, GlobalChanID ticketBookService0)) 
-                        , (Input, (LocalChanID ticketBookChS, GlobalChanID ticketBookChS)) 
+                        [ (Output, (LocalChanID ticketBookService0, LocalChanID ticketBookService0)) 
+                        , (Input, (LocalChanID ticketBookChS, LocalChanID ticketBookChS)) 
                         ] 
                         ticketServerFunId 
                         1 
@@ -1038,8 +1038,8 @@ ticketClients =
             ( LocalChanID ticketBookA
             , [ LocalChanID ticketBookService1 ]
             , [ iRun 
-                    [ (Input, (LocalChanID ticketServiceN, GlobalChanID ticketBookService1))
-                    , (Output, (LocalChanID ticketn, GlobalChanID ticketBookA)) 
+                    [ (Input, (LocalChanID ticketServiceN, LocalChanID ticketBookService1))
+                    , (Output, (LocalChanID ticketn, LocalChanID ticketBookA)) 
                     ] 
                     bookClientFunId 
                     0
@@ -1052,8 +1052,8 @@ ticketClients =
                         ( LocalChanID ticketBookB
                         , [ LocalChanID ticketBookService2 ]
                         , [ iRun 
-                            [ (Input, (LocalChanID ticketServiceN, GlobalChanID ticketBookService2))
-                            , (Output, (LocalChanID ticketn, GlobalChanID ticketBookB)) 
+                            [ (Input, (LocalChanID ticketServiceN, LocalChanID ticketBookService2))
+                            , (Output, (LocalChanID ticketn, LocalChanID ticketBookB)) 
                             ] 
                             bookClientFunId
                             0
@@ -1063,8 +1063,8 @@ ticketClients =
                         ( LocalChanID ticketBookC
                         , [ LocalChanID ticketBookService3 ]
                         , [ iRun 
-                            [ (Input, (LocalChanID ticketServiceN, GlobalChanID ticketBookService3))
-                            , (Output, (LocalChanID ticketn, GlobalChanID ticketBookC)) 
+                            [ (Input, (LocalChanID ticketServiceN, LocalChanID ticketBookService3))
+                            , (Output, (LocalChanID ticketn, LocalChanID ticketBookC)) 
                             ] 
                             bookClientFunId
                             0
@@ -1090,8 +1090,8 @@ bookClient =
     , iHPut (LocalChanID ticketServiceN) (HCaseIx hCaseIxPut)
     , iPut (LocalChanID ticketServiceN)
     , iRun 
-        [ (Output, (LocalChanID ticketServiceN, GlobalChanID ticketServiceN)) 
-        , (Input, (LocalChanID ticketn, GlobalChanID ticketn))
+        [ (Output, (LocalChanID ticketServiceN, LocalChanID ticketServiceN)) 
+        , (Input, (LocalChanID ticketn, LocalChanID ticketn))
         ]
         bookClientFunId
         0
@@ -1103,10 +1103,10 @@ ticketServer =
     , iSplit (LocalChanID ticketBookChS') (LocalChanID ticketBookB, LocalChanID ticketBookC)
     , iAccess 0
     , iRun 
-        [ (Output, (LocalChanID ticketBookChS, GlobalChanID ticketBookA))
-        , (Output, (LocalChanID ticketBookChT, GlobalChanID ticketBookB))
-        , (Output, (LocalChanID ticketBookChQ, GlobalChanID ticketBookC))
-        , (Output, (LocalChanID ticketBookService0, GlobalChanID ticketBookService0))
+        [ (Output, (LocalChanID ticketBookChS, LocalChanID ticketBookA))
+        , (Output, (LocalChanID ticketBookChT, LocalChanID ticketBookB))
+        , (Output, (LocalChanID ticketBookChQ, LocalChanID ticketBookC))
+        , (Output, (LocalChanID ticketBookService0, LocalChanID ticketBookService0))
         ]
         ticketServerHelperFunId 
         1
@@ -1121,10 +1121,10 @@ ticketServerHelper =
         [ (LocalChanID ticketBookChS
             , [ iAccess 0
               , iRun  
-                    [ (Output, (LocalChanID ticketBookChS, GlobalChanID ticketBookChS))
-                    , (Output, (LocalChanID ticketBookChT, GlobalChanID ticketBookChT))
-                    , (Output, (LocalChanID ticketBookChQ, GlobalChanID ticketBookChQ))
-                    ,  (Output, (LocalChanID ticketBookService0, GlobalChanID ticketBookService0))]
+                    [ (Output, (LocalChanID ticketBookChS, LocalChanID ticketBookChS))
+                    , (Output, (LocalChanID ticketBookChT, LocalChanID ticketBookChT))
+                    , (Output, (LocalChanID ticketBookChQ, LocalChanID ticketBookChQ))
+                    ,  (Output, (LocalChanID ticketBookService0, LocalChanID ticketBookService0))]
                     ticketServerHelperId'
                     1
               ]
@@ -1132,10 +1132,10 @@ ticketServerHelper =
         , (LocalChanID ticketBookChT
             , [ iAccess 0
               , iRun  
-                    [ (Output, (LocalChanID ticketBookChS, GlobalChanID ticketBookChT))
-                    , (Output, (LocalChanID ticketBookChT, GlobalChanID ticketBookChS))
-                    , (Output, (LocalChanID ticketBookChQ, GlobalChanID ticketBookChQ))
-                    ,  (Output, (LocalChanID ticketBookService0, GlobalChanID ticketBookService0))]
+                    [ (Output, (LocalChanID ticketBookChS, LocalChanID ticketBookChT))
+                    , (Output, (LocalChanID ticketBookChT, LocalChanID ticketBookChS))
+                    , (Output, (LocalChanID ticketBookChQ, LocalChanID ticketBookChQ))
+                    ,  (Output, (LocalChanID ticketBookService0, LocalChanID ticketBookService0))]
                     ticketServerHelperId'
                     1
               ]
@@ -1143,10 +1143,10 @@ ticketServerHelper =
         , (LocalChanID ticketBookChQ
             , [ iAccess 0
               , iRun  
-                    [ (Output, (LocalChanID ticketBookChS, GlobalChanID ticketBookChQ))
-                    , (Output, (LocalChanID ticketBookChT, GlobalChanID ticketBookChS))
-                    , (Output, (LocalChanID ticketBookChQ, GlobalChanID ticketBookChT))
-                    ,  (Output, (LocalChanID ticketBookService0, GlobalChanID ticketBookService0))]
+                    [ (Output, (LocalChanID ticketBookChS, LocalChanID ticketBookChQ))
+                    , (Output, (LocalChanID ticketBookChT, LocalChanID ticketBookChS))
+                    , (Output, (LocalChanID ticketBookChQ, LocalChanID ticketBookChT))
+                    ,  (Output, (LocalChanID ticketBookService0, LocalChanID ticketBookService0))]
                     ticketServerHelperId'
                     1
               ]
@@ -1169,10 +1169,10 @@ ticketServerHelper' =
     , iStore
     , iAccess 0
     , iRun
-        [ (Output, (LocalChanID ticketBookChS, GlobalChanID ticketBookChS))
-        , (Output, (LocalChanID ticketBookChT, GlobalChanID ticketBookChT))
-        , (Output, (LocalChanID ticketBookChQ, GlobalChanID ticketBookChQ))
-        ,  (Output, (LocalChanID ticketBookService0, GlobalChanID ticketBookService0))
+        [ (Output, (LocalChanID ticketBookChS, LocalChanID ticketBookChS))
+        , (Output, (LocalChanID ticketBookChT, LocalChanID ticketBookChT))
+        , (Output, (LocalChanID ticketBookChQ, LocalChanID ticketBookChQ))
+        ,  (Output, (LocalChanID ticketBookService0, LocalChanID ticketBookService0))
         ]
         ticketServerHelperFunId
         1
@@ -1192,7 +1192,7 @@ ticketBookingTest = do
         [ (bookClientFunId, ("bookClient", bookClient))
         , (ticketServerFunId, ("ticketServer", ticketServer))
         , (ticketServerHelperFunId, ("ticketServerHelper", ticketServerHelper))
-        , (ticketServerHelperId', ("ticketServerHelper", ticketServerHelper'))
+        , (ticketServerHelperId', ("ticketServerHelper'", ticketServerHelper'))
         ]
         testAmplTCPServer
         svs
