@@ -1090,8 +1090,8 @@ bookClient =
     , iHPut (LocalChanID ticketServiceN) (HCaseIx hCaseIxPut)
     , iPut (LocalChanID ticketServiceN)
     , iRun 
-        [ (Output, (LocalChanID ticketServiceN, LocalChanID ticketServiceN)) 
-        , (Input, (LocalChanID ticketn, LocalChanID ticketn))
+        [ (Input, (LocalChanID ticketServiceN, LocalChanID ticketServiceN)) 
+        , (Output, (LocalChanID ticketn, LocalChanID ticketn))
         ]
         bookClientFunId
         0
@@ -1103,9 +1103,9 @@ ticketServer =
     , iSplit (LocalChanID ticketBookChS') (LocalChanID ticketBookB, LocalChanID ticketBookC)
     , iAccess 0
     , iRun 
-        [ (Output, (LocalChanID ticketBookChS, LocalChanID ticketBookA))
-        , (Output, (LocalChanID ticketBookChT, LocalChanID ticketBookB))
-        , (Output, (LocalChanID ticketBookChQ, LocalChanID ticketBookC))
+        [ (Input, (LocalChanID ticketBookChS, LocalChanID ticketBookA))
+        , (Input, (LocalChanID ticketBookChT, LocalChanID ticketBookB))
+        , (Input, (LocalChanID ticketBookChQ, LocalChanID ticketBookC))
         , (Output, (LocalChanID ticketBookService0, LocalChanID ticketBookService0))
         ]
         ticketServerHelperFunId 
@@ -1121,9 +1121,9 @@ ticketServerHelper =
         [ (LocalChanID ticketBookChS
             , [ iAccess 0
               , iRun  
-                    [ (Output, (LocalChanID ticketBookChS, LocalChanID ticketBookChS))
-                    , (Output, (LocalChanID ticketBookChT, LocalChanID ticketBookChT))
-                    , (Output, (LocalChanID ticketBookChQ, LocalChanID ticketBookChQ))
+                    [ (Input, (LocalChanID ticketBookChS, LocalChanID ticketBookChS))
+                    , (Input, (LocalChanID ticketBookChT, LocalChanID ticketBookChT))
+                    , (Input, (LocalChanID ticketBookChQ, LocalChanID ticketBookChQ))
                     ,  (Output, (LocalChanID ticketBookService0, LocalChanID ticketBookService0))]
                     ticketServerHelperId'
                     1
@@ -1132,9 +1132,9 @@ ticketServerHelper =
         , (LocalChanID ticketBookChT
             , [ iAccess 0
               , iRun  
-                    [ (Output, (LocalChanID ticketBookChS, LocalChanID ticketBookChT))
-                    , (Output, (LocalChanID ticketBookChT, LocalChanID ticketBookChS))
-                    , (Output, (LocalChanID ticketBookChQ, LocalChanID ticketBookChQ))
+                    [ (Input, (LocalChanID ticketBookChS, LocalChanID ticketBookChT))
+                    , (Input, (LocalChanID ticketBookChT, LocalChanID ticketBookChS))
+                    , (Input, (LocalChanID ticketBookChQ, LocalChanID ticketBookChQ))
                     ,  (Output, (LocalChanID ticketBookService0, LocalChanID ticketBookService0))]
                     ticketServerHelperId'
                     1
@@ -1143,9 +1143,9 @@ ticketServerHelper =
         , (LocalChanID ticketBookChQ
             , [ iAccess 0
               , iRun  
-                    [ (Output, (LocalChanID ticketBookChS, LocalChanID ticketBookChQ))
-                    , (Output, (LocalChanID ticketBookChT, LocalChanID ticketBookChS))
-                    , (Output, (LocalChanID ticketBookChQ, LocalChanID ticketBookChT))
+                    [ (Input, (LocalChanID ticketBookChS, LocalChanID ticketBookChQ))
+                    , (Input, (LocalChanID ticketBookChT, LocalChanID ticketBookChS))
+                    , (Input, (LocalChanID ticketBookChQ, LocalChanID ticketBookChT))
                     ,  (Output, (LocalChanID ticketBookService0, LocalChanID ticketBookService0))]
                     ticketServerHelperId'
                     1
@@ -1169,9 +1169,9 @@ ticketServerHelper' =
     , iStore
     , iAccess 0
     , iRun
-        [ (Output, (LocalChanID ticketBookChS, LocalChanID ticketBookChS))
-        , (Output, (LocalChanID ticketBookChT, LocalChanID ticketBookChT))
-        , (Output, (LocalChanID ticketBookChQ, LocalChanID ticketBookChQ))
+        [ (Input, (LocalChanID ticketBookChS, LocalChanID ticketBookChS))
+        , (Input, (LocalChanID ticketBookChT, LocalChanID ticketBookChT))
+        , (Input, (LocalChanID ticketBookChQ, LocalChanID ticketBookChQ))
         ,  (Output, (LocalChanID ticketBookService0, LocalChanID ticketBookService0))
         ]
         ticketServerHelperFunId
