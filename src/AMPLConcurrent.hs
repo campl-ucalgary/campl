@@ -336,36 +336,37 @@ stepChannelManager =
 
             -- invariant: b == gch 
             (q1, QId (b, a) :<| Queue.Empty) 
-                | b < a -> 
-                    -- a must be further ahead
+                | b > a -> 
+                    -- a must be ahead (descending order)
                     let nchs = map g chs
-                        isIdExecuted = nchs == chs
+                        isIdExecuted = nchs /= chs
                     in rec ( res { chmFreeChannelNames = [b | isIdExecuted] ++ chmFreeChannelNames res }
-                        , ([(gch, qs) | isIdExecuted], const nchs) <*> (chs', chs))
+                        , ([(gch, qs) | not isIdExecuted] ++ chs', nchs))
                     -- b must be behind a...
                 | otherwise -> 
                     let nchs' = map g chs'
-                        isIdExecuted = nchs' == chs'
+                        isIdExecuted = nchs' /= chs'
                     in rec ( res { chmFreeChannelNames = [b | isIdExecuted] ++ chmFreeChannelNames res }
-                        , ([(gch, qs) | isIdExecuted] ++ nchs', chs))
+                        , ([(gch, qs) | not isIdExecuted] ++ nchs', chs))
+                -- What about self identifying channels? ie a == b
               where
                 g (a', (q, q')) = if a' == a && Queue.isEmpty q then (a', (q1, q')) else (a', (q, q'))
             -- invariant: b == gch 
             (QId (b, a) :<| Queue.Empty, q2)
-                | b < a -> 
-                    -- a must be further ahead 
+                | b > a -> 
+                    -- a must be further ahead  (descending order)
                     let nchs = map g chs
-                        isIdExecuted = nchs == chs
+                        isIdExecuted = nchs /= chs
                     in rec ( res { chmFreeChannelNames = [b | isIdExecuted] ++ chmFreeChannelNames res }
-                        , ([(gch, qs) | isIdExecuted], const nchs) <*> (chs', chs))
+                        , ([(gch, qs) | not isIdExecuted] ++ chs', nchs))
                     -- b must be behind a...
                 | otherwise -> 
                     let nchs' = map g chs'
-                        isIdExecuted = nchs' == chs'
+                        isIdExecuted = nchs' /= chs'
                     in rec ( res { chmFreeChannelNames = [b | isIdExecuted] ++ chmFreeChannelNames res }
-                        , ([(gch, qs) | isIdExecuted] ++ nchs', chs))
+                        , ([(gch, qs) | not isIdExecuted] ++ nchs', chs))
               where
-                g (a', (q, q')) = if a' == a && Queue.isEmpty q then (a', (q, q2)) else (a', (q, q'))
+                g (a', (q, q')) = if a' == a && Queue.isEmpty q' then (a', (q, q2)) else (a', (q, q'))
 
 
             (q1@(QPut v :<| _), QRace (rcs, (s,t,e,c)) :<| q2) -> 

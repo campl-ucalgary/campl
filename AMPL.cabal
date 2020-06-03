@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 99d51bd79cd319676544a3ae376f1182ad2657c7e601feb6045608b7cbe7dc1c
+-- hash: 844fbe5963862c4ddd6aab46e59e80e2e7b5263580b4dfd8e0e09d0a0620d8d1
 
 name:           AMPL
 version:        0.1.0.0
@@ -78,6 +78,7 @@ test-suite spec
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      AMPLConcurrentSpec
       AMPLSequentialSpec
       Data.QueueSpec
       Data.StreamSpec
