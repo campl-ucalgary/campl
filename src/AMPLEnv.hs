@@ -50,14 +50,38 @@ class HasChannelManager a where
     getChannelManager :: a -> IORef Chm
 
 -- | Type class for counting the number of alive processes (threads).
-class HasProcessCounter a where
+class HasProcesses a where
     -- | tells us if no process is running (useful for termination
     -- checking)
     getNumRunningProcesses :: MonadIO m => a -> m Word
+
+    -- | Gets all the running process ids
+    getProcessIds :: MonadIO m => a -> m [ThreadId]
+
     -- | Increases the number of processes running
     succNumProcesses :: MonadIO m => a -> m ()
+
     -- | Decreases the number of processes running
     predNumProcesses :: MonadIO m => a -> m ()
+
+    -- | Forks a process (ensures proper clean up for the AMPL system)
+    forkProcess :: MonadIO m => a -> (ThreadId -> IO ()) -> m ThreadId
+    forkProcess_ :: MonadIO m => a -> IO () -> m ()
+
+
+newtype AMPLProcesses = AMPLProcesses { amplProcessesSet :: MVar (Set ThreadId) }
+
+instance HasProcesses AMPLProcesses where
+    getProcessIds = liftIO . (Set.toList<$>) . readMVar . amplProcessesSet
+
+    forkProcess (AMPLProcesses processSet) f = 
+        liftIO $ forkIO $ bracket 
+            (do tid <- myThreadId ; modifyMVar_ processSet (return . Set.insert tid) ; return tid)
+            (\tid -> modifyMVar_ processSet (return . Set.delete tid))
+            (liftIO . f)
+
+    forkProcess_ env f = void (forkProcess env (const f))
+
 
 -- | Functions relating to manipulating the broadcast channel.
 -- NOte that an exception CANNOT be thrown during any function or the
@@ -223,7 +247,7 @@ logStdAndFile env str = getStdLog env str >> getFileLog env str
 instance HasChannelManager AmplEnv where
     getChannelManager = channelManager
 
-instance HasProcessCounter AmplEnv where
+instance HasProcesses AmplEnv where
     getNumRunningProcesses env = liftIO $ readMVar (numRunningProcesses env)
     succNumProcesses env = liftIO $ modifyMVar_ (numRunningProcesses env) (return . succ)
     predNumProcesses env = liftIO $ modifyMVar_ (numRunningProcesses env) (return . pred)

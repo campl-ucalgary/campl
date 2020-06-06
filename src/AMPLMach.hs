@@ -42,7 +42,7 @@ import Text.PrettyPrint.GenericPretty
 runAmplMach :: 
     ( HasBroadcastChan r 
     , HasChannelManager r 
-    , HasProcessCounter r 
+    , HasProcesses r 
     , HasAmplServices r 
     , HasSuperCombinators r 
     , HasNetworkedConnections r
@@ -66,7 +66,7 @@ runAmplMach (mainf, maint) = do
 amplMACHLoop :: 
     ( HasChannelManager r 
     , HasBroadcastChan r 
-    , HasProcessCounter r 
+    , HasProcesses r 
     , HasAmplServices r 
     , HasSuperCombinators r 
     , HasNetworkedConnections r
@@ -157,7 +157,7 @@ amplMACHLoop = do
 
 -- | runs the TCP server to accept connections
 amplRunTCPServer ::
-    ( HasProcessCounter r
+    ( HasProcesses r
     , HasAmplServices r
     , HasNetworkedConnections r
     , HasLog r ) => 
@@ -195,7 +195,7 @@ amplRunTCPServer = do
 -- | Runs a service. It will open the service again if it has not already been
 -- opened..
 amplRunService :: 
-    ( HasProcessCounter r
+    ( HasProcesses r
     , HasAmplServices r
     , HasBroadcastChan r
     , HasNetworkedConnections r
@@ -222,7 +222,7 @@ amplRunService (gch, rq) = do
     
 -- | amplOpenService will open a service..
 amplOpenService :: 
-    ( HasProcessCounter r
+    ( HasProcesses r
     , HasAmplServices r
     , HasNetworkedConnections r
     , HasBroadcastChan r
@@ -241,7 +241,7 @@ amplOpenService sv@(_, svenv) = do
 
 -- | This will open a networked service.
 amplOpenNetworkedService :: 
-    ( HasProcessCounter r
+    ( HasProcesses r
     , HasAmplServices r
     , HasNetworkedConnections r
     , HasBroadcastChan r
@@ -256,7 +256,7 @@ amplOpenNetworkedService k sv = do
 
 -- | Main loop for a networked service
 amplNetworkedServiceLoop :: 
-    ( HasProcessCounter r
+    ( HasProcesses r
     , HasAmplServices r
     , HasNetworkedConnections r
     , HasBroadcastChan r
@@ -319,7 +319,7 @@ amplNetworkedServiceLoop client@(clienthandle, clientaddr) sv@(gch, ServiceEnv{ 
         
 -- Main loop for a stadnard input and output service
 amplStdServiceLoop ::
-    ( HasProcessCounter r
+    ( HasProcesses r
     , HasAmplServices r
     , HasBroadcastChan r
     , HasLog r ) =>
@@ -372,7 +372,7 @@ amplStdServiceLoop sv@(gch, ServiceEnv{ serviceDataType = svdty, serviceOpen = o
 -- for termination since it modifies the number of processes (used for the
 -- termination condition)..
 amplForkProcess :: 
-    ( HasProcessCounter r
+    ( HasProcesses r
     , HasBroadcastChan r
     , HasSuperCombinators r
     , HasLog r 
@@ -388,7 +388,7 @@ amplForkProcess stec = do
 -- | Main loop for an amplProcess
 amplProcessLoop :: 
     ( HasBroadcastChan r 
-    , HasProcessCounter r 
+    , HasProcesses r 
     , HasSuperCombinators r 
     , HasLog r 
     , HasChannelNameGenerator r) =>
@@ -434,7 +434,7 @@ amplLogProcess (s,t,e,c) = do
         )
 
 -- | Logs the channel manager
-amplLogChm :: ( HasLog r, HasProcessCounter r ) => Chm -> ReaderT r IO ()
+amplLogChm :: ( HasLog r, HasProcesses r ) => Chm -> ReaderT r IO ()
 amplLogChm chm = do
     env <- ask
     numrningprs <- getNumRunningProcesses env

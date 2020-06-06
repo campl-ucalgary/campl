@@ -130,7 +130,7 @@ stepConcurrent (IRun t' fid args) (s, t, e, []) = do
         s' = genericDrop args s
             -- unused...
         t'' = fromJust (composeTranslationWithTranslationMapping t t')
-            -- note that Prashant writes composeTranslation t' t
+            -- note that Prashant writes `composeTranslation t' t`
             -- but our composeTranslation function differs in the sense
             -- that `composeTranslation f g` is the translation f after 
             -- the translation g, whereas his is the translation g after 

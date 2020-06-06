@@ -1172,7 +1172,7 @@ ticketServerHelper' =
         [ (Input, (LocalChanID ticketBookChS, LocalChanID ticketBookChS))
         , (Input, (LocalChanID ticketBookChT, LocalChanID ticketBookChT))
         , (Input, (LocalChanID ticketBookChQ, LocalChanID ticketBookChQ))
-        ,  (Output, (LocalChanID ticketBookService0, LocalChanID ticketBookService0))
+        , (Output, (LocalChanID ticketBookService0, LocalChanID ticketBookService0))
         ]
         ticketServerHelperFunId
         1
