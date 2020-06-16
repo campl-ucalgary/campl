@@ -1,0 +1,103 @@
+cabal-version: 1.18
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 8a277aa7da2596093ca64677df2215f3e8b6947d7aba080f4576416936725130
+
+name:           AMPL
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/AMPL#readme>
+homepage:       https://github.com/githubuser/AMPL#readme
+bug-reports:    https://github.com/githubuser/AMPL/issues
+author:         Author name here
+maintainer:     example@example.com
+copyright:      2020 Author name here
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-doc-files:
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/githubuser/AMPL
+
+library
+  exposed-modules:
+      AMPL
+      AMPLConcurrent
+      AMPLEnv
+      AMPLLogger
+      AMPLMach
+      AMPLSequential
+      AMPLServices
+      AMPLTypes
+      Data.Queue
+      Data.Stream
+      ServiceConstants
+  other-modules:
+      Paths_AMPL
+  hs-source-dirs:
+      src/
+  build-depends:
+      GenericPretty
+    , array
+    , base
+    , containers
+    , mtl
+    , network
+    , pretty
+    , process
+    , time
+  default-language: Haskell2010
+
+executable ampl
+  main-is: Main.hs
+  other-modules:
+      InteractiveTests
+      Paths_AMPL
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      AMPL
+    , GenericPretty
+    , array
+    , base
+    , containers
+    , mtl
+    , network
+    , pretty
+    , process
+    , time
+  default-language: Haskell2010
+
+test-suite spec
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      AMPLConcurrentSpec
+      AMPLSequentialSpec
+      Data.QueueSpec
+      Data.StreamSpec
+      Paths_AMPL
+  hs-source-dirs:
+      test
+  build-depends:
+      AMPL
+    , GenericPretty
+    , HUnit
+    , QuickCheck
+    , array
+    , base
+    , containers
+    , hspec ==2.*
+    , mtl
+    , network
+    , pretty
+    , process
+    , time
+  default-language: Haskell2010
+  build-tool-depends: hspec-discover:hspec-discover == 2.*
