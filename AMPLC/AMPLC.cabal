@@ -1,0 +1,40 @@
+cabal-version: 1.18
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: de03033e021d5a844acaf8b0c03486e89e77d7b319092bdc0b19d583b25c5bc3
+
+name:           AMPLC
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/AMPLC#readme>
+homepage:       https://github.com/githubuser/AMPLC#readme
+bug-reports:    https://github.com/githubuser/AMPLC/issues
+author:         Author name here
+maintainer:     example@example.com
+copyright:      2019 Author name here
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-doc-files:
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/githubuser/AMPLC
+
+executable amplc
+  main-is: Main.hs
+  other-modules:
+      Paths_AMPLC
+  hs-source-dirs:
+      src
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      AMPL
+    , base
+    , bytestring
+    , mtl
+    , network
+  default-language: Haskell2010
