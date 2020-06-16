@@ -1,0 +1,150 @@
+%include "potato.ampl"
+
+%handles : {
+    HandleExample = { SomeIdentifiers ; NonEmptySep } ;
+    OtherHandle = { SomeIdentifiers ; NonEmptySep } 
+}
+
+%cohandles : {
+    CoHandleExample = { SomeIdentifiers ; NonEmptySep } ;
+    OtherHandle = { SomeIdentifiers ; NonEmptySep } 
+}
+
+%constructors : {
+    Test = { Potato 1 ; Constructor 2 } ;
+    Test2 = { Potato 1 ; Constructor 2 }
+}
+
+%destructors : {
+    Test = { Potato 1 ; Constructor 2 } ;
+    Test2 = { Potato 1 ; Constructor 2 }
+}
+
+%processes : {
+    process (var1, var2 | pvar1, pvar2 => pvar1, pvar2) = { ret } ;
+    otherProcess (var1, var2 | pvar1, pvar2 => pvar1, pvar2) = { ret }
+}
+
+%functions : {
+    functionTo (var1, var2) = { ret }
+}
+
+%run ( | inchannel1, inchannel2 => outchannel1 ) : {
+    -- AC_ASSIGN
+    potato := ret ;
+        -- note there is exactly one instsruction
+
+    -- AC_STOREf 
+    store var;
+
+    -- AC_LOADf 
+    load var;
+
+    -- AC_RET
+    ret;
+
+    -- AC_CALLf
+    call function ( var1,var2, var3 );
+
+    -- AC_INT
+    cInt 100 ;
+    cInt -1348797900 ;
+
+    -- AC_CHAR
+    cChar 'a';
+    cChar '\n';
+    -- AC_STRING
+    cString "potatoo" ;
+    -- AC_TOSTR
+    toStr ;
+    -- AC_TOINT
+    toInt ;
+    -- AC_AND
+    And ;
+    -- AC_OR
+    or ;
+    -- AC_APPEND
+    appendL ;
+    -- AC_UNSTRING
+    unstring ;
+    -- more constants..
+
+    -- AC_CONS
+    -- cons ( 3, 3) ;
+    -- AC_STRUCT
+    DataName.Constsructor ;
+    -- AC_STRUCTas
+    DataName.Constsructor (var1, var2, var3);
+    -- AC_CASEf
+    case of {
+        Data.Constructor : { ret } ;
+        Data.Constructor ( var1, var2 ): { ret } ;
+    } ;
+
+    -- AC_RECORDf
+    -- making a record...
+    rec of {
+        Codata.Destructor : { ret } ;
+        Codata.Destructor ( var1, var2 ) : { ret }
+    } ;
+
+    -- AC_DESTl
+    Codata.Destructor codataname ;
+
+    -- AC_DESTlas
+    Codata.Destructor ( var1, var2 ) codataname ;
+
+    -- AC_GETf
+    get val on channel ;
+
+    -- AC_HPUTf
+    hput val Handle.HandleConstructorThing ;
+
+    -- AC_HCASEf 
+    hcase val of {
+        Handle.HandleConstructorThing : { ret } ;
+        Handle.HandleConstructorThing (var1, var2) : { ret }
+    };
+
+    -- AC_PUTf
+    put var ;
+
+    -- AC_SPLITf
+    split ch into ch1 ch2 ;
+
+    -- AC_FORKf 
+    fork ch as {
+        ch1 with a,b,c : { ret } ;
+        ch2 with d,e,f : { ret }
+    } ;
+
+    -- AC_PLUGf
+    plug ch1,ch2,ch3 as {
+        with [v1,v2,v3] : { ret } ;
+        with [v1,v2,v3] : { ret }
+    } ;
+
+    -- AC_RUNf
+    run protocol (svar1,svar2 | inch1,inch2 => outch1, outch2 ) ;
+
+    -- AC_IDF
+    ch1 == ch2 ;
+
+    -- AC_PROD
+    (var1,var2,var3) ;
+
+    -- AC_PRODELEM
+    #1(tuple) ;
+
+    -- AC_EMSG 
+    cString "errormessage" ;
+
+    -- AC_CLOSEf
+    close ch ;
+
+    -- AC_HALTf
+    halt ch1,ch2,ch3 ;
+
+    ret 
+}
+

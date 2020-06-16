@@ -1,0 +1,91 @@
+cabal-version: 1.18
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 4c95a82da666dba1a6be162c891c268f7906e3789e994c145ff61f8f061d5345
+
+name:           AMPLASM
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/AMPLASM#readme>
+homepage:       https://github.com/githubuser/AMPLASM#readme
+bug-reports:    https://github.com/githubuser/AMPLASM/issues
+author:         Author name here
+maintainer:     example@example.com
+copyright:      2020 Author name here
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    src/AMPLGrammar.bnfc
+    src/Language/LexAMPLGrammar.x
+    src/Language/ParAMPLGrammar.y
+extra-doc-files:
+    README.md
+    ChangeLog.md
+
+source-repository head
+  type: git
+  location: https://github.com/githubuser/AMPLASM
+
+library
+  exposed-modules:
+      AMPLAssemble
+      AMPLCompile
+      AMPLCompileErrors
+      AMPLConstructBag
+      AMPLFunIDGen
+      AMPLSymbolTable
+      Control.Monad.MonadUnique
+      Language.AbsAMPLGrammar
+      Language.ErrM
+      Language.LayoutAMPLGrammar
+      Language.LexAMPLGrammar
+      Language.ParAMPLGrammar
+      Language.PrintAMPLGrammar
+      Language.SkelAMPLGrammar
+  other-modules:
+      Paths_AMPLASM
+  hs-source-dirs:
+      src
+  build-depends:
+      AMPL
+    , array
+    , base >=4.7 && <5
+    , containers
+    , mtl
+  default-language: Haskell2010
+
+executable amplasm
+  main-is: Main.hs
+  other-modules:
+      Paths_AMPLASM
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      AMPL
+    , AMPLASM
+    , array
+    , base >=4.7 && <5
+    , containers
+    , mtl
+  default-language: Haskell2010
+
+test-suite AMPLASM-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_AMPLASM
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      AMPL
+    , AMPLASM
+    , array
+    , base >=4.7 && <5
+    , containers
+    , mtl
+  default-language: Haskell2010

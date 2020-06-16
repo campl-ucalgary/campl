@@ -17,6 +17,10 @@ cabal.sandbox.config
 *.hp
 *.eventlog
 .stack-work/
+AMPL/.stack-work
+AMPLASM/.stack-work
+AMPLC/.stack-work
+AMPLASMOld/.stack-work
 cabal.project.local
 cabal.project.local~
 .HTF/
