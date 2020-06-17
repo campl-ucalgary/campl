@@ -37,6 +37,7 @@ position token Quot     {"quot"} ;
 position token Rem      {"rem"} ;
 position token Cons     {"cons"} ;
 position token Case     {"case"} ;
+position token If       {"if"} ;
 position token Rec      {"rec"} ;
 position token Get      {"get"} ;
 position token Put      {"put"} ;
@@ -51,6 +52,8 @@ position token Close    {"close"};
 position token Halt     {"halt"};
 position token Ch_Id    {"=="};
 position token Main_run {"%run"};
+position token BTrue     {"true"};
+position token BFalse    {"false"};
 
 position token Character '\'' ((char - ["'\\"]) | ('\\' ["'\\nt"])) '\''  ;
 position token UIdent (upper (letter | digit | '_')*);
@@ -141,6 +144,8 @@ AC_TOINT   .COM   ::= ToInt ;
 AC_AND     .COM   ::= And ;
 AC_OR      .COM   ::= Or ;
 AC_APPEND  .COM   ::= Append ; 
+AC_TRUE    .COM   ::= BTrue ; 
+AC_FALSE    .COM  ::= BFalse ; 
 AC_UNSTRING.COM   ::= Unstring ;
 AC_LEQ     .COM   ::= LeqI ;
 AC_EQ      .COM   ::= EqI  ;
@@ -157,9 +162,11 @@ AC_DIVR    .COM   ::= Rem ;
 AC_CONS    .COM   ::= Cons "(" PInteger "," PInteger ")" ;
 AC_STRUCT  .COM   ::= UIdent "." UIdent ;
 AC_STRUCTAS.COM   ::= UIdent "." UIdent "(" [PIdent] ")" ;
-AC_CASEf   .COM   ::= Case "of"  "{" [LABELCOMS] "}"  ;
+AC_CASEf   .COM   ::= Case PIdent "of"  "{" [LABELCOMS] "}"  ;
 Labelcoms1 .LABELCOMS ::= UIdent "." UIdent ":" COMS ;
 Labelcoms2 .LABELCOMS ::= UIdent "." UIdent "(" [PIdent] ")" ":" COMS ;
+
+AC_IF      .COM   ::= If PIdent "then" COMS "else" COMS  ;
 separator COMS ",";
 separator LABELCOMS ";";
 

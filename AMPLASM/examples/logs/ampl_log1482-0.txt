@@ -1,0 +1,1590 @@
+
+--------------------
+2020-06-17 06:50:10.504926207 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.505007419 UTC
+Process on: ThreadId 12
+Stack:
+[]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[]
+Code:
+[SequentialInstr (ICons (ConsIx 0) 0),SequentialInstr IStore,
+ SequentialInstr (IConst (VInt 100)),SequentialInstr IStore,
+ SequentialInstr (IAccess 1),SequentialInstr (IAccess 0),
+ SequentialInstr (ICons (ConsIx 1) 2),SequentialInstr IStore,
+ SequentialInstr (IConst (VInt 200)),SequentialInstr IStore,
+ SequentialInstr (IAccess 1),SequentialInstr (IAccess 0),
+ SequentialInstr (ICons (ConsIx 1) 2),SequentialInstr IStore,
+ SequentialInstr (IAccess 0),SequentialInstr (ICall (FunID 0) 1),
+ SequentialInstr IStore,
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+ SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+ ConcurrentInstr (IClose (LocalChanID 0))]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.505571872 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.505688827 UTC
+Server is waiting for a connection...
+--------------------
+
+--------------------
+2020-06-17 06:50:10.505813157 UTC
+Process on: ThreadId 12
+Stack:
+[VCons (ConsIx 0, [])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[]
+Code:
+[SequentialInstr IStore,SequentialInstr (IConst (VInt 100)),
+ SequentialInstr IStore,SequentialInstr (IAccess 1),
+ SequentialInstr (IAccess 0),SequentialInstr (ICons (ConsIx 1) 2),
+ SequentialInstr IStore,SequentialInstr (IConst (VInt 200)),
+ SequentialInstr IStore,SequentialInstr (IAccess 1),
+ SequentialInstr (IAccess 0),SequentialInstr (ICons (ConsIx 1) 2),
+ SequentialInstr IStore,SequentialInstr (IAccess 0),
+ SequentialInstr (ICall (FunID 0) 1),SequentialInstr IStore,
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+ SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+ ConcurrentInstr (IClose (LocalChanID 0))]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.50630834 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.50660453 UTC
+Process on: ThreadId 12
+Stack:
+[]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VCons (ConsIx 0, [])]
+Code:
+[SequentialInstr (IConst (VInt 100)),SequentialInstr IStore,
+ SequentialInstr (IAccess 1),SequentialInstr (IAccess 0),
+ SequentialInstr (ICons (ConsIx 1) 2),SequentialInstr IStore,
+ SequentialInstr (IConst (VInt 200)),SequentialInstr IStore,
+ SequentialInstr (IAccess 1),SequentialInstr (IAccess 0),
+ SequentialInstr (ICons (ConsIx 1) 2),SequentialInstr IStore,
+ SequentialInstr (IAccess 0),SequentialInstr (ICall (FunID 0) 1),
+ SequentialInstr IStore,
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+ SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+ ConcurrentInstr (IClose (LocalChanID 0))]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.506881505 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.506965171 UTC
+Process on: ThreadId 12
+Stack:
+[VInt 100]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VCons (ConsIx 0, [])]
+Code:
+[SequentialInstr IStore,SequentialInstr (IAccess 1),
+ SequentialInstr (IAccess 0),SequentialInstr (ICons (ConsIx 1) 2),
+ SequentialInstr IStore,SequentialInstr (IConst (VInt 200)),
+ SequentialInstr IStore,SequentialInstr (IAccess 1),
+ SequentialInstr (IAccess 0),SequentialInstr (ICons (ConsIx 1) 2),
+ SequentialInstr IStore,SequentialInstr (IAccess 0),
+ SequentialInstr (ICall (FunID 0) 1),SequentialInstr IStore,
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+ SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+ ConcurrentInstr (IClose (LocalChanID 0))]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.507267928 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.507434761 UTC
+Process on: ThreadId 12
+Stack:
+[]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 100,VCons (ConsIx 0, [])]
+Code:
+[SequentialInstr (IAccess 1),SequentialInstr (IAccess 0),
+ SequentialInstr (ICons (ConsIx 1) 2),SequentialInstr IStore,
+ SequentialInstr (IConst (VInt 200)),SequentialInstr IStore,
+ SequentialInstr (IAccess 1),SequentialInstr (IAccess 0),
+ SequentialInstr (ICons (ConsIx 1) 2),SequentialInstr IStore,
+ SequentialInstr (IAccess 0),SequentialInstr (ICall (FunID 0) 1),
+ SequentialInstr IStore,
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+ SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+ ConcurrentInstr (IClose (LocalChanID 0))]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.508054557 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.508140398 UTC
+Process on: ThreadId 12
+Stack:
+[VCons (ConsIx 0, [])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 100,VCons (ConsIx 0, [])]
+Code:
+[SequentialInstr (IAccess 0),SequentialInstr (ICons (ConsIx 1) 2),
+ SequentialInstr IStore,SequentialInstr (IConst (VInt 200)),
+ SequentialInstr IStore,SequentialInstr (IAccess 1),
+ SequentialInstr (IAccess 0),SequentialInstr (ICons (ConsIx 1) 2),
+ SequentialInstr IStore,SequentialInstr (IAccess 0),
+ SequentialInstr (ICall (FunID 0) 1),SequentialInstr IStore,
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+ SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+ ConcurrentInstr (IClose (LocalChanID 0))]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.508591608 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.508673551 UTC
+Process on: ThreadId 12
+Stack:
+[VInt 100,VCons (ConsIx 0, [])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 100,VCons (ConsIx 0, [])]
+Code:
+[SequentialInstr (ICons (ConsIx 1) 2),SequentialInstr IStore,
+ SequentialInstr (IConst (VInt 200)),SequentialInstr IStore,
+ SequentialInstr (IAccess 1),SequentialInstr (IAccess 0),
+ SequentialInstr (ICons (ConsIx 1) 2),SequentialInstr IStore,
+ SequentialInstr (IAccess 0),SequentialInstr (ICall (FunID 0) 1),
+ SequentialInstr IStore,
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+ SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+ ConcurrentInstr (IClose (LocalChanID 0))]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.508961278 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.509045509 UTC
+Process on: ThreadId 12
+Stack:
+[VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 100,VCons (ConsIx 0, [])]
+Code:
+[SequentialInstr IStore,SequentialInstr (IConst (VInt 200)),
+ SequentialInstr IStore,SequentialInstr (IAccess 1),
+ SequentialInstr (IAccess 0),SequentialInstr (ICons (ConsIx 1) 2),
+ SequentialInstr IStore,SequentialInstr (IAccess 0),
+ SequentialInstr (ICall (FunID 0) 1),SequentialInstr IStore,
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+ SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+ ConcurrentInstr (IClose (LocalChanID 0))]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.509551081 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.509635517 UTC
+Process on: ThreadId 12
+Stack:
+[]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),VInt 100,
+ VCons (ConsIx 0, [])]
+Code:
+[SequentialInstr (IConst (VInt 200)),SequentialInstr IStore,
+ SequentialInstr (IAccess 1),SequentialInstr (IAccess 0),
+ SequentialInstr (ICons (ConsIx 1) 2),SequentialInstr IStore,
+ SequentialInstr (IAccess 0),SequentialInstr (ICall (FunID 0) 1),
+ SequentialInstr IStore,
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+ SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+ ConcurrentInstr (IClose (LocalChanID 0))]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.509928794 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.510013423 UTC
+Process on: ThreadId 12
+Stack:
+[VInt 200]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),VInt 100,
+ VCons (ConsIx 0, [])]
+Code:
+[SequentialInstr IStore,SequentialInstr (IAccess 1),
+ SequentialInstr (IAccess 0),SequentialInstr (ICons (ConsIx 1) 2),
+ SequentialInstr IStore,SequentialInstr (IAccess 0),
+ SequentialInstr (ICall (FunID 0) 1),SequentialInstr IStore,
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+ SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+ ConcurrentInstr (IClose (LocalChanID 0))]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.510277674 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.510309019 UTC
+Process on: ThreadId 12
+Stack:
+[]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+ VInt 100,VCons (ConsIx 0, [])]
+Code:
+[SequentialInstr (IAccess 1),SequentialInstr (IAccess 0),
+ SequentialInstr (ICons (ConsIx 1) 2),SequentialInstr IStore,
+ SequentialInstr (IAccess 0),SequentialInstr (ICall (FunID 0) 1),
+ SequentialInstr IStore,
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+ SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+ ConcurrentInstr (IClose (LocalChanID 0))]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.510754095 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.510846913 UTC
+Process on: ThreadId 12
+Stack:
+[VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+ VInt 100,VCons (ConsIx 0, [])]
+Code:
+[SequentialInstr (IAccess 0),SequentialInstr (ICons (ConsIx 1) 2),
+ SequentialInstr IStore,SequentialInstr (IAccess 0),
+ SequentialInstr (ICall (FunID 0) 1),SequentialInstr IStore,
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+ SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+ ConcurrentInstr (IClose (LocalChanID 0))]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.511155076 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.511240724 UTC
+Process on: ThreadId 12
+Stack:
+[VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+ VInt 100,VCons (ConsIx 0, [])]
+Code:
+[SequentialInstr (ICons (ConsIx 1) 2),SequentialInstr IStore,
+ SequentialInstr (IAccess 0),SequentialInstr (ICall (FunID 0) 1),
+ SequentialInstr IStore,
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+ SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+ ConcurrentInstr (IClose (LocalChanID 0))]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.511542268 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.51163049 UTC
+Process on: ThreadId 12
+Stack:
+[VCons (ConsIx 1,
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+ VInt 100,VCons (ConsIx 0, [])]
+Code:
+[SequentialInstr IStore,SequentialInstr (IAccess 0),
+ SequentialInstr (ICall (FunID 0) 1),SequentialInstr IStore,
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+ SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+ ConcurrentInstr (IClose (LocalChanID 0))]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.512131021 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.512217376 UTC
+Process on: ThreadId 12
+Stack:
+[]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VCons (ConsIx 1,
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+ VInt 100,VCons (ConsIx 0, [])]
+Code:
+[SequentialInstr (IAccess 0),SequentialInstr (ICall (FunID 0) 1),
+ SequentialInstr IStore,
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+ SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+ ConcurrentInstr (IClose (LocalChanID 0))]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.512481926 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.512515182 UTC
+Process on: ThreadId 12
+Stack:
+[VCons (ConsIx 1,
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VCons (ConsIx 1,
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+ VInt 100,VCons (ConsIx 0, [])]
+Code:
+[SequentialInstr (ICall (FunID 0) 1),SequentialInstr IStore,
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+ SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+ ConcurrentInstr (IClose (LocalChanID 0))]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.512753162 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.512785207 UTC
+Process on: ThreadId 12
+Stack:
+[VClos ([SequentialInstr IStore,
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+         SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+         ConcurrentInstr (IClose (LocalChanID 0))],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+         VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VCons (ConsIx 1,
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]
+Code:
+[SequentialInstr (IAccess 0),
+ SequentialInstr (ICase [[SequentialInstr (IConst (VInt 0)),
+                          SequentialInstr IRet],
+                         [SequentialInstr (IAccess 0),SequentialInstr (IAccess 1),
+                          SequentialInstr (ICall (FunID 0) 1),SequentialInstr IAddInt,
+                          SequentialInstr IRet]]),
+ SequentialInstr IRet]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.513305047 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.51335953 UTC
+Process on: ThreadId 12
+Stack:
+[VCons (ConsIx 1,
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VClos ([SequentialInstr IStore,
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+         SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+         ConcurrentInstr (IClose (LocalChanID 0))],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+         VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VCons (ConsIx 1,
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]
+Code:
+[SequentialInstr (ICase [[SequentialInstr (IConst (VInt 0)),
+                          SequentialInstr IRet],
+                         [SequentialInstr (IAccess 0),SequentialInstr (IAccess 1),
+                          SequentialInstr (ICall (FunID 0) 1),SequentialInstr IAddInt,
+                          SequentialInstr IRet]]),
+ SequentialInstr IRet]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.513922052 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.513954753 UTC
+Process on: ThreadId 12
+Stack:
+[VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VClos ([SequentialInstr IStore,
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+         SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+         ConcurrentInstr (IClose (LocalChanID 0))],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+         VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+ VCons (ConsIx 1,
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]
+Code:
+[SequentialInstr (IAccess 0),SequentialInstr (IAccess 1),
+ SequentialInstr (ICall (FunID 0) 1),SequentialInstr IAddInt,
+ SequentialInstr IRet]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.514482425 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.514516323 UTC
+Process on: ThreadId 12
+Stack:
+[VInt 200,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VClos ([SequentialInstr IStore,
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+         SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+         ConcurrentInstr (IClose (LocalChanID 0))],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+         VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+ VCons (ConsIx 1,
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]
+Code:
+[SequentialInstr (IAccess 1),SequentialInstr (ICall (FunID 0) 1),
+ SequentialInstr IAddInt,SequentialInstr IRet]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.5150645 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.515096762 UTC
+Process on: ThreadId 12
+Stack:
+[VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),VInt 200,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VClos ([SequentialInstr IStore,
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+         SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+         ConcurrentInstr (IClose (LocalChanID 0))],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+         VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+ VCons (ConsIx 1,
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]
+Code:
+[SequentialInstr (ICall (FunID 0) 1),SequentialInstr IAddInt,
+ SequentialInstr IRet]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.515665834 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.515699946 UTC
+Process on: ThreadId 12
+Stack:
+[VClos ([SequentialInstr IAddInt,SequentialInstr IRet],
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VInt 200,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VClos ([SequentialInstr IStore,
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+         SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+         ConcurrentInstr (IClose (LocalChanID 0))],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+         VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]
+Code:
+[SequentialInstr (IAccess 0),
+ SequentialInstr (ICase [[SequentialInstr (IConst (VInt 0)),
+                          SequentialInstr IRet],
+                         [SequentialInstr (IAccess 0),SequentialInstr (IAccess 1),
+                          SequentialInstr (ICall (FunID 0) 1),SequentialInstr IAddInt,
+                          SequentialInstr IRet]]),
+ SequentialInstr IRet]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.516402222 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.516435465 UTC
+Process on: ThreadId 12
+Stack:
+[VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+ VClos ([SequentialInstr IAddInt,SequentialInstr IRet],
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VInt 200,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VClos ([SequentialInstr IStore,
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+         SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+         ConcurrentInstr (IClose (LocalChanID 0))],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+         VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]
+Code:
+[SequentialInstr (ICase [[SequentialInstr (IConst (VInt 0)),
+                          SequentialInstr IRet],
+                         [SequentialInstr (IAccess 0),SequentialInstr (IAccess 1),
+                          SequentialInstr (ICall (FunID 0) 1),SequentialInstr IAddInt,
+                          SequentialInstr IRet]]),
+ SequentialInstr IRet]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.517130188 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.51716457 UTC
+Process on: ThreadId 12
+Stack:
+[VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VClos ([SequentialInstr IAddInt,SequentialInstr IRet],
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VInt 200,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VClos ([SequentialInstr IStore,
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+         SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+         ConcurrentInstr (IClose (LocalChanID 0))],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+         VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 100,VCons (ConsIx 0, []),
+ VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]
+Code:
+[SequentialInstr (IAccess 0),SequentialInstr (IAccess 1),
+ SequentialInstr (ICall (FunID 0) 1),SequentialInstr IAddInt,
+ SequentialInstr IRet]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.518107238 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.518140255 UTC
+Process on: ThreadId 12
+Stack:
+[VInt 100,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VClos ([SequentialInstr IAddInt,SequentialInstr IRet],
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VInt 200,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VClos ([SequentialInstr IStore,
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+         SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+         ConcurrentInstr (IClose (LocalChanID 0))],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+         VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 100,VCons (ConsIx 0, []),
+ VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]
+Code:
+[SequentialInstr (IAccess 1),SequentialInstr (ICall (FunID 0) 1),
+ SequentialInstr IAddInt,SequentialInstr IRet]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.51880846 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.518842675 UTC
+Process on: ThreadId 12
+Stack:
+[VCons (ConsIx 0, []),VInt 100,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VClos ([SequentialInstr IAddInt,SequentialInstr IRet],
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VInt 200,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VClos ([SequentialInstr IStore,
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+         SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+         ConcurrentInstr (IClose (LocalChanID 0))],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+         VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 100,VCons (ConsIx 0, []),
+ VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]
+Code:
+[SequentialInstr (ICall (FunID 0) 1),SequentialInstr IAddInt,
+ SequentialInstr IRet]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.519528796 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.519561534 UTC
+Process on: ThreadId 12
+Stack:
+[VClos ([SequentialInstr IAddInt,SequentialInstr IRet],
+        [VInt 100,VCons (ConsIx 0, []),
+         VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VInt 100,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VClos ([SequentialInstr IAddInt,SequentialInstr IRet],
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VInt 200,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VClos ([SequentialInstr IStore,
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+         SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+         ConcurrentInstr (IClose (LocalChanID 0))],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+         VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VCons (ConsIx 0, [])]
+Code:
+[SequentialInstr (IAccess 0),
+ SequentialInstr (ICase [[SequentialInstr (IConst (VInt 0)),
+                          SequentialInstr IRet],
+                         [SequentialInstr (IAccess 0),SequentialInstr (IAccess 1),
+                          SequentialInstr (ICall (FunID 0) 1),SequentialInstr IAddInt,
+                          SequentialInstr IRet]]),
+ SequentialInstr IRet]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.520489027 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.520523318 UTC
+Process on: ThreadId 12
+Stack:
+[VCons (ConsIx 0, []),
+ VClos ([SequentialInstr IAddInt,SequentialInstr IRet],
+        [VInt 100,VCons (ConsIx 0, []),
+         VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VInt 100,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VClos ([SequentialInstr IAddInt,SequentialInstr IRet],
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VInt 200,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VClos ([SequentialInstr IStore,
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+         SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+         ConcurrentInstr (IClose (LocalChanID 0))],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+         VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VCons (ConsIx 0, [])]
+Code:
+[SequentialInstr (ICase [[SequentialInstr (IConst (VInt 0)),
+                          SequentialInstr IRet],
+                         [SequentialInstr (IAccess 0),SequentialInstr (IAccess 1),
+                          SequentialInstr (ICall (FunID 0) 1),SequentialInstr IAddInt,
+                          SequentialInstr IRet]]),
+ SequentialInstr IRet]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.52135569 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.521389189 UTC
+Process on: ThreadId 12
+Stack:
+[VClos ([SequentialInstr IRet], [VCons (ConsIx 0, [])]),
+ VClos ([SequentialInstr IAddInt,SequentialInstr IRet],
+        [VInt 100,VCons (ConsIx 0, []),
+         VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VInt 100,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VClos ([SequentialInstr IAddInt,SequentialInstr IRet],
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VInt 200,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VClos ([SequentialInstr IStore,
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+         SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+         ConcurrentInstr (IClose (LocalChanID 0))],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+         VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VCons (ConsIx 0, [])]
+Code:
+[SequentialInstr (IConst (VInt 0)),SequentialInstr IRet]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.522116034 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.522150269 UTC
+Process on: ThreadId 12
+Stack:
+[VInt 0,VClos ([SequentialInstr IRet], [VCons (ConsIx 0, [])]),
+ VClos ([SequentialInstr IAddInt,SequentialInstr IRet],
+        [VInt 100,VCons (ConsIx 0, []),
+         VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VInt 100,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VClos ([SequentialInstr IAddInt,SequentialInstr IRet],
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VInt 200,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VClos ([SequentialInstr IStore,
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+         SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+         ConcurrentInstr (IClose (LocalChanID 0))],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+         VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VCons (ConsIx 0, [])]
+Code:
+[SequentialInstr IRet]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.52285598 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.522888873 UTC
+Process on: ThreadId 12
+Stack:
+[VInt 0,
+ VClos ([SequentialInstr IAddInt,SequentialInstr IRet],
+        [VInt 100,VCons (ConsIx 0, []),
+         VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VInt 100,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VClos ([SequentialInstr IAddInt,SequentialInstr IRet],
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VInt 200,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VClos ([SequentialInstr IStore,
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+         SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+         ConcurrentInstr (IClose (LocalChanID 0))],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+         VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VCons (ConsIx 0, [])]
+Code:
+[SequentialInstr IRet]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.523540516 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.523574775 UTC
+Process on: ThreadId 12
+Stack:
+[VInt 0,VInt 100,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VClos ([SequentialInstr IAddInt,SequentialInstr IRet],
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VInt 200,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VClos ([SequentialInstr IStore,
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+         SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+         ConcurrentInstr (IClose (LocalChanID 0))],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+         VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 100,VCons (ConsIx 0, []),
+ VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]
+Code:
+[SequentialInstr IAddInt,SequentialInstr IRet]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.524354211 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.524387369 UTC
+Process on: ThreadId 12
+Stack:
+[VInt 100,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VClos ([SequentialInstr IAddInt,SequentialInstr IRet],
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VInt 200,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VClos ([SequentialInstr IStore,
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+         SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+         ConcurrentInstr (IClose (LocalChanID 0))],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+         VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 100,VCons (ConsIx 0, []),
+ VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]
+Code:
+[SequentialInstr IRet]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.525058144 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.525093047 UTC
+Process on: ThreadId 12
+Stack:
+[VInt 100,
+ VClos ([SequentialInstr IAddInt,SequentialInstr IRet],
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VInt 200,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VClos ([SequentialInstr IStore,
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+         SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+         ConcurrentInstr (IClose (LocalChanID 0))],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+         VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]
+Code:
+[SequentialInstr IRet]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.52574384 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.525776457 UTC
+Process on: ThreadId 12
+Stack:
+[VInt 100,VInt 200,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VClos ([SequentialInstr IStore,
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+         SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+         ConcurrentInstr (IClose (LocalChanID 0))],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+         VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+ VCons (ConsIx 1,
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]
+Code:
+[SequentialInstr IAddInt,SequentialInstr IRet]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.526158474 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.526191665 UTC
+Process on: ThreadId 12
+Stack:
+[VInt 300,
+ VClos ([SequentialInstr IRet],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]),
+ VClos ([SequentialInstr IStore,
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+         SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+         ConcurrentInstr (IClose (LocalChanID 0))],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+         VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+ VCons (ConsIx 1,
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]
+Code:
+[SequentialInstr IRet]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.526702369 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.526735083 UTC
+Process on: ThreadId 12
+Stack:
+[VInt 300,
+ VClos ([SequentialInstr IStore,
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+         SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+         ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+         ConcurrentInstr (IClose (LocalChanID 0))],
+        [VCons (ConsIx 1,
+                [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+         VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+         VInt 100,VCons (ConsIx 0, [])])]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VCons (ConsIx 1,
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])])]
+Code:
+[SequentialInstr IRet]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.527167764 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.527201747 UTC
+Process on: ThreadId 12
+Stack:
+[VInt 300]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VCons (ConsIx 1,
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+ VInt 100,VCons (ConsIx 0, [])]
+Code:
+[SequentialInstr IStore,
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+ SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+ ConcurrentInstr (IClose (LocalChanID 0))]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.527550897 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.527582745 UTC
+Process on: ThreadId 12
+Stack:
+[]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 300,
+ VCons (ConsIx 1,
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+ VInt 100,VCons (ConsIx 0, [])]
+Code:
+[ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),
+ SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+ ConcurrentInstr (IClose (LocalChanID 0))]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.527773693 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.527806299 UTC
+Process on: ThreadId 12
+Stack:
+[]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 300,
+ VCons (ConsIx 1,
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+ VInt 100,VCons (ConsIx 0, [])]
+Code:
+[SequentialInstr (IAccess 0),
+ ConcurrentInstr (IPut (LocalChanID 0)),
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+ ConcurrentInstr (IClose (LocalChanID 0))]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.528123656 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (1): [QHPut (HCaseIx 1)]))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.528160131 UTC
+Process on: ThreadId 12
+Stack:
+[VInt 300]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 300,
+ VCons (ConsIx 1,
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+ VInt 100,VCons (ConsIx 0, [])]
+Code:
+[ConcurrentInstr (IPut (LocalChanID 0)),
+ ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+ ConcurrentInstr (IClose (LocalChanID 0))]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.528402004 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (1): [QHPut (HCaseIx 1)]))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.528437779 UTC
+Process on: ThreadId 12
+Stack:
+[]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 300,
+ VCons (ConsIx 1,
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+ VInt 100,VCons (ConsIx 0, [])]
+Code:
+[ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+ ConcurrentInstr (IClose (LocalChanID 0))]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.528608969 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (2): [QHPut (HCaseIx 1),QPut (VInt 300)]))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.528649028 UTC
+Process on: ThreadId 12
+Stack:
+[]
+Translations:
+[(Input, (LocalChanID 0, GlobalChanID 0))]
+Environment:
+[VInt 300,
+ VCons (ConsIx 1,
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+ VInt 100,VCons (ConsIx 0, [])]
+Code:
+[ConcurrentInstr (IClose (LocalChanID 0))]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.528975162 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.529009102 UTC
+Process on: ThreadId 12
+Stack:
+[]
+Translations:
+[]
+Environment:
+[VInt 300,
+ VCons (ConsIx 1,
+        [VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])])]),
+ VInt 200,VCons (ConsIx 1, [VInt 100,VCons (ConsIx 0, [])]),
+ VInt 100,VCons (ConsIx 0, [])]
+Code:
+[]
+--------------------
+
+--------------------
+2020-06-17 06:50:10.529237219 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (1): [QHPut (HCaseIx 2)]))
+
+Number of running processes: 
+2
+--------------------
+
+--------------------
+2020-06-17 06:50:10.529267984 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (0): []))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.529289869 UTC
+Channel Manager: 
+(GlobalChanID 0,(Queue (0): [],Queue (1): [QClose]))
+
+Number of running processes: 
+1
+--------------------
+
+--------------------
+2020-06-17 06:50:10.535286388 UTC
+
+--------------------

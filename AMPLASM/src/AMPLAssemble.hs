@@ -4,6 +4,7 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE ViewPatterns #-}
 module AMPLAssemble where 
+import AMPL
 import AMPLServices
 import AMPLTypes
 import AMPLCompile
@@ -37,104 +38,57 @@ import Control.Monad.State
 import Control.Monad.Except
 import Control.Monad.Trans
 
+import System.IO
+import System.Random
+import System.Exit
 
-class HasParseAndLexError e where
-    parseAndLexError :: String -> e
+data AmplAssembleConfig = AmplAssembleConfig {
+        filetocompile :: String
+        , outputfile :: Maybe String
+    }
 
-newtype ParseAndLexError = ParseAndLexError String 
-  deriving Show
+amplAssembleMain :: 
+    AmplAssembleConfig ->
+    IO ()
+amplAssembleMain AmplAssembleConfig{ filetocompile = filename, outputfile = outputfile} = do
+    prg <- readFile filename
+    servicestate <- defaultServiceState
+    let eithercode = amplAssemble servicestate prg
+    case eithercode of
+        Right mach -> do
+            handle <- maybe (pure stdout) (flip openFile ReadWriteMode) outputfile
+            hPutStr handle $ show mach
+            hClose handle
+        Left errs -> hPutStrLn stderr (show errs) >> exitFailure
 
-instance HasParseAndLexError ParseAndLexError where
-    parseAndLexError = ParseAndLexError
 
-data AssemblerErrors =
-    NoMainFunction
-    | BnfcError ParseAndLexError
-    | SymAmbiguousLookup SymAmbiguousLookup
-    | IllegalInstrCall (IllegalInstrCall AssemblerErrors)
-    | FunctionArityMismatch FunctionArityMismatch
-    | CasingOverMultipleDatasError CasingOverMultipleDatasError
-    | RecordOverMultipleCodatasError RecordOverMultipleCodatasError
-    | DataArityMismatch DataArityMismatch
-    | CodataArityMismatch CodataArityMismatch
-    | ProcessArityMismatch ProcessArityMismatch
-    | PolarityMismatch PolarityMismatch
-    | FreeVarError FreeVarError
-    | FreeChannelError FreeChannelError
-    | CodataLookupError CodataLookupError
-    | CoprotocolLookupError CoprotocolLookupError
-    | DataLookupError DataLookupError
-    | ProtocolLookupError ProtocolLookupError
-    | ProcessLookupError ProcessLookupError
-    | FunctionLookupError FunctionLookupError
-  deriving Show
+defaultServiceState :: IO ServiceState
+defaultServiceState = do    
+    keystream <- defaultKeyStream
+    return $ ServiceState {
+            keyStream = keystream
+            , serviceGlobalChanIdGen = Stream.iterate pred (GlobalChanID 0)
+            , internalGlobalChanIdGen = Stream.iterate succ (GlobalChanID 1)
+            , terminalNetworkedCommand = (\(Key str) -> "xterm -e 'amplc -hn 127.0.0.1 -p 5000 -k " ++ str ++ "  ; read'")
+        }
 
-instance HasParseAndLexError AssemblerErrors where
-    parseAndLexError = BnfcError . parseAndLexError
+defaultKeyStream :: IO (Stream Key)
+defaultKeyStream = do
+    stdgen <- newStdGen
+    let keys = map (Key . show) $ nub $ (randoms stdgen :: [Word])
+    return $ Stream.fromList keys
+    -- TODO -- this might generate the same key twicE!!
 
-instance HasAmbiguousLookupError AssemblerErrors where
-    symAmbiguousLookup = AMPLAssemble.SymAmbiguousLookup . symAmbiguousLookup
+    
 
-instance HasIllegalInstrCallError AssemblerErrors AssemblerErrors where
-    illegalInstrCall a = AMPLAssemble.IllegalInstrCall . illegalInstrCall a
+amplAssemble :: 
+    ServiceState -> 
+    String -> 
+    Either [(Ident, [AssemblerErrors])] InitAMPLMachState
+amplAssemble svstate str = case parseAndLex str of
+    Ok code -> amplCodeToInstr svstate code 
+    Bad str -> Left [(("", (-1,-1)), [parseAndLexError str])]
 
-instance HasFunctionArityMismatchError AssemblerErrors where
-    functionArityMismatch a = AMPLAssemble.FunctionArityMismatch . functionArityMismatch a
-
-instance HasCasingOverMultipleDatas AssemblerErrors where
-    casingOverMultipleDatas = AMPLAssemble.CasingOverMultipleDatasError . casingOverMultipleDatas
-
-instance HasRecordOverMultipleCodatas AssemblerErrors where
-    recordOverMultipleCodatas = AMPLAssemble.RecordOverMultipleCodatasError . recordOverMultipleCodatas
-    
-instance HasDataArityMismatchError AssemblerErrors where
-    dataArityMismatch a = AMPLAssemble.DataArityMismatch . dataArityMismatch a
-    
-instance HasCodataArityMismatchError AssemblerErrors where
-    codataArityMismatch a = AMPLAssemble.CodataArityMismatch . codataArityMismatch a
-    
-instance HasProcessArityMismatch AssemblerErrors where
-    processArityMismatch a = AMPLAssemble.ProcessArityMismatch . processArityMismatch a
-    
-instance HasPolarityMismatch AssemblerErrors where
-    polarityMismatch a = AMPLAssemble.PolarityMismatch . polarityMismatch a
-    
-instance HasFreeVarError AssemblerErrors where
-    freeVar = AMPLAssemble.FreeVarError . freeVar
-    
-instance HasFreeChannelError AssemblerErrors where
-    freeChannel = AMPLAssemble.FreeChannelError . freeChannel
-    
-instance HasCodataLookupError AssemblerErrors where
-    codataDoesNotExist = AMPLAssemble.CodataLookupError . codataDoesNotExist
-    destructorDoesNotExist a = AMPLAssemble.CodataLookupError . destructorDoesNotExist a
-    notCodata a = AMPLAssemble.CodataLookupError . notCodata a
-    
-instance HasCoprotocolLookupError AssemblerErrors where
-     coprotocolDoesNotExist = AMPLAssemble.CoprotocolLookupError . coprotocolDoesNotExist 
-     cohandleDoesNotExist a = AMPLAssemble.CoprotocolLookupError . cohandleDoesNotExist a
-     notCoprotocol a = AMPLAssemble.CoprotocolLookupError . notCoprotocol a
-    
-instance HasDataLookupError AssemblerErrors where
-     dataDoesNotExist = AMPLAssemble.DataLookupError . dataDoesNotExist
-     constructorDoesNotExist a = AMPLAssemble.DataLookupError . constructorDoesNotExist a
-     notData a = AMPLAssemble.DataLookupError . notData a
-    
-instance HasProtocolLookupError  AssemblerErrors where
-     protocolDoesNotExist = AMPLAssemble.ProtocolLookupError . protocolDoesNotExist 
-     handleDoesNotExist a = AMPLAssemble.ProtocolLookupError . handleDoesNotExist a
-     notProtocol a = AMPLAssemble.ProtocolLookupError . notProtocol a
-    
-instance HasLookupProcessError AssemblerErrors where
-     processDoesNotExist = AMPLAssemble.ProcessLookupError . processDoesNotExist
-     notProcess a = AMPLAssemble.ProcessLookupError . notProcess a
-    
-instance HasLookupFunctionError AssemblerErrors where
-    functionDoesNotExist = AMPLAssemble.FunctionLookupError . functionDoesNotExist
-    notFunction a = AMPLAssemble.FunctionLookupError . notFunction a
-    
--- pAMPLCODE (parses the tokens)
--- resolveLayout True . myLexer 
 parseAndLex :: String -> Err AMPLCODE
 parseAndLex = pAMPLCODE . resolveLayout True . myLexer
 
@@ -150,13 +104,7 @@ amplCodeToInstr ::
     AMPLCODE -> 
     Either 
         [(Ident, [AssemblerErrors])] 
-        ( ([GlobalChanID], [(GlobalChanID, (ServiceDataType, ServiceType))])
-            -- ^ interanl services, external services..
-        , ([Instr], [Translation]) 
-            -- ^ Main function, translations
-        , [(FunID, (String, [Instr]))]
-            -- ^ functions and processes
-        )
+        InitAMPLMachState
 amplCodeToInstr servicegeneratorstate amplcode = 
     let (funerrs, funs) = (lefts functions, rights functions)
         (proerrs, pros) = (lefts protocols, rights protocols)
@@ -164,7 +112,11 @@ amplCodeToInstr servicegeneratorstate amplcode =
     in case cmainfun of
         Right ( (nonservicechs, servicechs) , (maininstrs, maintranslations) ) ->
             if null errs 
-                then return ( (nonservicechs, servicechs), (maininstrs, maintranslations), funs ++ pros )
+                then return $ InitAMPLMachState { 
+                        initAmplMachStateServices = (nonservicechs, servicechs)
+                        , initAmplMachMainFun = (maininstrs, maintranslations)
+                        , initAmplMachFuns = funs ++ pros 
+                    }
                 else Left errs
         Left mainerrs -> Left ( mainerrs : errs)
   where
@@ -248,8 +200,8 @@ getServiceChannelType ::
 getServiceChannelType pol name = do
     let isint = "int" `isPrefixOf` fst name
         ischar = "char" `isPrefixOf` fst name
-        isintconsole = fst name == "intconsole"
-        ischarconsole = fst name == "charconsole"
+        isintconsole = fst name == "console"
+        ischarconsole = fst name == "cconsole"
     if | (isintconsole || ischarconsole) && pol == Output -> throwError $ polarityMismatch Input (name, Output)
        | (isint || ischar) && pol == Input -> throwError $ polarityMismatch Output (name, Input)
             -- Errors.. recall that console must be input polarity, and all other things must be output
@@ -271,6 +223,106 @@ getServiceChannelType pol name = do
 globalChanIDStream :: Stream GlobalChanID
 globalChanIDStream = Stream.iterate pred (GlobalChanID 0)
 
-        
+class HasParseAndLexError e where
+    parseAndLexError :: String -> e
 
+newtype ParseAndLexError = ParseAndLexError String 
+  deriving Show
+
+instance HasParseAndLexError ParseAndLexError where
+    parseAndLexError = ParseAndLexError
+
+data AssemblerErrors =
+    NoMainFunction
+    | BnfcError ParseAndLexError
+    | SymAmbiguousLookup SymAmbiguousLookup
+    | IllegalInstrCall (IllegalInstrCall AssemblerErrors)
+    | FunctionArityMismatch FunctionArityMismatch
+    | CasingOverMultipleDatasError CasingOverMultipleDatasError
+    | RecordOverMultipleCodatasError RecordOverMultipleCodatasError
+    | DataArityMismatch DataArityMismatch
+    | CodataArityMismatch CodataArityMismatch
+    | ProcessArityMismatch ProcessArityMismatch
+    | HCasingOverMultipleDatasError HCasingOverMultipleDatasError
+    | PolarityMismatch PolarityMismatch
+    | FreeVarError FreeVarError
+    | FreeChannelError FreeChannelError
+    | CodataLookupError CodataLookupError
+    | CoprotocolLookupError CoprotocolLookupError
+    | DataLookupError DataLookupError
+    | ProtocolLookupError ProtocolLookupError
+    | ProcessLookupError ProcessLookupError
+    | FunctionLookupError FunctionLookupError
+    | HCaseArityMismatch HCaseArityMismatch
+  deriving Show
+
+instance HasParseAndLexError AssemblerErrors where
+    parseAndLexError = BnfcError . parseAndLexError
+
+instance HasAmbiguousLookupError AssemblerErrors where
+    symAmbiguousLookup = AMPLAssemble.SymAmbiguousLookup . symAmbiguousLookup
+
+instance HasIllegalInstrCallError AssemblerErrors AssemblerErrors where
+    illegalInstrCall a = AMPLAssemble.IllegalInstrCall . illegalInstrCall a
+
+instance HasFunctionArityMismatchError AssemblerErrors where
+    functionArityMismatch a = AMPLAssemble.FunctionArityMismatch . functionArityMismatch a
+
+instance HasCasingOverMultipleDatas AssemblerErrors where
+    casingOverMultipleDatas = AMPLAssemble.CasingOverMultipleDatasError . casingOverMultipleDatas
+
+instance HasHCasingOverMultipleTypes AssemblerErrors where
+    hcasingOverMultipleTypes = AMPLAssemble.HCasingOverMultipleDatasError . hcasingOverMultipleTypes
+
+instance HasRecordOverMultipleCodatas AssemblerErrors where
+    recordOverMultipleCodatas = AMPLAssemble.RecordOverMultipleCodatasError . recordOverMultipleCodatas
     
+instance HasDataArityMismatchError AssemblerErrors where
+    dataArityMismatch a = AMPLAssemble.DataArityMismatch . dataArityMismatch a
+    
+instance HasCodataArityMismatchError AssemblerErrors where
+    codataArityMismatch a = AMPLAssemble.CodataArityMismatch . codataArityMismatch a
+    
+instance HasProcessArityMismatch AssemblerErrors where
+    processArityMismatch a = AMPLAssemble.ProcessArityMismatch . processArityMismatch a
+    
+instance HasPolarityMismatch AssemblerErrors where
+    polarityMismatch a = AMPLAssemble.PolarityMismatch . polarityMismatch a
+    
+instance HasFreeVarError AssemblerErrors where
+    freeVar = AMPLAssemble.FreeVarError . freeVar
+    
+instance HasFreeChannelError AssemblerErrors where
+    freeChannel = AMPLAssemble.FreeChannelError . freeChannel
+    
+instance HasCodataLookupError AssemblerErrors where
+    codataDoesNotExist = AMPLAssemble.CodataLookupError . codataDoesNotExist
+    destructorDoesNotExist a = AMPLAssemble.CodataLookupError . destructorDoesNotExist a
+    notCodata a = AMPLAssemble.CodataLookupError . notCodata a
+    
+instance HasCoprotocolLookupError AssemblerErrors where
+     coprotocolDoesNotExist = AMPLAssemble.CoprotocolLookupError . coprotocolDoesNotExist 
+     cohandleDoesNotExist a = AMPLAssemble.CoprotocolLookupError . cohandleDoesNotExist a
+     notCoprotocol a = AMPLAssemble.CoprotocolLookupError . notCoprotocol a
+    
+instance HasDataLookupError AssemblerErrors where
+     dataDoesNotExist = AMPLAssemble.DataLookupError . dataDoesNotExist
+     constructorDoesNotExist a = AMPLAssemble.DataLookupError . constructorDoesNotExist a
+     notData a = AMPLAssemble.DataLookupError . notData a
+    
+instance HasProtocolLookupError  AssemblerErrors where
+     protocolDoesNotExist = AMPLAssemble.ProtocolLookupError . protocolDoesNotExist 
+     handleDoesNotExist a = AMPLAssemble.ProtocolLookupError . handleDoesNotExist a
+     notProtocol a = AMPLAssemble.ProtocolLookupError . notProtocol a
+    
+instance HasLookupProcessError AssemblerErrors where
+     processDoesNotExist = AMPLAssemble.ProcessLookupError . processDoesNotExist
+     notProcess a = AMPLAssemble.ProcessLookupError . notProcess a
+    
+instance HasLookupFunctionError AssemblerErrors where
+    functionDoesNotExist = AMPLAssemble.FunctionLookupError . functionDoesNotExist
+    notFunction a = AMPLAssemble.FunctionLookupError . notFunction a
+
+instance HasHCaseArityMismatch AssemblerErrors where
+    hcaseArityMismatch a = AMPLAssemble.HCaseArityMismatch . hcaseArityMismatch a
+

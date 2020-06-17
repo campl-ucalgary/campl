@@ -35,13 +35,15 @@ import Language.ErrM
   '[' { PT _ (TS _ 20) }
   ']' { PT _ (TS _ 21) }
   'as' { PT _ (TS _ 22) }
-  'into' { PT _ (TS _ 23) }
-  'of' { PT _ (TS _ 24) }
-  'on' { PT _ (TS _ 25) }
-  'with' { PT _ (TS _ 26) }
-  '{' { PT _ (TS _ 27) }
-  '|' { PT _ (TS _ 28) }
-  '}' { PT _ (TS _ 29) }
+  'else' { PT _ (TS _ 23) }
+  'into' { PT _ (TS _ 24) }
+  'of' { PT _ (TS _ 25) }
+  'on' { PT _ (TS _ 26) }
+  'then' { PT _ (TS _ 27) }
+  'with' { PT _ (TS _ 28) }
+  '{' { PT _ (TS _ 29) }
+  '|' { PT _ (TS _ 30) }
+  '}' { PT _ (TS _ 31) }
   L_quoted { PT _ (TL $$) }
   L_integ  { PT _ (TI $$) }
   L_Store { PT _ (T_Store _) }
@@ -71,6 +73,7 @@ import Language.ErrM
   L_Rem { PT _ (T_Rem _) }
   L_Cons { PT _ (T_Cons _) }
   L_Case { PT _ (T_Case _) }
+  L_If { PT _ (T_If _) }
   L_Rec { PT _ (T_Rec _) }
   L_Get { PT _ (T_Get _) }
   L_Put { PT _ (T_Put _) }
@@ -85,6 +88,8 @@ import Language.ErrM
   L_Halt { PT _ (T_Halt _) }
   L_Ch_Id { PT _ (T_Ch_Id _) }
   L_Main_run { PT _ (T_Main_run _) }
+  L_BTrue { PT _ (T_BTrue _) }
+  L_BFalse { PT _ (T_BFalse _) }
   L_Character { PT _ (T_Character _) }
   L_UIdent { PT _ (T_UIdent _) }
   L_PIdent { PT _ (T_PIdent _) }
@@ -180,6 +185,9 @@ Cons  : L_Cons { Cons (mkPosToken $1)}
 Case :: { Case}
 Case  : L_Case { Case (mkPosToken $1)}
 
+If :: { If}
+If  : L_If { If (mkPosToken $1)}
+
 Rec :: { Rec}
 Rec  : L_Rec { Rec (mkPosToken $1)}
 
@@ -221,6 +229,12 @@ Ch_Id  : L_Ch_Id { Ch_Id (mkPosToken $1)}
 
 Main_run :: { Main_run}
 Main_run  : L_Main_run { Main_run (mkPosToken $1)}
+
+BTrue :: { BTrue}
+BTrue  : L_BTrue { BTrue (mkPosToken $1)}
+
+BFalse :: { BFalse}
+BFalse  : L_BFalse { BFalse (mkPosToken $1)}
 
 Character :: { Character}
 Character  : L_Character { Character (mkPosToken $1)}
@@ -329,6 +343,8 @@ COM : PIdent ':=' COM { Language.AbsAMPLGrammar.AC_ASSIGN $1 $3 }
     | And { Language.AbsAMPLGrammar.AC_AND $1 }
     | Or { Language.AbsAMPLGrammar.AC_OR $1 }
     | Append { Language.AbsAMPLGrammar.AC_APPEND $1 }
+    | BTrue { Language.AbsAMPLGrammar.AC_TRUE $1 }
+    | BFalse { Language.AbsAMPLGrammar.AC_FALSE $1 }
     | Unstring { Language.AbsAMPLGrammar.AC_UNSTRING $1 }
     | LeqI { Language.AbsAMPLGrammar.AC_LEQ $1 }
     | EqI { Language.AbsAMPLGrammar.AC_EQ $1 }
@@ -345,7 +361,8 @@ COM : PIdent ':=' COM { Language.AbsAMPLGrammar.AC_ASSIGN $1 $3 }
     | Cons '(' PInteger ',' PInteger ')' { Language.AbsAMPLGrammar.AC_CONS $1 $3 $5 }
     | UIdent '.' UIdent { Language.AbsAMPLGrammar.AC_STRUCT $1 $3 }
     | UIdent '.' UIdent '(' ListPIdent ')' { Language.AbsAMPLGrammar.AC_STRUCTAS $1 $3 $5 }
-    | Case 'of' '{' ListLABELCOMS '}' { Language.AbsAMPLGrammar.AC_CASEf $1 $4 }
+    | Case PIdent 'of' '{' ListLABELCOMS '}' { Language.AbsAMPLGrammar.AC_CASEf $1 $2 $5 }
+    | If PIdent 'then' COMS 'else' COMS { Language.AbsAMPLGrammar.AC_IF $1 $2 $4 $6 }
     | Rec 'of' '{' ListLABELCOMS '}' { Language.AbsAMPLGrammar.AC_RECORDf $1 $4 }
     | UIdent '.' UIdent PIdent { Language.AbsAMPLGrammar.AC_DEST $1 $3 $4 }
     | UIdent '.' UIdent '(' ListPIdent ')' PIdent { Language.AbsAMPLGrammar.AC_DESTAS $1 $3 $5 $7 }

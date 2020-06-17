@@ -84,6 +84,9 @@ newtype Cons = Cons ((Int,Int),String)
 newtype Case = Case ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
 
+newtype If = If ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+
 newtype Rec = Rec ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
 
@@ -124,6 +127,12 @@ newtype Ch_Id = Ch_Id ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
 
 newtype Main_run = Main_run ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+
+newtype BTrue = BTrue ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+
+newtype BFalse = BFalse ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
 
 newtype Character = Character ((Int,Int),String)
@@ -220,6 +229,8 @@ data COM
     | AC_AND And
     | AC_OR Or
     | AC_APPEND Append
+    | AC_TRUE BTrue
+    | AC_FALSE BFalse
     | AC_UNSTRING Unstring
     | AC_LEQ LeqI
     | AC_EQ EqI
@@ -236,7 +247,8 @@ data COM
     | AC_CONS Cons PInteger PInteger
     | AC_STRUCT UIdent UIdent
     | AC_STRUCTAS UIdent UIdent [PIdent]
-    | AC_CASEf Case [LABELCOMS]
+    | AC_CASEf Case PIdent [LABELCOMS]
+    | AC_IF If PIdent COMS COMS
     | AC_RECORDf Rec [LABELCOMS]
     | AC_DEST UIdent UIdent PIdent
     | AC_DESTAS UIdent UIdent [PIdent] PIdent

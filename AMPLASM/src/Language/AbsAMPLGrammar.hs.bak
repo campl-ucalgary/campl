@@ -84,6 +84,9 @@ newtype Cons = Cons ((Int,Int),String)
 newtype Case = Case ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
 
+newtype If = If ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+
 newtype Rec = Rec ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
 
@@ -124,6 +127,12 @@ newtype Ch_Id = Ch_Id ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
 
 newtype Main_run = Main_run ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+
+newtype True = True ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+
+newtype False = False ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
 
 newtype Character = Character ((Int,Int),String)
@@ -220,6 +229,8 @@ data COM
     | AC_AND And
     | AC_OR Or
     | AC_APPEND Append
+    | AC_TRUE True
+    | AC_FALSE False
     | AC_UNSTRING Unstring
     | AC_LEQ LeqI
     | AC_EQ EqI
@@ -236,7 +247,8 @@ data COM
     | AC_CONS Cons PInteger PInteger
     | AC_STRUCT UIdent UIdent
     | AC_STRUCTAS UIdent UIdent [PIdent]
-    | AC_CASEf Case [LABELCOMS]
+    | AC_CASEf Case PIdent [LABELCOMS]
+    | AC_IF If PIdent COMS COMS
     | AC_RECORDf Rec [LABELCOMS]
     | AC_DEST UIdent UIdent PIdent
     | AC_DESTAS UIdent UIdent [PIdent] PIdent
@@ -251,7 +263,7 @@ data COM
     | AC_IDF PIdent Ch_Id PIdent
     | AC_RACE Race [RACES]
     | AC_PROD [PIdent]
-    | AC_PRODELEM CInteger PIdent
+    | AC_PRODELEM PInteger PIdent
     | AC_EMSG String
     | AC_CLOSEf Close PIdent
     | AC_HALTf Halt [PIdent]

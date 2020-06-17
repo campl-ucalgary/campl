@@ -1,4 +1,5 @@
 %include "potato.ampl"
+%include "a.ampl"
 
 %handles : {
     HandleExample = { SomeIdentifiers ; NonEmptySep } ;
@@ -107,7 +108,7 @@
     };
 
     -- AC_PUTf
-    put var ;
+    put var on channel;
 
     -- AC_SPLITf
     split ch into ch1 ch2 ;

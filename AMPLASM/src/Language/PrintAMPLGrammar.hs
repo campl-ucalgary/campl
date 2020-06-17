@@ -169,6 +169,9 @@ instance Print Language.AbsAMPLGrammar.Cons where
 instance Print Language.AbsAMPLGrammar.Case where
   prt _ (Language.AbsAMPLGrammar.Case (_,i)) = doc (showString i)
 
+instance Print Language.AbsAMPLGrammar.If where
+  prt _ (Language.AbsAMPLGrammar.If (_,i)) = doc (showString i)
+
 instance Print Language.AbsAMPLGrammar.Rec where
   prt _ (Language.AbsAMPLGrammar.Rec (_,i)) = doc (showString i)
 
@@ -210,6 +213,12 @@ instance Print Language.AbsAMPLGrammar.Ch_Id where
 
 instance Print Language.AbsAMPLGrammar.Main_run where
   prt _ (Language.AbsAMPLGrammar.Main_run (_,i)) = doc (showString i)
+
+instance Print Language.AbsAMPLGrammar.BTrue where
+  prt _ (Language.AbsAMPLGrammar.BTrue (_,i)) = doc (showString i)
+
+instance Print Language.AbsAMPLGrammar.BFalse where
+  prt _ (Language.AbsAMPLGrammar.BFalse (_,i)) = doc (showString i)
 
 instance Print Language.AbsAMPLGrammar.Character where
   prt _ (Language.AbsAMPLGrammar.Character (_,i)) = doc (showString i)
@@ -378,6 +387,8 @@ instance Print Language.AbsAMPLGrammar.COM where
     Language.AbsAMPLGrammar.AC_AND and -> prPrec i 0 (concatD [prt 0 and])
     Language.AbsAMPLGrammar.AC_OR or -> prPrec i 0 (concatD [prt 0 or])
     Language.AbsAMPLGrammar.AC_APPEND append -> prPrec i 0 (concatD [prt 0 append])
+    Language.AbsAMPLGrammar.AC_TRUE btrue -> prPrec i 0 (concatD [prt 0 btrue])
+    Language.AbsAMPLGrammar.AC_FALSE bfalse -> prPrec i 0 (concatD [prt 0 bfalse])
     Language.AbsAMPLGrammar.AC_UNSTRING unstring -> prPrec i 0 (concatD [prt 0 unstring])
     Language.AbsAMPLGrammar.AC_LEQ leqi -> prPrec i 0 (concatD [prt 0 leqi])
     Language.AbsAMPLGrammar.AC_EQ eqi -> prPrec i 0 (concatD [prt 0 eqi])
@@ -394,7 +405,8 @@ instance Print Language.AbsAMPLGrammar.COM where
     Language.AbsAMPLGrammar.AC_CONS cons pinteger1 pinteger2 -> prPrec i 0 (concatD [prt 0 cons, doc (showString "("), prt 0 pinteger1, doc (showString ","), prt 0 pinteger2, doc (showString ")")])
     Language.AbsAMPLGrammar.AC_STRUCT uident1 uident2 -> prPrec i 0 (concatD [prt 0 uident1, doc (showString "."), prt 0 uident2])
     Language.AbsAMPLGrammar.AC_STRUCTAS uident1 uident2 pidents -> prPrec i 0 (concatD [prt 0 uident1, doc (showString "."), prt 0 uident2, doc (showString "("), prt 0 pidents, doc (showString ")")])
-    Language.AbsAMPLGrammar.AC_CASEf case_ labelcomss -> prPrec i 0 (concatD [prt 0 case_, doc (showString "of"), doc (showString "{"), prt 0 labelcomss, doc (showString "}")])
+    Language.AbsAMPLGrammar.AC_CASEf case_ pident labelcomss -> prPrec i 0 (concatD [prt 0 case_, prt 0 pident, doc (showString "of"), doc (showString "{"), prt 0 labelcomss, doc (showString "}")])
+    Language.AbsAMPLGrammar.AC_IF if_ pident coms1 coms2 -> prPrec i 0 (concatD [prt 0 if_, prt 0 pident, doc (showString "then"), prt 0 coms1, doc (showString "else"), prt 0 coms2])
     Language.AbsAMPLGrammar.AC_RECORDf rec labelcomss -> prPrec i 0 (concatD [prt 0 rec, doc (showString "of"), doc (showString "{"), prt 0 labelcomss, doc (showString "}")])
     Language.AbsAMPLGrammar.AC_DEST uident1 uident2 pident -> prPrec i 0 (concatD [prt 0 uident1, doc (showString "."), prt 0 uident2, prt 0 pident])
     Language.AbsAMPLGrammar.AC_DESTAS uident1 uident2 pidents pident -> prPrec i 0 (concatD [prt 0 uident1, doc (showString "."), prt 0 uident2, doc (showString "("), prt 0 pidents, doc (showString ")"), prt 0 pident])

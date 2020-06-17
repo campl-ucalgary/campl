@@ -90,6 +90,9 @@ transCons x = case x of
 transCase :: Case -> Result
 transCase x = case x of
   Case string -> failure x
+transIf :: If -> Result
+transIf x = case x of
+  If string -> failure x
 transRec :: Rec -> Result
 transRec x = case x of
   Rec string -> failure x
@@ -132,6 +135,12 @@ transCh_Id x = case x of
 transMain_run :: Main_run -> Result
 transMain_run x = case x of
   Main_run string -> failure x
+transBTrue :: BTrue -> Result
+transBTrue x = case x of
+  BTrue string -> failure x
+transBFalse :: BFalse -> Result
+transBFalse x = case x of
+  BFalse string -> failure x
 transCharacter :: Character -> Result
 transCharacter x = case x of
   Character string -> failure x
@@ -226,6 +235,8 @@ transCOM x = case x of
   AC_AND and -> failure x
   AC_OR or -> failure x
   AC_APPEND append -> failure x
+  AC_TRUE btrue -> failure x
+  AC_FALSE bfalse -> failure x
   AC_UNSTRING unstring -> failure x
   AC_LEQ leqi -> failure x
   AC_EQ eqi -> failure x
@@ -242,7 +253,8 @@ transCOM x = case x of
   AC_CONS cons pinteger1 pinteger2 -> failure x
   AC_STRUCT uident1 uident2 -> failure x
   AC_STRUCTAS uident1 uident2 pidents -> failure x
-  AC_CASEf case_ labelcomss -> failure x
+  AC_CASEf case_ pident labelcomss -> failure x
+  AC_IF if_ pident coms1 coms2 -> failure x
   AC_RECORDf rec labelcomss -> failure x
   AC_DEST uident1 uident2 pident -> failure x
   AC_DESTAS uident1 uident2 pidents pident -> failure x

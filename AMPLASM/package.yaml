@@ -29,6 +29,8 @@ dependencies:
     - array
     - containers
     - AMPL
+    - filepath
+    - random
 
 library:
   source-dirs: src

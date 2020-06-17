@@ -67,6 +67,9 @@ Integer literals //Integer// are nonempty sequences of digits.
 
 
 
+
+
+
 Store literals are recognized by the regular expression
 `````{"store"}`````
 
@@ -148,6 +151,9 @@ Cons literals are recognized by the regular expression
 Case literals are recognized by the regular expression
 `````{"case"}`````
 
+If literals are recognized by the regular expression
+`````{"if"}`````
+
 Rec literals are recognized by the regular expression
 `````{"rec"}`````
 
@@ -190,6 +196,12 @@ Ch_Id literals are recognized by the regular expression
 Main_run literals are recognized by the regular expression
 `````{"%run"}`````
 
+BTrue literals are recognized by the regular expression
+`````{"true"}`````
+
+BFalse literals are recognized by the regular expression
+`````{"false"}`````
+
 Character literals are recognized by the regular expression
 `````''' (char - ["'\"] | '\' ["'\nt"]) '''`````
 
@@ -210,8 +222,8 @@ IIdent literals are recognized by the regular expression
 The set of reserved words is the set of terminals appearing in the grammar. Those reserved words that consist of non-letter characters are called symbols, and they are treated in a different way from those that are similar to identifiers. The lexer follows rules familiar from languages like Haskell, C, and Java, including longest match and spacing conventions.
 
 The reserved words used in AMPLGrammar are the following:
-  | ``as`` | ``into`` | ``of`` | ``on``
-  | ``with`` |  |  |
+  | ``as`` | ``else`` | ``into`` | ``of``
+  | ``on`` | ``then`` | ``with`` |
 
 The symbols used in AMPLGrammar are the following:
   | = | { | } | ;
@@ -293,6 +305,8 @@ All other symbols are terminals.
   |  |  **|**  | //And//
   |  |  **|**  | //Or//
   |  |  **|**  | //Append//
+  |  |  **|**  | //BTrue//
+  |  |  **|**  | //BFalse//
   |  |  **|**  | //Unstring//
   |  |  **|**  | //LeqI//
   |  |  **|**  | //EqI//
@@ -309,7 +323,8 @@ All other symbols are terminals.
   |  |  **|**  | //Cons// ``(`` //PInteger// ``,`` //PInteger// ``)``
   |  |  **|**  | //UIdent// ``.`` //UIdent//
   |  |  **|**  | //UIdent// ``.`` //UIdent// ``(`` //[PIdent]// ``)``
-  |  |  **|**  | //Case// ``of`` ``{`` //[LABELCOMS]// ``}``
+  |  |  **|**  | //Case// //PIdent// ``of`` ``{`` //[LABELCOMS]// ``}``
+  |  |  **|**  | //If// //PIdent// ``then`` //COMS// ``else`` //COMS//
   |  |  **|**  | //Rec// ``of`` ``{`` //[LABELCOMS]// ``}``
   |  |  **|**  | //UIdent// ``.`` //UIdent// //PIdent//
   |  |  **|**  | //UIdent// ``.`` //UIdent// ``(`` //[PIdent]// ``)`` //PIdent//

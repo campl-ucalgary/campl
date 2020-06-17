@@ -83,6 +83,15 @@ newtype CasingOverMultipleDatasError = CasingOverMultipleDatasError [Ident]
 instance HasCasingOverMultipleDatas CasingOverMultipleDatasError where
     casingOverMultipleDatas = CasingOverMultipleDatasError
 
+class HasHCasingOverMultipleTypes e where
+    hcasingOverMultipleTypes :: [Ident] -> e
+
+newtype HCasingOverMultipleDatasError = HCasingOverMultipleDatasError [Ident]
+  deriving Show
+
+instance HasHCasingOverMultipleTypes HCasingOverMultipleDatasError where
+    hcasingOverMultipleTypes = HCasingOverMultipleDatasError
+
 class HasRecordOverMultipleCodatas e where
     recordOverMultipleCodatas :: [Ident] -> e
 
@@ -110,13 +119,24 @@ data PolarityMismatch = PolarityMismatch Polarity (Ident, Polarity)
 
 instance HasPolarityMismatch PolarityMismatch where
     polarityMismatch = PolarityMismatch
+
+class HasHCaseArityMismatch e where
+    hcaseArityMismatch :: (Ident, Ident, Word) -> (RowColPos, RowColPos, [Ident]) -> e
+
+data HCaseArityMismatch = HCaseArityMismatch (Ident, Ident, Word) (RowColPos, RowColPos, [Ident])
+  deriving Show
+
+instance HasHCaseArityMismatch HCaseArityMismatch where
+    hcaseArityMismatch = HCaseArityMismatch
     
 type CompilerErrors e = 
     ( HasAmbiguousLookupError e 
+    , HasHCaseArityMismatch e
     , HasIllegalInstrCallError e e
     , HasFunctionArityMismatchError e
     , HasCasingOverMultipleDatas e
     , HasRecordOverMultipleCodatas e
+    , HasHCasingOverMultipleTypes e
     , HasDataArityMismatchError e
     , HasCodataArityMismatchError e
     , HasProcessArityMismatch e

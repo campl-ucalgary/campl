@@ -238,13 +238,15 @@ sToken p s = PT p (TS s i)
       "[" -> 20
       "]" -> 21
       "as" -> 22
-      "into" -> 23
-      "of" -> 24
-      "on" -> 25
-      "with" -> 26
-      "{" -> 27
-      "|" -> 28
-      "}" -> 29
+      "else" -> 23
+      "into" -> 24
+      "of" -> 25
+      "on" -> 26
+      "then" -> 27
+      "with" -> 28
+      "{" -> 29
+      "|" -> 30
+      "}" -> 31
       _ -> error $ "not a reserved word: " ++ show s
 
 -- | Get the position of a token.

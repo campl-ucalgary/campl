@@ -84,6 +84,8 @@ c o n s
     { tok (\p s -> PT p (eitherResIdent (T_Cons . share) s)) }
 c a s e
     { tok (\p s -> PT p (eitherResIdent (T_Case . share) s)) }
+i f
+    { tok (\p s -> PT p (eitherResIdent (T_If . share) s)) }
 r e c
     { tok (\p s -> PT p (eitherResIdent (T_Rec . share) s)) }
 g e t
@@ -112,6 +114,10 @@ h a l t
     { tok (\p s -> PT p (eitherResIdent (T_Ch_Id . share) s)) }
 \% r u n
     { tok (\p s -> PT p (eitherResIdent (T_Main_run . share) s)) }
+t r u e
+    { tok (\p s -> PT p (eitherResIdent (T_BTrue . share) s)) }
+f a l s e
+    { tok (\p s -> PT p (eitherResIdent (T_BFalse . share) s)) }
 \' ($u # [\' \\]| \\ [\' \\ n t]) \'
     { tok (\p s -> PT p (eitherResIdent (T_Character . share) s)) }
 $c ($l | $d | \_)*
@@ -174,6 +180,7 @@ data Tok =
  | T_Rem !String
  | T_Cons !String
  | T_Case !String
+ | T_If !String
  | T_Rec !String
  | T_Get !String
  | T_Put !String
@@ -188,6 +195,8 @@ data Tok =
  | T_Halt !String
  | T_Ch_Id !String
  | T_Main_run !String
+ | T_BTrue !String
+ | T_BFalse !String
  | T_Character !String
  | T_UIdent !String
  | T_PIdent !String
@@ -257,6 +266,7 @@ prToken t = case t of
   PT _ (T_Rem s) -> s
   PT _ (T_Cons s) -> s
   PT _ (T_Case s) -> s
+  PT _ (T_If s) -> s
   PT _ (T_Rec s) -> s
   PT _ (T_Get s) -> s
   PT _ (T_Put s) -> s
@@ -271,6 +281,8 @@ prToken t = case t of
   PT _ (T_Halt s) -> s
   PT _ (T_Ch_Id s) -> s
   PT _ (T_Main_run s) -> s
+  PT _ (T_BTrue s) -> s
+  PT _ (T_BFalse s) -> s
   PT _ (T_Character s) -> s
   PT _ (T_UIdent s) -> s
   PT _ (T_PIdent s) -> s
@@ -289,7 +301,7 @@ eitherResIdent tv s = treeFind resWords
                               | s == a = t
 
 resWords :: BTree
-resWords = b ":" 15 (b "%processes" 8 (b "%destructors" 4 (b "%cohandles" 2 (b "#" 1 N N) (b "%constructors" 3 N N)) (b "%handles" 6 (b "%functions" 5 N N) (b "%include" 7 N N))) (b "-" 12 (b ")" 10 (b "(" 9 N N) (b "," 11 N N)) (b "." 14 (b "->" 13 N N) N))) (b "into" 23 (b "=>" 19 (b ";" 17 (b ":=" 16 N N) (b "=" 18 N N)) (b "]" 21 (b "[" 20 N N) (b "as" 22 N N))) (b "{" 27 (b "on" 25 (b "of" 24 N N) (b "with" 26 N N)) (b "}" 29 (b "|" 28 N N) N)))
+resWords = b ":=" 16 (b "%processes" 8 (b "%destructors" 4 (b "%cohandles" 2 (b "#" 1 N N) (b "%constructors" 3 N N)) (b "%handles" 6 (b "%functions" 5 N N) (b "%include" 7 N N))) (b "-" 12 (b ")" 10 (b "(" 9 N N) (b "," 11 N N)) (b "." 14 (b "->" 13 N N) (b ":" 15 N N)))) (b "into" 24 (b "[" 20 (b "=" 18 (b ";" 17 N N) (b "=>" 19 N N)) (b "as" 22 (b "]" 21 N N) (b "else" 23 N N))) (b "with" 28 (b "on" 26 (b "of" 25 N N) (b "then" 27 N N)) (b "|" 30 (b "{" 29 N N) (b "}" 31 N N))))
    where b s n = let bs = id s
                   in B bs (TS bs n)
 

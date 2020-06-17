@@ -199,7 +199,7 @@ lookupProtocolAndHandle ::
     Ident ->    
     Ident -> 
     Map String (Either e SymEntry) ->
-    Either e HCaseIx
+    Either e (RowColPos, (Ident, HCaseIx))
 lookupProtocolAndHandle protocol handle map = 
     typeLookupHelper (protocolDoesNotExist, relookup) protocol handle map
   where
@@ -207,23 +207,8 @@ lookupProtocolAndHandle protocol handle map =
 
     handleLookup (pos, handles) = maybe 
         (Left $ handleDoesNotExist protocol handle) 
-        (Right . snd) 
+        (Right . (pos,))
         $ find ( (==fst handle) . fst . fst ) handles
-{-
-lookupProtocolAndHandle protocol handle map = maybe 
-    (Left (protocolDoesNotExist protocol))
-    relookup
-    $ Map.lookup (fst protocol) map
-  where
-    -- relookup :: Either e SymEntry -> Either e ConsIx
-    relookup = Left ||| (\case SymProtocol info -> handleLookup info ; n -> Left (notProtocol protocol n) )
-
-    -- handleLookup :: ProtocolInfo -> Either e ConsIx
-    handleLookup (pos, handles) = maybe 
-        (Left $ handleDoesNotExist protocol handle) 
-        (Right . snd) 
-        $ find ( (==fst handle) . fst . fst ) handles
-        -}
 
 lookupCoprotocolAndCohandle :: 
     ( HasAmbiguousLookupError e
@@ -231,7 +216,7 @@ lookupCoprotocolAndCohandle ::
     Ident ->    
     Ident -> 
     Map String (Either e SymEntry) ->
-    Either e HCaseIx
+    Either e (RowColPos, (Ident, HCaseIx))
 lookupCoprotocolAndCohandle coprotocol cohandle map = 
     typeLookupHelper (coprotocolDoesNotExist, relookup) coprotocol cohandle map
   where
@@ -239,7 +224,7 @@ lookupCoprotocolAndCohandle coprotocol cohandle map =
 
     cohandleLookup (pos, cohandles) = maybe 
         (Left $ cohandleDoesNotExist coprotocol cohandle) 
-        (Right . snd) 
+        ( Right . (pos,) )
         $ find ( (==fst cohandle) . fst . fst ) cohandles
 
 lookupDataAndConstructor :: 
@@ -258,16 +243,6 @@ lookupDataAndConstructor dataa constructor map =
         (Left $ constructorDoesNotExist dataa constructor) 
         (Right . (pos,)) 
         $ find ( (==fst constructor) . fst . fst ) datas
-
--- | unsafe type version
-lookupDataAndConstructor' :: 
-    ( HasAmbiguousLookupError e
-    , HasDataLookupError e ) =>
-    Ident ->    
-    Ident -> 
-    Map String (Either e SymEntry) ->
-    Either e (RowColPos, (Ident, (Word, Word)))
-lookupDataAndConstructor' dataa constructor map = (coerce :: (RowColPos, (Ident, (ConsIx, Word))) -> (RowColPos, (Ident, (Word, Word)))) <$> lookupDataAndConstructor dataa constructor map
 
 lookupCodataAndDestructor :: 
     ( HasAmbiguousLookupError e
