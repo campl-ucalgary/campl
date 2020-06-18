@@ -93,7 +93,7 @@ amplMACHLoop = do
             chmNewProcesses = ps
             , chmFreeChannelNames = ngchs
             , chmNewServices = svs
-            }, chm'') = stepChannelManager chm'
+            }, chm'') = stepChannelManager (getServicesSet env) chm'
         
     -- update the channel manager...
     liftIO $ writeIORef (getChannelManager env) chm''
@@ -440,8 +440,9 @@ amplLogChm chm = do
     numrningprs <- getNumRunningProcesses env
     liftIO $ getFileLog env
         (intercalate "\n" $
-            "Channel Manager: ": map show (Map.toList chm) ++
-            [ "\nNumber of running processes: "
-            , show numrningprs
-            ]
+            "Channel Manager: " : 
+            map 
+                ( render . doc . second (Queue.toList *** Queue.toList))
+                (Map.toList chm) 
+            ++ [ "\nNumber of running processes: " , show numrningprs ]
         )

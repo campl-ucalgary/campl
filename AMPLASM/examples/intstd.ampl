@@ -4,11 +4,11 @@
 }
 
 %run ( | console => intterm ) : {
-    hput console ConsoleInt.Get ;
+    hput ConsoleInt.Get on console  ;
     get val on console ;
-    hput console ConsoleInt.Put ;
+    hput ConsoleInt.Put on console  ;
     put val on console ;
-    hput console ConsoleInt.Close ;
+    hput ConsoleInt.Close on console  ;
 
     close console ;
 }

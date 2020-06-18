@@ -41,6 +41,7 @@ import Control.Monad.Trans
 import System.IO
 import System.Random
 import System.Exit
+import Debug.Trace
 
 data AmplAssembleConfig = AmplAssembleConfig {
         filetocompile :: String
@@ -137,7 +138,8 @@ amplCodeToInstr servicegeneratorstate amplcode =
         f (pname, (ppos, (args, inchs, outchs, Prog coms))) = do
             let intranslations = map (fst *** (Input,)) inchs
                 outtranslations = map (fst *** (Output,)) outchs
-            (_, (_, funid)) <- Bifunctor.first (((pname,ppos),) . pure) $ lookupFunction (pname, ppos) symboltable
+            (_, (_, _, _, funid)) <- Bifunctor.first (((pname,ppos),) . pure) 
+                                        $ lookupProcess (pname, ppos) symboltable
             Bifunctor.bimap (\errs -> ((pname, ppos), errs)) (\(instrs, _) -> (funid, (pname,instrs)))
                 $ compileRunner coms 
                     (CompileEnv { symbolTable = symboltable }) 

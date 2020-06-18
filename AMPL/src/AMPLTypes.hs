@@ -34,18 +34,18 @@ import qualified Data.Stream as Stream
 type ChannelIdRep = Int
 
 newtype LocalChanID = LocalChanID ChannelIdRep  -- Local channel id
-    deriving (Show, Enum, Eq, Ord, Ix, Generic, Typeable)
+    deriving (Show, Enum, Read, Eq, Ord, Ix, Generic, Typeable)
     deriving anyclass Out
 
 newtype GlobalChanID = GlobalChanID ChannelIdRep  -- global channel id
-    deriving (Show, Enum, Eq, Ord, Ix, Generic, Typeable)
+    deriving (Show, Read, Enum, Eq, Ord, Ix, Generic, Typeable)
     deriving anyclass Out
 
 funIdStream :: [FunID]
 funIdStream = Stream.toList (coerce wordStream)
 
 newtype FunID = FunID Word  -- function id
-    deriving (Show, Eq, Ord, Ix, Generic, Typeable)
+    deriving (Show, Eq, Read, Ord, Ix, Generic, Typeable)
     deriving anyclass Out
     deriving newtype Enum
 
@@ -55,29 +55,29 @@ wordStream = Stream.iterate succ 0
 
 -- indexing constructors...
 newtype ConsIx = ConsIx Word
-    deriving (Show, Eq, Ord, Ix, Generic, Typeable)
+    deriving (Show, Read, Eq, Ord, Ix, Generic, Typeable)
     deriving anyclass Out
     deriving newtype Enum
 
 -- indexing codata destructors...
 newtype DesIx = DesIx Word
-    deriving (Show, Eq, Ord, Ix, Generic, Typeable)
+    deriving (Show, Read, Eq, Ord, Ix, Generic, Typeable)
     deriving anyclass Out
     deriving newtype Enum
 
 -- indexing codata destructors...
 newtype TupleIx = TupleIx Word
-    deriving (Show, Eq, Ord, Ix, Generic, Typeable)
+    deriving (Show, Read, Eq, Ord, Ix, Generic, Typeable)
     deriving anyclass Out
     deriving newtype Enum
 
 -- By convention (i.e., Prashant), the output queue is the left queue
 -- and the input queue is the right queue
 data Polarity = Output | Input 
-    deriving (Show, Eq, Generic, Out, Typeable)
+    deriving (Show, Read, Eq, Generic, Out, Typeable)
 
 newtype HCaseIx = HCaseIx Word
-    deriving (Show, Eq, Ord, Ix, Generic, Typeable)
+    deriving (Show, Read, Eq, Ord, Ix, Generic, Typeable)
     deriving anyclass Out
     deriving newtype Enum
         -- corresponds to IHPut / IHCase -- either we put a request for
@@ -180,14 +180,7 @@ restrictTranslation lcls = filter (\(p, (lc, gc)) -> lc `elem` lcls)
 data Instr =
     ConcurrentInstr ConcurrentInstr
     | SequentialInstr SequentialInstr
-    deriving (Eq, Generic, Out, Typeable)
-
-instance Show Instr where
-    show (ConcurrentInstr cs) = show cs
-    show (SequentialInstr cs) = show cs
-    -- We want to show instructions without
-    -- the extra ConcurrentInstr, and SequentialInstr
-    -- constructors..
+    deriving (Show, Read, Eq, Generic, Out, Typeable)
 
 -- SEQUENTIAL INSTURCTIONS..
 data SequentialInstr =
@@ -239,7 +232,7 @@ data SequentialInstr =
         -- Number of elements in the tuple
     | ITupleElem TupleIx
         -- get the n'th element from a tuple
-    deriving (Show, Eq, Generic, Out, Typeable)
+    deriving (Show, Read, Eq, Generic, Out, Typeable)
 
 -- smart consturctors...
 iStore :: Instr
@@ -341,7 +334,7 @@ data Val =
     -- User defined data types..
     | VCons (ConsIx, [Val])
     | VRec (Array DesIx [Instr], [Val])
-    deriving (Show, Eq, Generic, Out, Typeable)
+    deriving (Show, Read, Eq, Generic, Out, Typeable)
 
 
 -- CONCURRENT INSTRUCTIONS
@@ -371,7 +364,7 @@ data ConcurrentInstr =
     | IHCase LocalChanID (Array HCaseIx [Instr])
 
     | IRace [(LocalChanID, [Instr])]
-    deriving (Show, Eq, Generic, Out, Typeable)
+    deriving (Show, Read, Eq, Generic, Out, Typeable)
 
 -- smart constructors for ConcurrentInstr
 iGet :: LocalChanID -> Instr
@@ -509,6 +502,7 @@ qRace = QRace
 -- | Data type used for terminating the TCP server by throwing an exception
 data AmplExit = AmplExit
     deriving (Show, Exception)
+
 
 -- instances for deriving the pretty printer since the array does
 -- not have a Generics instance, so we cannot automatically derive

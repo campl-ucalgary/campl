@@ -8,14 +8,14 @@
 }
 
 %run ( | cconsole => charterm ) : {
-    hput cconsole ConsoleChar.Get ;
+    hput ConsoleChar.Get on cconsole  ;
     get val on cconsole ;
 
-    hput charterm CharTerm.Put ;
+    hput CharTerm.Put on charterm  ;
     put val on charterm ;
-    hput charterm CharTerm.Close ;
+    hput CharTerm.Close on charterm  ;
 
-    hput cconsole ConsoleChar.Close ;
+    hput ConsoleChar.Close on cconsole  ;
 
     close cconsole ;
 }

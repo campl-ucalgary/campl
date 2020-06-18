@@ -196,10 +196,10 @@ Ch_Id literals are recognized by the regular expression
 Main_run literals are recognized by the regular expression
 `````{"%run"}`````
 
-True literals are recognized by the regular expression
+BTrue literals are recognized by the regular expression
 `````{"true"}`````
 
-False literals are recognized by the regular expression
+BFalse literals are recognized by the regular expression
 `````{"false"}`````
 
 Character literals are recognized by the regular expression
@@ -305,8 +305,8 @@ All other symbols are terminals.
   |  |  **|**  | //And//
   |  |  **|**  | //Or//
   |  |  **|**  | //Append//
-  |  |  **|**  | //True//
-  |  |  **|**  | //False//
+  |  |  **|**  | //BTrue//
+  |  |  **|**  | //BFalse//
   |  |  **|**  | //Unstring//
   |  |  **|**  | //LeqI//
   |  |  **|**  | //EqI//

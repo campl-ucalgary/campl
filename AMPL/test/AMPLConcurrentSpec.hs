@@ -84,8 +84,12 @@ channelStepTester lstchm lstchmres res = do
 -- case the result will lead to another step (e.g. a get/put step) which will
 -- occur depending on the iteration order...
 idTest0 = 
-    [ (GlobalChanID 0, ( QGet mempty <| Queue.empty, QId (GlobalChanID 0, GlobalChanID 1) <| Queue.empty))
-    , (GlobalChanID 1, ( Queue.empty, QGet mempty <| Queue.empty)) 
+    [ (GlobalChanID 0, 
+        ( QGet mempty <| Queue.empty
+        , QId (GlobalChanID 0, GlobalChanID 1) <| Queue.empty))
+    , (GlobalChanID 1, 
+        ( Queue.empty
+        , QGet mempty <| Queue.empty)) 
     ]
 idTest0Res = 
     [ (GlobalChanID 1, (QGet mempty <| Queue.empty, QGet mempty <| Queue.empty)) ]

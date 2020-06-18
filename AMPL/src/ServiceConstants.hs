@@ -18,13 +18,13 @@ closeRequest :: String
 closeRequest = "3"
 
 hCaseIxGet :: Word
-hCaseIxGet = 1
+hCaseIxGet = 0
 
 hCaseIxPut :: Word
-hCaseIxPut = 2
+hCaseIxPut = 1
 
 hCaseIxClose :: Word
-hCaseIxClose = 3 
+hCaseIxClose = 2 
 
 pattern IxGet <- ((==hCaseIxGet) -> True)
 pattern IxPut <- ((==hCaseIxPut) -> True)

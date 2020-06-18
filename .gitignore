@@ -25,4 +25,5 @@ cabal.project.local
 cabal.project.local~
 .HTF/
 .ghc.environment.*
-logs/*
+AMPL/logs/*
+AMPLASM/examples/logs/*

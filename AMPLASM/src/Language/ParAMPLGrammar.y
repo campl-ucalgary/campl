@@ -367,7 +367,7 @@ COM : PIdent ':=' COM { Language.AbsAMPLGrammar.AC_ASSIGN $1 $3 }
     | UIdent '.' UIdent PIdent { Language.AbsAMPLGrammar.AC_DEST $1 $3 $4 }
     | UIdent '.' UIdent '(' ListPIdent ')' PIdent { Language.AbsAMPLGrammar.AC_DESTAS $1 $3 $5 $7 }
     | Get PIdent 'on' PIdent { Language.AbsAMPLGrammar.AC_GETf $1 $2 $4 }
-    | Hput PIdent UIdent '.' UIdent { Language.AbsAMPLGrammar.AC_HPUTf $1 $2 $3 $5 }
+    | Hput UIdent '.' UIdent 'on' PIdent { Language.AbsAMPLGrammar.AC_HPUTf $1 $2 $4 $6 }
     | Hcase PIdent 'of' '{' ListLABELCOMS '}' { Language.AbsAMPLGrammar.AC_HCASEf $1 $2 $5 }
     | Put PIdent 'on' PIdent { Language.AbsAMPLGrammar.AC_PUTf $1 $2 $4 }
     | Split PIdent 'into' PIdent PIdent { Language.AbsAMPLGrammar.AC_SPLITf $1 $2 $4 $5 }

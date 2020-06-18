@@ -1,11 +1,13 @@
 {-# LANGUAGE DeriveTraversable #-}
 module Data.Stream 
     ( Stream (..)
-    , unfoldr
+    , Data.Stream.unfoldr
+    , Data.Stream.unfoldrM
     , Data.Stream.iterate
     , Data.Stream.head
     , Data.Stream.take
     , Data.Stream.toList
+    , Data.Stream.fromList
     , Data.Stream.map
     , Data.Stream.tail )
     where
@@ -43,8 +45,17 @@ unfoldr f b = Stream a (unfoldr f b')
   where
     (a, b') = f b
 
+unfoldrM :: Monad m => (b -> m (a, b)) -> b -> m (Stream a)
+unfoldrM f b = do
+    (a, b') <- f b
+    rst <- (unfoldrM f b')
+    return $ Stream a rst
+
 iterate :: (a -> a) -> a -> Stream a
 iterate f = unfoldr (\b -> (b, f b)) 
 
 toList :: Stream a -> [a]
 toList (Stream a as) = a : toList as
+
+fromList :: [a] -> Stream a 
+fromList = foldr Stream (error "Illegal `fromList' in Data.Stream")

@@ -135,12 +135,12 @@ transCh_Id x = case x of
 transMain_run :: Main_run -> Result
 transMain_run x = case x of
   Main_run string -> failure x
-transTrue :: True -> Result
-transTrue x = case x of
-  True string -> failure x
-transFalse :: False -> Result
-transFalse x = case x of
-  False string -> failure x
+transBTrue :: BTrue -> Result
+transBTrue x = case x of
+  BTrue string -> failure x
+transBFalse :: BFalse -> Result
+transBFalse x = case x of
+  BFalse string -> failure x
 transCharacter :: Character -> Result
 transCharacter x = case x of
   Character string -> failure x
@@ -235,8 +235,8 @@ transCOM x = case x of
   AC_AND and -> failure x
   AC_OR or -> failure x
   AC_APPEND append -> failure x
-  AC_TRUE true -> failure x
-  AC_FALSE false -> failure x
+  AC_TRUE btrue -> failure x
+  AC_FALSE bfalse -> failure x
   AC_UNSTRING unstring -> failure x
   AC_LEQ leqi -> failure x
   AC_EQ eqi -> failure x

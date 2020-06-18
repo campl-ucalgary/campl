@@ -27,18 +27,18 @@ import Text.Read
 data ServiceDataType = 
     IntService
     | CharService
-    deriving (Show, Eq)
+    deriving (Show, Read, Eq)
 
 -- | External services require a Key..
 newtype Key = Key String
-    deriving (Show, Eq, Ord)
+    deriving (Show, Read, Eq, Ord)
 
 -- | Sum type for the different kind of services..
 data ServiceType = 
     StdService                                  -- ^ standard service
     | NetworkedService Key                      -- ^ external network service
     | TerminalNetworkedService String Key       -- ^ external network service that opens a terminal (command, and key)
-    deriving (Show, Eq)
+    deriving (Show, Read, Eq)
 
 -- Information for querying a service...
 type ServiceQuery = (GlobalChanID, ServiceRequest Val)

@@ -214,11 +214,11 @@ instance Print Language.AbsAMPLGrammar.Ch_Id where
 instance Print Language.AbsAMPLGrammar.Main_run where
   prt _ (Language.AbsAMPLGrammar.Main_run (_,i)) = doc (showString i)
 
-instance Print Language.AbsAMPLGrammar.True where
-  prt _ (Language.AbsAMPLGrammar.True (_,i)) = doc (showString i)
+instance Print Language.AbsAMPLGrammar.BTrue where
+  prt _ (Language.AbsAMPLGrammar.BTrue (_,i)) = doc (showString i)
 
-instance Print Language.AbsAMPLGrammar.False where
-  prt _ (Language.AbsAMPLGrammar.False (_,i)) = doc (showString i)
+instance Print Language.AbsAMPLGrammar.BFalse where
+  prt _ (Language.AbsAMPLGrammar.BFalse (_,i)) = doc (showString i)
 
 instance Print Language.AbsAMPLGrammar.Character where
   prt _ (Language.AbsAMPLGrammar.Character (_,i)) = doc (showString i)
@@ -387,8 +387,8 @@ instance Print Language.AbsAMPLGrammar.COM where
     Language.AbsAMPLGrammar.AC_AND and -> prPrec i 0 (concatD [prt 0 and])
     Language.AbsAMPLGrammar.AC_OR or -> prPrec i 0 (concatD [prt 0 or])
     Language.AbsAMPLGrammar.AC_APPEND append -> prPrec i 0 (concatD [prt 0 append])
-    Language.AbsAMPLGrammar.AC_TRUE true -> prPrec i 0 (concatD [prt 0 true])
-    Language.AbsAMPLGrammar.AC_FALSE false -> prPrec i 0 (concatD [prt 0 false])
+    Language.AbsAMPLGrammar.AC_TRUE btrue -> prPrec i 0 (concatD [prt 0 btrue])
+    Language.AbsAMPLGrammar.AC_FALSE bfalse -> prPrec i 0 (concatD [prt 0 bfalse])
     Language.AbsAMPLGrammar.AC_UNSTRING unstring -> prPrec i 0 (concatD [prt 0 unstring])
     Language.AbsAMPLGrammar.AC_LEQ leqi -> prPrec i 0 (concatD [prt 0 leqi])
     Language.AbsAMPLGrammar.AC_EQ eqi -> prPrec i 0 (concatD [prt 0 eqi])

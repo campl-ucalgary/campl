@@ -329,7 +329,7 @@ All other symbols are terminals.
   |  |  **|**  | //UIdent// ``.`` //UIdent// //PIdent//
   |  |  **|**  | //UIdent// ``.`` //UIdent// ``(`` //[PIdent]// ``)`` //PIdent//
   |  |  **|**  | //Get// //PIdent// ``on`` //PIdent//
-  |  |  **|**  | //Hput// //PIdent// //UIdent// ``.`` //UIdent//
+  |  |  **|**  | //Hput// //UIdent// ``.`` //UIdent// ``on`` //PIdent//
   |  |  **|**  | //Hcase// //PIdent// ``of`` ``{`` //[LABELCOMS]// ``}``
   |  |  **|**  | //Put// //PIdent// ``on`` //PIdent//
   |  |  **|**  | //Split// //PIdent// ``into`` //PIdent// //PIdent//

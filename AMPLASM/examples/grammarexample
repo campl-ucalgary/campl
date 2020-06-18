@@ -99,7 +99,7 @@
     get val on channel ;
 
     -- AC_HPUTf
-    hput val Handle.HandleConstructorThing ;
+    hput Handle.HandleConstructorThing on channel  ;
 
     -- AC_HCASEf 
     hcase val of {

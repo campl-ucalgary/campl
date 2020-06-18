@@ -411,7 +411,7 @@ instance Print Language.AbsAMPLGrammar.COM where
     Language.AbsAMPLGrammar.AC_DEST uident1 uident2 pident -> prPrec i 0 (concatD [prt 0 uident1, doc (showString "."), prt 0 uident2, prt 0 pident])
     Language.AbsAMPLGrammar.AC_DESTAS uident1 uident2 pidents pident -> prPrec i 0 (concatD [prt 0 uident1, doc (showString "."), prt 0 uident2, doc (showString "("), prt 0 pidents, doc (showString ")"), prt 0 pident])
     Language.AbsAMPLGrammar.AC_GETf get pident1 pident2 -> prPrec i 0 (concatD [prt 0 get, prt 0 pident1, doc (showString "on"), prt 0 pident2])
-    Language.AbsAMPLGrammar.AC_HPUTf hput pident uident1 uident2 -> prPrec i 0 (concatD [prt 0 hput, prt 0 pident, prt 0 uident1, doc (showString "."), prt 0 uident2])
+    Language.AbsAMPLGrammar.AC_HPUTf hput uident1 uident2 pident -> prPrec i 0 (concatD [prt 0 hput, prt 0 uident1, doc (showString "."), prt 0 uident2, doc (showString "on"), prt 0 pident])
     Language.AbsAMPLGrammar.AC_HCASEf hcase pident labelcomss -> prPrec i 0 (concatD [prt 0 hcase, prt 0 pident, doc (showString "of"), doc (showString "{"), prt 0 labelcomss, doc (showString "}")])
     Language.AbsAMPLGrammar.AC_PUTf put pident1 pident2 -> prPrec i 0 (concatD [prt 0 put, prt 0 pident1, doc (showString "on"), prt 0 pident2])
     Language.AbsAMPLGrammar.AC_SPLITf split pident1 pident2 pident3 -> prPrec i 0 (concatD [prt 0 split, prt 0 pident1, doc (showString "into"), prt 0 pident2, prt 0 pident3])

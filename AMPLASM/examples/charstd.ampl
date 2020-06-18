@@ -4,11 +4,11 @@
 }
 
 %run ( | cconsole => intterm ) : {
-    hput cconsole ConsoleChar.Get ;
+    hput ConsoleChar.Get on cconsole  ;
     get val on cconsole ;
-    hput cconsole ConsoleChar.Put ;
+    hput ConsoleChar.Put on cconsole  ;
     put val on cconsole ;
-    hput cconsole ConsoleChar.Close ;
+    hput ConsoleChar.Close on cconsole  ;
 
     close cconsole ;
 }

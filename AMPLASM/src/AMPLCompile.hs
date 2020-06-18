@@ -220,7 +220,7 @@ compile (c:cs) = do
         --    They are hput on output polarity channels and hcased on input polarity channels
         --  Cohandles:  these are handle names associated with a type.
         --    They are hput on input polarity channels and hcased on output polarity channels
-        AC_HPUTf (Hput (swap -> hputident)) (pIdentToIdent -> ch) (uIdentToIdent -> name) (uIdentToIdent -> subname) -> do
+        AC_HPUTf (Hput (swap -> hputident)) (uIdentToIdent -> name) (uIdentToIdent -> subname) (pIdentToIdent -> ch)  -> do
             translations <- gets channelTranslations
             symtable <- asks symbolTable
             (pol, lch) <- liftEither 
@@ -298,10 +298,18 @@ compile (c:cs) = do
 
                 (instrs1, _) <- liftEither   
                                 $ compileRunner coms1 env 
-                                    (state { channelTranslations = zip (map fst chs1) (zip (iterate (const Output) Output) pluggedlchs) ++ lchs1 })
+                                    (state { channelTranslations = 
+                                            zip 
+                                                (map fst pluggedchs) 
+                                                (zip (iterate (const Output) Output) pluggedlchs) ++ lchs1 
+                                            })
                 (instrs2, _) <- liftEither   
                                 $ compileRunner coms2 env 
-                                    (state { channelTranslations = zip (map fst chs2) (zip (iterate (const Output) Input) pluggedlchs) ++ lchs2 })
+                                    (state { channelTranslations = 
+                                            zip    
+                                                (map fst pluggedchs) 
+                                                (zip (iterate (const Input) Input) pluggedlchs) ++ lchs2 
+                                            })
 
                 return [ iPlug pluggedlchs ((map (snd . snd) lchs1, instrs1), (map (snd . snd) lchs2, instrs2)) ]
 
@@ -358,6 +366,7 @@ compile (c:cs) = do
         AC_PROD (map pIdentToIdent -> var) -> error "prod not implemented yet"
 
         AC_PRODELEM (pIntegerToWord -> tupleelm) (pIdentToIdent -> var) -> error "prod elem not implemented yet"
+        n -> error $ show n ++ " is not implemented yet." 
 
 
 

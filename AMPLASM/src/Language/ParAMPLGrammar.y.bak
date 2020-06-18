@@ -88,8 +88,8 @@ import Language.ErrM
   L_Halt { PT _ (T_Halt _) }
   L_Ch_Id { PT _ (T_Ch_Id _) }
   L_Main_run { PT _ (T_Main_run _) }
-  L_True { PT _ (T_True _) }
-  L_False { PT _ (T_False _) }
+  L_BTrue { PT _ (T_BTrue _) }
+  L_BFalse { PT _ (T_BFalse _) }
   L_Character { PT _ (T_Character _) }
   L_UIdent { PT _ (T_UIdent _) }
   L_PIdent { PT _ (T_PIdent _) }
@@ -230,11 +230,11 @@ Ch_Id  : L_Ch_Id { Ch_Id (mkPosToken $1)}
 Main_run :: { Main_run}
 Main_run  : L_Main_run { Main_run (mkPosToken $1)}
 
-True :: { True}
-True  : L_True { True (mkPosToken $1)}
+BTrue :: { BTrue}
+BTrue  : L_BTrue { BTrue (mkPosToken $1)}
 
-False :: { False}
-False  : L_False { False (mkPosToken $1)}
+BFalse :: { BFalse}
+BFalse  : L_BFalse { BFalse (mkPosToken $1)}
 
 Character :: { Character}
 Character  : L_Character { Character (mkPosToken $1)}
@@ -343,8 +343,8 @@ COM : PIdent ':=' COM { Language.AbsAMPLGrammar.AC_ASSIGN $1 $3 }
     | And { Language.AbsAMPLGrammar.AC_AND $1 }
     | Or { Language.AbsAMPLGrammar.AC_OR $1 }
     | Append { Language.AbsAMPLGrammar.AC_APPEND $1 }
-    | True { Language.AbsAMPLGrammar.AC_TRUE $1 }
-    | False { Language.AbsAMPLGrammar.AC_FALSE $1 }
+    | BTrue { Language.AbsAMPLGrammar.AC_TRUE $1 }
+    | BFalse { Language.AbsAMPLGrammar.AC_FALSE $1 }
     | Unstring { Language.AbsAMPLGrammar.AC_UNSTRING $1 }
     | LeqI { Language.AbsAMPLGrammar.AC_LEQ $1 }
     | EqI { Language.AbsAMPLGrammar.AC_EQ $1 }

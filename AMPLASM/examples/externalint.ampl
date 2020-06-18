@@ -10,20 +10,20 @@
 }
 
 %run ( | console => intterm ) : {
-    hput console ConsoleInt.Get ;
+    hput ConsoleInt.Get on console  ;
     get val on console ;
 
-    hput intterm Intterm.Put ;
+    hput Intterm.Put on intterm  ;
     put val on intterm ;
 
-    hput intterm Intterm.Get;
+    hput Intterm.Get; on intterm 
     get vval on intterm ;
 
-    hput console ConsoleInt.Put ;
+    hput ConsoleInt.Put on console  ;
     put vval on console ;
 
-    hput console ConsoleInt.Close;
-    hput intterm Intterm.Close;
+    hput ConsoleInt.Close on console ;
+    hput Intterm.Close on intterm ;
 
     close console ;
     close intterm ;

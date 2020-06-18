@@ -21,6 +21,8 @@ import Data.Queue
 import qualified Data.Queue as Queue
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Set (Set)
+import qualified Data.Set as Set
 
 import Control.Monad.Reader
 import Control.Monad.State
@@ -253,9 +255,10 @@ emptyStepChannelManagerResult = StepChannelManagerResult [] [] []
 
 -- | Steps the channel manager (corresponding to Table 3)
 stepChannelManager :: 
+    Set GlobalChanID -> 
     Map GlobalChanID (Queue QInstr, Queue QInstr) ->
     (StepChannelManagerResult, Map GlobalChanID (Queue QInstr, Queue QInstr))   -- ^ new processes, and new map
-stepChannelManager = 
+stepChannelManager services = 
     second (Map.fromAscList . fst)
                         -- get all the proccesed channels, and since they are in ascending order,
                         -- the precondition of Map.fromAscList is satisified so we may use it to 
@@ -399,22 +402,43 @@ stepChannelManager =
                     (we write this as IxPut with PatternSynonyms and ViewPatterns)
                 - 3 then it corresponds to close (i.e., close the service)
                     (we write this as IxClose with PatternSynonyms and ViewPatterns)
+
+                -- although, in the actual system, we go from 0,1,2 
             -}
-            (Queue.Empty, QHPut (HCaseIx IxGet) :<| q2@(QGet (s,t,e,c) :<| _)) -> rec
-                (res { chmNewServices = (gch, ServiceGet Output) : chmNewServices res } , ((gch, (Queue.empty, q2)):chs' , chs) )
+            (Queue.Empty, QHPut (HCaseIx IxGet) :<| q2@(QGet (s,t,e,c) :<| _)) 
+                | gch `Set.member` services -> rec
+                (res { chmNewServices = (gch, ServiceGet Output) : chmNewServices res } 
+                , ((gch, (Queue.empty, q2)):chs' 
+                , chs) )
 
-            (QHPut (HCaseIx IxGet) :<| q1@(QGet (s,t,e,c) :<| _), Queue.Empty) -> rec
-                (res { chmNewServices = (gch, ServiceGet Input) : chmNewServices res } , ((gch, (q1, Queue.empty)):chs' , chs) )
+            (QHPut (HCaseIx IxGet) :<| q1@(QGet (s,t,e,c) :<| _), Queue.Empty) 
+                | gch `Set.member` services -> rec
+                (res { chmNewServices = (gch, ServiceGet Input) : chmNewServices res } 
+                , ((gch, (q1, Queue.empty)):chs' 
+                , chs) )
 
-            (Queue.Empty, QHPut (HCaseIx IxPut) :<| (QPut v :<| q2)) -> rec
-                (res { chmNewServices = (gch, ServicePut v) : chmNewServices res } , ((gch, (Queue.empty, q2)):chs' , chs) )
-            (QHPut (HCaseIx IxPut) :<| (QPut v :<| q1), Queue.Empty) -> rec
-                (res { chmNewServices = (gch, ServicePut v) : chmNewServices res } , ((gch, (q1, Queue.empty)):chs' , chs) )
+            (Queue.Empty, QHPut (HCaseIx IxPut) :<| (QPut v :<| q2)) 
+                | gch `Set.member` services -> rec
+                (res { chmNewServices = (gch, ServicePut v) : chmNewServices res } 
+                , ((gch, (Queue.empty, q2)):chs' 
+                , chs) )
+            (QHPut (HCaseIx IxPut) :<| (QPut v :<| q1), Queue.Empty) 
+                | gch `Set.member` services -> rec
+                (res { chmNewServices = (gch, ServicePut v) : chmNewServices res } 
+                , ((gch, (q1, Queue.empty)):chs' 
+                , chs) )
 
-            (Queue.Empty, QHPut (HCaseIx IxClose) :<| q2) -> rec
-                (res { chmNewServices = (gch, ServiceClose) : chmNewServices res } , ((gch, (Queue.empty, q2)):chs' , chs) )
-            (QHPut (HCaseIx IxClose) :<| q1, Queue.Empty) -> rec
-                (res { chmNewServices = (gch, ServiceClose) : chmNewServices res } , ((gch, (q1, Queue.empty)):chs' , chs) )
+            (Queue.Empty, QHPut (HCaseIx IxClose) :<| q2) 
+                | gch `Set.member` services -> rec
+                (res { chmNewServices = (gch, ServiceClose) : chmNewServices res } 
+                , ((gch, (Queue.empty, q2)):chs' 
+                , chs) )
+            (QHPut (HCaseIx IxClose) :<| q1, Queue.Empty) 
+                | gch `Set.member` services -> rec
+                (res { chmNewServices = (gch, ServiceClose) : chmNewServices res } 
+                , ((gch, (q1, Queue.empty)):chs' 
+                , chs) )
 
             -- fall back catch all case.
             qs -> rec (res, ((gch, qs):chs', chs))
+

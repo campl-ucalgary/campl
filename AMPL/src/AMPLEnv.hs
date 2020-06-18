@@ -120,6 +120,10 @@ class HasAmplServices a where
     -- | given a GlobalChanID, we can look up the corresponding environment for that Service...
     lookupServiceEnv :: GlobalChanID -> a -> Maybe ServiceEnv
 
+    -- | gets all the global channel ids which are
+    -- services
+    getServicesSet :: a -> Set GlobalChanID
+
     -- this is needed because the std service
     -- can have multiple threads which access
     -- stdin/stdout
@@ -166,6 +170,8 @@ data AmplEnv = AmplEnv
         , amplTCPServer :: (MVar ThreadId, AmplTCPServer)
         -- | Map from global channel ids to ServiceEnv
         , amplServices :: Services
+        -- | Set of all ampl services (for convenience)
+        , amplServicesSet :: Set GlobalChanID
         -- | Maps the keys to connected clients..
         , amplQueuedClients :: QueuedClients
         -- | Standard service lock (this service is special because we can have multiple 
@@ -217,6 +223,7 @@ amplEnv defs tcpsv lg (svs, chm, nmg) = do
             {
                 supercombinators = mkSupercombinators defs
                 , amplServices = svs
+                , amplServicesSet = Map.keysSet svs
                 , amplStdServiceLock = stdsvlock
                 , amplTCPServer = (tcpmvarid, tcpsv)
                 , amplQueuedClients = queuedclients
@@ -277,6 +284,7 @@ instance HasChannelNameGenerator AmplEnv where
 
 instance HasAmplServices AmplEnv where
     lookupServiceEnv gch AmplEnv{ amplServices = svs } = Map.lookup gch svs
+    getServicesSet AmplEnv{ amplServicesSet = svsset } = svsset
     getStdServiceLock AmplEnv{ amplStdServiceLock = lk } = lk
 
 instance HasNetworkedConnections AmplEnv where

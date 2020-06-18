@@ -129,10 +129,10 @@ newtype Ch_Id = Ch_Id ((Int,Int),String)
 newtype Main_run = Main_run ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
 
-newtype True = True ((Int,Int),String)
+newtype BTrue = BTrue ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
 
-newtype False = False ((Int,Int),String)
+newtype BFalse = BFalse ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
 
 newtype Character = Character ((Int,Int),String)
@@ -229,8 +229,8 @@ data COM
     | AC_AND And
     | AC_OR Or
     | AC_APPEND Append
-    | AC_TRUE True
-    | AC_FALSE False
+    | AC_TRUE BTrue
+    | AC_FALSE BFalse
     | AC_UNSTRING Unstring
     | AC_LEQ LeqI
     | AC_EQ EqI

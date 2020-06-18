@@ -44,6 +44,27 @@ main = do
         svs
 -}
 
+
+data InitAMPLMachState = InitAMPLMachState {
+    initAmplMachStateServices :: ([GlobalChanID], [(GlobalChanID, (ServiceDataType, ServiceType))])
+            -- ^ interanl services, external services..
+    , initAmplMachMainFun :: ([Instr], [Translation]) 
+            -- ^ Main function, translations
+    , initAmplMachFuns :: [(FunID, (String, [Instr]))]
+    }
+  deriving (Show, Read, Eq)
+
+execAmplMachWithDefaultsFromInitAMPLMachState :: 
+    String ->               -- ^ Port number
+    InitAMPLMachState -> 
+    IO ()
+execAmplMachWithDefaultsFromInitAMPLMachState port InitAMPLMachState 
+    { initAmplMachStateServices = svs 
+    , initAmplMachMainFun = mainfun
+    , initAmplMachFuns = funs } = do
+        svs' <- uncurry genServicesChmAndStream svs
+        execAmplMachWithDefaults mainfun funs port svs'
+
 -- |  wrapper around execAmplMach specifically designed for the AmplEnv type
 -- with a default logger (logs to logs/filnameXX_log.txt) and opens the server for you
 execAmplMachWithDefaults :: 

@@ -35,9 +35,9 @@
 
     sum := call listSum(finallist) ;
 
-    hput console ConsoleInt.Put ;
+    hput ConsoleInt.Put on console  ;
     put sum on console ;
 
-    hput console ConsoleInt.Close ;
+    hput ConsoleInt.Close on console  ;
     close console ;
 }

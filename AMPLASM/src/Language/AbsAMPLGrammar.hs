@@ -253,7 +253,7 @@ data COM
     | AC_DEST UIdent UIdent PIdent
     | AC_DESTAS UIdent UIdent [PIdent] PIdent
     | AC_GETf Get PIdent PIdent
-    | AC_HPUTf Hput PIdent UIdent UIdent
+    | AC_HPUTf Hput UIdent UIdent PIdent
     | AC_HCASEf Hcase PIdent [LABELCOMS]
     | AC_PUTf Put PIdent PIdent
     | AC_SPLITf Split PIdent PIdent PIdent

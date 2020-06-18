@@ -259,7 +259,7 @@ transCOM x = case x of
   AC_DEST uident1 uident2 pident -> failure x
   AC_DESTAS uident1 uident2 pidents pident -> failure x
   AC_GETf get pident1 pident2 -> failure x
-  AC_HPUTf hput pident uident1 uident2 -> failure x
+  AC_HPUTf hput uident1 uident2 pident -> failure x
   AC_HCASEf hcase pident labelcomss -> failure x
   AC_PUTf put pident1 pident2 -> failure x
   AC_SPLITf split pident1 pident2 pident3 -> failure x

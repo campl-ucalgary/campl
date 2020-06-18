@@ -21,9 +21,9 @@
 
     store val ;
 
-    hput console ConsoleInt.Put ;
+    hput ConsoleInt.Put on console  ;
     put val on console ;
-    hput console ConsoleInt.Close ;
+    hput ConsoleInt.Close on console  ;
 }
 
 
