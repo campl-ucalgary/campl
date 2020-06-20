@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
  module AMPL where
 
 import AMPLSequential
@@ -23,6 +25,9 @@ import System.Environment
 import Data.List
 import Data.Bool
 
+import Text.PrettyPrint.GenericPretty
+import Text.PrettyPrint
+
 import Network.Socket
 
 {-
@@ -34,7 +39,7 @@ import Network.Socket
 {-
 The general structure for writing the program is as follows...
 main = do
-    svs <- genServicesChmAndStream 
+    svs <- genServicesChannelManagerAndStream 
                     [ {- Non service channels -} ] 
                     [ {- Service channels -} ]
     execAmplMachWithDefaults 
@@ -52,7 +57,7 @@ data InitAMPLMachState = InitAMPLMachState {
             -- ^ Main function, translations
     , initAmplMachFuns :: [(FunID, (String, [Instr]))]
     }
-  deriving (Show, Read, Eq)
+  deriving (Show, Read, Eq, Generic, Out)
 
 execAmplMachWithDefaultsFromInitAMPLMachState :: 
     String ->               -- ^ Port number
@@ -62,7 +67,7 @@ execAmplMachWithDefaultsFromInitAMPLMachState port InitAMPLMachState
     { initAmplMachStateServices = svs 
     , initAmplMachMainFun = mainfun
     , initAmplMachFuns = funs } = do
-        svs' <- uncurry genServicesChmAndStream svs
+        svs' <- uncurry genServicesChannelManagerAndStream svs
         execAmplMachWithDefaults mainfun funs port svs'
 
 -- |  wrapper around execAmplMach specifically designed for the AmplEnv type
@@ -71,12 +76,12 @@ execAmplMachWithDefaults ::
     ([Instr], [Translation]) ->                         -- ^ Main function
     [(FunID, (String, [Instr]))] ->                     -- ^ Function definitions..
     String ->                                           -- ^ AmplTCPServer port
-    (Services, Chm, Stream ChannelIdRep) ->             -- ^ note that Services and Chm 
+    (Services, ChannelManager, Stream ChannelIdRep) ->  -- ^ note that Services and Chm 
                                                         -- must correspond (i.e., if a global channel is in
                                                         -- Services, then there should be corresponding
                                                         -- empty queues with that global channel id
                                                         -- and each of these MUST be distinct from the elements in
-                                                        -- Stream ChannelIdRep. Use genServicesChmAndStream to generate
+                                                        -- Stream ChannelIdRep. Use genServicesChannelManagerAndStream to generate
                                                         -- this triple)
     IO ()
 execAmplMachWithDefaults mainf fdefs tcpsvr svs = 
@@ -91,7 +96,7 @@ execAmplMach ::
     [(FunID, (String, [Instr]))] ->                 -- ^ Function definitions..
     String ->                                       -- ^ AmplTCPServer Port
     AmplLogger ->                                   -- ^ logger
-    (Services, Chm, Stream ChannelIdRep) ->
+    (Services, ChannelManager, Stream ChannelIdRep) ->
     IO ()
 execAmplMach mainf fdefs tcpsv lgr svs = 
     bracket 
@@ -110,11 +115,11 @@ execAmplMach mainf fdefs tcpsv lgr svs =
 -- Note that by convention (Prashant), 0 should be the stdin/stdout 
 -- int terminal and -100 is the stdin/sdtout char terminal (although, this machine
 -- will run programs perfectly fine if this is not the case)
-genServicesChmAndStream :: 
+genServicesChannelManagerAndStream :: 
     [GlobalChanID] ->                                       -- ^ internal channels
     [(GlobalChanID, (ServiceDataType, ServiceType))] ->     -- ^ external channels (services)
-    IO (Services, Chm, Stream ChannelIdRep)                 
-genServicesChmAndStream internal externalassocs 
+    IO (Services, ChannelManager, Stream ChannelIdRep)                 
+genServicesChannelManagerAndStream internal externalassocs 
     | all checkValid externalassocs = do
         svs <- initAmplServices externalassocs 
         return (svs, chm, strm)
@@ -128,7 +133,7 @@ genServicesChmAndStream internal externalassocs
         [] -> 0
         xs -> maximum xs
 
-    chm = initChm (map fst externalassocs ++ internal)
+    chm = initChannelManager (map fst externalassocs ++ internal)
 
     ermsg = "User error: Invalid channel -- all channels should be negative, but we have: \n" 
         ++ show externalassocs

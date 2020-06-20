@@ -28,7 +28,7 @@ testAmplTCPServer = "5000"
 {-
 The general structure for writing the program is as follows...
 main = do
-    svs <- genServicesChmAndStream 
+    svs <- genServicesChannelManagerAndStream 
                     [ {- Non service channels -} ] 
                     [ {- Service channels -} ]
     execAmplMachWithDefaults 
@@ -54,7 +54,7 @@ codataMain =
         , iDest (DesIx 2) 1
         ]
 sequentialCodataTest = do
-    svs <- genServicesChmAndStream [] []
+    svs <- genServicesChannelManagerAndStream [] []
     execAmplMachWithDefaults 
         (codataMain, [])
         []
@@ -72,7 +72,7 @@ codataMainStdOut = codataMain ++
      , iPut (LocalChanID 0) 
      , iHPut (LocalChanID 0) (HCaseIx hCaseIxClose)]
 sequentialCodataTestStdOut = do
-    svs <- genServicesChmAndStream [] [(GlobalChanID 0, (IntService, StdService) )]
+    svs <- genServicesChannelManagerAndStream [] [(GlobalChanID 0, (IntService, StdService) )]
     execAmplMachWithDefaults 
         (codataMainStdOut,  [(Input, (LocalChanID 0, GlobalChanID 0))] )
         []
@@ -94,7 +94,7 @@ stdoutstdinmain = (
     , [(Output, (LocalChanID 0, GlobalChanID 0))] ) 
 
 stdoutstdinTest = do
-    svs <- genServicesChmAndStream [] [(GlobalChanID 0, (IntService, StdService) )]
+    svs <- genServicesChannelManagerAndStream [] [(GlobalChanID 0, (IntService, StdService) )]
     execAmplMachWithDefaults 
         stdoutstdinmain
         []
@@ -128,7 +128,7 @@ plugMain = (
         ] 
     )
 simplePlugTest = do
-    svs <- genServicesChmAndStream [GlobalChanID 1, GlobalChanID 2] []
+    svs <- genServicesChannelManagerAndStream [GlobalChanID 1, GlobalChanID 2] []
     execAmplMachWithDefaults 
         plugMain
         []
@@ -278,7 +278,7 @@ paralelOrMain = (
         ] 
     )
 paralelOrExec = do
-    svs <- genServicesChmAndStream [GlobalChanID 0, GlobalChanID 3] []
+    svs <- genServicesChannelManagerAndStream [GlobalChanID 0, GlobalChanID 3] []
     execAmplMachWithDefaults 
         paralelOrMain
         []
@@ -301,7 +301,7 @@ serviceGetIntTermAndPrintToStdOut = (
     ],
     [(Output, (LocalChanID (-1), GlobalChanID (-1))), (Input, (LocalChanID 0, GlobalChanID 0))])
 serviceGetIntTermAndPrintToStdOutTest = do
-    svs <- genServicesChmAndStream 
+    svs <- genServicesChannelManagerAndStream 
                     [] 
                     [ 
                       (GlobalChanID (-1), (IntService, TerminalNetworkedService "xterm -e ' amplc -hn 127.0.0.1 -p 5000 -k c-1  ; read'"  (Key "c-1")))
@@ -329,7 +329,7 @@ getStdIntToServiceOut = (
     ],
     [(Output, (LocalChanID (-1), GlobalChanID (-1))), (Input, (LocalChanID 0, GlobalChanID 0))])
 getStdIntToServiceOutTest = do
-    svs <- genServicesChmAndStream 
+    svs <- genServicesChannelManagerAndStream 
                     [] 
                     [ 
                       (GlobalChanID (-1), (IntService, TerminalNetworkedService "xterm -e ' amplc -hn 127.0.0.1 -p 5000 -k c-1  ; read'"  (Key "c-1")))
@@ -446,7 +446,7 @@ boolToChartf = [
 getStdCharAndcallToServiceOutFunDefs = [ (FunID 0, ("chartfToBool", chartfToBool)), (FunID 1, ("boolToChartf",boolToChartf)) ]
 
 getStdCharAndcallToServiceOutTest = do
-    svs <- genServicesChmAndStream 
+    svs <- genServicesChannelManagerAndStream 
                     [] 
                     [ 
                       (GlobalChanID (-1), (CharService, TerminalNetworkedService "xterm -e ' amplc -hn 127.0.0.1 -p 5000 -k c-1  ; read'"  (Key "c-1")))
@@ -717,7 +717,7 @@ aPOr = 1
 bPOr = 2
 
 parallelOrServiceTest = do
-    svs <- genServicesChmAndStream 
+    svs <- genServicesChannelManagerAndStream 
                     [] 
                     [ 
                       (GlobalChanID service1POr, (CharService, TerminalNetworkedService "xterm -e 'amplc -hn 127.0.0.1 -p 5000 -k c-1  ; read'"  (Key "c-1")))
@@ -850,7 +850,7 @@ p2ServiceOr' = iSplit (LocalChanID sPOr) (LocalChanID aPOr, LocalChanID bPOr) : 
 sPOr = 3
 
 parallelOrServiceTest' = do
-    svs <- genServicesChmAndStream 
+    svs <- genServicesChannelManagerAndStream 
                     [] 
                     [ 
                       (GlobalChanID service1POr, (CharService, TerminalNetworkedService "xterm -e 'amplc -hn 127.0.0.1 -p 5000 -k c-1  ; read'"  (Key "c-1")))
@@ -903,7 +903,7 @@ repeatedlyAskAndAddFun =
         ]
 
 repeatedlyAskAndAddTest = do
-    svs <- genServicesChmAndStream 
+    svs <- genServicesChannelManagerAndStream 
                     [] 
                     [(GlobalChanID service0POr, (IntService, StdService) )]
     execAmplMachWithDefaults 
@@ -1180,7 +1180,7 @@ ticketServerHelper' =
 ticketServerHelperId' = FunID 3
 
 ticketBookingTest = do
-    svs <- genServicesChmAndStream 
+    svs <- genServicesChannelManagerAndStream 
                     [] 
                     [ (GlobalChanID ticketBookService0, (IntService, StdService) )
                     , (GlobalChanID ticketBookService1, (IntService, TerminalNetworkedService "xterm -e 'amplc -hn 127.0.0.1 -p 5000 -k c1  ; read'"  (Key "c1")))

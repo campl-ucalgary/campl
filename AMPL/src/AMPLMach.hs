@@ -31,6 +31,8 @@ import Network.Socket
 import Text.PrettyPrint
 import Text.PrettyPrint.GenericPretty
 
+import Debug.Trace
+
 {-
     This file is for the AMPL machine. 
 
@@ -53,7 +55,7 @@ runAmplMach ::
 runAmplMach (mainf, maint) = do
     env <- ask 
     -- starts the main process...
-    amplForkProcess ([], maint, [], mainf) 
+    amplRunProcess ([], maint, [], mainf) 
 
     -- Opens the tcp server and get its threadid (needed to terminate the server)
     tcpid <- liftIO $ forkIO (catch (runReaderT amplRunTCPServer env ) (\e ->  return (const () (e :: AmplExit)))) 
@@ -75,35 +77,60 @@ amplMACHLoop ::
     ReaderT r IO ()
 amplMACHLoop = do
     env <- ask 
+    chm <- liftIO $ readIORef (getChannelManager env)
+
     bdchsz <- getSizeOfBroadcastChan env
     -- reads multiple at once 
     --bdcmds <- sequence (genericReplicate bdchsz (readBroadcastChan env))
-    bdcmds <- if bdchsz > 0 then pure <$> readBroadcastChan env else return []
+    bdcmds <- if bdchsz > 0 
+                then pure . fmap (\gch -> fromJust (gch `Map.lookup` channelManagerTranslations chm))
+                        <$> readBroadcastChan env 
+                else return []
     -- we can use either of the two... Although, the latter is a little more
     -- fair with how commands get processed since we only processes exactly one at a time.
 
-    chm <- liftIO $ readIORef (getChannelManager env)
+    -- NOTE: if we use the other bdcmds, we NEED to be sure that we only 
+    -- take up to as far as an IDENTIFY COMMAND. Then, we must run the identity command
+    -- in ISOLATION -- otherwise, future commands will be referencing channels
+    -- which do not exist yet!
+
 
     let chm' = foldl (flip addCommandToChannelManager) chm bdcmds
         -- remark: this MUST be foldl and correspond to the order of
         -- which commands were put in otherwise this will not play well
         -- with certain commands. For example, if it is foldr, then, with the
-        -- plug command, this will silently drop certain commands...
+        -- plug command, this will silently drop commands which rely on plug
+        -- being first...
         (StepChannelManagerResult { 
             chmNewProcesses = ps
             , chmFreeChannelNames = ngchs
             , chmNewServices = svs
-            }, chm'') = stepChannelManager (getServicesSet env) chm'
+            , chmIdentifications = nids
+            }, channelmanager) = stepChannelManager (getServicesSet env) (channelManager chm')
+        channelmanagertranslations = 
+                            composeChannelManagerTranslations 
+                                (channelManagerTranslations chm')
+                                nids
+        (freechannels, channelmanagertranslations') = 
+                            deleteChannelManagerTranslations 
+                                channelmanagertranslations ngchs
+        chm'' = ChannelManager { 
+                    channelManager = channelmanager
+                    , channelManagerTranslations = channelmanagertranslations'
+                }
         
     -- update the channel manager...
     liftIO $ writeIORef (getChannelManager env) chm''
+
+    -- returning the channel names
+    mapM_ (returnChannelName env) freechannels
 
     -- logging
     amplLogChm chm'
     amplLogChm chm''
 
     -- Fork the new processes, and run new services...
-    mapM_ amplForkProcess ps
+    mapM_ amplRunProcess ps
     mapM_ amplRunService svs
 
     -- the order of these are important for termination...
@@ -111,7 +138,7 @@ amplMACHLoop = do
     bdchsz' <- getSizeOfBroadcastChan env 
 
     -- termination condition...
-    if numrningprs == 0 && bdchsz == 0 && bdchsz' == 0 && chm == chm''
+    if numrningprs == 0 && bdchsz == 0 && bdchsz' == 0 && chm'' == chm
         then liftIO $ do
             tid <- takeTcpThreadId env
             throwTo tid AmplExit
@@ -209,7 +236,7 @@ amplRunService (gch, rq) = do
     -- open the service (if it needs to be opened)...
     oldOpen <- liftIO (modifyMVar (serviceOpen svenv) (f env svenv))
     case oldOpen of
-        ServiceIsClosed -> liftIO (runReaderT (amplOpenService (gch, svenv)) env)
+        ServiceIsClosed -> void $ amplForkProcess env $ runReaderT (amplOpenService (gch, svenv)) env
         _ -> return ()
   where
     -- change the service to be opened...
@@ -230,14 +257,14 @@ amplOpenService ::
     (GlobalChanID, ServiceEnv) -> ReaderT r IO ()
 amplOpenService sv@(_, svenv) = do 
     env <- ask 
-    succNumProcesses env
     case serviceType svenv of
-        StdService -> 
-            void $ liftIO $ forkIO (runReaderT (amplStdServiceLoop sv) env)
-        NetworkedService k -> void $ liftIO $ forkIO (runReaderT (amplOpenNetworkedService k sv) env)
+        StdService -> void $ liftIO $ runReaderT (amplStdServiceLoop sv) env
+        NetworkedService k -> void $ liftIO $ runReaderT (amplOpenNetworkedService k sv) env
         TerminalNetworkedService cmd k -> liftIO $ do
-            forkIO (runReaderT (amplOpenNetworkedService k sv) env)
-            void $ createProcess (shell cmd) 
+            -- open a terminal window
+            createProcess (shell cmd) 
+            -- then, open the main loop
+            runReaderT (amplOpenNetworkedService k sv) env
 
 -- | This will open a networked service.
 amplOpenNetworkedService :: 
@@ -282,7 +309,6 @@ amplNetworkedServiceLoop client@(clienthandle, clientaddr) sv@(gch, ServiceEnv{ 
             liftIO $ hPutStrLn clienthandle closeRequest
             liftIO $ modifyMVar_ open (return . const ServiceIsClosed)
             liftIO $ hClose clienthandle
-            predNumProcesses env
             return ()
   where
     networkGet = case svdty of
@@ -340,7 +366,6 @@ amplStdServiceLoop sv@(gch, ServiceEnv{ serviceDataType = svdty, serviceOpen = o
 
         ServiceClose -> do
             liftIO $ modifyMVar open (return . (const ServiceIsClosed &&& const ()))
-            predNumProcesses env
             return ()
             -- do not recurse..
   where
@@ -368,22 +393,20 @@ amplStdServiceLoop sv@(gch, ServiceEnv{ serviceDataType = svdty, serviceOpen = o
 
     
     
--- | Forks an ampl process.. Note that using this process is necessary
--- for termination since it modifies the number of processes (used for the
--- termination condition)..
-amplForkProcess :: 
+-- | runs an ampl process and forks it
+amplRunProcess :: 
     ( HasProcesses r
     , HasBroadcastChan r
     , HasSuperCombinators r
     , HasLog r 
     , HasChannelNameGenerator r ) =>
-    Stec -> ReaderT r IO ThreadId
-amplForkProcess stec = do
-    env <- ask
-    succNumProcesses env
-    liftIO $ forkIO (runReaderT (amplProcessLoop stec) env >> predNumProcesses env)
-    -- Note the ordering -- on the main thread, we increment the numnber of processes
-    -- then leave it to the forked thread when it finishes to decrement it
+    Stec -> ReaderT r IO ()
+amplRunProcess stec = do
+    env <- ask 
+    amplForkProcess env $ (runReaderT (amplProcessLoop stec) env)
+    return ()
+
+    -- amplForkProcess env $ amplRunProcess ([], maint, [], mainf) env
 
 -- | Main loop for an amplProcess
 amplProcessLoop :: 
@@ -404,8 +427,9 @@ amplProcessLoop stec = amplLogProcess stec >> f stec
                     ProcessEnd -> return ()
                     ProcessContinue p -> amplProcessLoop p
                     ProcessDiverge p1 p2 -> do
-                        amplForkProcess p1
-                        amplForkProcess p2
+                        env <- ask
+                        amplRunProcess p1
+                        amplRunProcess p2
                         return ()
             (s,t,e,SequentialInstr c:cs) -> do
                 (cs', e', s') <- stepSequential c (cs, e, s)
@@ -434,8 +458,8 @@ amplLogProcess (s,t,e,c) = do
         )
 
 -- | Logs the channel manager
-amplLogChm :: ( HasLog r, HasProcesses r ) => Chm -> ReaderT r IO ()
-amplLogChm chm = do
+amplLogChm :: ( HasLog r, HasProcesses r ) => ChannelManager -> ReaderT r IO ()
+amplLogChm ChannelManager{ channelManager = chm, channelManagerTranslations = chmts } = do
     env <- ask
     numrningprs <- getNumRunningProcesses env
     liftIO $ getFileLog env
@@ -444,5 +468,6 @@ amplLogChm chm = do
             map 
                 ( render . doc . second (Queue.toList *** Queue.toList))
                 (Map.toList chm) 
+            ++ ["\nChannel translations:", show chmts]
             ++ [ "\nNumber of running processes: " , show numrningprs ]
         )

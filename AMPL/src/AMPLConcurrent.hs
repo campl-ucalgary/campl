@@ -78,6 +78,7 @@ stepConcurrent (IPut a) pr@(v:s, t, e, c) = do
 stepConcurrent (ISplit a (a1, a2)) (s, t, e, c) = do
     let ta@(pol, _) = fromJust (lookupLocalChanIDToGlobalChanID a t)
     env <- ask ; b1 <- getNewChannelName env ; b2 <- getNewChannelName env
+    writeBroadcastChan env (BNewGlobalChannels [b1,b2])
     writeBroadcastChan env (BSplit ta (b1, b2))
     return $ ProcessContinue (s, (pol, (a1, b1)):(pol, (a2, b2)):t, e, c)
     -- new translations should have the same polarity as the orignal translation
@@ -107,6 +108,7 @@ stepConcurrent (IId a b) (s, t, e, []) = do
         (pb, tb) = fromJust (lookupLocalChanIDToGlobalChanID b t)
     env <- ask
     writeBroadcastChan env (BId (pa, ta) (ta, tb))
+    -- writeBroadcastChan env (BId (pa, ta) (ta, tb))
     return ProcessEnd
 
 stepConcurrent (IPlug as ((g1, c1), (g2, c2))) (s, t, e, []) = do
@@ -116,6 +118,7 @@ stepConcurrent (IPlug as ((g1, c1), (g2, c2))) (s, t, e, []) = do
     -- and (g2, c2) is the input channel
     let t1 = zipWith (curry (Output,)) as as' ++ restrictTranslation g1 t
         t2 = zipWith (curry (Input,)) as as' ++ restrictTranslation g2 t
+    writeBroadcastChan env (BNewGlobalChannels as')
     writeBroadcastChan env (BPlug as')
     return $ ProcessDiverge (s, t1, e, c1) (s, t2, e, c2)
 
@@ -131,7 +134,7 @@ stepConcurrent (IRun t' fid args) (s, t, e, []) = do
     let e' = genericTake args s
         s' = genericDrop args s
             -- unused...
-        t'' = fromJust (composeTranslationWithTranslationMapping t t')
+        t'' = fromJust (composeTranslationWithLocalTranslationMapping t t')
             -- note that Prashant writes `composeTranslation t' t`
             -- but our composeTranslation function differs in the sense
             -- that `composeTranslation f g` is the translation f after 
@@ -195,69 +198,88 @@ prependQInstr Input qinstr = second (qinstr `Queue.prepend`)
 -- modifcations of the broadcast command
 addCommandToChannelManager :: 
     BInstr ->       -- ^ Broadcast channel instruction
-    Chm ->          -- ^ old channel manager
-    Chm             -- ^ new channel manager
+    ChannelManager ->          -- ^ old channel manager
+    ChannelManager             -- ^ new channel manager
 addCommandToChannelManager (BGet (pol, gch) n) chm = 
-    Map.adjust (appendQInstr pol (QGet n)) gch chm
+    chm { channelManager = Map.adjust (appendQInstr pol (QGet n)) gch $ channelManager chm }
 
 addCommandToChannelManager (BPut (pol, gch) n) chm =
-    Map.adjust (appendQInstr pol (QPut n)) gch chm 
+    chm { channelManager = Map.adjust (appendQInstr pol (QPut n)) gch $ channelManager chm  }
 
 addCommandToChannelManager (BSplit (pol, gch) n@(b1, b2)) chm =
-    Map.insert b1 emptyQInstrQueues 
-    $ Map.insert b2 emptyQInstrQueues 
-    $ Map.adjust (appendQInstr pol (QSplit n)) gch chm
+    chm { channelManager = channelmanager }
+  where
+    channelmanager = Map.insert b1 emptyQInstrQueues 
+            $ Map.insert b2 emptyQInstrQueues 
+            $ Map.adjust (appendQInstr pol (QSplit n)) gch $ channelManager chm
 
 addCommandToChannelManager (BFork (pol, gch) n) chm = 
-    Map.adjust (appendQInstr pol (QFork n)) gch chm
+    chm { channelManager = Map.adjust (appendQInstr pol (QFork n)) gch $ channelManager chm }
 
 addCommandToChannelManager (BId (pol, gch) n) chm = 
-    Map.adjust (appendQInstr pol (QId n)) gch chm
+    chm { channelManager = Map.adjust (appendQInstr pol (QId n)) gch $ channelManager chm }
 
 addCommandToChannelManager (BClose (pol, gch)) chm = 
-    Map.adjust (appendQInstr pol QClose) gch chm
+    chm { channelManager = Map.adjust (appendQInstr pol QClose) gch $ channelManager chm }
 
 addCommandToChannelManager (BHalt ns) chm = 
-    foldr 
-        (\(pol, gch) acc -> Map.adjust (appendQInstr pol QClose) gch acc) 
-        chm 
-        ns
+  chm { channelManager = channelmanager }
+  where
+    channelmanager = foldr 
+                        (\(pol, gch) acc -> Map.adjust (appendQInstr pol QClose) gch acc) 
+                        (channelManager chm)
+                        ns
 
 addCommandToChannelManager (BPlug ns) chm =
-    foldr (`Map.insert` emptyQInstrQueues) chm ns
+    chm { channelManager = channelmanager }
+  where
+    channelmanager = foldr (`Map.insert` emptyQInstrQueues) (channelManager chm) ns
 
 addCommandToChannelManager (BHPut (pol, gch) n) chm = 
-    Map.adjust (appendQInstr pol (QHPut n)) gch chm
+    chm { channelManager = Map.adjust (appendQInstr pol (QHPut n)) gch $ channelManager chm }
 
 addCommandToChannelManager (BHCase (pol, gch) n) chm = 
-    Map.adjust (appendQInstr pol (QHCase n)) gch chm
+    chm { channelManager = Map.adjust (appendQInstr pol (QHCase n)) gch $ channelManager chm }
 
 addCommandToChannelManager (BRace ds (s, t, e)) chm = 
-    foldr f chm ds
+    chm { channelManager = channelmanager }
   where
+    channelmanager = foldr f (channelManager chm) ds
+
     f :: (Polarity, GlobalChanID, [LocalChanID], [Instr]) -> 
         Map GlobalChanID (Queue QInstr, Queue QInstr) ->
         Map GlobalChanID (Queue QInstr, Queue QInstr) 
     f (pol, gch, lchs, cs) = 
         Map.adjust (prependQInstr pol (QRace (lchs, (s, t, e, cs)))) gch 
 
+addCommandToChannelManager (BNewGlobalChannels ngchs) chm = 
+    chm { channelManagerTranslations = foldl f (channelManagerTranslations chm) ngchs }
+  where
+    f chmts gch = Map.insert gch gch chmts
+
 -- | Result of one step of the channel manager
 data StepChannelManagerResult = StepChannelManagerResult {
         chmNewProcesses :: [Stec]                   -- ^ new processes could spawn
         , chmFreeChannelNames :: [GlobalChanID]     -- ^ we could have some new free channel names
         , chmNewServices :: [ServiceQuery]          -- ^ New services could be spawned as well
+        , chmIdentifications :: [(GlobalChanID, GlobalChanID)]          
+            -- ^ When we identify a to b, written as (a,b), we REMOVE the queue
+            -- a and defer all things on a to be put on b.
     } deriving (Show, Eq)
 
 -- | An empty StepChannelManagerResult.
 emptyStepChannelManagerResult :: StepChannelManagerResult
-emptyStepChannelManagerResult = StepChannelManagerResult [] [] []
+emptyStepChannelManagerResult = StepChannelManagerResult [] [] [] []
 
 
 -- | Steps the channel manager (corresponding to Table 3)
 stepChannelManager :: 
     Set GlobalChanID -> 
-    Map GlobalChanID (Queue QInstr, Queue QInstr) ->
-    (StepChannelManagerResult, Map GlobalChanID (Queue QInstr, Queue QInstr))   -- ^ new processes, and new map
+        -- ^ services
+    Chm ->
+        -- ^ channel manager map
+    (StepChannelManagerResult, Chm)   
+        -- ^ new processes, and new map
 stepChannelManager services = 
     second (Map.fromAscList . fst)
                         -- get all the proccesed channels, and since they are in ascending order,
@@ -338,38 +360,54 @@ stepChannelManager services =
 
 
             -- invariant: b == gch 
-            (q1, QId (b, a) :<| Queue.Empty) 
+            (q1, q2@(QId (b, a) :<| Queue.Empty))
                 | b > a -> 
-                    -- a must be ahead (descending order)
-                    let nchs = map g chs
-                        isIdExecuted = nchs /= chs
-                    in rec ( res { chmFreeChannelNames = [b | isIdExecuted] ++ chmFreeChannelNames res }
-                        , ([(gch, qs) | not isIdExecuted] ++ chs', nchs))
-                    -- b must be behind a...
-                | otherwise -> 
-                    let nchs' = map g chs'
-                        isIdExecuted = nchs' /= chs'
-                    in rec ( res { chmFreeChannelNames = [b | isIdExecuted] ++ chmFreeChannelNames res }
-                        , ([(gch, qs) | not isIdExecuted] ++ nchs', chs))
+                    -- a must be in chs and not in chs' 
+                    -- since this is in descending order
+                    let (q2', nchs) = first (fromMaybe q2)
+                                        $ foldr g (Nothing, []) chs
+                        isIdExecuted = q2 /= q2'
+                    in rec ( res { chmFreeChannelNames = chmFreeChannelNames res
+                                 , chmIdentifications = [(a, b) | isIdExecuted] ++ chmIdentifications res }
+                        , ( (gch, (q1,q2')) : chs', nchs))
+                | otherwise ->  
+                    let (q2', nchs') = first (fromMaybe q2)
+                                        $ foldr g (Nothing, []) chs'
+                        isIdExecuted = q2 /= q2'
+                    in rec ( res { chmFreeChannelNames = chmFreeChannelNames res 
+                                 , chmIdentifications = [(a, b) | isIdExecuted] ++ chmIdentifications res }
+                        , ( (gch, (q1,q2')) : nchs', chs))
                 -- What about self identifying channels? ie a == b
               where
-                g (a', (q, q')) = if a' == a && Queue.isEmpty q then (a', (q1, q')) else (a', (q, q'))
+                g chq1q2 (Just desiredq2, rest) = (Just desiredq2, chq1q2 : rest)
+                g chq1q2@(focused, (focusedq1, focusedq2)) (Nothing, rest) 
+                    | focused == a && Queue.isEmpty focusedq1  = (Just focusedq2, rest)
+                    | otherwise = (Nothing, chq1q2:rest)
+
             -- invariant: b == gch 
-            (QId (b, a) :<| Queue.Empty, q2)
+            (q1@(QId (b, a) :<| Queue.Empty), q2)
                 | b > a -> 
-                    -- a must be further ahead  (descending order)
-                    let nchs = map g chs
-                        isIdExecuted = nchs /= chs
-                    in rec ( res { chmFreeChannelNames = [b | isIdExecuted] ++ chmFreeChannelNames res }
-                        , ([(gch, qs) | not isIdExecuted] ++ chs', nchs))
-                    -- b must be behind a...
-                | otherwise -> 
-                    let nchs' = map g chs'
-                        isIdExecuted = nchs' /= chs'
-                    in rec ( res { chmFreeChannelNames = [b | isIdExecuted] ++ chmFreeChannelNames res }
-                        , ([(gch, qs) | not isIdExecuted] ++ nchs', chs))
+                    -- a must be in chs and not in chs' 
+                    -- since this is in descending order
+                    let (q1', nchs) = first (fromMaybe q1)
+                                        $ foldr g (Nothing, []) chs
+                        isIdExecuted = q1 /= q1'
+                    in rec ( res { chmFreeChannelNames = chmFreeChannelNames res
+                                 , chmIdentifications = [(a, b) | isIdExecuted] ++ chmIdentifications res }
+                        , ( (gch, (q1',q2)) : chs', nchs))
+                | otherwise ->  
+                    let (q1', nchs') = first (fromMaybe q1)
+                                        $ foldr g (Nothing, []) chs'
+                        isIdExecuted = q1 /= q1'
+                    in rec ( res { chmFreeChannelNames = chmFreeChannelNames res
+                                 , chmIdentifications = [(a, b) | isIdExecuted] ++ chmIdentifications res }
+                        , ( (gch, (q1',q2)) : nchs', chs))
+                -- What about self identifying channels? ie a == b
               where
-                g (a', (q, q')) = if a' == a && Queue.isEmpty q' then (a', (q, q2)) else (a', (q, q'))
+                g chq1q2 (Just desiredq2, rest) = (Just desiredq2, chq1q2 : rest)
+                g chq1q2@(focused, (focusedq1, focusedq2)) (Nothing, rest) 
+                    | focused == a && Queue.isEmpty focusedq2 = (Just focusedq1, rest)
+                    | otherwise = (Nothing, chq1q2:rest)
 
 
             (q1@(QPut v :<| _), QRace (rcs, (s,t,e,c)) :<| q2) -> 

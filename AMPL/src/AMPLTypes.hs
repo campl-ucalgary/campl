@@ -8,14 +8,17 @@
     --Used to help derive classes like Enum (derives when we have newtype wrappers..)
 {-# LANGUAGE DeriveDataTypeable #-}
     -- Used to derive the Data/Typeable class (useful for type generic programming)
+{-# LANGUAGE DeriveFunctor #-}
 module AMPLTypes where
 
 import Data.Word
+import Data.Maybe
 import Data.Typeable
 import Data.Data
 import Data.Array
 import Data.Coerce
 import Data.List
+import Data.Function
 import Control.Arrow
 import Control.Exception
 
@@ -24,6 +27,8 @@ import Text.PrettyPrint
 
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Set (Set)
+import qualified Data.Set as Set
 import Data.Queue (Queue)
 import qualified Data.Queue as Queue
 import Data.Stream (Stream)
@@ -95,19 +100,19 @@ newtype HCaseIx = HCaseIx Word
             is in.
 
             Then, by Prashant, we know that if HCaseIx is:
-                - 1 then it corresponds to get (i.e., enter a number in the terminal)
-                - 2 then it corresponds to put (i.e., put a number on the terminal)
-                - 3 then it corresponds to close (i.e., close the service)
+                - 0 then it corresponds to get (i.e., enter a number in the terminal)
+                - 1 then it corresponds to put (i.e., put a number on the terminal)
+                - 2 then it corresponds to close (i.e., close the service)
         -}
 
 
 -- Polarity, LocalChanID and corresponding GlobalChanID
 type Translation = (Polarity, (LocalChanID, GlobalChanID))
-type TranslationMapping = (Polarity, (LocalChanID, LocalChanID))
+type LocalTranslationMapping = (Polarity, (LocalChanID, LocalChanID))
     -- A translation mapping is a mapping from a LocalChanID to 
     -- another LocalChanID. This is useful for the IRun instruction.
 
-    -- Note about TranslationMappings and the IRun instruction...
+    -- Note about LocalTranslationMapping and the IRun instruction...
     -- We have translation mappings because we want to ``pass translations as an argument", 
     -- so that requires mapping local channel ids of the function to local channel ids in the context 
     -- the function is being called in which can map to the required global channel ids.
@@ -121,16 +126,53 @@ type Stec = ([Val], [Translation], [Val], [Instr])
 type Ces = ([Instr], [Val], [Val])
 
 type Chm = Map GlobalChanID (Queue QInstr, Queue QInstr)
+type ChmTranslation = Map GlobalChanID GlobalChanID
+
+data ChannelManager = ChannelManager {
+        channelManager :: Chm
+        , channelManagerTranslations :: ChmTranslation
+    } deriving (Show, Eq)
+
 
 emptyQInstrQueues :: (Queue QInstr, Queue QInstr)
 emptyQInstrQueues = (Queue.empty, Queue.empty)
 
 -- | Helper function for constructing an empty channel manager from a list
-initChm :: [GlobalChanID] -> Chm
-initChm = Map.fromAscList 
-    . sortBy (\(a,_) (b,_) -> compare a b) 
-    . flip zip (unfoldr (Just <<< const emptyQInstrQueues &&& id) ())
+initChannelManager :: [GlobalChanID] -> ChannelManager
+initChannelManager gchs = 
+    ChannelManager{ 
+            channelManager = chm 
+            , channelManagerTranslations = 
+                Map.fromList (map (id&&&id) gchs)
+        }
+  where
+    chm = Map.fromList 
+        $ zip gchs (unfoldr (Just <<< const emptyQInstrQueues &&& id) ()) 
 
+-- | given a channel manager translation with say a maps to b;
+-- and given a pair (c, d); this function will change 
+-- a maps to b TO a maps to d iff b == c.
+composeChannelManagerTranslations :: 
+    ChmTranslation -> 
+    [(GlobalChanID, GlobalChanID)] ->
+    ChmTranslation 
+composeChannelManagerTranslations = 
+    foldl (\acc (a,b) -> Map.map (\v -> if v == a then b else v) acc) 
+
+deleteChannelManagerTranslations ::
+    ChmTranslation -> 
+    [GlobalChanID] ->
+    ([GlobalChanID], ChmTranslation)
+        -- (free channels, new ChmTranslation)
+deleteChannelManagerTranslations channelmanagertranslation = 
+    first (Set.toList . Set.fromList) . foldr f ([], channelmanagertranslation) 
+  where
+    f :: GlobalChanID -> ([GlobalChanID], ChmTranslation) -> ([GlobalChanID], ChmTranslation)
+    f todelete acc =
+        let (newdels, translation') = 
+                (concatMap (\(a,b) -> [a,b]) *** Map.fromAscList) 
+                (partition (\(a,b) -> b == todelete) $ Map.toAscList $ snd acc)
+        in ((newdels++) *** const translation') acc 
 
 -- look up the LocalChanID to the corresponding (Polarity, GlobalChanID)
 lookupLocalChanIDToGlobalChanID :: 
@@ -150,23 +192,26 @@ deleteTranslation lc =
 -- | Composes a translation with its mapping
 -- i.e, given a translation f and a translation mapping g,
 -- we have the translation f applied after the translation mapping g (f after g).
-composeTranslationWithTranslationMapping :: [Translation] -> [TranslationMapping] -> Maybe [Translation]
-composeTranslationWithTranslationMapping as bs = foldr f g bs as
+composeTranslationWithLocalTranslationMapping :: 
+    [Translation] -> 
+    [LocalTranslationMapping] -> 
+    Maybe [Translation]
+composeTranslationWithLocalTranslationMapping as bs = foldr f g bs as
   where
     f :: (Polarity, (LocalChanID, LocalChanID)) -> 
         ([Translation] -> Maybe [Translation]) -> 
         [Translation] -> 
         Maybe [Translation]
-    f (p, (lc, gc)) h ts = do
-        t' <- (\(p', (lc', gc')) -> (p', (lc, gc'))) <$> 
-                find (\(p', (lc', gc')) -> 
-                    p == p' && 
-                    (coerce gc :: Int) == (coerce lc' :: Int))
-                ts
-        (t':) <$> h ts
+    f (p, (lc, gc)) h ts = 
+        let t' = (\(p', (lc', gc')) -> (p', (lc, gc'))) <$> 
+                    find (\(p', (lc', gc')) -> 
+                        p == p' && 
+                        (coerce gc :: Int) == (coerce lc' :: Int))
+                    ts
+        in (:) <$> t' <*> h ts
 
-g :: [Translation] -> Maybe [Translation]
-g _ = Just []
+    g :: [Translation] -> Maybe [Translation]
+    g _ = Just []
 
 -- | restrict translations to certain LocalChannel ids
 restrictTranslation :: 
@@ -357,7 +402,7 @@ data ConcurrentInstr =
     | IPlug [LocalChanID] (([LocalChanID], [Instr]), ([LocalChanID], [Instr]))
 
 
-    | IRun [TranslationMapping] FunID Word
+    | IRun [LocalTranslationMapping] FunID Word
         -- Translation mappings, FunctionID and number of arguments to call with this function..
 
     | IHPut LocalChanID HCaseIx
@@ -391,7 +436,7 @@ iHalt = ConcurrentInstr . IHalt
 iId :: LocalChanID ->  LocalChanID  -> Instr
 iId a = ConcurrentInstr . IId a
 
-iRun :: [TranslationMapping] -> FunID -> Word -> Instr
+iRun :: [LocalTranslationMapping] -> FunID -> Word -> Instr
 iRun ts f w = ConcurrentInstr $ IRun ts f w
 
 iHPut :: LocalChanID -> HCaseIx -> Instr
@@ -431,41 +476,50 @@ data QInstr =
 -- | Broadcast channel instructions (used internally to transfer messages from
 -- a process to a channel).. This is a layer of indirection for 
 -- the Chan in order for the channel to update similar to QInstr
-data BInstr =
+-- ch is GlobalChanID (we write this as a type parameter to generate the 
+-- functor instance)
+data BInstr' ch =
     BGet 
         -- Polarity and GlobalChanID to place QGet on
-        (Polarity, GlobalChanID) 
+        (Polarity, ch) 
         ([Val], [Translation], [Val], [Instr])
 
-    | BPut (Polarity, GlobalChanID) Val
+    | BPut (Polarity, ch) Val
 
-    | BSplit (Polarity, GlobalChanID) (GlobalChanID, GlobalChanID)
+    | BSplit (Polarity, ch) (ch, ch)
 
-    | BFork (Polarity, GlobalChanID) 
+    | BFork (Polarity, ch) 
         ([Translation], [Val] 
                 , (LocalChanID, [Translation], [Instr])    
                 , (LocalChanID, [Translation], [Instr])    
                 )
 
-    | BId (Polarity, GlobalChanID) (GlobalChanID, GlobalChanID)
+    | BId (Polarity, ch) (ch, ch)
 
-    | BClose (Polarity, GlobalChanID)
-    | BHalt [(Polarity, GlobalChanID)] 
+    | BClose (Polarity, ch)
+    | BHalt [(Polarity, ch)] 
 
-    | BPlug [GlobalChanID]
+    | BPlug [ch]
 
-    | BHPut (Polarity, GlobalChanID) HCaseIx
-    | BHCase (Polarity, GlobalChanID) ([Val], [Translation], [Val], Array HCaseIx [Instr])
+    | BHPut (Polarity, ch) HCaseIx
+    | BHCase (Polarity, ch) ([Val], [Translation], [Val], Array HCaseIx [Instr])
 
     | BRace 
         -- polarity, GlobalChanID to map to; and the list
         -- corresponding to the table; and the instructions c1, c2,..,cn
         -- Note that these are the only things that change between
         -- each channel
-        [(Polarity, GlobalChanID, [LocalChanID], [Instr])] 
+        [(Polarity, ch, [LocalChanID], [Instr])] 
         -- (s, t, e) (these are the same for all races...)
         ([Val], [Translation], [Val])
-    deriving (Show, Eq, Generic, Out, Typeable)
+
+
+    | BNewGlobalChannels [GlobalChanID]
+        -- ^ note that this is not a machine instruction but needed
+        -- to generate the new translations
+    deriving (Show, Eq, Generic, Out, Typeable, Functor)
+
+type BInstr = BInstr' GlobalChanID 
 
 -- smart constructors..
 qGet :: ([Val], [Translation], [Val], [Instr]) -> QInstr

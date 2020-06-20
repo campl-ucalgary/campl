@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 module AMPLServices where
 
 import AMPLTypes
@@ -17,6 +19,9 @@ import System.Process
 import Network.Socket
 import Text.Read
 
+import Text.PrettyPrint.GenericPretty
+import Text.PrettyPrint
+
 {-
     File for Services for AMPL. Services are processes that interact
     with the real world.. All init*ServiceHandle functions given
@@ -27,18 +32,18 @@ import Text.Read
 data ServiceDataType = 
     IntService
     | CharService
-    deriving (Show, Read, Eq)
+    deriving (Show, Read, Eq, Generic, Out)
 
 -- | External services require a Key..
 newtype Key = Key String
-    deriving (Show, Read, Eq, Ord)
+    deriving (Show, Read, Eq, Ord, Generic, Out)
 
 -- | Sum type for the different kind of services..
 data ServiceType = 
     StdService                                  -- ^ standard service
     | NetworkedService Key                      -- ^ external network service
     | TerminalNetworkedService String Key       -- ^ external network service that opens a terminal (command, and key)
-    deriving (Show, Read, Eq)
+    deriving (Show, Read, Eq, Generic, Out)
 
 -- Information for querying a service...
 type ServiceQuery = (GlobalChanID, ServiceRequest Val)

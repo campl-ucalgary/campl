@@ -21,6 +21,7 @@ module Data.Queue
     , Data.Queue.takeHead
     , Data.Queue.takeLast
     , Data.Queue.toList
+    , Data.Queue.fromList
     , (<|) 
     , (|>) 
     , pattern (:<|)
@@ -244,6 +245,9 @@ append (Queue l lsz r rsz lu ru) e
 -- this litearlly just adjoints it at the end
 appends :: Queue a -> [a] -> Queue a
 appends q lst = foldr (flip append) q lst
+
+fromList :: [a] -> Queue a
+fromList =  appends empty
 
 head :: Queue a -> Maybe (Queue a, a)
 head (Queue [] _ [] _ _ _) = Nothing

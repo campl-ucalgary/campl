@@ -47,7 +47,7 @@ class HasLog a where
 
 -- | Type class for functions getting the channel manager
 class HasChannelManager a where
-    getChannelManager :: a -> IORef Chm
+    getChannelManager :: a -> IORef ChannelManager
 
 -- | Type class for counting the number of alive processes (threads).
 class HasProcesses a where
@@ -58,30 +58,25 @@ class HasProcesses a where
     -- | Gets all the running process ids
     getProcessIds :: MonadIO m => a -> m [ThreadId]
 
-    -- | Increases the number of processes running
-    succNumProcesses :: MonadIO m => a -> m ()
-
-    -- | Decreases the number of processes running
-    predNumProcesses :: MonadIO m => a -> m ()
-
     -- | Forks a process (ensures proper clean up for the AMPL system)
-    forkProcess :: MonadIO m => a -> (ThreadId -> IO ()) -> m ThreadId
-    forkProcess_ :: MonadIO m => a -> IO () -> m ()
+    amplForkProcess :: MonadIO m => a -> IO () -> m ThreadId
 
 
-newtype AMPLProcesses = AMPLProcesses { amplProcessesSet :: MVar (Set ThreadId) }
+newtype AmplProcesses = AmplProcesses { amplProcessesSet :: MVar (Set ThreadId) }
 
-instance HasProcesses AMPLProcesses where
+instance HasProcesses AmplProcesses where
     getProcessIds = liftIO . (Set.toList<$>) . readMVar . amplProcessesSet
 
-    forkProcess (AMPLProcesses processSet) f = 
+    getNumRunningProcesses = liftIO . (fromIntegral . Set.size <$>) . readMVar . amplProcessesSet
+
+    amplForkProcess (AmplProcesses processSet) f = 
         liftIO $ forkIO $ bracket 
             (do tid <- myThreadId ; modifyMVar_ processSet (return . Set.insert tid) ; return tid)
             (\tid -> modifyMVar_ processSet (return . Set.delete tid))
-            (liftIO . f)
+            (liftIO . const f)
 
-    forkProcess_ env f = void (forkProcess env (const f))
-
+initAmplProcesses :: IO AmplProcesses
+initAmplProcesses = AmplProcesses <$> newMVar Set.empty
 
 -- | Functions relating to manipulating the broadcast channel.
 -- NOte that an exception CANNOT be thrown during any function or the
@@ -184,15 +179,15 @@ data AmplEnv = AmplEnv
         -- | channel manager -- map from GlobalChanID to input and output queues..
         -- Note: this could be pure and moved to a state monad (but we will
         -- stick to everything being crammed in a reader monad for now...)
-        , channelManager :: IORef Chm
+        , amplChannelManager :: IORef ChannelManager
         -- | seed for the channel name
         , channelNameGenerator :: MVar (Stream ChannelIdRep)
         -- | a channel to broadcast commands to the channel manager. We call this the broadcast channel...
         , broadcastChan :: Chan BInstr
         -- | Corresponding to the size of the broadcase channel..
         , broadcastChanSize :: MVar Word
-        -- | number of running processes (used for testing temrination...)
-        , numRunningProcesses :: MVar Word
+        -- | Ampl processes
+        , amplProcesses :: AmplProcesses
     }
 
     
@@ -202,7 +197,7 @@ amplEnv ::
     [(FunID, (String, [Instr]))] ->          -- ^ association list of funciton ids and its name / instruction
     AmplTCPServer ->                         -- ^ AmplTCP server
     AmplLogger ->                            -- ^ logger.
-    (Services, Chm, Stream ChannelIdRep) ->  -- ^ service related things
+    (Services, ChannelManager, Stream ChannelIdRep) ->  -- ^ service related things
     IO AmplEnv
 amplEnv defs tcpsv lg (svs, chm, nmg) = do
     chan <- newChan
@@ -219,6 +214,8 @@ amplEnv defs tcpsv lg (svs, chm, nmg) = do
 
     tcpmvarid <- newEmptyMVar
 
+    amplprocesses <- initAmplProcesses
+
     return AmplEnv
             {
                 supercombinators = mkSupercombinators defs
@@ -230,9 +227,9 @@ amplEnv defs tcpsv lg (svs, chm, nmg) = do
                 , amplLogger = lg
                 , broadcastChan = chan
                 , broadcastChanSize = broadcastchansize
-                , channelManager = mchm
+                , amplChannelManager = mchm
                 , channelNameGenerator = nmg'
-                , numRunningProcesses = numrunpr
+                , amplProcesses = amplprocesses
             }
 
 instance HasSuperCombinators Supercombinators where
@@ -252,12 +249,12 @@ logStdAndFile env str = getStdLog env str >> getFileLog env str
 
 
 instance HasChannelManager AmplEnv where
-    getChannelManager = channelManager
+    getChannelManager = amplChannelManager
 
 instance HasProcesses AmplEnv where
-    getNumRunningProcesses env = liftIO $ readMVar (numRunningProcesses env)
-    succNumProcesses env = liftIO $ modifyMVar_ (numRunningProcesses env) (return . succ)
-    predNumProcesses env = liftIO $ modifyMVar_ (numRunningProcesses env) (return . pred)
+    getNumRunningProcesses = getNumRunningProcesses . amplProcesses
+    getProcessIds = getProcessIds . amplProcesses
+    amplForkProcess = amplForkProcess . amplProcesses
 
 instance HasBroadcastChan AmplEnv where
     -- Remark: we know that both writeBroadcastChan and readBroadcastChan do not block for long periods of time
