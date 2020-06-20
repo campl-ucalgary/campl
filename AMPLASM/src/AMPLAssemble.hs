@@ -21,6 +21,9 @@ import Language.LayoutAMPLGrammar
 import Data.Stream (Stream)
 import qualified Data.Stream as Stream
 
+import Text.PrettyPrint
+import Text.PrettyPrint.GenericPretty
+
 import Data.List
 import Data.Foldable
 import Data.Coerce
@@ -58,6 +61,7 @@ amplAssembleMain AmplAssembleConfig{ filetocompile = filename, outputfile = outp
     case eithercode of
         Right mach -> do
             handle <- maybe (pure stdout) (flip openFile ReadWriteMode) outputfile
+            -- hPutStr handle $ render $ doc $ mach
             hPutStr handle $ show mach
             hClose handle
         Left errs -> hPutStrLn stderr (show errs) >> exitFailure

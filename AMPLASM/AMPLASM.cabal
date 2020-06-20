@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d8bcd95b4a08227f9c5062645ddc1c35c58f15bfb2c47cd94dcd639542798071
+-- hash: e2bcd8529131d05edcbd5f15d4b267eaa16611755f2005bf58391ab28ed94084
 
 name:           AMPLASM
 version:        0.1.0.0
@@ -51,11 +51,13 @@ library
       src
   build-depends:
       AMPL
+    , GenericPretty
     , array
     , base >=4.7 && <5
     , containers
     , filepath
     , mtl
+    , pretty
     , random
   default-language: Haskell2010
 
@@ -69,11 +71,13 @@ executable amplasm
   build-depends:
       AMPL
     , AMPLASM
+    , GenericPretty
     , array
     , base >=4.7 && <5
     , containers
     , filepath
     , mtl
+    , pretty
     , random
   default-language: Haskell2010
 
@@ -88,10 +92,12 @@ test-suite AMPLASM-test
   build-depends:
       AMPL
     , AMPLASM
+    , GenericPretty
     , array
     , base >=4.7 && <5
     , containers
     , filepath
     , mtl
+    , pretty
     , random
   default-language: Haskell2010

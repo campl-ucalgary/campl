@@ -277,8 +277,12 @@ compile (c:cs) = do
                 let lch1 = computeFreshLocalChanIDByMaximum translations
                     lch2 = succ lch1
 
-                (instrs1, _) <- liftEither $ compileRunner coms1 env (state { channelTranslations = (fst ch1, (pol,lch1)) : lchs1 })
-                (instrs2, _) <- liftEither $ compileRunner coms2 env (state { channelTranslations = (fst ch2, (pol,lch2)) : lchs2 })
+                (instrs1, _) <- liftEither 
+                            $ compileRunner coms1 env 
+                                (state { channelTranslations = (fst ch1, (pol,lch1)) : lchs1 })
+                (instrs2, _) <- liftEither 
+                            $ compileRunner coms2 env 
+                                (state { channelTranslations = (fst ch2, (pol,lch2)) : lchs2 })
 
                 return [iFork lch ((lch1, map (snd . snd) lchs1, instrs1), (lch2, map (snd . snd) lchs2, instrs2))]
 
