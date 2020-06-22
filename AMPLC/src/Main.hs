@@ -184,13 +184,13 @@ main = do
     -- go through each at a time and try running each of the 
     -- parsers on all of them, and generate errors that way...
     key <- validateArg (mapMaybe parseKey args) InvalidKey
-    print key
+    putStrLn ("Client key: " ++ show key)
 
     hostname <- validateArg (mapMaybe parseHostName args) InvalidHostName
-    print hostname
+    putStrLn ("Client connecting to hostname: " ++ hostname)
 
     port <- validateArg (mapMaybe parsePort args) InvalidPort
-    print port
+    putStrLn ("Client connecting to port: " ++ port)
 
     bracket 
         (tryOpenAmplTCPClient hostname port >>= (`socketToHandle` ReadWriteMode))
