@@ -1,6 +1,6 @@
 module Main where
 
-import AMPLAssemble
+import AMPLASMMain
 import System.Environment
 
 main :: IO ()

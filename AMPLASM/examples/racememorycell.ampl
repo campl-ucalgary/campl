@@ -19,11 +19,11 @@
                 get y on mem ;
                 run memory(y | mem => ) ;
             } ;
-            Mem.Close : { halt mem ; } ;
+            Mem.Close : { close mem ; } ;
         };
     } ;
 
-    p1( | => p, intterm1) = {
+    p1( | => intterm1, p) = {
         hput Passer.Pass on p ;
 
         split p into mm nmpp ;
@@ -42,7 +42,7 @@
         fork nmpp as {
             nm with mm : { nm == mm ; } ;
             -- nm with mm : { nm == neg(mm) ; } ;
-            pp with intterm1 : { run p1(| => pp, intterm1) }
+            pp with intterm1 : { run p1(| => intterm1, pp) }
         } ;
     };
 
@@ -82,7 +82,7 @@
     plug mem as {
         with [intterm1, intterm2] : {
                 plug ch as {
-                    with [intterm1] : { run p1(| => ch, intterm1) ; } ;
+                    with [intterm1] : { run p1(| => intterm1, ch) ; } ;
                     with [intterm2,mem] : { run p2(| ch => intterm2, mem) ; }
                 } ;
             } ;

@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e2bcd8529131d05edcbd5f15d4b267eaa16611755f2005bf58391ab28ed94084
+-- hash: d5bd4ec76a5699bbfa4430bba25803d9ccf269059cf4b60b8696a12c61f46f88
 
 name:           AMPLASM
 version:        0.1.0.0
@@ -31,10 +31,13 @@ source-repository head
 
 library
   exposed-modules:
+      AMPLASMMain
       AMPLAssemble
+      AMPLAST
       AMPLCompile
       AMPLCompileErrors
       AMPLConstructBag
+      AMPLErrors
       AMPLFunIDGen
       AMPLSymbolTable
       Control.Monad.MonadUnique

@@ -14,6 +14,8 @@ import AMPLSymbolTable
 import AMPLConstructBag
 import AMPLTypes
 
+class ErrorToStr e where
+    errorToStr :: e -> String
 
 class HasFreeVarError e where
     freeVar :: Ident -> e

@@ -7,8 +7,9 @@ module AMPLAssemble where
 import AMPL
 import AMPLServices
 import AMPLTypes
-import AMPLCompile
+import AMPLErrors
 import AMPLCompileErrors
+import AMPLCompile
 import AMPLSymbolTable
 import AMPLConstructBag
 
@@ -41,50 +42,8 @@ import Control.Monad.State
 import Control.Monad.Except
 import Control.Monad.Trans
 
-import System.IO
-import System.Random
-import System.Exit
 import Debug.Trace
 
-data AmplAssembleConfig = AmplAssembleConfig {
-        filetocompile :: String
-        , outputfile :: Maybe String
-    }
-
-amplAssembleMain :: 
-    AmplAssembleConfig ->
-    IO ()
-amplAssembleMain AmplAssembleConfig{ filetocompile = filename, outputfile = outputfile} = do
-    prg <- readFile filename
-    servicestate <- defaultServiceState
-    let eithercode = amplAssemble servicestate prg
-    case eithercode of
-        Right mach -> do
-            handle <- maybe (pure stdout) (flip openFile ReadWriteMode) outputfile
-            -- hPutStr handle $ render $ doc $ mach
-            hPutStr handle $ show mach
-            hClose handle
-        Left errs -> hPutStrLn stderr (show errs) >> exitFailure
-
-
-defaultServiceState :: IO ServiceState
-defaultServiceState = do    
-    keystream <- defaultKeyStream
-    return $ ServiceState {
-            keyStream = keystream
-            , serviceGlobalChanIdGen = Stream.iterate pred (GlobalChanID 0)
-            , internalGlobalChanIdGen = Stream.iterate succ (GlobalChanID 1)
-            , terminalNetworkedCommand = (\(Key str) -> "xterm -e 'amplc -hn 127.0.0.1 -p 5000 -k " ++ str ++ "  ; read'")
-        }
-
-defaultKeyStream :: IO (Stream Key)
-defaultKeyStream = do
-    stdgen <- newStdGen
-    let keys = map (Key . show) $ nub $ (randoms stdgen :: [Word])
-    return $ Stream.fromList keys
-    -- TODO -- this might generate the same key twicE!!
-
-    
 
 amplAssemble :: 
     ServiceState -> 
@@ -150,9 +109,13 @@ amplCodeToInstr servicegeneratorstate amplcode =
                     (CompileState { localVarStack = map fst args , channelTranslations = intranslations ++ outtranslations } )
     cmainfun = case mainfun of
         Just (runident, ((inchs, outchs), Prog coms)) -> Bifunctor.first (runident,) $ do
-            (maintranslations, nonservicechs, servicechs) <- Bifunctor.first pure $ runExcept $ flip evalStateT servicegeneratorstate $ do 
-                        (intrans, ingchs, ingchssvs) <- getTranslationsInternalServiceChannelsAndExternalServiceChannels Input inchs
-                        (outtrans, outgchs, outgchsvs) <- getTranslationsInternalServiceChannelsAndExternalServiceChannels Output outchs
+            (maintranslations, nonservicechs, servicechs) <- Bifunctor.first pure 
+                $ runExcept 
+                $ flip evalStateT servicegeneratorstate $ do 
+                        (intrans, ingchs, ingchssvs) <- 
+                            getTranslationsInternalServiceChannelsAndExternalServiceChannels Input inchs
+                        (outtrans, outgchs, outgchsvs) <- 
+                            getTranslationsInternalServiceChannelsAndExternalServiceChannels Output outchs
                         return (intrans ++ outtrans, ingchs ++ outgchs, ingchssvs ++ outgchsvs)
 
             (maininstrs, _) <- compileRunner coms 
@@ -161,8 +124,7 @@ amplCodeToInstr servicegeneratorstate amplcode =
                                           , channelTranslations = map (fst *** (Input,)) inchs ++ map (fst *** (Output,)) outchs
                                           } )
             return ( (nonservicechs, servicechs) , (maininstrs, maintranslations) )
-          where
-        Nothing -> Left (("", (-1,-1)),[NoMainFunction])
+        Nothing -> Left (("", (-1,-1)),[AsmNoMainFunction])
                         -- unfortunately, we need to include a calling context Ident
                         -- so we just give this an ``empty" sorta context..
 
@@ -229,106 +191,27 @@ getServiceChannelType pol name = do
 globalChanIDStream :: Stream GlobalChanID
 globalChanIDStream = Stream.iterate pred (GlobalChanID 0)
 
-class HasParseAndLexError e where
-    parseAndLexError :: String -> e
+pprintAmplAssemblerErrors :: [(Ident, [AssemblerErrors])] -> String
+pprintAmplAssemblerErrors = intercalate "\n" . map (render . pprintAmplAssemblerError)
 
-newtype ParseAndLexError = ParseAndLexError String 
-  deriving Show
+pprintAmplAssemblerError :: (Ident, [AssemblerErrors]) -> Doc
+pprintAmplAssemblerError (_, [AsmNoMainFunction]) = hcat 
+    [text "Error: ", text "Failed to compile -- no main function exists."] 
+pprintAmplAssemblerError (_, [AsmBnfcError (ParseAndLexError str)]) = hcat
+    [text "Bnfc error: ", text str]
 
-instance HasParseAndLexError ParseAndLexError where
-    parseAndLexError = ParseAndLexError
+pprintAmplAssemblerError (ident, err) = 
+    hsep [text "Error(s) in function/process",  identToDoc ident, text "as follows:"]
+        $$ nest 2 (vcat $ intersperse (text "\n") $ map f err)
+  where
+    f AsmNoMainFunction = text ("No main function exists")
+    f (AsmBnfcError (ParseAndLexError str)) = hcat [text ("Bnfc error: "), text str]
+    f (AsmSymAmbiguousLookup (SymAmbiguousLookup (name, occurences))) = 
+        hsep [text "Ambiguous lookup with", text name, text "could be referring to declarations at (line, column):"] 
+            $$ nest 2 (vcat (map (\(row,col) -> hcat [lparen,int row,int col,rparen]) occurences))
+    f n = text (show n)
 
-data AssemblerErrors =
-    NoMainFunction
-    | BnfcError ParseAndLexError
-    | SymAmbiguousLookup SymAmbiguousLookup
-    | IllegalInstrCall (IllegalInstrCall AssemblerErrors)
-    | FunctionArityMismatch FunctionArityMismatch
-    | CasingOverMultipleDatasError CasingOverMultipleDatasError
-    | RecordOverMultipleCodatasError RecordOverMultipleCodatasError
-    | DataArityMismatch DataArityMismatch
-    | CodataArityMismatch CodataArityMismatch
-    | ProcessArityMismatch ProcessArityMismatch
-    | HCasingOverMultipleDatasError HCasingOverMultipleDatasError
-    | PolarityMismatch PolarityMismatch
-    | FreeVarError FreeVarError
-    | FreeChannelError FreeChannelError
-    | CodataLookupError CodataLookupError
-    | CoprotocolLookupError CoprotocolLookupError
-    | DataLookupError DataLookupError
-    | ProtocolLookupError ProtocolLookupError
-    | ProcessLookupError ProcessLookupError
-    | FunctionLookupError FunctionLookupError
-    | HCaseArityMismatch HCaseArityMismatch
-  deriving Show
+identToDoc :: Ident -> Doc
+identToDoc (name, (row, col)) = hsep [text name, text "at line", int row, text "and column", int col]
 
-instance HasParseAndLexError AssemblerErrors where
-    parseAndLexError = BnfcError . parseAndLexError
-
-instance HasAmbiguousLookupError AssemblerErrors where
-    symAmbiguousLookup = AMPLAssemble.SymAmbiguousLookup . symAmbiguousLookup
-
-instance HasIllegalInstrCallError AssemblerErrors AssemblerErrors where
-    illegalInstrCall a = AMPLAssemble.IllegalInstrCall . illegalInstrCall a
-
-instance HasFunctionArityMismatchError AssemblerErrors where
-    functionArityMismatch a = AMPLAssemble.FunctionArityMismatch . functionArityMismatch a
-
-instance HasCasingOverMultipleDatas AssemblerErrors where
-    casingOverMultipleDatas = AMPLAssemble.CasingOverMultipleDatasError . casingOverMultipleDatas
-
-instance HasHCasingOverMultipleTypes AssemblerErrors where
-    hcasingOverMultipleTypes = AMPLAssemble.HCasingOverMultipleDatasError . hcasingOverMultipleTypes
-
-instance HasRecordOverMultipleCodatas AssemblerErrors where
-    recordOverMultipleCodatas = AMPLAssemble.RecordOverMultipleCodatasError . recordOverMultipleCodatas
-    
-instance HasDataArityMismatchError AssemblerErrors where
-    dataArityMismatch a = AMPLAssemble.DataArityMismatch . dataArityMismatch a
-    
-instance HasCodataArityMismatchError AssemblerErrors where
-    codataArityMismatch a = AMPLAssemble.CodataArityMismatch . codataArityMismatch a
-    
-instance HasProcessArityMismatch AssemblerErrors where
-    processArityMismatch a = AMPLAssemble.ProcessArityMismatch . processArityMismatch a
-    
-instance HasPolarityMismatch AssemblerErrors where
-    polarityMismatch a = AMPLAssemble.PolarityMismatch . polarityMismatch a
-    
-instance HasFreeVarError AssemblerErrors where
-    freeVar = AMPLAssemble.FreeVarError . freeVar
-    
-instance HasFreeChannelError AssemblerErrors where
-    freeChannel = AMPLAssemble.FreeChannelError . freeChannel
-    
-instance HasCodataLookupError AssemblerErrors where
-    codataDoesNotExist = AMPLAssemble.CodataLookupError . codataDoesNotExist
-    destructorDoesNotExist a = AMPLAssemble.CodataLookupError . destructorDoesNotExist a
-    notCodata a = AMPLAssemble.CodataLookupError . notCodata a
-    
-instance HasCoprotocolLookupError AssemblerErrors where
-     coprotocolDoesNotExist = AMPLAssemble.CoprotocolLookupError . coprotocolDoesNotExist 
-     cohandleDoesNotExist a = AMPLAssemble.CoprotocolLookupError . cohandleDoesNotExist a
-     notCoprotocol a = AMPLAssemble.CoprotocolLookupError . notCoprotocol a
-    
-instance HasDataLookupError AssemblerErrors where
-     dataDoesNotExist = AMPLAssemble.DataLookupError . dataDoesNotExist
-     constructorDoesNotExist a = AMPLAssemble.DataLookupError . constructorDoesNotExist a
-     notData a = AMPLAssemble.DataLookupError . notData a
-    
-instance HasProtocolLookupError  AssemblerErrors where
-     protocolDoesNotExist = AMPLAssemble.ProtocolLookupError . protocolDoesNotExist 
-     handleDoesNotExist a = AMPLAssemble.ProtocolLookupError . handleDoesNotExist a
-     notProtocol a = AMPLAssemble.ProtocolLookupError . notProtocol a
-    
-instance HasLookupProcessError AssemblerErrors where
-     processDoesNotExist = AMPLAssemble.ProcessLookupError . processDoesNotExist
-     notProcess a = AMPLAssemble.ProcessLookupError . notProcess a
-    
-instance HasLookupFunctionError AssemblerErrors where
-    functionDoesNotExist = AMPLAssemble.FunctionLookupError . functionDoesNotExist
-    notFunction a = AMPLAssemble.FunctionLookupError . notFunction a
-
-instance HasHCaseArityMismatch AssemblerErrors where
-    hcaseArityMismatch a = AMPLAssemble.HCaseArityMismatch . hcaseArityMismatch a
-
+-- render $ doc 

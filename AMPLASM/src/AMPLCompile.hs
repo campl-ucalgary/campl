@@ -295,7 +295,10 @@ compile (c:cs) = do
                 state <- get
                 translations <- gets channelTranslations
 
-                let pluggedlchs = zipWith const (iterate succ (computeFreshLocalChanIDByMaximum translations)) pluggedchs
+                let pluggedlchs = zipWith 
+                                const 
+                                (iterate succ (computeFreshLocalChanIDByMaximum translations)) 
+                                pluggedchs
 
                 lchs1 <- liftEither $ restrictChannelTranslation chs1 translations
                 lchs2 <- liftEither $ restrictChannelTranslation chs2 translations
@@ -392,9 +395,7 @@ AC_CLOSEf  .COM ::= Close PIdent ;
 AC_HALTf   .COM ::= Halt [PIdent] ;
 -}
 
-nonExhaustiveCaseError :: a
-nonExhaustiveCaseError = error "Non exhaustive case"
-
+-- Help! This did not generalize well at all!
 data LabelComsCodeGenDataConstructors 
 data LabelComsCodeGenCodataDestructors 
 data LabelComsCodeGenProtocolsHandles 
@@ -414,12 +415,13 @@ class LabelComsCodeGenerator a where
                 (\(ix, instrs) h (ix':ixs') -> 
                     if ix == ix' 
                         then instrs : h ixs' 
-                        else nonExhaustiveCaseError : h ixs') (const [])
+                        else [iErrorMsg "Non exhaustive case on."] : h ixs') 
+                (const [])
                 (sortBy (compare `on` fst) (rights labelcoms')) 
                 (coerce $ Stream.toList AMPLTypes.wordStream)
         in Const $ if null dataNames || all ((fst (head dataNames)==) . fst) dataNames
-                        then if null labelcomserrs then Right casesinstrs else Left labelcomserrs
-                        else Left [getConst (labelComsMultipleTypesError dataNames :: Const e a)]
+                    then if null labelcomserrs then Right casesinstrs else Left labelcomserrs
+                    else Left [getConst (labelComsMultipleTypesError dataNames :: Const e a)]
 
       where
         getDataName :: LABELCOMS -> Ident
