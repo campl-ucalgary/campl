@@ -58,7 +58,10 @@ runAmplMach (mainf, maint) = do
     amplRunProcess ([], maint, [], mainf) 
 
     -- Opens the tcp server and get its threadid (needed to terminate the server)
-    tcpid <- liftIO $ forkIO (catch (runReaderT amplRunTCPServer env ) (\e ->  return (const () (e :: AmplExit)))) 
+    tcpid <- liftIO $ forkIO 
+                (catch 
+                    (runReaderT amplRunTCPServer env ) 
+                    (\e ->  return (const () (e :: AmplExit)))) 
                     -- runs the server, and catches if it recieves an AmplExit exception
     liftIO $ putTcpThreadId env tcpid
 
@@ -302,7 +305,7 @@ amplNetworkedServiceLoop client@(clienthandle, clientaddr) sv@(gch, ServiceEnv{ 
             amplNetworkedServiceLoop client sv
 
         ServicePut v -> do
-            liftIO (hPutStrLn clienthandle putRequest >> networkPut (show v))
+            liftIO (hPutStrLn clienthandle putRequest >> networkPut (valToStr v))
             amplNetworkedServiceLoop client sv
 
         ServiceClose -> do
@@ -403,10 +406,8 @@ amplRunProcess ::
     Stec -> ReaderT r IO ()
 amplRunProcess stec = do
     env <- ask 
-    amplForkProcess env $ (runReaderT (amplProcessLoop stec) env)
+    amplForkProcess env $ runReaderT (amplProcessLoop stec) env
     return ()
-
-    -- amplForkProcess env $ amplRunProcess ([], maint, [], mainf) env
 
 -- | Main loop for an amplProcess
 amplProcessLoop :: 

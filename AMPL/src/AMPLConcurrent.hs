@@ -193,9 +193,8 @@ prependQInstr Output qinstr = first (qinstr `Queue.prepend`)
 prependQInstr Input qinstr = second (qinstr `Queue.prepend`)
 
 -- | Given a broadcast channel command, and a channel manager 
--- (recall the type is: Map GlobalChanID (Queue, Queue)),
 -- this returns a new channel manger with the appropriate 
--- modifcations of the broadcast command
+-- modifcations of the broadcast commands
 addCommandToChannelManager :: 
     BInstr ->       -- ^ Broadcast channel instruction
     ChannelManager ->          -- ^ old channel manager

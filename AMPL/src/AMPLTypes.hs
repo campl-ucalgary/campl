@@ -9,6 +9,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
     -- Used to derive the Data/Typeable class (useful for type generic programming)
 {-# LANGUAGE DeriveFunctor #-}
+    -- Used to derive functor automatically
 module AMPLTypes where
 
 import Data.Word
@@ -256,6 +257,7 @@ data SequentialInstr =
     | ILeq
 
     -- built in string instrucitons...
+    -- Unused... (just copied because Prashant had it)
     | IUnstring
     | IConcat
     | IConcats Word -- Concat the top n elements
@@ -273,10 +275,13 @@ data SequentialInstr =
     | IDest DesIx Word
         -- destructs the record by choosing the ith funciton closure with the top n elements of the stack
 
+    -- Unused... (just copied because Prashant had it)
     | ITuple Word
         -- Number of elements in the tuple
     | ITupleElem TupleIx
         -- get the n'th element from a tuple
+
+    | IErrorMsg String
     deriving (Show, Read, Eq, Generic, Out, Typeable)
 
 -- smart consturctors...
@@ -366,13 +371,16 @@ iToInt = SequentialInstr IToInt
 iAppend :: Instr
 iAppend = SequentialInstr IAppend
 
+iErrorMsg :: String -> Instr
+iErrorMsg = SequentialInstr . IErrorMsg
+
 data Val = 
     VClos ([Instr], [Val])
 
-    -- Primitive data types..
-    | VInt Int
-    | VBool Bool
-    | VChar Char
+    -- Primitive data types (should be strict)..
+    | VInt !Int
+    | VBool !Bool
+    | VChar !Char
     | VString String
     | VTuple (Array TupleIx Val)
 
@@ -380,6 +388,13 @@ data Val =
     | VCons (ConsIx, [Val])
     | VRec (Array DesIx [Instr], [Val])
     deriving (Show, Read, Eq, Generic, Out, Typeable)
+
+-- | a printer for val to string -- mainly used for printing things
+-- for services
+valToStr :: Val -> String
+valToStr (VInt n) = show n
+valToStr (VChar n) = pure n
+valToStr n = show n
 
 
 -- CONCURRENT INSTRUCTIONS

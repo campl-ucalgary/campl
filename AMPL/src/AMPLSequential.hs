@@ -86,6 +86,9 @@ stepSequential IToInt (c, e, VString str : s) = return (c, e, VInt (read str :: 
 stepSequential IToString (c, e, VChar n : s) = return (c, e, VString [n] : s)
 stepSequential IToString (c, e, VInt n : s) = return (c, e, VString (show n) : s)
 
+stepSequential (IErrorMsg str) (c, e, s) = error str
+
+
 stepSequential n mach = error ("Illegal sequential step with instruction:" ++ show n ++ "\nAnd machine: " ++ show mach)
 
 -- tests if a sequential machine is finished
