@@ -25,5 +25,7 @@ cabal.project.local
 cabal.project.local~
 .HTF/
 .ghc.environment.*
+stack.yaml.lock
 AMPL/logs/*
 AMPLASM/examples/logs/*
+MPL/.stack-work
