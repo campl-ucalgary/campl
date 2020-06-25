@@ -1,10 +1,10 @@
 {-# OPTIONS_GHC -w #-}
 {-# OPTIONS -fglasgow-exts -cpp #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns -fno-warn-overlapping-patterns #-}
-module MPLPar.ParMPL where
-import MPLPar.AbsMPL
-import MPLPar.LexMPL
-import MPLPar.ErrM
+module Language.ParMPL where
+import Language.AbsMPL
+import Language.LexMPL
+import Language.ErrM
 import qualified Data.Array as Happy_Data_Array
 import qualified GHC.Exts as Happy_GHC_Exts
 import Control.Applicative(Applicative(..))
@@ -1440,7 +1440,7 @@ happyReduction_133 happy_x_2
      =  case happyOut137 happy_x_1 of { happy_var_1 -> 
     case happyOut141 happy_x_2 of { happy_var_2 -> 
     happyIn136
-         (MPLPar.AbsMPL.MPLPROG (reverse happy_var_1) happy_var_2
+         (Language.AbsMPL.MPLPROG (reverse happy_var_1) happy_var_2
     )}}
 
 happyReduce_134 = happySpecReduce_0  47# happyReduction_134
@@ -1472,7 +1472,7 @@ happyReduction_136 (happy_x_9 `HappyStk`
     case happyOut142 happy_x_4 of { happy_var_4 -> 
     case happyOut140 happy_x_8 of { happy_var_8 -> 
     happyIn138
-         (MPLPar.AbsMPL.WHEREDEFN happy_var_1 happy_var_4 happy_var_8
+         (Language.AbsMPL.WHEREDEFN happy_var_1 happy_var_4 happy_var_8
     ) `HappyStk` happyRest}}}
 
 happyReduce_137 = happyReduce 5# 48# happyReduction_137
@@ -1485,21 +1485,21 @@ happyReduction_137 (happy_x_5 `HappyStk`
      = case happyOut96 happy_x_1 of { happy_var_1 -> 
     case happyOut142 happy_x_4 of { happy_var_4 -> 
     happyIn138
-         (MPLPar.AbsMPL.WOWHEREDEFN happy_var_1 happy_var_4
+         (Language.AbsMPL.WOWHEREDEFN happy_var_1 happy_var_4
     ) `HappyStk` happyRest}}
 
 happyReduce_138 = happySpecReduce_1  48# happyReduction_138
 happyReduction_138 happy_x_1
      =  case happyOut143 happy_x_1 of { happy_var_1 -> 
     happyIn138
-         (MPLPar.AbsMPL.BAREDEFN happy_var_1
+         (Language.AbsMPL.BAREDEFN happy_var_1
     )}
 
 happyReduce_139 = happySpecReduce_1  49# happyReduction_139
 happyReduction_139 happy_x_1
      =  case happyOut138 happy_x_1 of { happy_var_1 -> 
     happyIn139
-         (MPLPar.AbsMPL.MPLSTMTALT happy_var_1
+         (Language.AbsMPL.MPLSTMTALT happy_var_1
     )}
 
 happyReduce_140 = happySpecReduce_0  50# happyReduction_140
@@ -1545,7 +1545,7 @@ happyReduction_143 (happy_x_12 `HappyStk`
     case happyOut207 happy_x_10 of { happy_var_10 -> 
     case happyOut208 happy_x_11 of { happy_var_11 -> 
     happyIn141
-         (MPLPar.AbsMPL.RUNSTMTWITHType happy_var_1 happy_var_3 happy_var_5 happy_var_8 happy_var_10 happy_var_11
+         (Language.AbsMPL.RUNSTMTWITHType happy_var_1 happy_var_3 happy_var_5 happy_var_8 happy_var_10 happy_var_11
     ) `HappyStk` happyRest}}}}}}
 
 happyReduce_144 = happyReduce 5# 51# happyReduction_144
@@ -1560,7 +1560,7 @@ happyReduction_144 (happy_x_5 `HappyStk`
     case happyOut207 happy_x_4 of { happy_var_4 -> 
     case happyOut208 happy_x_5 of { happy_var_5 -> 
     happyIn141
-         (MPLPar.AbsMPL.RUNSTMTWITHTOUType happy_var_1 happy_var_2 happy_var_4 happy_var_5
+         (Language.AbsMPL.RUNSTMTWITHTOUType happy_var_1 happy_var_2 happy_var_4 happy_var_5
     ) `HappyStk` happyRest}}}}
 
 happyReduce_145 = happySpecReduce_1  52# happyReduction_145
@@ -1584,28 +1584,28 @@ happyReduce_147 = happySpecReduce_1  53# happyReduction_147
 happyReduction_147 happy_x_1
      =  case happyOut144 happy_x_1 of { happy_var_1 -> 
     happyIn143
-         (MPLPar.AbsMPL.TYPEDEF happy_var_1
+         (Language.AbsMPL.TYPEDEF happy_var_1
     )}
 
 happyReduce_148 = happySpecReduce_1  53# happyReduction_148
 happyReduction_148 happy_x_1
      =  case happyOut164 happy_x_1 of { happy_var_1 -> 
     happyIn143
-         (MPLPar.AbsMPL.PROTOCOLDEF happy_var_1
+         (Language.AbsMPL.PROTOCOLDEF happy_var_1
     )}
 
 happyReduce_149 = happySpecReduce_1  53# happyReduction_149
 happyReduction_149 happy_x_1
      =  case happyOut174 happy_x_1 of { happy_var_1 -> 
     happyIn143
-         (MPLPar.AbsMPL.FUNCTIONDEF happy_var_1
+         (Language.AbsMPL.FUNCTIONDEF happy_var_1
     )}
 
 happyReduce_150 = happySpecReduce_1  53# happyReduction_150
 happyReduction_150 happy_x_1
      =  case happyOut205 happy_x_1 of { happy_var_1 -> 
     happyIn143
-         (MPLPar.AbsMPL.PROCESSDEF happy_var_1
+         (Language.AbsMPL.PROCESSDEF happy_var_1
     )}
 
 happyReduce_151 = happySpecReduce_2  54# happyReduction_151
@@ -1614,7 +1614,7 @@ happyReduction_151 happy_x_2
      =  case happyOut99 happy_x_1 of { happy_var_1 -> 
     case happyOut145 happy_x_2 of { happy_var_2 -> 
     happyIn144
-         (MPLPar.AbsMPL.DATA happy_var_1 happy_var_2
+         (Language.AbsMPL.DATA happy_var_1 happy_var_2
     )}}
 
 happyReduce_152 = happySpecReduce_2  54# happyReduction_152
@@ -1623,7 +1623,7 @@ happyReduction_152 happy_x_2
      =  case happyOut100 happy_x_1 of { happy_var_1 -> 
     case happyOut146 happy_x_2 of { happy_var_2 -> 
     happyIn144
-         (MPLPar.AbsMPL.CODATA happy_var_1 happy_var_2
+         (Language.AbsMPL.CODATA happy_var_1 happy_var_2
     )}}
 
 happyReduce_153 = happyReduce 6# 54# happyReduction_153
@@ -1638,7 +1638,7 @@ happyReduction_153 (happy_x_6 `HappyStk`
     case happyOut147 happy_x_2 of { happy_var_2 -> 
     case happyOut160 happy_x_5 of { happy_var_5 -> 
     happyIn144
-         (MPLPar.AbsMPL.TYPE happy_var_1 happy_var_2 happy_var_5
+         (Language.AbsMPL.TYPE happy_var_1 happy_var_2 happy_var_5
     ) `HappyStk` happyRest}}}
 
 happyReduce_154 = happySpecReduce_1  55# happyReduction_154
@@ -1710,7 +1710,7 @@ happyReduction_161 (happy_x_7 `HappyStk`
     case happyOut125 happy_x_3 of { happy_var_3 -> 
     case happyOut150 happy_x_6 of { happy_var_6 -> 
     happyIn148
-         (MPLPar.AbsMPL.DATACLAUSE happy_var_1 happy_var_3 happy_var_6
+         (Language.AbsMPL.DATACLAUSE happy_var_1 happy_var_3 happy_var_6
     ) `HappyStk` happyRest}}}
 
 happyReduce_162 = happyReduce 7# 59# happyReduction_162
@@ -1726,7 +1726,7 @@ happyReduction_162 (happy_x_7 `HappyStk`
     case happyOut157 happy_x_3 of { happy_var_3 -> 
     case happyOut151 happy_x_6 of { happy_var_6 -> 
     happyIn149
-         (MPLPar.AbsMPL.CODATACLAUSE happy_var_1 happy_var_3 happy_var_6
+         (Language.AbsMPL.CODATACLAUSE happy_var_1 happy_var_3 happy_var_6
     ) `HappyStk` happyRest}}}
 
 happyReduce_163 = happySpecReduce_0  60# happyReduction_163
@@ -1784,7 +1784,7 @@ happyReduction_169 (happy_x_5 `HappyStk`
     case happyOut155 happy_x_3 of { happy_var_3 -> 
     case happyOut125 happy_x_5 of { happy_var_5 -> 
     happyIn152
-         (MPLPar.AbsMPL.DATAPHRASE happy_var_1 happy_var_3 happy_var_5
+         (Language.AbsMPL.DATAPHRASE happy_var_1 happy_var_3 happy_var_5
     ) `HappyStk` happyRest}}}
 
 happyReduce_170 = happyReduce 5# 63# happyReduction_170
@@ -1798,7 +1798,7 @@ happyReduction_170 (happy_x_5 `HappyStk`
     case happyOut155 happy_x_3 of { happy_var_3 -> 
     case happyOut160 happy_x_5 of { happy_var_5 -> 
     happyIn153
-         (MPLPar.AbsMPL.CODATAPHRASE happy_var_1 happy_var_3 happy_var_5
+         (Language.AbsMPL.CODATAPHRASE happy_var_1 happy_var_3 happy_var_5
     ) `HappyStk` happyRest}}}
 
 happyReduce_171 = happySpecReduce_1  64# happyReduction_171
@@ -1844,7 +1844,7 @@ happyReduce_176 = happySpecReduce_1  66# happyReduction_176
 happyReduction_176 happy_x_1
      =  case happyOut125 happy_x_1 of { happy_var_1 -> 
     happyIn156
-         (MPLPar.AbsMPL.STRUCTOR happy_var_1
+         (Language.AbsMPL.STRUCTOR happy_var_1
     )}
 
 happyReduce_177 = happyReduce 4# 67# happyReduction_177
@@ -1856,14 +1856,14 @@ happyReduction_177 (happy_x_4 `HappyStk`
      = case happyOut125 happy_x_1 of { happy_var_1 -> 
     case happyOut158 happy_x_3 of { happy_var_3 -> 
     happyIn157
-         (MPLPar.AbsMPL.TYPESPEC_param happy_var_1 happy_var_3
+         (Language.AbsMPL.TYPESPEC_param happy_var_1 happy_var_3
     ) `HappyStk` happyRest}}
 
 happyReduce_178 = happySpecReduce_1  67# happyReduction_178
 happyReduction_178 happy_x_1
      =  case happyOut125 happy_x_1 of { happy_var_1 -> 
     happyIn157
-         (MPLPar.AbsMPL.TYPESPEC_basic happy_var_1
+         (Language.AbsMPL.TYPESPEC_basic happy_var_1
     )}
 
 happyReduce_179 = happySpecReduce_0  68# happyReduction_179
@@ -1892,7 +1892,7 @@ happyReduce_182 = happySpecReduce_1  69# happyReduction_182
 happyReduction_182 happy_x_1
      =  case happyOut125 happy_x_1 of { happy_var_1 -> 
     happyIn159
-         (MPLPar.AbsMPL.TYPEPARAM happy_var_1
+         (Language.AbsMPL.TYPEPARAM happy_var_1
     )}
 
 happyReduce_183 = happySpecReduce_3  70# happyReduction_183
@@ -1902,21 +1902,21 @@ happyReduction_183 happy_x_3
      =  case happyOut161 happy_x_1 of { happy_var_1 -> 
     case happyOut160 happy_x_3 of { happy_var_3 -> 
     happyIn160
-         (MPLPar.AbsMPL.TYPEARROW happy_var_1 happy_var_3
+         (Language.AbsMPL.TYPEARROW happy_var_1 happy_var_3
     )}}
 
 happyReduce_184 = happySpecReduce_1  70# happyReduction_184
 happyReduction_184 happy_x_1
      =  case happyOut161 happy_x_1 of { happy_var_1 -> 
     happyIn160
-         (MPLPar.AbsMPL.TYPENext happy_var_1
+         (Language.AbsMPL.TYPENext happy_var_1
     )}
 
 happyReduce_185 = happySpecReduce_1  71# happyReduction_185
 happyReduction_185 happy_x_1
      =  case happyOut93 happy_x_1 of { happy_var_1 -> 
     happyIn161
-         (MPLPar.AbsMPL.TYPEUNIT happy_var_1
+         (Language.AbsMPL.TYPEUNIT happy_var_1
     )}
 
 happyReduce_186 = happySpecReduce_3  71# happyReduction_186
@@ -1927,7 +1927,7 @@ happyReduction_186 happy_x_3
     case happyOut161 happy_x_2 of { happy_var_2 -> 
     case happyOut95 happy_x_3 of { happy_var_3 -> 
     happyIn161
-         (MPLPar.AbsMPL.TYPELIST happy_var_1 happy_var_2 happy_var_3
+         (Language.AbsMPL.TYPELIST happy_var_1 happy_var_2 happy_var_3
     )}}}
 
 happyReduce_187 = happyReduce 4# 71# happyReduction_187
@@ -1939,14 +1939,14 @@ happyReduction_187 (happy_x_4 `HappyStk`
      = case happyOut125 happy_x_1 of { happy_var_1 -> 
     case happyOut155 happy_x_3 of { happy_var_3 -> 
     happyIn161
-         (MPLPar.AbsMPL.TYPEDATCODAT happy_var_1 happy_var_3
+         (Language.AbsMPL.TYPEDATCODAT happy_var_1 happy_var_3
     ) `HappyStk` happyRest}}
 
 happyReduce_188 = happySpecReduce_1  71# happyReduction_188
 happyReduction_188 happy_x_1
      =  case happyOut125 happy_x_1 of { happy_var_1 -> 
     happyIn161
-         (MPLPar.AbsMPL.TYPECONST_VAR happy_var_1
+         (Language.AbsMPL.TYPECONST_VAR happy_var_1
     )}
 
 happyReduce_189 = happySpecReduce_3  71# happyReduction_189
@@ -1955,7 +1955,7 @@ happyReduction_189 happy_x_3
     happy_x_1
      =  case happyOut155 happy_x_2 of { happy_var_2 -> 
     happyIn161
-         (MPLPar.AbsMPL.TYPEPROD happy_var_2
+         (Language.AbsMPL.TYPEPROD happy_var_2
     )}
 
 happyReduce_190 = happySpecReduce_3  71# happyReduction_190
@@ -1964,7 +1964,7 @@ happyReduction_190 happy_x_3
     happy_x_1
      =  case happyOut160 happy_x_2 of { happy_var_2 -> 
     happyIn161
-         (MPLPar.AbsMPL.TYPEBRACKET happy_var_2
+         (Language.AbsMPL.TYPEBRACKET happy_var_2
     )}
 
 happyReduce_191 = happySpecReduce_0  72# happyReduction_191
@@ -2017,7 +2017,7 @@ happyReduction_197 happy_x_2
      =  case happyOut102 happy_x_1 of { happy_var_1 -> 
     case happyOut165 happy_x_2 of { happy_var_2 -> 
     happyIn164
-         (MPLPar.AbsMPL.PROTOCOL happy_var_1 happy_var_2
+         (Language.AbsMPL.PROTOCOL happy_var_1 happy_var_2
     )}}
 
 happyReduce_198 = happySpecReduce_2  74# happyReduction_198
@@ -2026,7 +2026,7 @@ happyReduction_198 happy_x_2
      =  case happyOut103 happy_x_1 of { happy_var_1 -> 
     case happyOut166 happy_x_2 of { happy_var_2 -> 
     happyIn164
-         (MPLPar.AbsMPL.COPROTOCOL happy_var_1 happy_var_2
+         (Language.AbsMPL.COPROTOCOL happy_var_1 happy_var_2
     )}}
 
 happyReduce_199 = happyReduce 7# 75# happyReduction_199
@@ -2042,7 +2042,7 @@ happyReduction_199 (happy_x_7 `HappyStk`
     case happyOut125 happy_x_3 of { happy_var_3 -> 
     case happyOut167 happy_x_6 of { happy_var_6 -> 
     happyIn165
-         (MPLPar.AbsMPL.PROTOCOLCLAUSE happy_var_1 happy_var_3 happy_var_6
+         (Language.AbsMPL.PROTOCOLCLAUSE happy_var_1 happy_var_3 happy_var_6
     ) `HappyStk` happyRest}}}
 
 happyReduce_200 = happyReduce 7# 76# happyReduction_200
@@ -2058,7 +2058,7 @@ happyReduction_200 (happy_x_7 `HappyStk`
     case happyOut157 happy_x_3 of { happy_var_3 -> 
     case happyOut168 happy_x_6 of { happy_var_6 -> 
     happyIn166
-         (MPLPar.AbsMPL.COPROTOCOLCLAUSE happy_var_1 happy_var_3 happy_var_6
+         (Language.AbsMPL.COPROTOCOLCLAUSE happy_var_1 happy_var_3 happy_var_6
     ) `HappyStk` happyRest}}}
 
 happyReduce_201 = happySpecReduce_0  77# happyReduction_201
@@ -2116,7 +2116,7 @@ happyReduction_207 (happy_x_5 `HappyStk`
     case happyOut171 happy_x_3 of { happy_var_3 -> 
     case happyOut125 happy_x_5 of { happy_var_5 -> 
     happyIn169
-         (MPLPar.AbsMPL.PROTOCOLPHRASE happy_var_1 happy_var_3 happy_var_5
+         (Language.AbsMPL.PROTOCOLPHRASE happy_var_1 happy_var_3 happy_var_5
     ) `HappyStk` happyRest}}}
 
 happyReduce_208 = happyReduce 5# 80# happyReduction_208
@@ -2130,7 +2130,7 @@ happyReduction_208 (happy_x_5 `HappyStk`
     case happyOut125 happy_x_3 of { happy_var_3 -> 
     case happyOut171 happy_x_5 of { happy_var_5 -> 
     happyIn170
-         (MPLPar.AbsMPL.COPROTOCOLPHRASE happy_var_1 happy_var_3 happy_var_5
+         (Language.AbsMPL.COPROTOCOLPHRASE happy_var_1 happy_var_3 happy_var_5
     ) `HappyStk` happyRest}}}
 
 happyReduce_209 = happySpecReduce_1  81# happyReduction_209
@@ -2147,7 +2147,7 @@ happyReduction_210 happy_x_3
      =  case happyOut172 happy_x_1 of { happy_var_1 -> 
     case happyOut171 happy_x_3 of { happy_var_3 -> 
     happyIn171
-         (MPLPar.AbsMPL.PROTOCOLtensor happy_var_1 happy_var_3
+         (Language.AbsMPL.PROTOCOLtensor happy_var_1 happy_var_3
     )}}
 
 happyReduce_211 = happySpecReduce_3  81# happyReduction_211
@@ -2157,7 +2157,7 @@ happyReduction_211 happy_x_3
      =  case happyOut172 happy_x_1 of { happy_var_1 -> 
     case happyOut171 happy_x_3 of { happy_var_3 -> 
     happyIn171
-         (MPLPar.AbsMPL.PROTOCOLpar happy_var_1 happy_var_3
+         (Language.AbsMPL.PROTOCOLpar happy_var_1 happy_var_3
     )}}
 
 happyReduce_212 = happySpecReduce_3  82# happyReduction_212
@@ -2181,7 +2181,7 @@ happyReduction_213 (happy_x_6 `HappyStk`
     case happyOut160 happy_x_3 of { happy_var_3 -> 
     case happyOut171 happy_x_5 of { happy_var_5 -> 
     happyIn172
-         (MPLPar.AbsMPL.PROTOCOLget happy_var_1 happy_var_3 happy_var_5
+         (Language.AbsMPL.PROTOCOLget happy_var_1 happy_var_3 happy_var_5
     ) `HappyStk` happyRest}}}
 
 happyReduce_214 = happyReduce 6# 82# happyReduction_214
@@ -2196,7 +2196,7 @@ happyReduction_214 (happy_x_6 `HappyStk`
     case happyOut160 happy_x_3 of { happy_var_3 -> 
     case happyOut171 happy_x_5 of { happy_var_5 -> 
     happyIn172
-         (MPLPar.AbsMPL.PROTOCOLput happy_var_1 happy_var_3 happy_var_5
+         (Language.AbsMPL.PROTOCOLput happy_var_1 happy_var_3 happy_var_5
     ) `HappyStk` happyRest}}}
 
 happyReduce_215 = happyReduce 4# 82# happyReduction_215
@@ -2207,14 +2207,14 @@ happyReduction_215 (happy_x_4 `HappyStk`
     happyRest)
      = case happyOut171 happy_x_3 of { happy_var_3 -> 
     happyIn172
-         (MPLPar.AbsMPL.PROTOCOLneg happy_var_3
+         (Language.AbsMPL.PROTOCOLneg happy_var_3
     ) `HappyStk` happyRest}
 
 happyReduce_216 = happySpecReduce_1  82# happyReduction_216
 happyReduction_216 happy_x_1
      =  case happyOut107 happy_x_1 of { happy_var_1 -> 
     happyIn172
-         (MPLPar.AbsMPL.PROTOCOLtopbot happy_var_1
+         (Language.AbsMPL.PROTOCOLtopbot happy_var_1
     )}
 
 happyReduce_217 = happyReduce 4# 82# happyReduction_217
@@ -2226,14 +2226,14 @@ happyReduction_217 (happy_x_4 `HappyStk`
      = case happyOut125 happy_x_1 of { happy_var_1 -> 
     case happyOut155 happy_x_3 of { happy_var_3 -> 
     happyIn172
-         (MPLPar.AbsMPL.PROTNamedWArgs happy_var_1 happy_var_3
+         (Language.AbsMPL.PROTNamedWArgs happy_var_1 happy_var_3
     ) `HappyStk` happyRest}}
 
 happyReduce_218 = happySpecReduce_1  82# happyReduction_218
 happyReduction_218 happy_x_1
      =  case happyOut125 happy_x_1 of { happy_var_1 -> 
     happyIn172
-         (MPLPar.AbsMPL.PROTNamedWOArgs happy_var_1
+         (Language.AbsMPL.PROTNamedWOArgs happy_var_1
     )}
 
 happyReduce_219 = happySpecReduce_0  83# happyReduction_219
@@ -2276,7 +2276,7 @@ happyReduction_222 (happy_x_10 `HappyStk`
     case happyOut160 happy_x_6 of { happy_var_6 -> 
     case happyOut176 happy_x_9 of { happy_var_9 -> 
     happyIn174
-         (MPLPar.AbsMPL.FUNCTIONDEFNfull happy_var_1 happy_var_2 happy_var_4 happy_var_6 happy_var_9
+         (Language.AbsMPL.FUNCTIONDEFNfull happy_var_1 happy_var_2 happy_var_4 happy_var_6 happy_var_9
     ) `HappyStk` happyRest}}}}}
 
 happyReduce_223 = happyReduce 6# 84# happyReduction_223
@@ -2291,7 +2291,7 @@ happyReduction_223 (happy_x_6 `HappyStk`
     case happyOut126 happy_x_2 of { happy_var_2 -> 
     case happyOut176 happy_x_5 of { happy_var_5 -> 
     happyIn174
-         (MPLPar.AbsMPL.FUNCTIONDEFNshort happy_var_1 happy_var_2 happy_var_5
+         (Language.AbsMPL.FUNCTIONDEFNshort happy_var_1 happy_var_2 happy_var_5
     ) `HappyStk` happyRest}}}
 
 happyReduce_224 = happySpecReduce_1  85# happyReduction_224
@@ -2363,7 +2363,7 @@ happyReduction_231 (happy_x_7 `HappyStk`
     case happyOut177 happy_x_3 of { happy_var_3 -> 
     case happyOut186 happy_x_6 of { happy_var_6 -> 
     happyIn178
-         (MPLPar.AbsMPL.FOLDPATT_WOBRAC happy_var_1 happy_var_3 happy_var_6
+         (Language.AbsMPL.FOLDPATT_WOBRAC happy_var_1 happy_var_3 happy_var_6
     ) `HappyStk` happyRest}}}
 
 happyReduce_232 = happySpecReduce_0  89# happyReduction_232
@@ -2395,7 +2395,7 @@ happyReduction_235 happy_x_3
      =  case happyOut183 happy_x_1 of { happy_var_1 -> 
     case happyOut186 happy_x_3 of { happy_var_3 -> 
     happyIn180
-         (MPLPar.AbsMPL.PATTERNshort happy_var_1 happy_var_3
+         (Language.AbsMPL.PATTERNshort happy_var_1 happy_var_3
     )}}
 
 happyReduce_236 = happyReduce 6# 90# happyReduction_236
@@ -2409,7 +2409,7 @@ happyReduction_236 (happy_x_6 `HappyStk`
      = case happyOut183 happy_x_1 of { happy_var_1 -> 
     case happyOut181 happy_x_5 of { happy_var_5 -> 
     happyIn180
-         (MPLPar.AbsMPL.PATTERNguard happy_var_1 happy_var_5
+         (Language.AbsMPL.PATTERNguard happy_var_1 happy_var_5
     ) `HappyStk` happyRest}}
 
 happyReduce_237 = happySpecReduce_1  91# happyReduction_237
@@ -2439,7 +2439,7 @@ happyReduction_239 (happy_x_5 `HappyStk`
      = case happyOut186 happy_x_1 of { happy_var_1 -> 
     case happyOut186 happy_x_4 of { happy_var_4 -> 
     happyIn182
-         (MPLPar.AbsMPL.GUARDterm happy_var_1 happy_var_4
+         (Language.AbsMPL.GUARDterm happy_var_1 happy_var_4
     ) `HappyStk` happyRest}}
 
 happyReduce_240 = happyReduce 5# 92# happyReduction_240
@@ -2452,7 +2452,7 @@ happyReduction_240 (happy_x_5 `HappyStk`
      = case happyOut109 happy_x_1 of { happy_var_1 -> 
     case happyOut186 happy_x_4 of { happy_var_4 -> 
     happyIn182
-         (MPLPar.AbsMPL.GUARDother happy_var_1 happy_var_4
+         (Language.AbsMPL.GUARDother happy_var_1 happy_var_4
     ) `HappyStk` happyRest}}
 
 happyReduce_241 = happySpecReduce_0  93# happyReduction_241
@@ -2484,7 +2484,7 @@ happyReduction_244 happy_x_3
      =  case happyOut185 happy_x_1 of { happy_var_1 -> 
     case happyOut184 happy_x_3 of { happy_var_3 -> 
     happyIn184
-         (MPLPar.AbsMPL.LISTPATTERN2 happy_var_1 happy_var_3
+         (Language.AbsMPL.LISTPATTERN2 happy_var_1 happy_var_3
     )}}
 
 happyReduce_245 = happySpecReduce_1  94# happyReduction_245
@@ -2503,14 +2503,14 @@ happyReduction_246 (happy_x_4 `HappyStk`
      = case happyOut125 happy_x_1 of { happy_var_1 -> 
     case happyOut183 happy_x_3 of { happy_var_3 -> 
     happyIn185
-         (MPLPar.AbsMPL.CONSPATTERN happy_var_1 happy_var_3
+         (Language.AbsMPL.CONSPATTERN happy_var_1 happy_var_3
     ) `HappyStk` happyRest}}
 
 happyReduce_247 = happySpecReduce_1  95# happyReduction_247
 happyReduction_247 happy_x_1
      =  case happyOut125 happy_x_1 of { happy_var_1 -> 
     happyIn185
-         (MPLPar.AbsMPL.CONSPATTERN_WA happy_var_1
+         (Language.AbsMPL.CONSPATTERN_WA happy_var_1
     )}
 
 happyReduce_248 = happySpecReduce_3  95# happyReduction_248
@@ -2521,7 +2521,7 @@ happyReduction_248 happy_x_3
     case happyOut183 happy_x_2 of { happy_var_2 -> 
     case happyOut95 happy_x_3 of { happy_var_3 -> 
     happyIn185
-         (MPLPar.AbsMPL.LISTPATTERN1 happy_var_1 happy_var_2 happy_var_3
+         (Language.AbsMPL.LISTPATTERN1 happy_var_1 happy_var_2 happy_var_3
     )}}}
 
 happyReduce_249 = happySpecReduce_3  95# happyReduction_249
@@ -2530,35 +2530,35 @@ happyReduction_249 happy_x_3
     happy_x_1
      =  case happyOut183 happy_x_2 of { happy_var_2 -> 
     happyIn185
-         (MPLPar.AbsMPL.PRODPATTERN happy_var_2
+         (Language.AbsMPL.PRODPATTERN happy_var_2
     )}
 
 happyReduce_250 = happySpecReduce_1  95# happyReduction_250
 happyReduction_250 happy_x_1
      =  case happyOut126 happy_x_1 of { happy_var_1 -> 
     happyIn185
-         (MPLPar.AbsMPL.VARPATTERN happy_var_1
+         (Language.AbsMPL.VARPATTERN happy_var_1
     )}
 
 happyReduce_251 = happySpecReduce_1  95# happyReduction_251
 happyReduction_251 happy_x_1
      =  case happyOut90 happy_x_1 of { happy_var_1 -> 
     happyIn185
-         (MPLPar.AbsMPL.STR_CONSTPATTERN happy_var_1
+         (Language.AbsMPL.STR_CONSTPATTERN happy_var_1
     )}
 
 happyReduce_252 = happySpecReduce_1  95# happyReduction_252
 happyReduction_252 happy_x_1
      =  case happyOut127 happy_x_1 of { happy_var_1 -> 
     happyIn185
-         (MPLPar.AbsMPL.INT_CONSTPATTERN happy_var_1
+         (Language.AbsMPL.INT_CONSTPATTERN happy_var_1
     )}
 
 happyReduce_253 = happySpecReduce_1  95# happyReduction_253
 happyReduction_253 happy_x_1
      =  case happyOut124 happy_x_1 of { happy_var_1 -> 
     happyIn185
-         (MPLPar.AbsMPL.NULLPATTERN happy_var_1
+         (Language.AbsMPL.NULLPATTERN happy_var_1
     )}
 
 happyReduce_254 = happySpecReduce_3  95# happyReduction_254
@@ -2577,7 +2577,7 @@ happyReduction_255 happy_x_3
      =  case happyOut187 happy_x_1 of { happy_var_1 -> 
     case happyOut186 happy_x_3 of { happy_var_3 -> 
     happyIn186
-         (MPLPar.AbsMPL.LISTTERM2 happy_var_1 happy_var_3
+         (Language.AbsMPL.LISTTERM2 happy_var_1 happy_var_3
     )}}
 
 happyReduce_256 = happySpecReduce_1  96# happyReduction_256
@@ -2597,7 +2597,7 @@ happyReduction_257 (happy_x_5 `HappyStk`
      = case happyOut187 happy_x_1 of { happy_var_1 -> 
     case happyOut197 happy_x_4 of { happy_var_4 -> 
     happyIn186
-         (MPLPar.AbsMPL.LETTERM happy_var_1 happy_var_4
+         (Language.AbsMPL.LETTERM happy_var_1 happy_var_4
     ) `HappyStk` happyRest}}
 
 happyReduce_258 = happySpecReduce_3  97# happyReduction_258
@@ -2608,7 +2608,7 @@ happyReduction_258 happy_x_3
     case happyOut128 happy_x_2 of { happy_var_2 -> 
     case happyOut188 happy_x_3 of { happy_var_3 -> 
     happyIn187
-         (MPLPar.AbsMPL.Infix0TERM happy_var_1 happy_var_2 happy_var_3
+         (Language.AbsMPL.Infix0TERM happy_var_1 happy_var_2 happy_var_3
     )}}}
 
 happyReduce_259 = happySpecReduce_1  97# happyReduction_259
@@ -2626,7 +2626,7 @@ happyReduction_260 happy_x_3
     case happyOut129 happy_x_2 of { happy_var_2 -> 
     case happyOut189 happy_x_3 of { happy_var_3 -> 
     happyIn188
-         (MPLPar.AbsMPL.Infix1TERM happy_var_1 happy_var_2 happy_var_3
+         (Language.AbsMPL.Infix1TERM happy_var_1 happy_var_2 happy_var_3
     )}}}
 
 happyReduce_261 = happySpecReduce_1  98# happyReduction_261
@@ -2644,7 +2644,7 @@ happyReduction_262 happy_x_3
     case happyOut130 happy_x_2 of { happy_var_2 -> 
     case happyOut190 happy_x_3 of { happy_var_3 -> 
     happyIn189
-         (MPLPar.AbsMPL.Infix2TERM happy_var_1 happy_var_2 happy_var_3
+         (Language.AbsMPL.Infix2TERM happy_var_1 happy_var_2 happy_var_3
     )}}}
 
 happyReduce_263 = happySpecReduce_1  99# happyReduction_263
@@ -2662,7 +2662,7 @@ happyReduction_264 happy_x_3
     case happyOut131 happy_x_2 of { happy_var_2 -> 
     case happyOut191 happy_x_3 of { happy_var_3 -> 
     happyIn190
-         (MPLPar.AbsMPL.Infix3TERM happy_var_1 happy_var_2 happy_var_3
+         (Language.AbsMPL.Infix3TERM happy_var_1 happy_var_2 happy_var_3
     )}}}
 
 happyReduce_265 = happySpecReduce_1  100# happyReduction_265
@@ -2680,7 +2680,7 @@ happyReduction_266 happy_x_3
     case happyOut132 happy_x_2 of { happy_var_2 -> 
     case happyOut192 happy_x_3 of { happy_var_3 -> 
     happyIn191
-         (MPLPar.AbsMPL.Infix4TERM happy_var_1 happy_var_2 happy_var_3
+         (Language.AbsMPL.Infix4TERM happy_var_1 happy_var_2 happy_var_3
     )}}}
 
 happyReduce_267 = happySpecReduce_1  101# happyReduction_267
@@ -2698,7 +2698,7 @@ happyReduction_268 happy_x_3
     case happyOut133 happy_x_2 of { happy_var_2 -> 
     case happyOut193 happy_x_3 of { happy_var_3 -> 
     happyIn192
-         (MPLPar.AbsMPL.Infix5TERM happy_var_1 happy_var_2 happy_var_3
+         (Language.AbsMPL.Infix5TERM happy_var_1 happy_var_2 happy_var_3
     )}}}
 
 happyReduce_269 = happySpecReduce_1  102# happyReduction_269
@@ -2716,7 +2716,7 @@ happyReduction_270 happy_x_3
     case happyOut134 happy_x_2 of { happy_var_2 -> 
     case happyOut193 happy_x_3 of { happy_var_3 -> 
     happyIn193
-         (MPLPar.AbsMPL.Infix6TERM happy_var_1 happy_var_2 happy_var_3
+         (Language.AbsMPL.Infix6TERM happy_var_1 happy_var_2 happy_var_3
     )}}}
 
 happyReduce_271 = happySpecReduce_1  103# happyReduction_271
@@ -2734,7 +2734,7 @@ happyReduction_272 happy_x_3
     case happyOut135 happy_x_2 of { happy_var_2 -> 
     case happyOut195 happy_x_3 of { happy_var_3 -> 
     happyIn194
-         (MPLPar.AbsMPL.Infix7TERM happy_var_1 happy_var_2 happy_var_3
+         (Language.AbsMPL.Infix7TERM happy_var_1 happy_var_2 happy_var_3
     )}}}
 
 happyReduce_273 = happySpecReduce_1  104# happyReduction_273
@@ -2752,21 +2752,21 @@ happyReduction_274 happy_x_3
     case happyOut201 happy_x_2 of { happy_var_2 -> 
     case happyOut95 happy_x_3 of { happy_var_3 -> 
     happyIn195
-         (MPLPar.AbsMPL.LISTTERM happy_var_1 happy_var_2 happy_var_3
+         (Language.AbsMPL.LISTTERM happy_var_1 happy_var_2 happy_var_3
     )}}}
 
 happyReduce_275 = happySpecReduce_1  105# happyReduction_275
 happyReduction_275 happy_x_1
      =  case happyOut126 happy_x_1 of { happy_var_1 -> 
     happyIn195
-         (MPLPar.AbsMPL.VARTERM happy_var_1
+         (Language.AbsMPL.VARTERM happy_var_1
     )}
 
 happyReduce_276 = happySpecReduce_1  105# happyReduction_276
 happyReduction_276 happy_x_1
      =  case happyOut202 happy_x_1 of { happy_var_1 -> 
     happyIn195
-         (MPLPar.AbsMPL.CONSTTERM happy_var_1
+         (Language.AbsMPL.CONSTTERM happy_var_1
     )}
 
 happyReduce_277 = happyReduce 8# 105# happyReduction_277
@@ -2784,7 +2784,7 @@ happyReduction_277 (happy_x_8 `HappyStk`
     case happyOut186 happy_x_4 of { happy_var_4 -> 
     case happyOut186 happy_x_7 of { happy_var_7 -> 
     happyIn195
-         (MPLPar.AbsMPL.IFTERM happy_var_1 happy_var_2 happy_var_4 happy_var_7
+         (Language.AbsMPL.IFTERM happy_var_1 happy_var_2 happy_var_4 happy_var_7
     ) `HappyStk` happyRest}}}}
 
 happyReduce_278 = happyReduce 6# 105# happyReduction_278
@@ -2799,7 +2799,7 @@ happyReduction_278 (happy_x_6 `HappyStk`
     case happyOut126 happy_x_2 of { happy_var_2 -> 
     case happyOut179 happy_x_5 of { happy_var_5 -> 
     happyIn195
-         (MPLPar.AbsMPL.UNFOLDTERM happy_var_1 happy_var_2 happy_var_5
+         (Language.AbsMPL.UNFOLDTERM happy_var_1 happy_var_2 happy_var_5
     ) `HappyStk` happyRest}}}
 
 happyReduce_279 = happyReduce 6# 105# happyReduction_279
@@ -2814,7 +2814,7 @@ happyReduction_279 (happy_x_6 `HappyStk`
     case happyOut126 happy_x_2 of { happy_var_2 -> 
     case happyOut179 happy_x_5 of { happy_var_5 -> 
     happyIn195
-         (MPLPar.AbsMPL.FOLDTERM happy_var_1 happy_var_2 happy_var_5
+         (Language.AbsMPL.FOLDTERM happy_var_1 happy_var_2 happy_var_5
     ) `HappyStk` happyRest}}}
 
 happyReduce_280 = happyReduce 6# 105# happyReduction_280
@@ -2829,7 +2829,7 @@ happyReduction_280 (happy_x_6 `HappyStk`
     case happyOut186 happy_x_2 of { happy_var_2 -> 
     case happyOut176 happy_x_5 of { happy_var_5 -> 
     happyIn195
-         (MPLPar.AbsMPL.CASETERM happy_var_1 happy_var_2 happy_var_5
+         (Language.AbsMPL.CASETERM happy_var_1 happy_var_2 happy_var_5
     ) `HappyStk` happyRest}}}
 
 happyReduce_281 = happyReduce 4# 105# happyReduction_281
@@ -2841,14 +2841,14 @@ happyReduction_281 (happy_x_4 `HappyStk`
      = case happyOut125 happy_x_1 of { happy_var_1 -> 
     case happyOut201 happy_x_3 of { happy_var_3 -> 
     happyIn195
-         (MPLPar.AbsMPL.GENCONSTERM_WARGS happy_var_1 happy_var_3
+         (Language.AbsMPL.GENCONSTERM_WARGS happy_var_1 happy_var_3
     ) `HappyStk` happyRest}}
 
 happyReduce_282 = happySpecReduce_1  105# happyReduction_282
 happyReduction_282 happy_x_1
      =  case happyOut125 happy_x_1 of { happy_var_1 -> 
     happyIn195
-         (MPLPar.AbsMPL.GENCONSTERM_WOARGS happy_var_1
+         (Language.AbsMPL.GENCONSTERM_WOARGS happy_var_1
     )}
 
 happyReduce_283 = happySpecReduce_3  105# happyReduction_283
@@ -2857,7 +2857,7 @@ happyReduction_283 happy_x_3
     happy_x_1
      =  case happyOut201 happy_x_2 of { happy_var_2 -> 
     happyIn195
-         (MPLPar.AbsMPL.PRODTERM happy_var_2
+         (Language.AbsMPL.PRODTERM happy_var_2
     )}
 
 happyReduce_284 = happyReduce 4# 105# happyReduction_284
@@ -2869,7 +2869,7 @@ happyReduction_284 (happy_x_4 `HappyStk`
      = case happyOut126 happy_x_1 of { happy_var_1 -> 
     case happyOut201 happy_x_3 of { happy_var_3 -> 
     happyIn195
-         (MPLPar.AbsMPL.FUNAPPTERM happy_var_1 happy_var_3
+         (Language.AbsMPL.FUNAPPTERM happy_var_1 happy_var_3
     ) `HappyStk` happyRest}}
 
 happyReduce_285 = happyReduce 5# 105# happyReduction_285
@@ -2882,7 +2882,7 @@ happyReduction_285 (happy_x_5 `HappyStk`
      = case happyOut110 happy_x_1 of { happy_var_1 -> 
     case happyOut199 happy_x_4 of { happy_var_4 -> 
     happyIn195
-         (MPLPar.AbsMPL.RECORDTERM happy_var_1 happy_var_4
+         (Language.AbsMPL.RECORDTERM happy_var_1 happy_var_4
     ) `HappyStk` happyRest}}
 
 happyReduce_286 = happySpecReduce_3  105# happyReduction_286
@@ -2891,7 +2891,7 @@ happyReduction_286 happy_x_3
     happy_x_1
      =  case happyOut200 happy_x_2 of { happy_var_2 -> 
     happyIn195
-         (MPLPar.AbsMPL.RECORDTERMALT happy_var_2
+         (Language.AbsMPL.RECORDTERMALT happy_var_2
     )}
 
 happyReduce_287 = happySpecReduce_3  105# happyReduction_287
@@ -2907,14 +2907,14 @@ happyReduce_288 = happySpecReduce_1  106# happyReduction_288
 happyReduction_288 happy_x_1
      =  case happyOut143 happy_x_1 of { happy_var_1 -> 
     happyIn196
-         (MPLPar.AbsMPL.DEFN_LetWhere happy_var_1
+         (Language.AbsMPL.DEFN_LetWhere happy_var_1
     )}
 
 happyReduce_289 = happySpecReduce_1  106# happyReduction_289
 happyReduction_289 happy_x_1
      =  case happyOut198 happy_x_1 of { happy_var_1 -> 
     happyIn196
-         (MPLPar.AbsMPL.PATTTERM_LetWhere happy_var_1
+         (Language.AbsMPL.PATTTERM_LetWhere happy_var_1
     )}
 
 happyReduce_290 = happySpecReduce_1  107# happyReduction_290
@@ -2944,7 +2944,7 @@ happyReduction_292 (happy_x_5 `HappyStk`
      = case happyOut126 happy_x_1 of { happy_var_1 -> 
     case happyOut186 happy_x_4 of { happy_var_4 -> 
     happyIn198
-         (MPLPar.AbsMPL.JUSTPATTTERM happy_var_1 happy_var_4
+         (Language.AbsMPL.JUSTPATTTERM happy_var_1 happy_var_4
     ) `HappyStk` happyRest}}
 
 happyReduce_293 = happySpecReduce_0  109# happyReduction_293
@@ -3017,35 +3017,35 @@ happyReduce_302 = happySpecReduce_1  112# happyReduction_302
 happyReduction_302 happy_x_1
      =  case happyOut127 happy_x_1 of { happy_var_1 -> 
     happyIn202
-         (MPLPar.AbsMPL.INTEGER happy_var_1
+         (Language.AbsMPL.INTEGER happy_var_1
     )}
 
 happyReduce_303 = happySpecReduce_1  112# happyReduction_303
 happyReduction_303 happy_x_1
      =  case happyOut90 happy_x_1 of { happy_var_1 -> 
     happyIn202
-         (MPLPar.AbsMPL.STRING happy_var_1
+         (Language.AbsMPL.STRING happy_var_1
     )}
 
 happyReduce_304 = happySpecReduce_1  112# happyReduction_304
 happyReduction_304 happy_x_1
      =  case happyOut91 happy_x_1 of { happy_var_1 -> 
     happyIn202
-         (MPLPar.AbsMPL.CHAR happy_var_1
+         (Language.AbsMPL.CHAR happy_var_1
     )}
 
 happyReduce_305 = happySpecReduce_1  112# happyReduction_305
 happyReduction_305 happy_x_1
      =  case happyOut92 happy_x_1 of { happy_var_1 -> 
     happyIn202
-         (MPLPar.AbsMPL.DOUBLE happy_var_1
+         (Language.AbsMPL.DOUBLE happy_var_1
     )}
 
 happyReduce_306 = happySpecReduce_1  113# happyReduction_306
 happyReduction_306 happy_x_1
      =  case happyOut204 happy_x_1 of { happy_var_1 -> 
     happyIn203
-         (MPLPar.AbsMPL.RECORDENTRY_ALT happy_var_1
+         (Language.AbsMPL.RECORDENTRY_ALT happy_var_1
     )}
 
 happyReduce_307 = happySpecReduce_3  114# happyReduction_307
@@ -3055,7 +3055,7 @@ happyReduction_307 happy_x_3
      =  case happyOut184 happy_x_1 of { happy_var_1 -> 
     case happyOut186 happy_x_3 of { happy_var_3 -> 
     happyIn204
-         (MPLPar.AbsMPL.RECORDENTRY happy_var_1 happy_var_3
+         (Language.AbsMPL.RECORDENTRY happy_var_1 happy_var_3
     )}}
 
 happyReduce_308 = happyReduce 12# 115# happyReduction_308
@@ -3079,7 +3079,7 @@ happyReduction_308 (happy_x_12 `HappyStk`
     case happyOut173 happy_x_8 of { happy_var_8 -> 
     case happyOut206 happy_x_11 of { happy_var_11 -> 
     happyIn205
-         (MPLPar.AbsMPL.PROCESSDEFfull happy_var_1 happy_var_2 happy_var_4 happy_var_6 happy_var_8 happy_var_11
+         (Language.AbsMPL.PROCESSDEFfull happy_var_1 happy_var_2 happy_var_4 happy_var_6 happy_var_8 happy_var_11
     ) `HappyStk` happyRest}}}}}}
 
 happyReduce_309 = happyReduce 6# 115# happyReduction_309
@@ -3094,7 +3094,7 @@ happyReduction_309 (happy_x_6 `HappyStk`
     case happyOut126 happy_x_2 of { happy_var_2 -> 
     case happyOut206 happy_x_5 of { happy_var_5 -> 
     happyIn205
-         (MPLPar.AbsMPL.PROCESSDEFshort happy_var_1 happy_var_2 happy_var_5
+         (Language.AbsMPL.PROCESSDEFshort happy_var_1 happy_var_2 happy_var_5
     ) `HappyStk` happyRest}}}
 
 happyReduce_310 = happyReduce 6# 116# happyReduction_310
@@ -3110,7 +3110,7 @@ happyReduction_310 (happy_x_6 `HappyStk`
     case happyOut207 happy_x_5 of { happy_var_5 -> 
     case happyOut208 happy_x_6 of { happy_var_6 -> 
     happyIn206
-         (MPLPar.AbsMPL.PROCESSPHRASEnoguard happy_var_1 happy_var_3 happy_var_5 happy_var_6
+         (Language.AbsMPL.PROCESSPHRASEnoguard happy_var_1 happy_var_3 happy_var_5 happy_var_6
     ) `HappyStk` happyRest}}}}
 
 happyReduce_311 = happySpecReduce_0  117# happyReduction_311
@@ -3144,7 +3144,7 @@ happyReduction_314 (happy_x_5 `HappyStk`
     happyRest)
      = case happyOut209 happy_x_4 of { happy_var_4 -> 
     happyIn208
-         (MPLPar.AbsMPL.MANY_PROCESS happy_var_4
+         (Language.AbsMPL.MANY_PROCESS happy_var_4
     ) `HappyStk` happyRest}
 
 happyReduce_315 = happySpecReduce_2  118# happyReduction_315
@@ -3152,7 +3152,7 @@ happyReduction_315 happy_x_2
     happy_x_1
      =  case happyOut210 happy_x_2 of { happy_var_2 -> 
     happyIn208
-         (MPLPar.AbsMPL.ONE_PROCESS happy_var_2
+         (Language.AbsMPL.ONE_PROCESS happy_var_2
     )}
 
 happyReduce_316 = happySpecReduce_0  119# happyReduction_316
@@ -3192,7 +3192,7 @@ happyReduction_319 (happy_x_8 `HappyStk`
     case happyOut207 happy_x_5 of { happy_var_5 -> 
     case happyOut207 happy_x_7 of { happy_var_7 -> 
     happyIn210
-         (MPLPar.AbsMPL.PROCESS_RUN happy_var_1 happy_var_3 happy_var_5 happy_var_7
+         (Language.AbsMPL.PROCESS_RUN happy_var_1 happy_var_3 happy_var_5 happy_var_7
     ) `HappyStk` happyRest}}}}
 
 happyReduce_320 = happySpecReduce_2  120# happyReduction_320
@@ -3201,7 +3201,7 @@ happyReduction_320 happy_x_2
      =  case happyOut116 happy_x_1 of { happy_var_1 -> 
     case happyOut222 happy_x_2 of { happy_var_2 -> 
     happyIn210
-         (MPLPar.AbsMPL.PROCESS_CLOSE happy_var_1 happy_var_2
+         (Language.AbsMPL.PROCESS_CLOSE happy_var_1 happy_var_2
     )}}
 
 happyReduce_321 = happySpecReduce_2  120# happyReduction_321
@@ -3210,7 +3210,7 @@ happyReduction_321 happy_x_2
      =  case happyOut117 happy_x_1 of { happy_var_1 -> 
     case happyOut222 happy_x_2 of { happy_var_2 -> 
     happyIn210
-         (MPLPar.AbsMPL.PROCESS_HALT happy_var_1 happy_var_2
+         (Language.AbsMPL.PROCESS_HALT happy_var_1 happy_var_2
     )}}
 
 happyReduce_322 = happyReduce 4# 120# happyReduction_322
@@ -3223,7 +3223,7 @@ happyReduction_322 (happy_x_4 `HappyStk`
     case happyOut126 happy_x_2 of { happy_var_2 -> 
     case happyOut222 happy_x_4 of { happy_var_4 -> 
     happyIn210
-         (MPLPar.AbsMPL.PROCESS_GET happy_var_1 happy_var_2 happy_var_4
+         (Language.AbsMPL.PROCESS_GET happy_var_1 happy_var_2 happy_var_4
     ) `HappyStk` happyRest}}}
 
 happyReduce_323 = happyReduce 6# 120# happyReduction_323
@@ -3238,7 +3238,7 @@ happyReduction_323 (happy_x_6 `HappyStk`
     case happyOut222 happy_x_2 of { happy_var_2 -> 
     case happyOut215 happy_x_5 of { happy_var_5 -> 
     happyIn210
-         (MPLPar.AbsMPL.PROCESS_HCASE happy_var_1 happy_var_2 happy_var_5
+         (Language.AbsMPL.PROCESS_HCASE happy_var_1 happy_var_2 happy_var_5
     ) `HappyStk` happyRest}}}
 
 happyReduce_324 = happyReduce 4# 120# happyReduction_324
@@ -3251,7 +3251,7 @@ happyReduction_324 (happy_x_4 `HappyStk`
     case happyOut186 happy_x_2 of { happy_var_2 -> 
     case happyOut222 happy_x_4 of { happy_var_4 -> 
     happyIn210
-         (MPLPar.AbsMPL.PROCESS_PUT happy_var_1 happy_var_2 happy_var_4
+         (Language.AbsMPL.PROCESS_PUT happy_var_1 happy_var_2 happy_var_4
     ) `HappyStk` happyRest}}}
 
 happyReduce_325 = happyReduce 4# 120# happyReduction_325
@@ -3264,7 +3264,7 @@ happyReduction_325 (happy_x_4 `HappyStk`
     case happyOut125 happy_x_2 of { happy_var_2 -> 
     case happyOut222 happy_x_4 of { happy_var_4 -> 
     happyIn210
-         (MPLPar.AbsMPL.PROCESS_HPUT happy_var_1 happy_var_2 happy_var_4
+         (Language.AbsMPL.PROCESS_HPUT happy_var_1 happy_var_2 happy_var_4
     ) `HappyStk` happyRest}}}
 
 happyReduce_326 = happyReduce 4# 120# happyReduction_326
@@ -3277,7 +3277,7 @@ happyReduction_326 (happy_x_4 `HappyStk`
     case happyOut222 happy_x_2 of { happy_var_2 -> 
     case happyOut207 happy_x_4 of { happy_var_4 -> 
     happyIn210
-         (MPLPar.AbsMPL.PROCESS_SPLIT happy_var_1 happy_var_2 happy_var_4
+         (Language.AbsMPL.PROCESS_SPLIT happy_var_1 happy_var_2 happy_var_4
     ) `HappyStk` happyRest}}}
 
 happyReduce_327 = happyReduce 6# 120# happyReduction_327
@@ -3292,7 +3292,7 @@ happyReduction_327 (happy_x_6 `HappyStk`
     case happyOut126 happy_x_2 of { happy_var_2 -> 
     case happyOut213 happy_x_5 of { happy_var_5 -> 
     happyIn210
-         (MPLPar.AbsMPL.PROCESS_FORK happy_var_1 happy_var_2 happy_var_5
+         (Language.AbsMPL.PROCESS_FORK happy_var_1 happy_var_2 happy_var_5
     ) `HappyStk` happyRest}}}
 
 happyReduce_328 = happyReduce 4# 120# happyReduction_328
@@ -3303,7 +3303,7 @@ happyReduction_328 (happy_x_4 `HappyStk`
     happyRest)
      = case happyOut212 happy_x_3 of { happy_var_3 -> 
     happyIn210
-         (MPLPar.AbsMPL.Process_PLUG happy_var_3
+         (Language.AbsMPL.Process_PLUG happy_var_3
     ) `HappyStk` happyRest}
 
 happyReduce_329 = happySpecReduce_3  120# happyReduction_329
@@ -3313,7 +3313,7 @@ happyReduction_329 happy_x_3
      =  case happyOut222 happy_x_1 of { happy_var_1 -> 
     case happyOut221 happy_x_3 of { happy_var_3 -> 
     happyIn210
-         (MPLPar.AbsMPL.Procss_ID happy_var_1 happy_var_3
+         (Language.AbsMPL.Procss_ID happy_var_1 happy_var_3
     )}}
 
 happyReduce_330 = happyReduce 6# 120# happyReduction_330
@@ -3327,7 +3327,7 @@ happyReduction_330 (happy_x_6 `HappyStk`
      = case happyOut222 happy_x_1 of { happy_var_1 -> 
     case happyOut222 happy_x_5 of { happy_var_5 -> 
     happyIn210
-         (MPLPar.AbsMPL.PROCESS_NEG happy_var_1 happy_var_5
+         (Language.AbsMPL.PROCESS_NEG happy_var_1 happy_var_5
     ) `HappyStk` happyRest}}
 
 happyReduce_331 = happyReduce 6# 120# happyReduction_331
@@ -3342,7 +3342,7 @@ happyReduction_331 (happy_x_6 `HappyStk`
     case happyOut186 happy_x_2 of { happy_var_2 -> 
     case happyOut217 happy_x_5 of { happy_var_5 -> 
     happyIn210
-         (MPLPar.AbsMPL.PROCESScase happy_var_1 happy_var_2 happy_var_5
+         (Language.AbsMPL.PROCESScase happy_var_1 happy_var_2 happy_var_5
     ) `HappyStk` happyRest}}}
 
 happyReduce_332 = happyReduce 4# 121# happyReduction_332
@@ -3353,14 +3353,14 @@ happyReduction_332 (happy_x_4 `HappyStk`
     happyRest)
      = case happyOut209 happy_x_3 of { happy_var_3 -> 
     happyIn211
-         (MPLPar.AbsMPL.PLUGPART_MANY happy_var_3
+         (Language.AbsMPL.PLUGPART_MANY happy_var_3
     ) `HappyStk` happyRest}
 
 happyReduce_333 = happySpecReduce_1  121# happyReduction_333
 happyReduction_333 happy_x_1
      =  case happyOut210 happy_x_1 of { happy_var_1 -> 
     happyIn211
-         (MPLPar.AbsMPL.PLUGPART_ONE happy_var_1
+         (Language.AbsMPL.PLUGPART_ONE happy_var_1
     )}
 
 happyReduce_334 = happySpecReduce_1  122# happyReduction_334
@@ -3403,7 +3403,7 @@ happyReduction_338 happy_x_2
      =  case happyOut126 happy_x_1 of { happy_var_1 -> 
     case happyOut208 happy_x_2 of { happy_var_2 -> 
     happyIn214
-         (MPLPar.AbsMPL.FORKPARTshort happy_var_1 happy_var_2
+         (Language.AbsMPL.FORKPARTshort happy_var_1 happy_var_2
     )}}
 
 happyReduce_339 = happySpecReduce_0  125# happyReduction_339
@@ -3434,7 +3434,7 @@ happyReduction_342 happy_x_2
      =  case happyOut125 happy_x_1 of { happy_var_1 -> 
     case happyOut208 happy_x_2 of { happy_var_2 -> 
     happyIn216
-         (MPLPar.AbsMPL.HANDLER happy_var_1 happy_var_2
+         (Language.AbsMPL.HANDLER happy_var_1 happy_var_2
     )}}
 
 happyReduce_343 = happySpecReduce_0  127# happyReduction_343
@@ -3465,7 +3465,7 @@ happyReduction_346 happy_x_2
      =  case happyOut184 happy_x_1 of { happy_var_1 -> 
     case happyOut208 happy_x_2 of { happy_var_2 -> 
     happyIn218
-         (MPLPar.AbsMPL.CASEPROCESSnoguard happy_var_1 happy_var_2
+         (Language.AbsMPL.CASEPROCESSnoguard happy_var_1 happy_var_2
     )}}
 
 happyReduce_347 = happySpecReduce_1  129# happyReduction_347
@@ -3495,7 +3495,7 @@ happyReduction_349 (happy_x_5 `HappyStk`
      = case happyOut186 happy_x_1 of { happy_var_1 -> 
     case happyOut209 happy_x_4 of { happy_var_4 -> 
     happyIn220
-         (MPLPar.AbsMPL.GUARDEDPROCESSterm happy_var_1 happy_var_4
+         (Language.AbsMPL.GUARDEDPROCESSterm happy_var_1 happy_var_4
     ) `HappyStk` happyRest}}
 
 happyReduce_350 = happyReduce 5# 130# happyReduction_350
@@ -3508,14 +3508,14 @@ happyReduction_350 (happy_x_5 `HappyStk`
      = case happyOut109 happy_x_1 of { happy_var_1 -> 
     case happyOut209 happy_x_4 of { happy_var_4 -> 
     happyIn220
-         (MPLPar.AbsMPL.GUARDEDPROCESSother happy_var_1 happy_var_4
+         (Language.AbsMPL.GUARDEDPROCESSother happy_var_1 happy_var_4
     ) `HappyStk` happyRest}}
 
 happyReduce_351 = happySpecReduce_1  131# happyReduction_351
 happyReduction_351 happy_x_1
      =  case happyOut126 happy_x_1 of { happy_var_1 -> 
     happyIn221
-         (MPLPar.AbsMPL.BARECHANNEL happy_var_1
+         (Language.AbsMPL.BARECHANNEL happy_var_1
     )}
 
 happyReduce_352 = happySpecReduce_2  131# happyReduction_352
@@ -3523,14 +3523,14 @@ happyReduction_352 happy_x_2
     happy_x_1
      =  case happyOut126 happy_x_2 of { happy_var_2 -> 
     happyIn221
-         (MPLPar.AbsMPL.NEGCHANNEL happy_var_2
+         (Language.AbsMPL.NEGCHANNEL happy_var_2
     )}
 
 happyReduce_353 = happySpecReduce_1  132# happyReduction_353
 happyReduction_353 happy_x_1
      =  case happyOut126 happy_x_1 of { happy_var_1 -> 
     happyIn222
-         (MPLPar.AbsMPL.CHANNEL happy_var_1
+         (Language.AbsMPL.CHANNEL happy_var_1
     )}
 
 happyNewToken action sts stk [] =

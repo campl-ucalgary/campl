@@ -4,7 +4,7 @@
 
 {-# OPTIONS -fno-warn-incomplete-patterns #-}
 {-# OPTIONS_GHC -w #-}
-module MPLPar.LexMPL where
+module Language.LexMPL where
 
 
 

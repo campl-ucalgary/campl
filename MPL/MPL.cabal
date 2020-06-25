@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3879e16d0cf39adf9f737641b66f8c6c07b4987b85785c549138a4110f42dfdb
+-- hash: 68b0dafb29830cc0accb52435212a73880ba75735f0281d3a38dc0238cb9b93d
 
 name:           MPL
 version:        0.1.0.0
@@ -27,15 +27,15 @@ source-repository head
 
 library
   exposed-modules:
+      Language.AbsMPL
+      Language.ErrM
+      Language.LayoutMPL
+      Language.LexMPL
+      Language.ParMPL
+      Language.PtreeToAST
+      Language.PtreeToAST_help
       MPLCompiler
       MPLMain
-      MPLPar.AbsMPL
-      MPLPar.ErrM
-      MPLPar.LayoutMPL
-      MPLPar.LexMPL
-      MPLPar.ParMPL
-      MPLPar.PtreeToAST
-      MPLPar.PtreeToAST_help
       ToCMPL.GenAndSolveSetEqns
       ToCMPL.LambdaLift
       ToCMPL.LamLift_Help

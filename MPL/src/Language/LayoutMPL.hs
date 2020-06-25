@@ -1,6 +1,6 @@
-module MPLPar.LayoutMPL where
+module Language.LayoutMPL where
 
-import MPLPar.LexMPL
+import Language.LexMPL
 
 
 import Data.Maybe (isNothing, fromJust)

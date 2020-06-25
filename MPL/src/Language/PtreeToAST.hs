@@ -1,7 +1,7 @@
-module MPLPar.PtreeToAST where
+module Language.PtreeToAST where
 
-import MPLPar.AbsMPL
-import MPLPar.PtreeToAST_help
+import Language.AbsMPL
+import Language.PtreeToAST_help
 
 import qualified TypeInfer.MPL_AST as M 
 import qualified TypeInfer.Gen_Eqns_CommFuns as E 

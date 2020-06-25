@@ -1,11 +1,11 @@
 module MPLMain where
 
-import MPLPar.LexMPL
-import MPLPar.ParMPL
-import MPLPar.LayoutMPL
-import MPLPar.AbsMPL
-import MPLPar.ErrM
-import MPLPar.PtreeToAST
+import Language.LexMPL
+import Language.ParMPL
+import Language.LayoutMPL
+import Language.AbsMPL
+import Language.ErrM
+import Language.PtreeToAST
 
 import TypeInfer.MPL_AST
 import TypeInfer.Gen_Eqns_Stmt
