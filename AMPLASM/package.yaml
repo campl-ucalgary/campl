@@ -10,9 +10,9 @@ extra-doc-files:
     - README.md
     - ChangeLog.md
 extra-source-files:
-    - src/AMPLGrammar.bnfc
-    - src/Language/LexAMPLGrammar.x
-    - src/Language/ParAMPLGrammar.y
+    - src/AMPL.bnfc
+    - src/Language/LexAMPL.x
+    - src/Language/ParAMPL.y
 
 # Metadata used when publishing your package
 # synopsis:            Short description of your package
