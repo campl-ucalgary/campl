@@ -7,13 +7,14 @@
 {-# LANGUAGE DataKinds #-}
 module AMPLCompile where
 
-import Language.ParAMPLGrammar
-import Language.LexAMPLGrammar
-import Language.AbsAMPLGrammar
+import Language.ParAMPL
+import Language.LexAMPL
+import Language.AbsAMPL
 import Language.ErrM
-import Language.LayoutAMPLGrammar
+import Language.LayoutAMPL
 
 import AMPLSymbolTable
+import AMPLAST
 import AMPLConstructBag
 import AMPLTypes
 import AMPLCompileErrors
@@ -53,7 +54,7 @@ data CompileState = CompileState {
 compileRunner ::
     forall e.
     CompilerErrors e =>
-    [COM] ->
+    [ACom] ->
     CompileEnv e ->
     CompileState ->
     Either [e] ([Instr], CompileState)
@@ -65,7 +66,7 @@ compileRunner coms env state =
 compile :: 
     forall e.
     CompilerErrors e =>
-    [COM] ->
+    [ACom] ->
     RWS 
         (CompileEnv e)
             -- ^ compiling environment
@@ -81,25 +82,25 @@ compile (c:cs) = do
         Left errs -> tell errs >> compile cs
         Right instrs -> (instrs ++) <$> compile cs
   where
-    f :: COM -> ExceptT [e] (RWS (CompileEnv e) [e] CompileState) [Instr] 
+    f :: ACom -> ExceptT [e] (RWS (CompileEnv e) [e] CompileState) [Instr] 
     f c = case c of 
-        AC_ASSIGN (pIdentToIdent -> var) com -> do
+        AAssign var com -> do
             env <- ask
             state <- get
             (com', _) <- liftEither $ compileRunner [com] env state
             modify (\s -> s { localVarStack = fst var : localVarStack s} )
             return (com' ++ [iStore])
-        AC_STOREf (Store (swap -> store)) (pIdentToIdent -> var) -> do
+        AStore store var -> do
              modify (\s -> s { localVarStack = fst var : localVarStack s} )
              return [iStore]
-        AC_LOADf (Load (swap -> load)) (PIdent (swap -> var)) -> do
+        ALoad load var -> do
             lclstack <- gets localVarStack
             access <- liftEither $ Bifunctor.first (pure . illegalInstrCall load) $ lookupLocalVarStack var lclstack
             return [iAccess access]
                  
-        AC_RET _ -> return [iRet]
+        ARet _ -> return [iRet]
 
-        AC_CALLf (Call (swap -> call)) (pIdentToIdent -> callfun) (map pIdentToIdent -> args) -> do
+        ACall call callfun args -> do
             symtable <- asks symbolTable
             (funpos, (funargs, funid)) <- liftEither $ Bifunctor.first (pure . illegalInstrCall call) $ lookupFunction callfun symtable
             if length funargs == length args  
@@ -109,39 +110,24 @@ compile (c:cs) = do
                     modify (\s -> s { localVarStack = map fst args})
                     return $ loads ++ [iCall funid (genericLength funargs)]
                 else throwError [functionArityMismatch ((fst callfun, funpos ), funargs) (snd callfun, args)]
-        AC_INT _ v -> 
-            let v' = case v of 
-                        Positive k -> fromIntegral (pIntegerToWord k) 
-                        Negative k -> negate (fromIntegral (pIntegerToWord k))
-            in return [iConst (VInt v')]
-        AC_CHAR _ (Character (second (tail . init) -> (_, v))) ->
-            -- tail . init is used to remove the single quote '
-            let v' = case v of
-                        "\\\\" -> '\\' 
-                        "\'" -> '\\' 
-                        "\n" -> '\\' 
-                        "\t" -> '\\' 
-                        [c] -> c
-            in return [iConst (VChar v')]
-        AC_STRING _ _ -> error "AC_STRING" 
-        AC_TOSTR _ -> error "AC_TOSTR" 
-        AC_TOINT _ -> error "AC_TOINT" 
-        AC_AND _ -> return [iAndBool]
-        AC_OR _ -> return [iOrBool]
-        AC_TRUE _ -> return [iConst (VBool True)]
-        AC_FALSE _ -> return [iConst (VBool False)]
-        AC_APPEND _ -> error "AC_APPEND"
-        AC_UNSTRING _ -> error "AC_UNSTRING"
-        AC_LEQ _ -> return [iLeq]
-        AC_EQ _ -> return [iEq]
-        AC_CONCAT _ _ -> error "AC_CONCAT"
-        AC_ADD _ -> return [iAddInt]
-        AC_SUB _ -> return [iSubInt]
-        AC_DIVQ _ -> return [iDivInt]
-        AC_DIVR _ -> return [iModInt]
-        -- AC_CONS _ _ _ -> error "AC_CONS is deprecated"
+        AInt _ v -> return [iConst (VInt v)]
+        AChar _ v -> return [iConst (VChar v)]
+        AAnd _ -> return [iAndBool]
+        AOr _ -> return [iOrBool]
+        ATrue _ -> return [iConst (VBool True)]
+        AFalse _ -> return [iConst (VBool False)]
 
-        AC_IF (If (swap -> ifident )) (pIdentToIdent -> var) (Prog thenprog) (Prog elseprog) -> do
+        ALeqInt _ -> return [iLeq]
+        AEqInt _ -> return [iEq]
+        ALeqChar _ -> return [iLeq]
+        AEqChar _ -> return [iEq]
+
+        AAddInt _ -> return [iAddInt]
+        ASubInt _ -> return [iSubInt]
+        ADivInt _ -> return [iDivInt]
+        AModInt _ -> return [iModInt]
+
+        AIf ifident (var, (thenprog, elseprog)) -> do
             env <- ask
             state <- get
             var' <- liftEither $ getLocalVarLookupInstrs [var] (localVarStack state)
@@ -149,9 +135,10 @@ compile (c:cs) = do
             (elseprog', _) <- liftEither $ compileRunner elseprog env state
             return (var' ++ [iIf thenprog' elseprog'])
 
-        AC_STRUCT datatype constructor -> 
-            f (AC_STRUCTAS datatype constructor [])
-        AC_STRUCTAS (uIdentToIdent -> datatype) (uIdentToIdent -> constructor) (map pIdentToIdent -> args) -> do
+
+        AConstructor (datatype, constructor) -> 
+            f (AConstructorArgs ((datatype, constructor), []))
+        AConstructorArgs ((datatype, constructor), args) -> do
             symtable <- asks symbolTable
             (datapos, (consident, (consix, consargs))) <- liftEither $ Bifunctor.first pure $ lookupDataAndConstructor datatype constructor symtable
             if consargs == genericLength args
@@ -168,23 +155,22 @@ compile (c:cs) = do
                         (snd datatype, snd constructor, []) 
                         ] >> return []
                 
-        AC_CASEf (Case (swap -> caseident)) (pIdentToIdent -> caseon) labelcoms -> do 
+        ACase caseident (caseon, labelcoms) -> do 
             env <- ask
             state <- get
             caseon' <- liftEither $ getLocalVarLookupInstrs [caseon] (localVarStack state)
             case getConst (labelComsGenerateCode env state labelcoms :: Const (Either [e] [[Instr]]) LabelComsCodeGenDataConstructors) of
                         Right instrs -> return (caseon' ++ [iCase instrs])
                         Left errs -> throwError errs
-
-        AC_RECORDf _ labelcoms -> do 
+        ARecord _ labelcoms -> do 
             env <- ask
             state <- get
             case getConst (labelComsGenerateCode env state labelcoms :: Const (Either [e] [[Instr]]) LabelComsCodeGenCodataDestructors) of
                         Right instrs -> return [iRec instrs]
                         Left errs -> throwError errs
 
-        AC_DEST codataname destructor var -> f (AC_DESTAS codataname destructor [] var)
-        AC_DESTAS ( uIdentToIdent -> codataname) ( uIdentToIdent -> destructor) (map pIdentToIdent -> args)( pIdentToIdent -> var) -> do
+        ADest (codataname, destructor) var -> f (ADestArgs ((codataname, destructor), []) var)
+        ADestArgs ((codataname, destructor), args) var -> do
             symtable <- asks symbolTable
             state <- get
             (codatapos, (desident,(desix, desargs))) <- liftEither 
@@ -197,13 +183,12 @@ compile (c:cs) = do
                     return (loads ++ [iAccess var', iDest desix desargs])
                 else throwError [codataArityMismatch ((fst codataname, codatapos), desident, desargs) (snd codataname, snd destructor, args)]
 
-        AC_GETf (Get (swap -> getident)) (pIdentToIdent -> var) (pIdentToIdent -> ch) -> do
+        AGet getident var ch -> do
             translations <- gets channelTranslations
             (_, lch) <- liftEither $ Bifunctor.first (pure . illegalInstrCall getident) $ lookupTranslation ch translations
             modify (\s -> s { localVarStack = fst var : localVarStack s })
             return [iGet lch, iStore]
-                
-        AC_PUTf (Put (swap -> putident)) (pIdentToIdent -> var) (pIdentToIdent -> ch) -> do
+        APut putident var ch -> do
             lclstack <- gets localVarStack
             translations <- gets channelTranslations
             (_, lch) <- liftEither 
@@ -220,7 +205,7 @@ compile (c:cs) = do
         --    They are hput on output polarity channels and hcased on input polarity channels
         --  Cohandles:  these are handle names associated with a type.
         --    They are hput on input polarity channels and hcased on output polarity channels
-        AC_HPUTf (Hput (swap -> hputident)) (uIdentToIdent -> name) (uIdentToIdent -> subname) (pIdentToIdent -> ch)  -> do
+        AHPut hputident (name, subname) ch  -> do
             translations <- gets channelTranslations
             symtable <- asks symbolTable
             (pol, lch) <- liftEither 
@@ -239,7 +224,7 @@ compile (c:cs) = do
                     return [iHPut lch ix]
 
         --   AC_HCASEf  .COM ::= Hcase PIdent "of"  "{" [LABELCOMS] "}"  ; 
-        AC_HCASEf (Hcase (swap -> hcaseident)) (pIdentToIdent -> ch) labelcoms -> do
+        AHCase hcaseident (ch, labelcoms) -> do
             env <- ask
             state <- get
             (pol, lch) <- liftEither $ Bifunctor.first pure $ lookupTranslation ch (channelTranslations state)
@@ -252,7 +237,7 @@ compile (c:cs) = do
                             Left errs -> throwError errs
 
         -- AC_SPLITf  .COM ::= Split PIdent "into" PIdent PIdent    ;
-        AC_SPLITf (Split (swap -> hsplitident)) (pIdentToIdent -> ch) (pIdentToIdent -> ch1) (pIdentToIdent -> ch2)-> do
+        ASplit hsplitident ch ch1 ch2 -> do
             translations <- gets channelTranslations
             (pol, lch) <- liftEither $ Bifunctor.first (pure . illegalInstrCall hsplitident) $ lookupTranslation ch translations
             let lch1 = computeFreshLocalChanIDByMaximum translations
@@ -262,9 +247,9 @@ compile (c:cs) = do
 
         -- AC_FORKf   .COM ::= Fork PIdent "as" "{" PIdent "with" [PIdent] ":" COMS ";" PIdent "with" [PIdent] ":" COMS "}" ;
           -- | AC_FORKf Fork PIdent PIdent [PIdent] COMS PIdent [PIdent] COMS
-        AC_FORKf (Fork (swap -> forkident)) (pIdentToIdent -> ch)
-            (pIdentToIdent -> ch1) (map pIdentToIdent -> chs1) (Prog coms1)
-            (pIdentToIdent -> ch2) (map pIdentToIdent -> chs2) (Prog coms2) -> do
+        AFork forkident ch
+            ((ch1, chs1), coms1)
+            ((ch2, chs2), coms2) -> do
                 env <- ask
                 state <- get
                 translations <- gets channelTranslations
@@ -288,9 +273,9 @@ compile (c:cs) = do
 
         -- AC_PLUGf :: Plug -> [PIdent] -> [PIdent] -> COMS -> [PIdent] -> COMS -> COM
         -- AC_PLUGf   .COM ::= Plug [PIdent]  "as" "{" "with" "[" [PIdent] "]" ":" COMS ";" "with" "[" [PIdent] "]" ":" COMS "}" ;
-        AC_PLUGf (Plug (swap -> plugident)) (map pIdentToIdent -> pluggedchs) 
-            (map pIdentToIdent -> chs1) (Prog coms1)
-            (map pIdentToIdent -> chs2) (Prog coms2) -> do
+        APlug plugident pluggedchs
+            (chs1, coms1)
+            (chs2, coms2) -> do
                 env <- ask
                 state <- get
                 translations <- gets channelTranslations
@@ -321,8 +306,8 @@ compile (c:cs) = do
                 return [ iPlug pluggedlchs ((map (snd . snd) lchs1, instrs1), (map (snd . snd) lchs2, instrs2)) ]
 
         -- AC_RUNf :: Run -> PIdent -> [PIdent] -> [PIdent] -> [PIdent] -> COM
-        AC_RUNf (Run (swap -> runident)) 
-            (pIdentToIdent -> process) (map pIdentToIdent -> vars) (map pIdentToIdent -> inchs) (map pIdentToIdent -> outchs) -> do
+        ARun runident
+            process (vars, (inchs, outchs)) -> do
                 env <- ask
                 state <- get
                 (pos, (pvars, pinchs, poutchs, funid)) <- liftEither $ Bifunctor.first pure $ lookupProcess process (symbolTable env)
@@ -337,14 +322,14 @@ compile (c:cs) = do
                         return (loads ++ [ iRun translationmappings funid (genericLength vars) ])
                     else throwError [processArityMismatch ((fst process, pos), pvars, map fst pinchs, map fst poutchs) (snd process, vars, inchs, outchs)]
 
-        AC_IDF (pIdentToIdent -> ch1) _ (pIdentToIdent -> ch2) -> do
+        AId idident (ch1, ch2) -> do
             translations <- gets channelTranslations
             lch1 <- liftEither $ Bifunctor.first pure $ lookupTranslation ch1 translations
             lch2 <- liftEither $ Bifunctor.first pure $ lookupTranslation ch2 translations
             return [iId (snd lch1) (snd lch2)]
 
         -- AC_RACE :: Race -> [RACES] -> COM
-        AC_RACE (Race (swap -> raceident)) races -> do
+        ARace raceident races -> do
             env <- ask
             state <- get
             let res = map (f env state) races
@@ -354,26 +339,30 @@ compile (c:cs) = do
                 then return [ iRace sucs ]
                 else throwError errs
           where
-            f :: CompileEnv e -> CompileState -> RACES -> Either [e] (LocalChanID, [Instr])
-            f env state (Races (pIdentToIdent -> ch) (Prog coms)) = do
+            f :: CompileEnv e -> CompileState -> (Ident, [ACom]) -> Either [e] (LocalChanID, [Instr])
+            f env state (ch, coms) = do
                 (pol, lch) <- Bifunctor.first pure $ lookupTranslation ch (channelTranslations state)
                 (instr, _) <- compileRunner coms env (state { channelTranslations = (fst ch, (pol,lch)) : channelTranslations state })
                 return (lch, instr)
 
-        AC_CLOSEf (Close (swap -> closeident)) (pIdentToIdent -> ch) -> do
+        AClose closeident ch -> do
             translations <- gets channelTranslations
             (pol, lch) <- liftEither $ Bifunctor.first pure $ lookupTranslation ch translations
             return [ iClose lch ]
 
-        AC_HALTf (Halt (swap -> haltident)) (map pIdentToIdent -> chs) -> do
+        AHalt haltident chs {- (map pIdentToIdent -> chs) -} -> do
             translations <- gets channelTranslations
-            pollchs <- liftEither $ lookupTranslations chs translations
+            pollchs <- liftEither $ lookupTranslations [chs] translations
             return [ iHalt (map snd pollchs) ]
 
+        n -> error $ "have not implemented instruction: " ++ show n
+
+        {-
         AC_PROD (map pIdentToIdent -> var) -> error "prod not implemented yet"
 
         AC_PRODELEM (pIntegerToWord -> tupleelm) (pIdentToIdent -> var) -> error "prod elem not implemented yet"
         n -> error $ show n ++ " is not implemented yet." 
+        -}
 
 
 
@@ -405,7 +394,7 @@ class LabelComsCodeGenerator a where
     labelComsGenerateCode :: forall e. CompilerErrors e => 
         CompileEnv e -> 
         CompileState -> 
-        [LABELCOMS] -> 
+        [ALabelComs] -> 
         Const (Either [e] [[Instr]]) a
     labelComsGenerateCode env state labelcoms = 
         let dataNames = map getDataName labelcoms
@@ -424,13 +413,13 @@ class LabelComsCodeGenerator a where
                     else Left [getConst (labelComsMultipleTypesError dataNames :: Const e a)]
 
       where
-        getDataName :: LABELCOMS -> Ident
-        getDataName (Labelcoms1 (uIdentToIdent -> cts) _ _)  = cts
-        getDataName (Labelcoms2 (uIdentToIdent -> cts) _ _ _)  = cts
+        getDataName :: ALabelComs -> Ident
+        getDataName (ALabelComs (cts, _) _)  = cts
+        getDataName (ALabelComsArgs ((cts, _), _) _)  = cts
     
-        labelComsGenerateCode' :: CompileEnv e -> CompileState -> LABELCOMS -> Either [e] (Word, [Instr])
-        labelComsGenerateCode' env state (Labelcoms1 dataname cts coms) = labelComsGenerateCode' env state (Labelcoms2 dataname cts [] coms )
-        labelComsGenerateCode' env state (Labelcoms2 (uIdentToIdent -> dataname) (uIdentToIdent -> cts) (map pIdentToIdent -> args) (Prog coms)) = do
+        labelComsGenerateCode' :: CompileEnv e -> CompileState -> ALabelComs -> Either [e] (Word, [Instr])
+        labelComsGenerateCode' env state (ALabelComs (dataname, cts) coms) = labelComsGenerateCode' env state (ALabelComsArgs ((dataname, cts), []) coms )
+        labelComsGenerateCode' env state (ALabelComsArgs ((dataname, cts), args) coms) = do
             (datapos, (ctsident, (ix, numargs))) <- Bifunctor.first pure $ getConst 
                                             $ (labelComsLookup dataname cts (symbolTable env) :: Const (Either e (RowColPos, (Ident, (Word, Word)))) a)
             if numargs == genericLength args

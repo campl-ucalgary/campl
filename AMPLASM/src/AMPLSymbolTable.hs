@@ -4,12 +4,13 @@ module AMPLSymbolTable where
 
 import AMPLConstructBag
 import AMPLFunIDGen
+import AMPLAST
 
-import Language.ParAMPLGrammar
-import Language.LexAMPLGrammar
-import Language.AbsAMPLGrammar
+import Language.ParAMPL
+import Language.LexAMPL
+import Language.AbsAMPL
 import Language.ErrM
-import Language.LayoutAMPLGrammar
+import Language.LayoutAMPL
 
 import Control.Monad.MonadUnique
 
@@ -94,7 +95,7 @@ makeSymbolTable' AmplConstructsBag{
         , AMPLFunIDGen s 
         , MonadUnique s m ) =>
         [(String, Either e SymEntry)] -> 
-        NonEmpty (String, ProcessInfo COMS) -> 
+        NonEmpty (String, ProcessInfo [ACom]) -> 
         m [(String, Either e SymEntry)]
     processToSymEntryAssocList acc ( (name, (rowcolpos, (seqvs, inchs, outchs, _))) :| [] ) = do
         s <- fresh
@@ -107,7 +108,7 @@ makeSymbolTable' AmplConstructsBag{
         , AMPLFunIDGen s 
         , MonadUnique s m ) =>
         [(String, Either e SymEntry)] -> 
-        NonEmpty (String, FunctionInfo COMS) -> 
+        NonEmpty (String, FunctionInfo [ACom]) -> 
         m [(String, Either e SymEntry)]
     functionToSymEntryAssocList acc ( (name, (rowcolpos, (seqvs, _))) :| [] ) = do
         s <- fresh

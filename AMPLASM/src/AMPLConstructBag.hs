@@ -1,11 +1,13 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 module AMPLConstructBag where
 
-import Language.ParAMPLGrammar
-import Language.LexAMPLGrammar
-import Language.AbsAMPLGrammar
+import Language.ParAMPL
+import Language.LexAMPL
+import Language.AbsAMPL
 import Language.ErrM
-import Language.LayoutAMPLGrammar
+import Language.LayoutAMPL
+
+import AMPLAST
 
 import Data.Data
 import Data.Tuple
@@ -18,22 +20,6 @@ import AMPLTypes
 import Data.Stream (Stream)
 import qualified Data.Stream as Stream
 
-type RowColPos = (Int, Int)
-type Ident = (String, (Int, Int))
-
-pIdentToIdent :: PIdent -> Ident
-pIdentToIdent = 
-    swap . (coerce :: PIdent -> ((Int, Int), String))
-
-uIdentToIdent :: UIdent -> Ident
-uIdentToIdent = 
-    swap . (coerce :: UIdent -> ((Int, Int), String))
-
-pIntegerToWord :: PInteger -> Word 
-pIntegerToWord (PInteger (pos, str)) = 
-    fromMaybe
-        (error ("Internal error when trying to read PInteger \"" ++ str ++ "\" at " ++ show pos))
-        (readMaybe str)
 
 -- | A stream to help generate the index identifiers for anything with consix
 consIxStream :: Stream ConsIx
@@ -55,7 +41,7 @@ type DataInfo = (RowColPos, [(Ident, (ConsIx, Word))])
 type CodataInfo = (RowColPos, [(Ident, (DesIx, Word))])
 type ProcessInfo a = (RowColPos, ([Ident], [(Ident, LocalChanID)], [(Ident, LocalChanID)], a))
 type FunctionInfo a = (RowColPos, ([Ident], a))
-type MainInfo = Maybe (Ident, (([(Ident, LocalChanID)], [(Ident, LocalChanID)]), COMS))
+type MainInfo = Maybe (Ident, (([(Ident, LocalChanID)], [(Ident, LocalChanID)]), [ACom]))
         -- ^ Main function (name, ((input channels, output channels), instructions))
         -- Note that name will always be %run when parsed by BNFC
 
@@ -69,9 +55,9 @@ data AmplConstructsBag = AmplConstructsBag {
         -- ^ (data name, (data constructor, (sumtype info, number of args) ))
     , codataInfo :: [(String, CodataInfo)]
         -- ^ (codata name, (codatadestructor, (sumtype info, number of args) ))
-    , processInfo :: [(String, ProcessInfo COMS)]
+    , processInfo :: [(String, ProcessInfo [ACom])]
         -- ^ (Vars, input channel, output channel, coms)
-    , functionInfo :: [(String, FunctionInfo COMS)]
+    , functionInfo :: [(String, FunctionInfo [ACom])]
         -- ^ (function name, (sequential input vars, instructions))
     } deriving (Show, Eq)
 
@@ -137,17 +123,17 @@ collectSymbols (Main constructs start) =
     -- Processes
     processes = concat $ mapMaybe processHelper constructs
 
-    processHelper :: AMPL_CONSTRUCTS -> Maybe [(String, ProcessInfo COMS)]
+    processHelper :: AMPL_CONSTRUCTS -> Maybe [(String, ProcessInfo [ACom])]
     processHelper (PROCESSES_CONSTRUCT (Processes specs)) = Just $ map f specs
       where 
-        f :: PROCESS_SPEC -> (String, ProcessInfo COMS)
-        f (Process_spec (PIdent (rowcol,name)) sequential inchs outchs coms) =
+        f :: PROCESS_SPEC -> (String, ProcessInfo [ACom])
+        f (Process_spec (PIdent (rowcol,name)) sequential inchs outchs (Prog coms)) =
             ( name
             ,   (rowcol, 
                     ( map (pIdentToIdent . (\(VName n)-> n)) sequential
                     , zip (map pIdentToIdent inchs) (Stream.toList localChanIDStream)
                     , zip (map pIdentToIdent outchs) (drop (length inchs) (Stream.toList localChanIDStream))
-                    , coms)
+                    , map translateCOMToACom coms)
                 )
             )
     processHelper _ = Nothing
@@ -155,23 +141,23 @@ collectSymbols (Main constructs start) =
     -- Functions.
     functions = concat $ mapMaybe functionsHelper constructs
 
-    functionsHelper :: AMPL_CONSTRUCTS -> Maybe [(String, FunctionInfo COMS)]
+    functionsHelper :: AMPL_CONSTRUCTS -> Maybe [(String, FunctionInfo [ACom])]
     functionsHelper (FUNCTIONS_CONSTRUCT (Functions specs)) = Just $ map f specs
       where
-        f :: FUNCTION_SPEC -> (String, FunctionInfo COMS)
-        f (Function_spec (PIdent (rowcol, name)) vars coms) = 
+        f :: FUNCTION_SPEC -> (String, FunctionInfo [ACom])
+        f (Function_spec (PIdent (rowcol, name)) vars (Prog coms)) = 
             ( name
-            , (rowcol, (map (pIdentToIdent . \(VName n) -> n) vars, coms)))
+            , (rowcol, (map (pIdentToIdent . \(VName n) -> n) vars, map translateCOMToACom coms)))
 
     functionsHelper _ = Nothing
 
     prgmain = case start of
-        Start (Main_run (rowcol, name)) (Channel_spec inschs outchs) coms -> Just 
+        Start (Main_run (rowcol, name)) (Channel_spec inschs outchs) (Prog coms) -> Just 
                 ( (name, rowcol)
                 , (
                     ( zip (map pIdentToIdent inschs) (Stream.toList localChanIDStream)
                     , zip (map pIdentToIdent outchs) (drop (length inschs) (Stream.toList localChanIDStream)) )
-                  , coms 
+                  , map translateCOMToACom coms 
                   ) 
                 )
         Start_none -> Nothing

@@ -1,1 +1,1 @@
-bnfc --haskell -pLanguage AMPLGrammar.bnfc && mv Language/TestAMPLGrammar.hs  Language/TestAMPLGrammar.hs.test
+bnfc --haskell -pLanguage AMPL.bnfc && mv Language/TestAMPL.hs  Language/TestAMPL.hs.test

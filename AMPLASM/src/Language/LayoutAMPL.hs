@@ -1,6 +1,6 @@
-module Language.LayoutAMPLGrammar where
+module Language.LayoutAMPL where
 
-import Language.LexAMPLGrammar
+import Language.LexAMPL
 
 
 import Data.Maybe (isNothing, fromJust)

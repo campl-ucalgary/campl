@@ -199,7 +199,7 @@ separator PIdent "," ;
 
 
 AC_CLOSEf  .COM ::= Close PIdent ;
-AC_HALTf   .COM ::= Halt [PIdent] ;
+AC_HALTf   .COM ::= Halt PIdent ;
 
 Positive   .CInteger ::= PInteger ;
 Negative   .CInteger ::= "-" PInteger ;

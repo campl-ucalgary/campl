@@ -12,12 +12,13 @@ import AMPLCompileErrors
 import AMPLCompile
 import AMPLSymbolTable
 import AMPLConstructBag
+import AMPLAST
 
-import Language.ParAMPLGrammar
-import Language.LexAMPLGrammar
-import Language.AbsAMPLGrammar
+import Language.ParAMPL
+import Language.LexAMPL
+import Language.AbsAMPL
 import Language.ErrM
-import Language.LayoutAMPLGrammar
+import Language.LayoutAMPL
 
 import Data.Stream (Stream)
 import qualified Data.Stream as Stream
@@ -88,8 +89,8 @@ amplCodeToInstr servicegeneratorstate amplcode =
     symboltable = AMPLSymbolTable.makeSymbolTable bag :: Map String (Either AssemblerErrors SymEntry)
     functions = map f (functionInfo bag)
       where
-        f :: (String, FunctionInfo COMS) -> Either (Ident, [AssemblerErrors]) (FunID,(String, [Instr]))
-        f (fname, (fpos, (args, Prog coms))) = do
+        f :: (String, FunctionInfo [ACom]) -> Either (Ident, [AssemblerErrors]) (FunID,(String, [Instr]))
+        f (fname, (fpos, (args, coms))) = do
             (_, (_, funid)) <- Bifunctor.first (((fname,fpos),) . pure) $ lookupFunction (fname, fpos) symboltable
             Bifunctor.bimap (\errs -> ((fname, fpos), errs)) (\(instrs, _) -> (funid, (fname,instrs)))
                 $ compileRunner coms 
@@ -97,8 +98,8 @@ amplCodeToInstr servicegeneratorstate amplcode =
                     (CompileState { localVarStack = map fst args , channelTranslations = [] } )
     protocols = map f (processInfo bag)
       where
-        f :: (String, ProcessInfo COMS) -> Either (Ident, [AssemblerErrors]) (FunID,(String, [Instr]))
-        f (pname, (ppos, (args, inchs, outchs, Prog coms))) = do
+        f :: (String, ProcessInfo [ACom]) -> Either (Ident, [AssemblerErrors]) (FunID,(String, [Instr]))
+        f (pname, (ppos, (args, inchs, outchs, coms))) = do
             let intranslations = map (fst *** (Input,)) inchs
                 outtranslations = map (fst *** (Output,)) outchs
             (_, (_, _, _, funid)) <- Bifunctor.first (((pname,ppos),) . pure) 
@@ -108,7 +109,7 @@ amplCodeToInstr servicegeneratorstate amplcode =
                     (CompileEnv { symbolTable = symboltable }) 
                     (CompileState { localVarStack = map fst args , channelTranslations = intranslations ++ outtranslations } )
     cmainfun = case mainfun of
-        Just (runident, ((inchs, outchs), Prog coms)) -> Bifunctor.first (runident,) $ do
+        Just (runident, ((inchs, outchs), coms)) -> Bifunctor.first (runident,) $ do
             (maintranslations, nonservicechs, servicechs) <- Bifunctor.first pure 
                 $ runExcept 
                 $ flip evalStateT servicegeneratorstate $ do 

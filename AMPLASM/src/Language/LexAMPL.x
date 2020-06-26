@@ -3,7 +3,7 @@
 {
 {-# OPTIONS -fno-warn-incomplete-patterns #-}
 {-# OPTIONS_GHC -w #-}
-module Language.LexAMPLGrammar where
+module Language.LexAMPL where
 
 
 

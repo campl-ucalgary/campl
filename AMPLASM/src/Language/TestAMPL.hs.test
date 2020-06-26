@@ -7,12 +7,12 @@ import System.Environment ( getArgs, getProgName )
 import System.Exit ( exitFailure, exitSuccess )
 import Control.Monad (when)
 
-import Language.LexAMPLGrammar
-import Language.ParAMPLGrammar
-import Language.SkelAMPLGrammar
-import Language.PrintAMPLGrammar
-import Language.AbsAMPLGrammar
-import Language.LayoutAMPLGrammar
+import Language.LexAMPL
+import Language.ParAMPL
+import Language.SkelAMPL
+import Language.PrintAMPL
+import Language.AbsAMPL
+import Language.LayoutAMPL
 
 
 

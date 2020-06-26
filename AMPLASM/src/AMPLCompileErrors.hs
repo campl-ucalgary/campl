@@ -4,15 +4,16 @@
 {-# LANGUAGE ConstraintKinds #-}
 module AMPLCompileErrors where
 
-import Language.ParAMPLGrammar
-import Language.LexAMPLGrammar
-import Language.AbsAMPLGrammar
+import Language.ParAMPL
+import Language.LexAMPL
+import Language.AbsAMPL
 import Language.ErrM
-import Language.LayoutAMPLGrammar
+import Language.LayoutAMPL
 
 import AMPLSymbolTable
 import AMPLConstructBag
 import AMPLTypes
+import AMPLAST
 
 class ErrorToStr e where
     errorToStr :: e -> String
