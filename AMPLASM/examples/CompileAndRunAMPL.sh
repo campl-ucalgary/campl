@@ -1,5 +1,5 @@
 
-rm output.ampl
-stack exec amplasm -- $1 output.ampl
-stack exec ampl -- output.ampl
-
+tmpfile=$(mktemp /tmp/output-XXXXXXXXXX.ampl)
+stack exec amplasm -- $1 $tmpfile
+stack exec ampl -- $tmpfile
+rm "$tmpfile"
