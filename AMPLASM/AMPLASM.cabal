@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 831cda75e258d110ca1bd6c3a7646e49f92e2b8fe5474e045ba526a7b8db626f
+-- hash: 83426ff50f59917d3202f13d9a3a4763984852081845a1cb5fef9fda2c88aabb
 
 name:           AMPLASM
 version:        0.1.0.0
@@ -59,7 +59,9 @@ library
     , base >=4.7 && <5
     , containers
     , filepath
+    , mpl-lib
     , mtl
+    , optics
     , pretty
     , random
   default-language: Haskell2010
@@ -79,7 +81,9 @@ executable amplasm
     , base >=4.7 && <5
     , containers
     , filepath
+    , mpl-lib
     , mtl
+    , optics
     , pretty
     , random
   default-language: Haskell2010
@@ -100,7 +104,9 @@ test-suite AMPLASM-test
     , base >=4.7 && <5
     , containers
     , filepath
+    , mpl-lib
     , mtl
+    , optics
     , pretty
     , random
   default-language: Haskell2010

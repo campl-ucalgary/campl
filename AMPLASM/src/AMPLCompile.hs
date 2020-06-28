@@ -1,8 +1,6 @@
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 module AMPLCompile where
@@ -356,14 +354,6 @@ compile (c:cs) = do
             return [ iHalt (map snd pollchs) ]
 
         n -> error $ "have not implemented instruction: " ++ show n
-
-        {-
-        AC_PROD (map pIdentToIdent -> var) -> error "prod not implemented yet"
-
-        AC_PRODELEM (pIntegerToWord -> tupleelm) (pIdentToIdent -> var) -> error "prod elem not implemented yet"
-        n -> error $ show n ++ " is not implemented yet." 
-        -}
-
 
 
                 

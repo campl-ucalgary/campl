@@ -34,6 +34,9 @@ dependencies:
     - pretty
     - GenericPretty
 
+    - optics
+    - mpl-lib
+
 library:
   source-dirs: src
 
