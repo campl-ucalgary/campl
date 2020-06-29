@@ -22,6 +22,7 @@ position token TokFun {"fun"} ;
 position token TokDefault {"default"} ;
 position token TokRecord  {"record"} ;
 position token TokIf  {"if"}  ;
+position token TokLet {"let"} ;  
 position token TokFold {"fold"};
 position token TokUnfold {"unfold"};
 position token TokCase   {"case"} ; 
@@ -51,9 +52,8 @@ token Infix6op ('^') ;
 token Infix7op ({"!!"}) ;
 
 
-layout "=", "of", "where", "as",
-       "from" ,"do" ,"switch","plug","else",
-       "race" ;
+layout "=", "of", "where", "as", "let",
+       "from" ,"do" ,"switch","plug","else" ;
 
 MPLPROG. MPL ::= [MPLstmt] RUNstmt ;
 
@@ -144,6 +144,7 @@ TYPEARROW          .Type  ::= TypeN "=>"  Type ;
 
 TYPENext           .Type  ::= TypeN ;
 
+
 TYPEUNIT           .TypeN  ::= TokUnit ; 
 TYPELIST           .TypeN  ::= TokSBrO TypeN TokSBrC  ;
 TYPEDATCODAT       .TypeN  ::= UIdent "(" [Type] ")" ;
@@ -212,13 +213,13 @@ separator Protocol "," ;
 
 
 FUNCTIONDEFNfull  . FunctionDefn ::= TokFun PIdent "::" [Type] "->" Type 
-                                          "=" "{" [PattTermPhrase] "}" ;
+                                          "=" "{" [PattTermPharse] "}" ;
 
-FUNCTIONDEFNshort . FunctionDefn ::= TokFun PIdent "=" "{" [PattTermPhrase] "}"  ;
+FUNCTIONDEFNshort . FunctionDefn ::= TokFun PIdent "=" "{" [PattTermPharse] "}"  ;
 
 separator nonempty FunctionDefn ";" ; 
 
-separator nonempty PattTermPhrase ";" ;
+separator nonempty PattTermPharse ";" ;
 
 
 separator PIdent "," ;
@@ -226,8 +227,8 @@ separator PIdent "," ;
 FOLDPATT_WOBRAC.FoldPattern ::= UIdent ":"  [PIdent]  "=" "{" Term "}"  ;
 separator FoldPattern ";" ;
 
-PATTERNshort. PattTermPhrase ::= [Pattern] "->"  Term  ;
-PATTERNguard. PattTermPhrase ::= [Pattern] "->" "switch"  "{" [GuardedTerm] "}"  ;
+PATTERNshort. PattTermPharse ::= [Pattern] "->"  Term  ;
+PATTERNguard. PattTermPharse ::= [Pattern] "->" "switch"  "{" [GuardedTerm] "}"  ;
 separator nonempty GuardedTerm ";";
 
 GUARDterm. GuardedTerm  ::= Term "=" "{" Term "}" ;
@@ -251,8 +252,6 @@ _               .Pattern1  ::= "(" Pattern ")" ;
 
 LISTTERM2 .Term   ::= Term1 ":" Term ;
 _         .Term   ::= Term1 ; 
-LETTERM   .Term   ::= Term1 "where" "{" [LetWhere] "}"; 
-
 
 -- InfixTerm term1 infixrem term2
 
@@ -282,24 +281,25 @@ Infix7TERM. Term8  ::= Term8 Infix7op Term9 ;
 _         . Term8  ::= Term9 ;
 
 LISTTERM  .Term9    ::= TokSBrO [Term] TokSBrC ;
+LETTERM   .Term9    ::= TokLet Term "where" "{" [LetWhere] "}"; 
 VARTERM   .Term9    ::= PIdent ;
 CONSTTERM .Term9    ::= ConstantType ;
 IFTERM    .Term9    ::= TokIf Term "then" Term "else" "{" Term "}" ;
 UNFOLDTERM.Term9    ::= TokUnfold PIdent "with" "{" [FoldPattern] "}" ;
 FOLDTERM  .Term9    ::= TokFold PIdent "of" "{" [FoldPattern] "}" ;
-CASETERM  .Term9    ::= TokCase Term "of" "{" [PattTermPhrase] "}" ;
+CASETERM  .Term9    ::= TokCase Term "of" "{" [PattTermPharse] "}" ;
 GENCONSTERM_WARGS.Term9  ::= UIdent "(" [Term] ")" ;
 GENCONSTERM_WOARGS.Term9 ::= UIdent ;
 PRODTERM  .Term9         ::=  "<" [Term] ">" ;
 FUNAPPTERM.Term9         ::= PIdent "(" [Term] ")" ;
 RECORDTERM.Term9         ::= TokRecord "of" "{" [RecordEntry] "}" ;
---RECORDTERMALT.Term9      ::= "(:" [RecordEntryAlt] ":)" ;
-RECORDTERMALT.Term9      ::= "(" [RecordEntryAlt] ")" ;
+RECORDTERMALT.Term9      ::= "(:" [RecordEntryAlt] ":)" ;
+
 _         .Term9         ::= "(" Term ")" ;
 
 
 DEFN_LetWhere    .LetWhere ::= Defn ;
---PATTTERM_LetWhere.LetWhere ::= PattTerm ;
+PATTTERM_LetWhere.LetWhere ::= PattTerm ;
 separator nonempty LetWhere ";" ;
 
 
@@ -314,12 +314,7 @@ STRING .ConstantType ::= String ;
 CHAR   .ConstantType ::= Char ;
 DOUBLE .ConstantType ::= Double ;
 
---RECORDENTRY_ALT.RecordEntryAlt ::= RecordEntry;
-RECORDENTRY_ALT1.RecordEntryAlt ::= UIdent ":=" Term ;
-RECORDENTRY_ALT2.RecordEntryAlt ::= UIdent ":=" [Ident] "->" Term ;
-
-separator nonempty Ident "," ;
-
+RECORDENTRY_ALT.RecordEntryAlt ::= RecordEntry;
 RECORDENTRY    . RecordEntry   ::= Pattern ":=" Term ;   
 
 -- 
@@ -362,16 +357,13 @@ PROCESS_HPUT   . ProcessCommand ::= TokHPut UIdent "on" Channel ;
 PROCESS_SPLIT  . ProcessCommand ::= TokSplit Channel "into" [Channel] ;
 PROCESS_FORK   . ProcessCommand ::= TokFork PIdent "as" "{" [ForkPart] "}" ;
 Process_PLUG   . ProcessCommand ::= "plug" "{" [PlugPart] "}" ;
-Process_RACE   . ProcessCommand ::= "race" "{" [RacePart] "}" ;
 Procss_ID      . ProcessCommand ::= Channel "|=|" PChannel  ;
 PROCESS_NEG    . ProcessCommand ::= Channel "=" "{" "neg" Channel "}";
+PROCESScase    . ProcessCommand ::= TokCase Term "of" "{" [ProcessPhrase] "}" ;
 
 
 PLUGPART_MANY.PlugPart ::= "do"  "{" [ProcessCommand] "}" ;
 PLUGPART_ONE .PlugPart ::= ProcessCommand ;
-
-RACEPART .RacePart ::= Channel Process;
-separator nonempty RacePart ";" ;
 
 separator nonempty PlugPart ";" ;
 
@@ -382,8 +374,6 @@ FORKPARTshort. ForkPart ::= PIdent Process;
 separator Handler ";" ;
 HANDLER. Handler ::= UIdent Process ; 
 
-PROCESScase. ProcessCommand  
-          ::= TokCase Term "of" "{" [ProcessPhrase] "}" ;
 
 separator ProcessPhrase ";" ;
 --CASEPROCESSguard. ProcessPhrase 

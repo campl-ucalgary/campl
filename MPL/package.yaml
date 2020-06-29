@@ -6,9 +6,14 @@ author:              "Author name here"
 maintainer:          "example@example.com"
 copyright:           "2020 Author name here"
 
+extra-doc-files:
+    - README.md
+    - ChangeLog.md
+
 extra-source-files:
-- README.md
-- ChangeLog.md
+    - src/MPL.bnfc
+    - src/Language/LexMPL.x
+    - src/Language/ParMPL.y
 
 # Metadata used when publishing your package
 # synopsis:            Short description of your package
@@ -26,6 +31,10 @@ dependencies:
     - pretty
     - GenericPretty
     - array
+    - optics
+
+    - mpl-lib
+
 
 library:
   source-dirs: src

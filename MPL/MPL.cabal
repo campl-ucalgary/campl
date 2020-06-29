@@ -1,10 +1,10 @@
-cabal-version: 1.12
+cabal-version: 1.18
 
 -- This file has been generated from package.yaml by hpack version 0.33.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 68b0dafb29830cc0accb52435212a73880ba75735f0281d3a38dc0238cb9b93d
+-- hash: eac21dd49a00b21678517e4be8d569b8606e24b61f8150e57ae71625aa977939
 
 name:           MPL
 version:        0.1.0.0
@@ -18,6 +18,10 @@ license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
+    src/MPL.bnfc
+    src/Language/LexMPL.x
+    src/Language/ParMPL.y
+extra-doc-files:
     README.md
     ChangeLog.md
 
@@ -32,33 +36,9 @@ library
       Language.LayoutMPL
       Language.LexMPL
       Language.ParMPL
-      Language.PtreeToAST
-      Language.PtreeToAST_help
-      MPLCompiler
-      MPLMain
-      ToCMPL.GenAndSolveSetEqns
-      ToCMPL.LambdaLift
-      ToCMPL.LamLift_Help
-      ToCMPL.MPLToCMPL
-      ToCMPL.PatternComp_Help
-      ToCMPL.PatternCompiler
-      TypeInfer.Check_Patts
-      TypeInfer.Gen_Eqns_CommFuns
-      TypeInfer.Gen_Eqns_Conc
-      TypeInfer.Gen_Eqns_Defn
-      TypeInfer.Gen_Eqns_Patt
-      TypeInfer.Gen_Eqns_Seq
-      TypeInfer.Gen_Eqns_Stmt
-      TypeInfer.MPL_AST
-      TypeInfer.PreProcess_Let
-      TypeInfer.SolveEqns
-      TypeInfer.SolveHelper
-      TypeInfer.SymTab
-      TypeInfer.SymTab_DataType
-      TypeInfer.SymTab_Helper
-      TypeInfer.SymTab_Init
-      TypeInfer.SymTab_Insert
-      TypeInfer.Unification
+      Language.PrintMPL
+      Language.SkelMPL
+      MPLAST.MPLAST
   other-modules:
       Paths_MPL
   hs-source-dirs:
@@ -68,7 +48,9 @@ library
     , array
     , base >=4.7 && <5
     , containers
+    , mpl-lib
     , mtl
+    , optics
     , pretty
   default-language: Haskell2010
 
@@ -85,7 +67,9 @@ executable mpl
     , array
     , base >=4.7 && <5
     , containers
+    , mpl-lib
     , mtl
+    , optics
     , pretty
   default-language: Haskell2010
 
@@ -103,6 +87,8 @@ test-suite MPL-test
     , array
     , base >=4.7 && <5
     , containers
+    , mpl-lib
     , mtl
+    , optics
     , pretty
   default-language: Haskell2010
