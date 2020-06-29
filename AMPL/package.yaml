@@ -36,6 +36,8 @@ dependencies:
       # For getting time stamps on the logger
     - time 
 
+    - mpl-lib 
+
 library:
     source-dirs: 
         - src/

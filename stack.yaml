@@ -1,8 +1,9 @@
-resolver : lts-16.0
+resolver : lts-16.2
 
 packages:
     - AMPL
     - AMPLASM
     - AMPLC
     - MPL
+    - mpl-lib
 

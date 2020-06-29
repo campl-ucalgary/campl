@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 8a277aa7da2596093ca64677df2215f3e8b6947d7aba080f4576416936725130
+-- hash: 304b869bdbae1fa0eb2ebba271a44bda3e0f8b85f11eaa6f104e63044e8b2044
 
 name:           AMPL
 version:        0.1.0.0
@@ -34,8 +34,6 @@ library
       AMPLSequential
       AMPLServices
       AMPLTypes
-      Data.Queue
-      Data.Stream
       ServiceConstants
   other-modules:
       Paths_AMPL
@@ -46,6 +44,7 @@ library
     , array
     , base
     , containers
+    , mpl-lib
     , mtl
     , network
     , pretty
@@ -67,6 +66,7 @@ executable ampl
     , array
     , base
     , containers
+    , mpl-lib
     , mtl
     , network
     , pretty
@@ -80,8 +80,6 @@ test-suite spec
   other-modules:
       AMPLConcurrentSpec
       AMPLSequentialSpec
-      Data.QueueSpec
-      Data.StreamSpec
       Paths_AMPL
   hs-source-dirs:
       test
@@ -94,6 +92,7 @@ test-suite spec
     , base
     , containers
     , hspec ==2.*
+    , mpl-lib
     , mtl
     , network
     , pretty

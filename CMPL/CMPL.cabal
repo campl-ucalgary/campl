@@ -1,0 +1,62 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 7058cb849f535228316a7142cbf602d2e03aee84a7936ef7e92a7ee422fde97f
+
+name:           CMPL
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/CMPL#readme>
+homepage:       https://github.com/githubuser/CMPL#readme
+bug-reports:    https://github.com/githubuser/CMPL/issues
+author:         Author name here
+maintainer:     example@example.com
+copyright:      2020 Author name here
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+
+source-repository head
+  type: git
+  location: https://github.com/githubuser/CMPL
+
+library
+  exposed-modules:
+      CMPLAST
+      CMPLCompile
+      CMPLConstructsBag
+  other-modules:
+      Paths_CMPL
+  hs-source-dirs:
+      src
+  build-depends:
+      AMPL
+    , GenericPretty
+    , base >=4.7 && <5
+    , optics
+    , pretty
+    , recursion-schemes
+  default-language: Haskell2010
+
+test-suite CMPL-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_CMPL
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      AMPL
+    , CMPL
+    , GenericPretty
+    , base >=4.7 && <5
+    , optics
+    , pretty
+    , recursion-schemes
+  default-language: Haskell2010

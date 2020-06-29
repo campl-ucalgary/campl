@@ -1,0 +1,63 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 91ee629314c467484d3f17d56dc94b72835638de903c984825315be1ce036d87
+
+name:           mpl-lib
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/lib#readme>
+homepage:       https://github.com/githubuser/mpl-lib#readme
+bug-reports:    https://github.com/githubuser/mpl-lib/issues
+author:         Author name here
+maintainer:     example@example.com
+copyright:      2020 Author name here
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+
+source-repository head
+  type: git
+  location: https://github.com/githubuser/mpl-lib
+
+library
+  exposed-modules:
+      Data.Queue
+      Data.Stream
+      MPLIdent
+  other-modules:
+      Paths_mpl_lib
+  hs-source-dirs:
+      src
+  build-depends:
+      GenericPretty
+    , base >=4.7 && <5
+    , optics
+    , pretty
+  default-language: Haskell2010
+
+test-suite spec
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Data.QueueSpec
+      Data.StreamSpec
+      Paths_mpl_lib
+  hs-source-dirs:
+      test
+  build-depends:
+      GenericPretty
+    , HUnit
+    , QuickCheck
+    , base >=4.7 && <5
+    , hspec ==2.*
+    , mpl-lib
+    , optics
+    , pretty
+  default-language: Haskell2010
+  build-tool-depends: hspec-discover:hspec-discover == 2.*
