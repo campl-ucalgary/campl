@@ -24,6 +24,7 @@ dependencies:
     - GenericPretty
     - pretty
     - AMPL
+    - AMPLASM
 
     - optics
     - recursion-schemes

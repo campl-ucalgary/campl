@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7058cb849f535228316a7142cbf602d2e03aee84a7936ef7e92a7ee422fde97f
+-- hash: f6a858b77b66c87130f87a9ba3e84f95a3dbb7b1021fa9091d9984f2129d8250
 
 name:           CMPL
 version:        0.1.0.0
@@ -29,6 +29,8 @@ library
   exposed-modules:
       CMPLAST
       CMPLCompile
+      CMPLCompileAST
+      CMPLCompileConstructsBag
       CMPLConstructsBag
   other-modules:
       Paths_CMPL
@@ -36,6 +38,7 @@ library
       src
   build-depends:
       AMPL
+    , AMPLASM
     , GenericPretty
     , base >=4.7 && <5
     , optics
@@ -53,6 +56,7 @@ test-suite CMPL-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       AMPL
+    , AMPLASM
     , CMPL
     , GenericPretty
     , base >=4.7 && <5

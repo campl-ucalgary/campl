@@ -4,73 +4,66 @@
 module CMPLConstructsBag where
 
 import CMPLAST
-import MPLIdent
 
 import Text.PrettyPrint.GenericPretty
 import Text.PrettyPrint
 
 import Optics.TH
 
-
-data DataCodataClause ident = DataCodataClause {
-    _dataCodataName :: ident
-    , _dataCodataSubclauses :: [(ident,Word)]
+data DataCodataClause = DataCodataClause {
+    _dataCodataName :: String
+    , _dataCodataSubclauses :: [(String,Word)]
         -- constructors / destructors, and number of args
 }
   deriving (Eq,Show,Read,Generic,Out)
 
 
-data ProtocolCoprotocolClause ident = ProtocolCoprotocolClause {
-    _protocolCoprotocolName :: ident
-    , _protocolCoprotocolSubclauses :: [ident]
+data ProtocolCoprotocolClause = ProtocolCoprotocolClause {
+    _protocolCoprotocolName :: String
+    , _protocolCoprotocolSubclauses :: [String]
     -- handles / cohandles (always take 0 args)
 }
-  deriving (Eq,Show,Read,Generic,Out)
+  deriving (Eq,Show,Read,Generic,Out) 
 
-
-data FunctionClause ident = FunctionClause {
-    _functionName :: ident
-    , _functionArgs :: [ident]
-    , _functionExpr :: Expr ident
+data FunctionClause = FunctionClause {
+    _functionName :: String
+    , _functionArgs :: [String]
+    , _functionExpr :: Expr 
 }
   deriving (Eq,Show,Read,Generic,Out)
 
 
-data ProcessClause ident = ProcessClause {
-    _processName :: ident
-    , _processSeqArgs :: [ident]
-    , _processInputChs :: [ident]
-    , _processOutputChs :: [ident]
-    , _processCommands :: [ProcessCommand ident]
+data ProcessClause = ProcessClause {
+    _processName :: String
+    , _processSeqArgs :: [String]
+    , _processInputChs :: [String]
+    , _processOutputChs :: [String]
+    , _processCommands :: [ProcessCommand]
 }
   deriving (Eq,Show,Read,Generic,Out)
 
 
-data MainClause ident = MainClause {
-    _mainPosition :: RowColPos
-    , _mainInputChs :: [ident]
-    , _mainOutputChs :: [ident]
-    , _mainProcessCommands :: [ProcessCommand ident]
+data MainClause = MainClause {
+    _mainInputChs :: [String]
+    , _mainOutputChs :: [String]
+    , _mainProcessCommands :: [ProcessCommand]
 }
   deriving (Eq,Show,Read,Generic,Out)
 
 
-data CmplConstructsBag ident = CmplConstructsBag {
+data CmplConstructsBag = CmplConstructsBag {
     _cmplIncludes :: [String]
-    , _cmplData :: [DataCodataClause ident]
-    , _cmplCodata :: [DataCodataClause ident]
+    , _cmplData :: [DataCodataClause]
+    , _cmplCodata :: [DataCodataClause]
 
-    , _cmplProtocols :: [ProtocolCoprotocolClause ident]
-    , _cmplCoprotocols :: [ProtocolCoprotocolClause ident]
+    , _cmplProtocols :: [ProtocolCoprotocolClause]
+    , _cmplCoprotocols :: [ProtocolCoprotocolClause]
 
-    , _cmplFunction :: [FunctionClause ident] 
-    , _cmplProcess :: [ProcessClause ident]
+    , _cmplFunction :: [FunctionClause] 
+    , _cmplProcess :: [ProcessClause]
 
-    , _cmplMainRun :: MainClause ident
-    
-}
-  deriving (Eq,Show,Read,Generic,Out)
-
+    , _cmplMainRun :: MainClause
+} deriving (Eq,Show,Read,Generic,Out) 
 $(
     concat <$> traverse makeLenses 
         [ ''CmplConstructsBag

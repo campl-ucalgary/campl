@@ -10,7 +10,6 @@ import Text.PrettyPrint
 import Data.Functor.Foldable.TH
 
 import AMPLTypes 
-import MPLIdent
 
 {-
 type Name                 = String  
@@ -52,12 +51,7 @@ data Defn                 =   Includes [String]
                             -}
 
 
-data FunctionName ident = 
-    UserDefined ident 
-    | BuiltIn (BuiltInFuns, RowColPos)
-  deriving (Eq,Show,Read,Generic,Out)
-
-data BuiltInFuns = 
+data BuiltInOps = 
     AddInt
     | SubInt
     | MulInt 
@@ -108,25 +102,28 @@ data Func                 =    Add_I
 -}
 
 
-data Expr ident = 
-    ECall (FunctionName ident) [Expr ident]
-    | ECons ((ident,ident), [Expr ident])
+data Expr = 
+    ECall String [Expr]
+    | EOp BuiltInOps Expr Expr
+    | ECons ((String,String), [Expr])
         -- data name, constructor, args
-    | EDest ((ident,ident), Expr ident)
+    | EDest ((String,String), Expr)
         -- codata name, destructor, args, var
 
-    | ECase (Expr ident) [((ident,ident),[Expr ident])]
-        -- case on, patterns
+    | ECase Expr [((String,String),[String], Expr)]
+        -- case on, [(base, sub), args, val]
+    | EIf Expr (Expr, Expr)
 
-    | EVar ident
+    | EVar String
 
     | EConstChar Char
     | EConstInt Int
+    | EString String
 
-    | ERecord [((ident,ident), [Expr ident])]
+    | ERecord [((String,String),[String], Expr)]
 
-    | EProduct [Expr ident]
-    | EProductElem (Word, Expr ident)
+    | EProduct [Expr]
+    | EProductElem (Word, Expr)
 
     | EError String
   deriving (Eq,Show,Read,Generic,Out)
@@ -152,39 +149,43 @@ data Term =
                             -}
 
 
-data ProcessCommand ident =
-    PRun (ident, ([ident], ([ident], [ident])))
-    | PClose ident
-    | PHalt [ident]
+data ProcessCommand =
+    PRun (String, ([Expr], ([String], [String])))
+        -- name, (seq vars, inchs, outchs)
+    | PClose String
+    | PHalt [String]
 
-    | PHCase ident [((ident, ident), [ProcessCommand ident])]
+    | PHCase String [((String, String), [ProcessCommand])]
         -- channel, ((namebase, subname), commands) 
-    | PHPut (ident, ident) ident
+    | PHPut (String, String) String
         -- (namebase, subname), channel
 
-    | PGet ident ident
-    | PPut (Expr ident) ident
+    | PGet String String
+    | PPut Expr String
         -- value on channel
 
-    | PSplit ident (ident, ident)
+    | PSplit String (String, String)
         -- channel into channels..
 
-    | PFork ident 
-        ((ident, [ident]),[ProcessCommand ident])
-        ((ident, [ident]),[ProcessCommand ident])
+    | PFork String 
+        ((String, [String]),[ProcessCommand])
+        ((String, [String]),[ProcessCommand])
         -- fork a as (a1 with ... commands) ..  (a2 with ... commands)
 
-    | PPlug [ident] 
-            ([ident], [ProcessCommand ident])
-            ([ident], [ProcessCommand ident])
+    | PPlug [String] 
+            ([String], [ProcessCommand])
+            ([String], [ProcessCommand])
 
-    | PId (ident, ident)
+    | PId (String, String)
         -- channel |=| channel
 
-    | PCase (Expr ident) [((ident,ident),[ProcessCommand ident])]
+    | PCase Expr [((String,String),[String], [ProcessCommand])]
         -- casing is surprsingly allowed in concurrent instructions
 
-    | PRecord (Expr ident) [((ident,ident),[ProcessCommand ident])]
+    | PIf Expr ([ProcessCommand], [ProcessCommand])
+        -- casing is surprsingly allowed in concurrent instructions
+
+    | PRecord Expr [((String,String),[ProcessCommand])]
         -- and records for some reason? but not in grammar...
   deriving (Eq,Show,Read,Generic,Out)
 
