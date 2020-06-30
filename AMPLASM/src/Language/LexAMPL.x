@@ -120,9 +120,9 @@ f a l s e
     { tok (\p s -> PT p (eitherResIdent (T_BFalse . share) s)) }
 \' ($u # [\' \\]| \\ [\' \\ n t]) \'
     { tok (\p s -> PT p (eitherResIdent (T_Character . share) s)) }
-$c ($l | $d | \_)*
+$c ($l | $d | \_)* | \# $c ($l | $d | \_)*
     { tok (\p s -> PT p (eitherResIdent (T_UIdent . share) s)) }
-$l ($l | $d | \_ | \')*
+$l ($l | $d | \_ | \')* | \# $c ($l | $d | \_)*
     { tok (\p s -> PT p (eitherResIdent (T_PIdent . share) s)) }
 $d +
     { tok (\p s -> PT p (eitherResIdent (T_PInteger . share) s)) }

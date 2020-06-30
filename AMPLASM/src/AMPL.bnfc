@@ -56,8 +56,11 @@ position token BTrue    {"true"};
 position token BFalse   {"false"};
 
 position token Character '\'' ((char - ["'\\"]) | ('\\' ["'\\nt"])) '\''  ;
-position token UIdent (upper (letter | digit | '_')*);
-position token PIdent letter (letter | digit | '_' | '\'')* ;
+
+-- added # as an internal token for 
+position token UIdent (upper (letter | digit | '_')*) | ('#' upper (letter | digit | '_')*) ;
+position token PIdent letter (letter | digit | '_' | '\'')* | ('#' upper (letter | digit | '_')*) ;
+
 --position token CString  '"' ((char - ["\"\\"]) | ('\\' ["\"\\nt"]))* '"' ;
 position token PInteger digit+ ;
 position token IIdent '"' char* {".ampl"} '"';

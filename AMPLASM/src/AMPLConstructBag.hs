@@ -45,6 +45,14 @@ type MainInfo = Maybe (Ident, (([(Ident, LocalChanID)], [(Ident, LocalChanID)]),
         -- ^ Main function (name, ((input channels, output channels), instructions))
         -- Note that name will always be %run when parsed by BNFC
 
+data AmplAsmBag = AmplAsmBag {
+    amplImports :: [(FilePath, RowColPos)]
+    , amplMainInfo :: MainInfo
+    , amplConstructsBag :: AmplConstructsBag
+}
+        -- ^ (imports info, MainInfo, AmplConstructsBag)
+
+
 -- | A bag of all the constructs in a program
 data AmplConstructsBag = AmplConstructsBag {
     protocolInfo :: [(String, ProtocolInfo)]
@@ -66,10 +74,9 @@ emptyAmplConstructsBag = AmplConstructsBag [] [] [] []
 collectSymbols :: 
     AMPLCODE ->                         
         -- ^ AMPLCODE from bnfc
-    ([(FilePath, RowColPos)], MainInfo, AmplConstructsBag)
-        -- ^ (imports info, MainInfo, AmplConstructsBag)
+    AmplAsmBag
 collectSymbols (Main constructs start) = 
-    (imports, prgmain, AmplConstructsBag handles cohandles datas codatas processes functions)
+    AmplAsmBag imports prgmain $ AmplConstructsBag handles cohandles datas codatas processes functions
   where
     -- imports
     imports = mapMaybe importHelper constructs
@@ -161,5 +168,3 @@ collectSymbols (Main constructs start) =
                   ) 
                 )
         Start_none -> Nothing
-
-

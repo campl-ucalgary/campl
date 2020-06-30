@@ -85,7 +85,8 @@ amplCodeToInstr servicegeneratorstate amplcode =
                 else Left errs
         Left mainerrs -> Left ( mainerrs : errs)
   where
-    (imports, mainfun, bag) = AMPLConstructBag.collectSymbols amplcode
+    AmplAsmBag{ amplImports = imports, amplMainInfo = mainfun, amplConstructsBag = bag} = 
+        AMPLConstructBag.collectSymbols amplcode
     symboltable = AMPLSymbolTable.makeSymbolTable bag :: Map String (Either AssemblerErrors SymEntry)
     functions = map f (functionInfo bag)
       where

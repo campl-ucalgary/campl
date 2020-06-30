@@ -206,10 +206,10 @@ Character literals are recognized by the regular expression
 `````''' (char - ["'\"] | '\' ["'\nt"]) '''`````
 
 UIdent literals are recognized by the regular expression
-`````upper (letter | digit | '_')*`````
+`````upper (letter | digit | '_')* | '#' upper (letter | digit | '_')*`````
 
 PIdent literals are recognized by the regular expression
-`````letter (letter | digit | '_' | ''')*`````
+`````letter (letter | digit | '_' | ''')* | '#' upper (letter | digit | '_')*`````
 
 PInteger literals are recognized by the regular expression
 `````digit+`````
