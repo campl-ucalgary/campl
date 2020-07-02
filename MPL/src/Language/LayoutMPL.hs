@@ -14,8 +14,8 @@ topLayout :: Bool
 topLayout = False
 
 layoutWords, layoutStopWords :: [String]
-layoutWords     = ["=","of","where","as","from","do","switch","plug","else","race"]
-layoutStopWords = []
+layoutWords     = ["defn","where","=","let","of","switch","do","as","race","plug"]
+layoutStopWords = ["in"]
 
 -- layout separators
 
@@ -226,29 +226,51 @@ sToken p s = PT p (TS s i)
       "::" -> 8
       ":=" -> 9
       ";" -> 10
-      "<" -> 11
-      "=" -> 12
-      "=>" -> 13
-      ">" -> 14
-      "Neg" -> 15
+      "=" -> 11
+      "=>" -> 12
+      "[" -> 13
+      "]" -> 14
+      "_" -> 15
       "and" -> 16
       "as" -> 17
-      "do" -> 18
-      "else" -> 19
-      "into" -> 20
-      "neg" -> 21
-      "of" -> 22
-      "on" -> 23
-      "plug" -> 24
-      "race" -> 25
-      "switch" -> 26
-      "then" -> 27
-      "where" -> 28
-      "with" -> 29
-      "{" -> 30
-      "|" -> 31
-      "|=|" -> 32
-      "}" -> 33
+      "case" -> 18
+      "close" -> 19
+      "codata" -> 20
+      "coprotocol" -> 21
+      "data" -> 22
+      "defn" -> 23
+      "do" -> 24
+      "else" -> 25
+      "fold" -> 26
+      "fork" -> 27
+      "fun" -> 28
+      "get" -> 29
+      "halt" -> 30
+      "hcase" -> 31
+      "hput" -> 32
+      "if" -> 33
+      "in" -> 34
+      "into" -> 35
+      "let" -> 36
+      "neg" -> 37
+      "of" -> 38
+      "on" -> 39
+      "plug" -> 40
+      "potato" -> 41
+      "proc" -> 42
+      "protocol" -> 43
+      "put" -> 44
+      "race" -> 45
+      "split" -> 46
+      "switch" -> 47
+      "then" -> 48
+      "unfold" -> 49
+      "where" -> 50
+      "with" -> 51
+      "{" -> 52
+      "|" -> 53
+      "|=|" -> 54
+      "}" -> 55
       _ -> error $ "not a reserved word: " ++ show s
 
 -- | Get the position of a token.

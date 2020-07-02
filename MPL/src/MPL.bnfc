@@ -1,392 +1,325 @@
+-- Entry point of the parser
+entrypoints MplProg ;
+
+-- comments
 comment "--" ;
 comment "{-" "-}" ;
 
+-- layout (white space sensitive indentation)
+layout "defn", "where", "=", "let", "of", "switch", "do", "as", "race", "plug" ;
+layout stop "in" ;
+-- layout stop "where" ;
 
--- Rule defining identifiers beginning with an upper case letter
-position token TokUnit '(' ')' ;
-position token TokSBrO '[' ;
-position token TokSBrC ']' ; 
-position token TokDefn {"defn"} ;
-position token TokRun {"run"} ;
-position token TokTerm {"term"} ;
-position token TokData {"data"} ;
-position token TokCodata {"codata"} ;
-position token TokType {"type"} ;
-position token TokProtocol {"protocol"};
-position token TokCoprotocol {"coprotocol"};
-position token TokGetProt {"Get"} ;
-position token TokPutProt {"Put"} ;
-position token TokNeg {"neg"} ;
-position token TokTopBot {"TopBot"} ;
-position token TokFun {"fun"} ;
-position token TokDefault {"default"} ;
-position token TokRecord  {"record"} ;
-position token TokIf  {"if"}  ;
-position token TokLet {"let"} ;  
-position token TokFold {"fold"};
-position token TokUnfold {"unfold"};
-position token TokCase   {"case"} ; 
-position token TokProc   {"proc"} ;
-position token TokClose  {"close"} ;
-position token TokHalt   {"halt"} ;
-position token TokGet    {"get"} ;
-position token TokPut    {"put"} ;
-position token TokHCase  {"hcase"} ;
-position token TokHPut   {"hput"} ;  
-position token TokSplit  {"split"} ;
-position token TokFork   {"fork"} ;
-position token TokDCare  {"_"};
-position token UIdent (upper (letter | digit | '_')*);
+-- ====================================================================
+--  MPL tokens
+-- ====================================================================
+position token UIdent (upper (letter | digit | '_')*) ;
 position token PIdent letter (letter | digit | '_' | '\'')* ;
---position token InfixRem ( '|' |'&'|'='|'<'|'>'|'+'|'*'|'/'|
---                          '%'|'^'|'-'|'?'|'\\'|'!' )+ ;
-position token PInteger digit+ ;
+position token PInteger (["-"] digit | digit) digit* ;
 
-token Infix0op ({"||"});
-token Infix1op ({"&&"});
-token Infix2op ({"=="}|{"/="}|'<'|'>'|{"<="}|{">="});
-token Infix3op ({"++"}) ;
-token Infix4op ('+'|'-');
-token Infix5op ('*'|'/' | '%');
-token Infix6op ('^') ;
-token Infix7op ({"!!"}) ;
-
-
-layout "=", "of", "where", "as", "let",
-       "from" ,"do" ,"switch","plug","else" ;
-
-MPLPROG. MPL ::= [MPLstmt] RUNstmt ;
-
-separator  MPLstmt "" ; 
-
-
-WHEREDEFN  . MPLstmt ::= TokDefn "of" "{" [Defn] "}" "where" "{" [MPLstmtAlt] "}" ;
-WOWHEREDEFN. MPLstmt ::= TokDefn "of" "{" [Defn] "}" ;
-BAREDEFN   . MPLstmt  ::= Defn ;
-
-MPLSTMTALT.MPLstmtAlt ::= MPLstmt;
-
-separator MPLstmtAlt ";" ;
-
-RUNSTMTWITHType. RUNstmt     ::= TokRun "::"  [Protocol] "=>" [Protocol]  "="
-                                 "{" [Channel] "=>" [Channel] Process  "}" ;
-RUNSTMTWITHTOUType. RUNstmt  ::= TokRun  [Channel] "=>" [Channel] Process  ;
-
--- ====================================================================
--- ====================================================================
-
-separator nonempty Defn ";" ;
-
-TYPEDEF. Defn     ::= TypeDefn ;
-PROTOCOLDEF. Defn ::= CTypeDefn ;
-FUNCTIONDEF. Defn ::= FunctionDefn ;
-PROCESSDEF . Defn ::= ProcessDef ;
---OPERATORDEF. Defn ::= OperatorDefn ;
---TERMSYNDEF . Defn ::= TermSynonym ;  
-
--- ====================================================================
--- ====================================================================
-{-
-INFIX_LEFT .OperatorDefn    ::= "infixl" InfixRem Integer ;  
-INFIX_RIGHT.OperatorDefn    ::= "infixr" InfixRem Integer ;
-           
-TERM_SYNONYM.TermSynonym    ::= TokTerm PIdent InfixRem PIdent "="
-                                 PIdent "(" PIdent "," PIdent ")" ;
-
--}
-
--- ====================================================================
---  SEQUENTIAL TYPE DEFINITIONS
--- ====================================================================
-
-
-DATA.    TypeDefn ::= TokData [DataClause];
-separator nonempty DataClause  "and";
-
-CODATA.  TypeDefn ::= TokCodata [CoDataClause];
-separator nonempty CoDataClause  "and";
-
-TYPE.    TypeDefn ::= TokType [TypeSpec] "=" "{" Type "}" ;
-
-separator TypeSpec "," ;
-
--- ====================================================================
--- ====================================================================
-
-
-DATACLAUSE. DataClause     ::= TypeSpec "->"  UIdent  "=" "{" [DataPhrase] "}"  ; 
-CODATACLAUSE. CoDataClause ::= UIdent   "->"  TypeSpec "=" "{" [CoDataPhrase] "}" ;
-separator DataPhrase ";" ; 
-separator CoDataPhrase ";" ;
-
-DATAPHRASE  . DataPhrase   
-     ::= [Structor] "::" [Type] "->"  UIdent   ; 
-CODATAPHRASE. CoDataPhrase 
-     ::= [Structor] "::" [Type] "->"  Type  ; 
-separator nonempty Structor ","; 
-separator Type "," ;
-
-STRUCTOR. Structor ::= UIdent ;
-
--- ====================================================================
--- ====================================================================
-
-TYPESPEC_param. TypeSpec    ::= UIdent "(" [TypeParam] ")";
-TYPESPEC_basic. TypeSpec    ::= UIdent ;
-separator TypeParam "," ;
-TYPEPARAM. TypeParam ::= UIdent ; 
-
--- ====================================================================
---  Types 
--- ====================================================================
-
-TYPEARROW          .Type  ::= TypeN "=>"  Type ;
-
-TYPENext           .Type  ::= TypeN ;
-
-
-TYPEUNIT           .TypeN  ::= TokUnit ; 
-TYPELIST           .TypeN  ::= TokSBrO TypeN TokSBrC  ;
-TYPEDATCODAT       .TypeN  ::= UIdent "(" [Type] ")" ;
-TYPECONST_VAR      .TypeN  ::= UIdent ;
-TYPEPROD           .TypeN  ::= "<" [Type] ">" ;
-TYPEBRACKET        .TypeN  ::= "(" Type  ")" ;
-
-
-separator TypeN "," ;
-
-separator UIdent "," ;
-
--- ====================================================================
--- Protocol definitions
--- ====================================================================
-{-
-PROTOCOL. CTypeDefn ::= TokProtocol [ProtocolClause];
-separator nonempty ProtocolClause "and";
-
-COPROTOCOL. CTypeDefn ::= TokCoprotocol [CoProtocolClause];
-separator nonempty CoProtocolClause "and";
-
--}
-
-PROTOCOL  . CTypeDefn 
-        ::= TokProtocol ProtocolClause;
-COPROTOCOL. CTypeDefn 
-        ::= TokCoprotocol CoProtocolClause;
-
-
-PROTOCOLCLAUSE. ProtocolClause 
-        ::= TypeSpec "=>" UIdent "=" "{" [ProtocolPhrase] "}"; 
-COPROTOCOLCLAUSE. CoProtocolClause 
-        ::= UIdent "=>" TypeSpec "=" "{" [CoProtocolPhrase] "}";
-
-separator ProtocolPhrase ";" ;
-separator CoProtocolPhrase ";" ;
-
-
-PROTOCOLPHRASE  . ProtocolPhrase 
-    ::= UIdent "::" Protocol "=>" UIdent ;
-
-COPROTOCOLPHRASE. CoProtocolPhrase 
-    ::= UIdent "::" UIdent "=>" Protocol ;
-
--- ====================================================================
---  Protocol types
--- ====================================================================
-
-coercions Protocol 1 ;
-PROTOCOLtensor.Protocol  ::= Protocol1 "(*)" Protocol ;
-PROTOCOLpar   .Protocol  ::= Protocol1 "(+)" Protocol  ;
-PROTOCOLget   .Protocol1 ::= TokGetProt "(" Type "|" Protocol ")" ;
-PROTOCOLput   .Protocol1 ::= TokPutProt "(" Type "|" Protocol ")" ;
-PROTOCOLneg   .Protocol1 ::= "Neg" "(" Protocol ")";
-PROTOCOLtopbot.Protocol1 ::= TokTopBot ;
-PROTNamedWArgs .Protocol1 ::= UIdent "(" [Type] ")"  ;
-PROTNamedWOArgs.Protocol1 ::= UIdent  ;
-
-separator Protocol "," ;
-
--- ====================================================================
--- Sequential terms and functions
--- ====================================================================
-
-
-
-FUNCTIONDEFNfull  . FunctionDefn ::= TokFun PIdent "::" [Type] "->" Type 
-                                          "=" "{" [PattTermPharse] "}" ;
-
-FUNCTIONDEFNshort . FunctionDefn ::= TokFun PIdent "=" "{" [PattTermPharse] "}"  ;
-
-separator nonempty FunctionDefn ";" ; 
-
-separator nonempty PattTermPharse ";" ;
-
+-- token Infixr0op ({":"});
+-- the reason we don't use this is because ":"
+-- is somewhat amgbiuous in the sense that it is used
+-- both as cons, and as a seperator for fold phrases
+-- Instead, we explicitily write ":" when needed
+token Infixl1op ({"||"});
+token Infixl2op ({"&&"});
+token Infixl3op ({"=="}|{"/="}|'<'|'>'|{"<="}|{">="});
+token Infixl4op ({"++"}) ;
+token Infixl5op ('+'|'-');
+token Infixl6op ('*'|'/' | '%');
+token Infixr7op ('^') ;
+token Infixl8op ({"!!"}) ;
 
 separator PIdent "," ;
 
-FOLDPATT_WOBRAC.FoldPattern ::= UIdent ":"  [PIdent]  "=" "{" Term "}"  ;
-separator FoldPattern ";" ;
+-- ====================================================================
+--  MPL Top level phrases
+-- ====================================================================
 
-PATTERNshort. PattTermPharse ::= [Pattern] "->"  Term  ;
-PATTERNguard. PattTermPharse ::= [Pattern] "->" "switch"  "{" [GuardedTerm] "}"  ;
-separator nonempty GuardedTerm ";";
+MPL_PROG . MplProg ::= [MplStmt] ;
 
-GUARDterm. GuardedTerm  ::= Term "=" "{" Term "}" ;
-GUARDother. GuardedTerm ::= TokDefault "=" "{" Term "}" ;
 
+MPL_DEFN_STMS_WHERE . MplStmt ::= "defn" "{" [MplDefn] "}" "where" "{" [MplStmt] "}" ;
+MPL_DEFN_STMS       . MplStmt ::= "defn" "{" [MplDefn] "}"  ;
+MPL_STMT            . MplStmt ::= MplDefn ;
+
+separator nonempty MplDefn ";" ;
+separator MplStmt "" ;
+
+-- ====================================================================
+--  MPL definitions
+-- ====================================================================
+
+-- add type aliases later
+MPL_SEQUENTIAL_TYPE_DEFN . MplDefn ::= SequentialTypeDefn ;
+MPL_CONCURRENT_TYPE_DEFN . MplDefn ::= ConcurrentTypeDefn ;
+MPL_FUNCTION_DEFN        . MplDefn ::= FunctionDefn ;
+MPL_PROCESS_DEFN         . MplDefn ::= ProcessDefn ;
+
+MPLDEFNTEST . MplDefn ::= "potato" ;
+
+-- ====================================================================
+--  MPL type 
+-- ====================================================================
+-- MPL_CONCURRENT_TYPE     . MplType ::= ConcurrentType ;
+
+MPL_TYPE          . MplType ::= MplType0 ;
+
+-- Concurrent types follows... Tensor binds tighter than par
+PAR_TYPE          . MplType0 ::= MplType1 "(+)" MplType1;
+_                 . MplType0 ::= MplType1 ;
+
+TENSOR_TYPE       . MplType1 ::= MplType2 "(*)" MplType2;
+_                 . MplType1 ::= MplType2 ;
+
+GETPUT_TYPE       . MplType2 ::= UIdent"(" MplType "|" MplType ")" ;
+_                 . MplType2 ::= MplType3 ;
+
+-- Sequential types / user defined types / type variables follow..
+MPL_UIDENT_ARGS_TYPE    . MplType3 ::= UIdent "(" [MplType] ")" ;
+MPL_UIDENT_NO_ARGS_TYPE . MplType3 ::= UIdent ;
+MPL_UNIT_TYPE           . MplType3 ::= "(" ")" ;
+MPL_BRACKETED_TYPE      . MplType3 ::= "(" MplType ")" ;
+MPL_LIST_TYPE           . MplType3 ::= "[" MplType "]" ;
+MPL_TUPLE_TYPE          . MplType3 ::= "(" MplType "," [TupleListType] ")" ;
+
+TUPLE_LIST_TYPE . TupleListType ::= MplType ;
+
+separator nonempty TupleListType "," ;
+
+-- Note: MPL_UIDENT_ARGS_TYPE / MPL_UIDENT_NO_ARGS_TYPE can be used to 
+-- define concurrent types TopBot and Neg respectively
+-- Moreover, MPL_UIDENT_NO_ARGS_TYPE doubles as a type variable.
+
+separator MplType  "," ;
+
+-- ====================================================================
+--  MPL Sequential type definitions
+-- ====================================================================
+
+DATA_DEFN   . SequentialTypeDefn ::= "data" [SeqTypeClauseDefn] ;
+CODATA_DEFN . SequentialTypeDefn ::= "codata" [SeqTypeClauseDefn] ;
+
+SEQ_TYPE_CLAUSE . SeqTypeClauseDefn ::= MplType "->" MplType "=" "{" [ SeqTypePhraseDefn ]"}" ;
+SEQ_TYPE_PHRASE . SeqTypePhraseDefn ::= [TypeHandleName] "::" [MplType] "->" MplType ;
+
+separator nonempty SeqTypeClauseDefn "and" ;
+separator SeqTypePhraseDefn ";" ; 
+
+-- ====================================================================
+--  MPL Concurrent type definitions (similar to sequential...)
+-- ====================================================================
+
+PROTOCOL_DEFN   . ConcurrentTypeDefn ::= "protocol" [ConcurrentTypeClauseDefn] ;
+COPROTOCOL_DEFN . ConcurrentTypeDefn ::= "coprotocol" [ConcurrentTypeClauseDefn] ;
+
+CONCURRENT_TYPE_CLAUSE . ConcurrentTypeClauseDefn ::= MplType "=>" MplType "=" "{" [ ConcurrentTypePhraseDefn ]"}" ;
+CONCURRENT_TYPE_PHRASE . ConcurrentTypePhraseDefn ::= [TypeHandleName] "::" MplType "=>" MplType ;
+
+separator nonempty ConcurrentTypeClauseDefn "and" ;
+separator ConcurrentTypePhraseDefn ";" ;
+
+TYPE_HANDLE_NAME . TypeHandleName ::= UIdent ;
+separator nonempty TypeHandleName "," ;
+
+-- ====================================================================
+--  MPL Expr definition
+-- ====================================================================
+EXPR      . Expr  ::= Expr0 ;
+-- TODO -- not totally sure about this IF and LET precedence?
+-- ASK THE OTHER DEVELOPER ABOUT THIS
+IF_EXPR   . Expr  ::= "if" Expr "then"  Expr  "else"  Expr ;
+LET_EXPR  . Expr  ::= "let" "{" [LetExprPhrase] "}" "in" Expr ;
+
+INFIXR0_EXPR . Expr0 ::=  Expr1 ":" Expr0 ;
+_           . Expr0 ::=  Expr1  ;
+
+INFIXL1_EXPR . Expr1 ::=  Expr1 Infixl1op Expr2 ;
+_           . Expr1 ::=  Expr2  ;
+
+INFIXL2_EXPR . Expr2 ::=  Expr2 Infixl2op Expr3 ;
+_           . Expr2 ::=  Expr3  ;
+
+INFIXL3_EXPR . Expr3 ::=  Expr3 Infixl3op Expr4 ;
+_           . Expr3 ::=  Expr4  ;
+
+INFIXL4_EXPR . Expr4 ::=  Expr4 Infixl4op Expr5 ;
+_           . Expr4 ::=  Expr5  ;
+
+INFIXL5_EXPR . Expr5 ::=  Expr5 Infixl5op Expr6 ;
+_           . Expr5 ::=  Expr6  ;
+
+INFIXL6_EXPR . Expr6 ::=  Expr6 Infixl6op Expr7 ;
+_           . Expr6 ::=  Expr7  ;
+
+INFIXR7_EXPR . Expr7 ::=  Expr8 Infixr7op Expr7 ;
+_           . Expr7 ::=  Expr8  ;
+
+
+INFIXL8_EXPR . Expr8 ::= Expr8 Infixl8op Expr10 ;
+_            . Expr8 ::= Expr10 ;
+
+-- Not too sure how to get this IF and LET precedence working!
+-- Problems of shift reduce errors, so we force explicit bracketing
+-- when nesting...
+-- IF_EXPR          . Expr9  ::= "if" Expr "then"  Expr  "else"  Expr ;
+-- LET_EXPR         . Expr9  ::= "let" "{" [LetExprPhrase] "}" "in" Expr ;
+-- _                . Expr9  ::= Expr10 ;
+
+LIST_EXPR        . Expr10 ::= "[" [Expr] "]" ;
+VAR_EXPR         . Expr10 ::= PIdent ;
+INT_EXPR         . Expr10 ::= PInteger ;
+STRING_EXPR      . Expr10 ::= String ;
+CHAR_EXPR        . Expr10 ::= Char ;
+DOUBLE_EXPR      . Expr10 ::= Double ;
+UNIT_EXPR        . Expr10 ::= "(" ")" ;
+
+FOLD_EXPR        . Expr10 ::= "fold" PIdent "of" "{" [FoldExprPhrase] "}" ;
+UNFOLD_EXPR      . Expr10 ::= "unfold" PIdent "of" "{" [UnfoldExprPhrase] "}" ;
+CASE_EXPR        . Expr10 ::= "case" Expr "of" "{" [PattExprPhrase] "}" ;
+SWITCH_EXP       . Expr10 ::= "switch" "{" [SwitchExprPhrase] "}" ;
+
+
+DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR    . Expr10 ::= UIdent "(" [Expr] ")" ;
+DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR . Expr10 ::= UIdent ;
+TUPLE_EXPR       . Expr10 ::= "(" Expr "," [TupleExprList] ")" ;
+FUN_EXPR         . Expr10 ::= PIdent "(" [Expr] ")" ;
+RECORD_EXPR      . Expr10 ::= "(" [RecordExprPhrase] ")" ;
+
+_                . Expr10 ::= "(" Expr ")" ;
+
+UNFOLD_EXPR_PHRASE.    UnfoldExprPhrase ::= Expr "of" "{" [FoldExprPhrase] "}"  ;
+separator UnfoldExprPhrase ";" ;
+
+FOLD_EXPR_PHRASE.    FoldExprPhrase ::= UIdent ":"  [PIdent]  "->"  Expr   ;
+separator FoldExprPhrase ";" ;
+
+LET_EXPR_PHRASE . LetExprPhrase ::= MplStmt ; 
+separator nonempty LetExprPhrase ";" ;
+
+TUPLE_EXPR_LIST . TupleExprList ::= Expr ;
+separator nonempty TupleExprList "," ;
+
+RECORD_EXPR_PHRASE . RecordExprPhrase ::= UIdent ":=" Expr ;
+separator nonempty RecordExprPhrase "," ;
+
+SWITCH_EXPR_PHRASE . SwitchExprPhrase ::= Expr "->" Expr ;
+separator nonempty SwitchExprPhrase ";" ;
+
+separator Expr "," ;
+
+
+-- ====================================================================
+--  MPL Pattern expression definition
+-- ====================================================================
+
+PATTERN_TO_EXPR . PattExprPhrase ::= [Pattern] "->" Expr ;
+
+PATTERN  . Pattern ::= Pattern0 ;
 separator Pattern "," ;
 
-LISTPATTERN2. Pattern ::= Pattern1 ":" Pattern ;
-_           . Pattern ::= Pattern1 ;
+LIST_COLON_PATTERN       . Pattern0 ::= Pattern1 ":" Pattern0 ;
+_                        . Pattern0 ::= Pattern1 ;
 
-CONSPATTERN   . Pattern1 ::= UIdent "(" [Pattern] ")" ;
-CONSPATTERN_WA. Pattern1 ::= UIdent ;
-LISTPATTERN1  . Pattern1 ::= TokSBrO [Pattern] TokSBrC ;
-PRODPATTERN   . Pattern1 ::= "<" [Pattern] ">" ;
-VARPATTERN    . Pattern1 ::= PIdent ;
-STR_CONSTPATTERN. Pattern1 ::= String ;
-INT_CONSTPATTERN.Pattern1  ::= PInteger ;
-NULLPATTERN     . Pattern1 ::= TokDCare ;
-_               .Pattern1  ::= "(" Pattern ")" ;  
+CONSTRUCTOR_PATTERN_ARGS    . Pattern1 ::=  UIdent "(" [Pattern] ")" ;
+CONSTRUCTOR_PATTERN_NO_ARGS . Pattern1 ::=  UIdent ;
+UNIT_PATTERN                . Pattern1 ::= "(" ")" ; 
+RECORD_PATTERN              . Pattern1 ::= "(" DestructorPatternPhrase "," [DestructorPatternPhrase] ")";
+LIST_PATTERN                . Pattern1 ::=  "[" [Pattern] "]" ;
+TUPLE_PATTERN               . Pattern1 ::=  "(" Pattern "," [TupleListPattern] ")" ;
+VAR_PATTERN                 . Pattern1 ::=  PIdent ;
+STR_PATTERN                 . Pattern1 ::=  String ;
+INT_PATTERN                 . Pattern1 ::=  PInteger ;
+NULL_PATTERN                . Pattern1 ::=  "_" ;
+_                           . Pattern1 ::=  "(" Pattern ")" ;
 
+TUPLE_LIST_PATTERN . TupleListPattern ::= Pattern ;
+separator nonempty TupleListPattern "," ;
 
-LISTTERM2 .Term   ::= Term1 ":" Term ;
-_         .Term   ::= Term1 ; 
-
--- InfixTerm term1 infixrem term2
-
-Infix0TERM. Term1  ::= Term1 Infix0op Term2 ;
-_         . Term1  ::= Term2 ;
-
-Infix1TERM. Term2  ::= Term2 Infix1op Term3 ;
-_         . Term2  ::= Term3 ;
-
-Infix2TERM. Term3  ::= Term3 Infix2op Term4 ;
-_         . Term3  ::= Term4 ;
-
-Infix3TERM. Term4  ::= Term4 Infix3op Term5 ;
-_         . Term4  ::= Term5 ;
-
-Infix4TERM. Term5  ::= Term5 Infix4op Term6 ;
-_         . Term5  ::= Term6 ;
+DESTRUCTOR_PATTERN_PHRASE . DestructorPatternPhrase ::=  UIdent ":=" Pattern ;
+separator nonempty DestructorPatternPhrase "," ;
 
 
-Infix5TERM. Term6  ::= Term6 Infix5op Term7 ;
-_         . Term6  ::= Term7 ;
-
-Infix6TERM. Term7  ::= Term8 Infix6op Term7 ;
-_         . Term7  ::= Term8 ;
-
-Infix7TERM. Term8  ::= Term8 Infix7op Term9 ;
-_         . Term8  ::= Term9 ;
-
-LISTTERM  .Term9    ::= TokSBrO [Term] TokSBrC ;
-LETTERM   .Term9    ::= TokLet Term "where" "{" [LetWhere] "}"; 
-VARTERM   .Term9    ::= PIdent ;
-CONSTTERM .Term9    ::= ConstantType ;
-IFTERM    .Term9    ::= TokIf Term "then" Term "else" "{" Term "}" ;
-UNFOLDTERM.Term9    ::= TokUnfold PIdent "with" "{" [FoldPattern] "}" ;
-FOLDTERM  .Term9    ::= TokFold PIdent "of" "{" [FoldPattern] "}" ;
-CASETERM  .Term9    ::= TokCase Term "of" "{" [PattTermPharse] "}" ;
-GENCONSTERM_WARGS.Term9  ::= UIdent "(" [Term] ")" ;
-GENCONSTERM_WOARGS.Term9 ::= UIdent ;
-PRODTERM  .Term9         ::=  "<" [Term] ">" ;
-FUNAPPTERM.Term9         ::= PIdent "(" [Term] ")" ;
-RECORDTERM.Term9         ::= TokRecord "of" "{" [RecordEntry] "}" ;
-RECORDTERMALT.Term9      ::= "(:" [RecordEntryAlt] ":)" ;
-
-_         .Term9         ::= "(" Term ")" ;
-
-
-DEFN_LetWhere    .LetWhere ::= Defn ;
-PATTTERM_LetWhere.LetWhere ::= PattTerm ;
-separator nonempty LetWhere ";" ;
-
-
-JUSTPATTTERM.PattTerm ::= PIdent "=" "{" Term "}" ;
-
-separator RecordEntry ";" ;
-separator RecordEntryAlt "," ;
-separator Term "," ;
-
-INTEGER.ConstantType ::= PInteger ;
-STRING .ConstantType ::= String ;
-CHAR   .ConstantType ::= Char ;
-DOUBLE .ConstantType ::= Double ;
-
-RECORDENTRY_ALT.RecordEntryAlt ::= RecordEntry;
-RECORDENTRY    . RecordEntry   ::= Pattern ":=" Term ;   
-
--- 
 -- ====================================================================
--- Processes and process definitions
+--  MPL Function definition
+-- ====================================================================
+TYPED_FUNCTION_DEFN . FunctionDefn ::= 
+    "fun" PIdent "::" [MplType] "->" MplType 
+        "=" "{" [ PattExprPhrase ]"}" ;
+
+FUNCTION_DEFN       . FunctionDefn ::= 
+    "fun" PIdent "=" "{" [ PattExprPhrase ]"}" ;
+
+separator nonempty PattExprPhrase ";" ;
+
+-- ====================================================================
+--  MPL Process definition
 -- ====================================================================
 
-PROCESSDEFfull. ProcessDef ::= TokProc PIdent "::"  
-                                [Type] "|" [Protocol] "=>" [Protocol] 
-                                   "="  "{" PatProcessPhr "}"  ;
-PROCESSDEFshort. ProcessDef ::= TokProc PIdent "=" "{" PatProcessPhr "}" ;
+TYPED_PROCESS_DEFN . ProcessDefn ::= 
+    "proc" PIdent "::" [MplType]  "|" [MplType] "=>" [MplType]
+                   "=" "{" [ProcessPhrase] "}" ;
 
-{-
-separator PatProcessPhr ";" ;
+PROCESS_DEFN . ProcessDefn ::= 
+    "proc" PIdent "=" "{" [ProcessPhrase] "}" ;
+
+PROCESS_PHRASE . ProcessPhrase ::=
+    [Pattern]  "|" [PIdent] "=>" [PIdent] "->" ProcessCommandsBlock ;
+separator ProcessPhrase ";" ;
 
 
-PROCESSPHRASEguard. PatProcessPhr 
-           ::=  [Pattern] "|"  [Channel] "=>" [Channel]   
-                "->" "switch" "{" [GuardProcessPhrase] "}";
--}
-
-PROCESSPHRASEnoguard. PatProcessPhr 
-           ::=  [Pattern] "|"  [Channel] "=>" [Channel] 
-                Process  ;
-
-separator Channel "," ;
-
-MANY_PROCESS. Process ::= "->" "do" "{" [ProcessCommand] "}" ;
-ONE_PROCESS . Process ::= "->" ProcessCommand ;
+PROCESS_COMMANDS_DO_BLOCK             . ProcessCommandsBlock ::= 
+    "do" "{" [ ProcessCommand ] "}" ;
+PROCESS_COMMANDS_SINGLE_COMMAND_BLOCK . ProcessCommandsBlock ::= 
+    ProcessCommand  ;
 
 separator ProcessCommand ";" ;
 
-PROCESS_RUN    . ProcessCommand ::= PIdent "(" [Term] "|" [Channel] "=>" [Channel] ")" ;
-PROCESS_CLOSE  . ProcessCommand ::= TokClose Channel ;
-PROCESS_HALT   . ProcessCommand ::= TokHalt Channel ;
-PROCESS_GET    . ProcessCommand ::= TokGet PIdent "on" Channel;
-PROCESS_HCASE  . ProcessCommand ::= TokHCase Channel "of" "{" [Handler] "}";
-PROCESS_PUT    . ProcessCommand ::= TokPut Term "on" Channel ;
-PROCESS_HPUT   . ProcessCommand ::= TokHPut UIdent "on" Channel ;
-PROCESS_SPLIT  . ProcessCommand ::= TokSplit Channel "into" [Channel] ;
-PROCESS_FORK   . ProcessCommand ::= TokFork PIdent "as" "{" [ForkPart] "}" ;
-Process_PLUG   . ProcessCommand ::= "plug" "{" [PlugPart] "}" ;
-Procss_ID      . ProcessCommand ::= Channel "|=|" PChannel  ;
-PROCESS_NEG    . ProcessCommand ::= Channel "=" "{" "neg" Channel "}";
-PROCESScase    . ProcessCommand ::= TokCase Term "of" "{" [ProcessPhrase] "}" ;
+PROCESS_RUN   .   ProcessCommand ::= PIdent "(" [Expr] "|" [PIdent] "=>" [PIdent] ")" ;
+PROCESS_CLOSE .   ProcessCommand ::= "close" PIdent ;
+PROCESS_HALT  .   ProcessCommand ::= "halt" PIdent ;
+
+PROCESS_GET   .   ProcessCommand ::= "get" PIdent "on" PIdent ;
+PROCESS_PUT   .   ProcessCommand ::= "put" Expr "on" PIdent ;
+
+PROCESS_HCASE .   ProcessCommand ::= "hcase" PIdent "of" "{" [HCasePhrase] "}";
+PROCESS_HPUT  .   ProcessCommand ::= "hput" UIdent "on" PIdent ;
+
+PROCESS_SPLIT . ProcessCommand ::= "split" PIdent "into" [PIdent] ;
+PROCESS_FORK  . ProcessCommand ::= "fork" PIdent "as" "{" [ ForkPhrase ] "}" ;
+
+PROCESS_ID    . ProcessCommand ::= PIdent "|=|" PIdent ;
+PROCESS_NEG   . ProcessCommand ::= PIdent "|=|" "neg" PIdent ;
+
+PROCESS_RACE  . ProcessCommand ::= "race" "{" [ RacePhrase ] "}" ;
+
+PROCESS_PLUG    . ProcessCommand ::= "plug" "{" [ PlugPhrase ] "}" ;
+-- "plug" is a layout word, so we can't use this rule unforunately...
+-- PROCESS_PLUG_AS . ProcessCommand ::= "plug"  [PIdent] "as" "{" [ PlugPhrase ] "}" ;
+
+PROCESS_CASE   . ProcessCommand ::= "case" Expr "of" "{" [ProcessCasePhrase] "}";
+PROCESS_SWITCH . ProcessCommand ::= "switch" "{" [ProcessSwitchPhrase] "}";
 
 
-PLUGPART_MANY.PlugPart ::= "do"  "{" [ProcessCommand] "}" ;
-PLUGPART_ONE .PlugPart ::= ProcessCommand ;
-
-separator nonempty PlugPart ";" ;
-
-separator nonempty ForkPart ";" ;
---FORKPARTfull. ForkPart  ::= PIdent "with" [Channel] Process;
-FORKPARTshort. ForkPart ::= PIdent Process;
-
-separator Handler ";" ;
-HANDLER. Handler ::= UIdent Process ; 
 
 
-separator ProcessPhrase ";" ;
---CASEPROCESSguard. ProcessPhrase 
---          ::= [Pattern]  "->" "switch" "{" [GuardProcAlt] "}" ;
-CASEPROCESSnoguard. ProcessPhrase 
-          ::= Pattern Process  ;
+HCASE_PHRASE . HCasePhrase ::= UIdent "->" ProcessCommandsBlock ;
+separator HCasePhrase ";" ;
 
-separator nonempty GuardProcessPhrase ";";
-GUARDEDPROCESSterm . GuardProcessPhrase ::= Term "=" "{" [ProcessCommand] "}" ;
-GUARDEDPROCESSother. GuardProcessPhrase ::= TokDefault "=" "{" [ProcessCommand] "}" ;
+FORK_WITH_PHRASE . ForkPhrase ::= PIdent "with" [PIdent] "->" ProcessCommandsBlock ;
+FORK_PHRASE . ForkPhrase ::= PIdent "->" ProcessCommandsBlock ;
+separator ForkPhrase ";" ;
 
- 
-BARECHANNEL. PChannel ::= PIdent ;
-NEGCHANNEL. PChannel ::= "neg" PIdent ;
+RACE_PHRASE . RacePhrase ::= PIdent "->" ProcessCommandsBlock ;
+separator RacePhrase ";" ;
 
-CHANNEL.Channel ::= PIdent ;
+PLUG_PHRASE    . PlugPhrase ::= ProcessCommandsBlock ;
+-- PLUG_PHRASE_AS . PlugPhrase ::= "with" [PIdent] "->" ProcessCommandsBlock ;
+separator PlugPhrase ";" ;
+
+PROCESS_CASE_PHRASE . ProcessCasePhrase ::=  [Pattern] "->" ProcessCommandsBlock ;
+separator ProcessCasePhrase ";" ;
+
+PROCESS_SWITCH_PHRASE . ProcessSwitchPhrase ::= Expr "->" ProcessCommandsBlock ;
+separator ProcessSwitchPhrase ";" ;

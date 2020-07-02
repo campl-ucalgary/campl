@@ -21,7 +21,7 @@ $i = [$l $d _ ']     -- identifier character
 $u = [. \n]          -- universal: any character
 
 @rsyms =    -- symbols and non-identifier-like reserved words
-   \{ | \} | \; | \: \: | \= \> | \= | \, | \- \> | \( | \) | \< | \> | \( \* \) | \( \+ \) | \| | \: | \: \= | \| \= \|
+   \, | \{ | \} | \; | \( \+ \) | \( \* \) | \( | \| | \) | \[ | \] | \- \> | \= | \: \: | \= \> | \: | \: \= | \_ | \| \= \|
 
 :-
 "--" [.]* ; -- Toss single line comments
@@ -30,92 +30,28 @@ $u = [. \n]          -- universal: any character
 $white+ ;
 @rsyms
     { tok (\p s -> PT p (eitherResIdent (TV . share) s)) }
-\( \)
-    { tok (\p s -> PT p (eitherResIdent (T_TokUnit . share) s)) }
-\[
-    { tok (\p s -> PT p (eitherResIdent (T_TokSBrO . share) s)) }
-\]
-    { tok (\p s -> PT p (eitherResIdent (T_TokSBrC . share) s)) }
-d e f n
-    { tok (\p s -> PT p (eitherResIdent (T_TokDefn . share) s)) }
-r u n
-    { tok (\p s -> PT p (eitherResIdent (T_TokRun . share) s)) }
-t e r m
-    { tok (\p s -> PT p (eitherResIdent (T_TokTerm . share) s)) }
-d a t a
-    { tok (\p s -> PT p (eitherResIdent (T_TokData . share) s)) }
-c o d a t a
-    { tok (\p s -> PT p (eitherResIdent (T_TokCodata . share) s)) }
-t y p e
-    { tok (\p s -> PT p (eitherResIdent (T_TokType . share) s)) }
-p r o t o c o l
-    { tok (\p s -> PT p (eitherResIdent (T_TokProtocol . share) s)) }
-c o p r o t o c o l
-    { tok (\p s -> PT p (eitherResIdent (T_TokCoprotocol . share) s)) }
-G e t
-    { tok (\p s -> PT p (eitherResIdent (T_TokGetProt . share) s)) }
-P u t
-    { tok (\p s -> PT p (eitherResIdent (T_TokPutProt . share) s)) }
-n e g
-    { tok (\p s -> PT p (eitherResIdent (T_TokNeg . share) s)) }
-T o p B o t
-    { tok (\p s -> PT p (eitherResIdent (T_TokTopBot . share) s)) }
-f u n
-    { tok (\p s -> PT p (eitherResIdent (T_TokFun . share) s)) }
-d e f a u l t
-    { tok (\p s -> PT p (eitherResIdent (T_TokDefault . share) s)) }
-r e c o r d
-    { tok (\p s -> PT p (eitherResIdent (T_TokRecord . share) s)) }
-i f
-    { tok (\p s -> PT p (eitherResIdent (T_TokIf . share) s)) }
-f o l d
-    { tok (\p s -> PT p (eitherResIdent (T_TokFold . share) s)) }
-u n f o l d
-    { tok (\p s -> PT p (eitherResIdent (T_TokUnfold . share) s)) }
-c a s e
-    { tok (\p s -> PT p (eitherResIdent (T_TokCase . share) s)) }
-p r o c
-    { tok (\p s -> PT p (eitherResIdent (T_TokProc . share) s)) }
-c l o s e
-    { tok (\p s -> PT p (eitherResIdent (T_TokClose . share) s)) }
-h a l t
-    { tok (\p s -> PT p (eitherResIdent (T_TokHalt . share) s)) }
-g e t
-    { tok (\p s -> PT p (eitherResIdent (T_TokGet . share) s)) }
-p u t
-    { tok (\p s -> PT p (eitherResIdent (T_TokPut . share) s)) }
-h c a s e
-    { tok (\p s -> PT p (eitherResIdent (T_TokHCase . share) s)) }
-h p u t
-    { tok (\p s -> PT p (eitherResIdent (T_TokHPut . share) s)) }
-s p l i t
-    { tok (\p s -> PT p (eitherResIdent (T_TokSplit . share) s)) }
-f o r k
-    { tok (\p s -> PT p (eitherResIdent (T_TokFork . share) s)) }
-\_
-    { tok (\p s -> PT p (eitherResIdent (T_TokDCare . share) s)) }
 $c ($l | $d | \_)*
     { tok (\p s -> PT p (eitherResIdent (T_UIdent . share) s)) }
 $l ($l | $d | \_ | \')*
     { tok (\p s -> PT p (eitherResIdent (T_PIdent . share) s)) }
-$d +
+([\-]$d | $d)$d *
     { tok (\p s -> PT p (eitherResIdent (T_PInteger . share) s)) }
 \| \|
-    { tok (\p s -> PT p (eitherResIdent (T_Infix0op . share) s)) }
+    { tok (\p s -> PT p (eitherResIdent (T_Infixl1op . share) s)) }
 \& \&
-    { tok (\p s -> PT p (eitherResIdent (T_Infix1op . share) s)) }
+    { tok (\p s -> PT p (eitherResIdent (T_Infixl2op . share) s)) }
 \= \= | \/ \= | \< | \> | \< \= | \> \=
-    { tok (\p s -> PT p (eitherResIdent (T_Infix2op . share) s)) }
+    { tok (\p s -> PT p (eitherResIdent (T_Infixl3op . share) s)) }
 \+ \+
-    { tok (\p s -> PT p (eitherResIdent (T_Infix3op . share) s)) }
+    { tok (\p s -> PT p (eitherResIdent (T_Infixl4op . share) s)) }
 \+ | \-
-    { tok (\p s -> PT p (eitherResIdent (T_Infix4op . share) s)) }
+    { tok (\p s -> PT p (eitherResIdent (T_Infixl5op . share) s)) }
 \* | \/ | \%
-    { tok (\p s -> PT p (eitherResIdent (T_Infix5op . share) s)) }
+    { tok (\p s -> PT p (eitherResIdent (T_Infixl6op . share) s)) }
 \^
-    { tok (\p s -> PT p (eitherResIdent (T_Infix6op . share) s)) }
+    { tok (\p s -> PT p (eitherResIdent (T_Infixr7op . share) s)) }
 \! \!
-    { tok (\p s -> PT p (eitherResIdent (T_Infix7op . share) s)) }
+    { tok (\p s -> PT p (eitherResIdent (T_Infixl8op . share) s)) }
 
 $l $i*
     { tok (\p s -> PT p (eitherResIdent (TV . share) s)) }
@@ -142,49 +78,17 @@ data Tok =
  | TV !String         -- identifiers
  | TD !String         -- double precision float literals
  | TC !String         -- character literals
- | T_TokUnit !String
- | T_TokSBrO !String
- | T_TokSBrC !String
- | T_TokDefn !String
- | T_TokRun !String
- | T_TokTerm !String
- | T_TokData !String
- | T_TokCodata !String
- | T_TokType !String
- | T_TokProtocol !String
- | T_TokCoprotocol !String
- | T_TokGetProt !String
- | T_TokPutProt !String
- | T_TokNeg !String
- | T_TokTopBot !String
- | T_TokFun !String
- | T_TokDefault !String
- | T_TokRecord !String
- | T_TokIf !String
- | T_TokFold !String
- | T_TokUnfold !String
- | T_TokCase !String
- | T_TokProc !String
- | T_TokClose !String
- | T_TokHalt !String
- | T_TokGet !String
- | T_TokPut !String
- | T_TokHCase !String
- | T_TokHPut !String
- | T_TokSplit !String
- | T_TokFork !String
- | T_TokDCare !String
  | T_UIdent !String
  | T_PIdent !String
  | T_PInteger !String
- | T_Infix0op !String
- | T_Infix1op !String
- | T_Infix2op !String
- | T_Infix3op !String
- | T_Infix4op !String
- | T_Infix5op !String
- | T_Infix6op !String
- | T_Infix7op !String
+ | T_Infixl1op !String
+ | T_Infixl2op !String
+ | T_Infixl3op !String
+ | T_Infixl4op !String
+ | T_Infixl5op !String
+ | T_Infixl6op !String
+ | T_Infixr7op !String
+ | T_Infixl8op !String
 
  deriving (Eq,Show,Ord)
 
@@ -222,49 +126,17 @@ prToken t = case t of
   PT _ (TD s)   -> s
   PT _ (TC s)   -> s
   Err _         -> "#error"
-  PT _ (T_TokUnit s) -> s
-  PT _ (T_TokSBrO s) -> s
-  PT _ (T_TokSBrC s) -> s
-  PT _ (T_TokDefn s) -> s
-  PT _ (T_TokRun s) -> s
-  PT _ (T_TokTerm s) -> s
-  PT _ (T_TokData s) -> s
-  PT _ (T_TokCodata s) -> s
-  PT _ (T_TokType s) -> s
-  PT _ (T_TokProtocol s) -> s
-  PT _ (T_TokCoprotocol s) -> s
-  PT _ (T_TokGetProt s) -> s
-  PT _ (T_TokPutProt s) -> s
-  PT _ (T_TokNeg s) -> s
-  PT _ (T_TokTopBot s) -> s
-  PT _ (T_TokFun s) -> s
-  PT _ (T_TokDefault s) -> s
-  PT _ (T_TokRecord s) -> s
-  PT _ (T_TokIf s) -> s
-  PT _ (T_TokFold s) -> s
-  PT _ (T_TokUnfold s) -> s
-  PT _ (T_TokCase s) -> s
-  PT _ (T_TokProc s) -> s
-  PT _ (T_TokClose s) -> s
-  PT _ (T_TokHalt s) -> s
-  PT _ (T_TokGet s) -> s
-  PT _ (T_TokPut s) -> s
-  PT _ (T_TokHCase s) -> s
-  PT _ (T_TokHPut s) -> s
-  PT _ (T_TokSplit s) -> s
-  PT _ (T_TokFork s) -> s
-  PT _ (T_TokDCare s) -> s
   PT _ (T_UIdent s) -> s
   PT _ (T_PIdent s) -> s
   PT _ (T_PInteger s) -> s
-  PT _ (T_Infix0op s) -> s
-  PT _ (T_Infix1op s) -> s
-  PT _ (T_Infix2op s) -> s
-  PT _ (T_Infix3op s) -> s
-  PT _ (T_Infix4op s) -> s
-  PT _ (T_Infix5op s) -> s
-  PT _ (T_Infix6op s) -> s
-  PT _ (T_Infix7op s) -> s
+  PT _ (T_Infixl1op s) -> s
+  PT _ (T_Infixl2op s) -> s
+  PT _ (T_Infixl3op s) -> s
+  PT _ (T_Infixl4op s) -> s
+  PT _ (T_Infixl5op s) -> s
+  PT _ (T_Infixl6op s) -> s
+  PT _ (T_Infixr7op s) -> s
+  PT _ (T_Infixl8op s) -> s
 
 
 data BTree = N | B String Tok BTree BTree deriving (Show)
@@ -278,7 +150,7 @@ eitherResIdent tv s = treeFind resWords
                               | s == a = t
 
 resWords :: BTree
-resWords = b "as" 17 (b ":=" 9 (b "," 5 (b "(+)" 3 (b "(*)" 2 (b "(" 1 N N) N) (b ")" 4 N N)) (b ":" 7 (b "->" 6 N N) (b "::" 8 N N))) (b "=>" 13 (b "<" 11 (b ";" 10 N N) (b "=" 12 N N)) (b "Neg" 15 (b ">" 14 N N) (b "and" 16 N N)))) (b "switch" 26 (b "of" 22 (b "into" 20 (b "else" 19 (b "do" 18 N N) N) (b "neg" 21 N N)) (b "plug" 24 (b "on" 23 N N) (b "race" 25 N N))) (b "{" 30 (b "where" 28 (b "then" 27 N N) (b "with" 29 N N)) (b "|=|" 32 (b "|" 31 N N) (b "}" 33 N N))))
+resWords = b "fun" 28 (b "]" 14 (b ":" 7 (b ")" 4 (b "(*)" 2 (b "(" 1 N N) (b "(+)" 3 N N)) (b "->" 6 (b "," 5 N N) N)) (b "=" 11 (b ":=" 9 (b "::" 8 N N) (b ";" 10 N N)) (b "[" 13 (b "=>" 12 N N) N))) (b "coprotocol" 21 (b "case" 18 (b "and" 16 (b "_" 15 N N) (b "as" 17 N N)) (b "codata" 20 (b "close" 19 N N) N)) (b "else" 25 (b "defn" 23 (b "data" 22 N N) (b "do" 24 N N)) (b "fork" 27 (b "fold" 26 N N) N)))) (b "proc" 42 (b "into" 35 (b "hput" 32 (b "halt" 30 (b "get" 29 N N) (b "hcase" 31 N N)) (b "in" 34 (b "if" 33 N N) N)) (b "on" 39 (b "neg" 37 (b "let" 36 N N) (b "of" 38 N N)) (b "potato" 41 (b "plug" 40 N N) N))) (b "unfold" 49 (b "split" 46 (b "put" 44 (b "protocol" 43 N N) (b "race" 45 N N)) (b "then" 48 (b "switch" 47 N N) N)) (b "|" 53 (b "with" 51 (b "where" 50 N N) (b "{" 52 N N)) (b "}" 55 (b "|=|" 54 N N) N))))
    where b s n = let bs = id s
                   in B bs (TS bs n)
 

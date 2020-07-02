@@ -8,96 +8,7 @@ import Language.ErrM
 
 }
 
-%name pMPL MPL
-%name pListMPLstmt ListMPLstmt
-%name pMPLstmt MPLstmt
-%name pMPLstmtAlt MPLstmtAlt
-%name pListMPLstmtAlt ListMPLstmtAlt
-%name pRUNstmt RUNstmt
-%name pListDefn ListDefn
-%name pDefn Defn
-%name pTypeDefn TypeDefn
-%name pListDataClause ListDataClause
-%name pListCoDataClause ListCoDataClause
-%name pListTypeSpec ListTypeSpec
-%name pDataClause DataClause
-%name pCoDataClause CoDataClause
-%name pListDataPhrase ListDataPhrase
-%name pListCoDataPhrase ListCoDataPhrase
-%name pDataPhrase DataPhrase
-%name pCoDataPhrase CoDataPhrase
-%name pListStructor ListStructor
-%name pListType ListType
-%name pStructor Structor
-%name pTypeSpec TypeSpec
-%name pListTypeParam ListTypeParam
-%name pTypeParam TypeParam
-%name pType Type
-%name pTypeN TypeN
-%name pListTypeN ListTypeN
-%name pListUIdent ListUIdent
-%name pCTypeDefn CTypeDefn
-%name pProtocolClause ProtocolClause
-%name pCoProtocolClause CoProtocolClause
-%name pListProtocolPhrase ListProtocolPhrase
-%name pListCoProtocolPhrase ListCoProtocolPhrase
-%name pProtocolPhrase ProtocolPhrase
-%name pCoProtocolPhrase CoProtocolPhrase
-%name pProtocol Protocol
-%name pProtocol1 Protocol1
-%name pListProtocol ListProtocol
-%name pFunctionDefn FunctionDefn
-%name pListFunctionDefn ListFunctionDefn
-%name pListPattTermPhrase ListPattTermPhrase
-%name pListPIdent ListPIdent
-%name pFoldPattern FoldPattern
-%name pListFoldPattern ListFoldPattern
-%name pPattTermPhrase PattTermPhrase
-%name pListGuardedTerm ListGuardedTerm
-%name pGuardedTerm GuardedTerm
-%name pListPattern ListPattern
-%name pPattern Pattern
-%name pPattern1 Pattern1
-%name pTerm Term
-%name pTerm1 Term1
-%name pTerm2 Term2
-%name pTerm3 Term3
-%name pTerm4 Term4
-%name pTerm5 Term5
-%name pTerm6 Term6
-%name pTerm7 Term7
-%name pTerm8 Term8
-%name pTerm9 Term9
-%name pLetWhere LetWhere
-%name pListLetWhere ListLetWhere
-%name pPattTerm PattTerm
-%name pListRecordEntry ListRecordEntry
-%name pListRecordEntryAlt ListRecordEntryAlt
-%name pListTerm ListTerm
-%name pConstantType ConstantType
-%name pRecordEntryAlt RecordEntryAlt
-%name pListIdent ListIdent
-%name pRecordEntry RecordEntry
-%name pProcessDef ProcessDef
-%name pPatProcessPhr PatProcessPhr
-%name pListChannel ListChannel
-%name pProcess Process
-%name pListProcessCommand ListProcessCommand
-%name pProcessCommand ProcessCommand
-%name pPlugPart PlugPart
-%name pRacePart RacePart
-%name pListRacePart ListRacePart
-%name pListPlugPart ListPlugPart
-%name pListForkPart ListForkPart
-%name pForkPart ForkPart
-%name pListHandler ListHandler
-%name pHandler Handler
-%name pListProcessPhrase ListProcessPhrase
-%name pProcessPhrase ProcessPhrase
-%name pListGuardProcessPhrase ListGuardProcessPhrase
-%name pGuardProcessPhrase GuardProcessPhrase
-%name pPChannel PChannel
-%name pChannel Channel
+%name pMplProg MplProg
 -- no lexer declaration
 %monad { Err } { thenM } { returnM }
 %tokentype {Token}
@@ -112,76 +23,65 @@ import Language.ErrM
   '::' { PT _ (TS _ 8) }
   ':=' { PT _ (TS _ 9) }
   ';' { PT _ (TS _ 10) }
-  '<' { PT _ (TS _ 11) }
-  '=' { PT _ (TS _ 12) }
-  '=>' { PT _ (TS _ 13) }
-  '>' { PT _ (TS _ 14) }
-  'Neg' { PT _ (TS _ 15) }
+  '=' { PT _ (TS _ 11) }
+  '=>' { PT _ (TS _ 12) }
+  '[' { PT _ (TS _ 13) }
+  ']' { PT _ (TS _ 14) }
+  '_' { PT _ (TS _ 15) }
   'and' { PT _ (TS _ 16) }
   'as' { PT _ (TS _ 17) }
-  'do' { PT _ (TS _ 18) }
-  'else' { PT _ (TS _ 19) }
-  'into' { PT _ (TS _ 20) }
-  'neg' { PT _ (TS _ 21) }
-  'of' { PT _ (TS _ 22) }
-  'on' { PT _ (TS _ 23) }
-  'plug' { PT _ (TS _ 24) }
-  'race' { PT _ (TS _ 25) }
-  'switch' { PT _ (TS _ 26) }
-  'then' { PT _ (TS _ 27) }
-  'where' { PT _ (TS _ 28) }
-  'with' { PT _ (TS _ 29) }
-  '{' { PT _ (TS _ 30) }
-  '|' { PT _ (TS _ 31) }
-  '|=|' { PT _ (TS _ 32) }
-  '}' { PT _ (TS _ 33) }
+  'case' { PT _ (TS _ 18) }
+  'close' { PT _ (TS _ 19) }
+  'codata' { PT _ (TS _ 20) }
+  'coprotocol' { PT _ (TS _ 21) }
+  'data' { PT _ (TS _ 22) }
+  'defn' { PT _ (TS _ 23) }
+  'do' { PT _ (TS _ 24) }
+  'else' { PT _ (TS _ 25) }
+  'fold' { PT _ (TS _ 26) }
+  'fork' { PT _ (TS _ 27) }
+  'fun' { PT _ (TS _ 28) }
+  'get' { PT _ (TS _ 29) }
+  'halt' { PT _ (TS _ 30) }
+  'hcase' { PT _ (TS _ 31) }
+  'hput' { PT _ (TS _ 32) }
+  'if' { PT _ (TS _ 33) }
+  'in' { PT _ (TS _ 34) }
+  'into' { PT _ (TS _ 35) }
+  'let' { PT _ (TS _ 36) }
+  'neg' { PT _ (TS _ 37) }
+  'of' { PT _ (TS _ 38) }
+  'on' { PT _ (TS _ 39) }
+  'plug' { PT _ (TS _ 40) }
+  'potato' { PT _ (TS _ 41) }
+  'proc' { PT _ (TS _ 42) }
+  'protocol' { PT _ (TS _ 43) }
+  'put' { PT _ (TS _ 44) }
+  'race' { PT _ (TS _ 45) }
+  'split' { PT _ (TS _ 46) }
+  'switch' { PT _ (TS _ 47) }
+  'then' { PT _ (TS _ 48) }
+  'unfold' { PT _ (TS _ 49) }
+  'where' { PT _ (TS _ 50) }
+  'with' { PT _ (TS _ 51) }
+  '{' { PT _ (TS _ 52) }
+  '|' { PT _ (TS _ 53) }
+  '|=|' { PT _ (TS _ 54) }
+  '}' { PT _ (TS _ 55) }
   L_quoted { PT _ (TL $$) }
   L_charac { PT _ (TC $$) }
   L_doubl  { PT _ (TD $$) }
-  L_ident  { PT _ (TV $$) }
-  L_TokUnit { PT _ (T_TokUnit _) }
-  L_TokSBrO { PT _ (T_TokSBrO _) }
-  L_TokSBrC { PT _ (T_TokSBrC _) }
-  L_TokDefn { PT _ (T_TokDefn _) }
-  L_TokRun { PT _ (T_TokRun _) }
-  L_TokTerm { PT _ (T_TokTerm _) }
-  L_TokData { PT _ (T_TokData _) }
-  L_TokCodata { PT _ (T_TokCodata _) }
-  L_TokType { PT _ (T_TokType _) }
-  L_TokProtocol { PT _ (T_TokProtocol _) }
-  L_TokCoprotocol { PT _ (T_TokCoprotocol _) }
-  L_TokGetProt { PT _ (T_TokGetProt _) }
-  L_TokPutProt { PT _ (T_TokPutProt _) }
-  L_TokNeg { PT _ (T_TokNeg _) }
-  L_TokTopBot { PT _ (T_TokTopBot _) }
-  L_TokFun { PT _ (T_TokFun _) }
-  L_TokDefault { PT _ (T_TokDefault _) }
-  L_TokRecord { PT _ (T_TokRecord _) }
-  L_TokIf { PT _ (T_TokIf _) }
-  L_TokFold { PT _ (T_TokFold _) }
-  L_TokUnfold { PT _ (T_TokUnfold _) }
-  L_TokCase { PT _ (T_TokCase _) }
-  L_TokProc { PT _ (T_TokProc _) }
-  L_TokClose { PT _ (T_TokClose _) }
-  L_TokHalt { PT _ (T_TokHalt _) }
-  L_TokGet { PT _ (T_TokGet _) }
-  L_TokPut { PT _ (T_TokPut _) }
-  L_TokHCase { PT _ (T_TokHCase _) }
-  L_TokHPut { PT _ (T_TokHPut _) }
-  L_TokSplit { PT _ (T_TokSplit _) }
-  L_TokFork { PT _ (T_TokFork _) }
-  L_TokDCare { PT _ (T_TokDCare _) }
   L_UIdent { PT _ (T_UIdent _) }
   L_PIdent { PT _ (T_PIdent _) }
   L_PInteger { PT _ (T_PInteger _) }
-  L_Infix0op { PT _ (T_Infix0op $$) }
-  L_Infix1op { PT _ (T_Infix1op $$) }
-  L_Infix2op { PT _ (T_Infix2op $$) }
-  L_Infix3op { PT _ (T_Infix3op $$) }
-  L_Infix4op { PT _ (T_Infix4op $$) }
-  L_Infix5op { PT _ (T_Infix5op $$) }
-  L_Infix6op { PT _ (T_Infix6op $$) }
-  L_Infix7op { PT _ (T_Infix7op $$) }
+  L_Infixl1op { PT _ (T_Infixl1op $$) }
+  L_Infixl2op { PT _ (T_Infixl2op $$) }
+  L_Infixl3op { PT _ (T_Infixl3op $$) }
+  L_Infixl4op { PT _ (T_Infixl4op $$) }
+  L_Infixl5op { PT _ (T_Infixl5op $$) }
+  L_Infixl6op { PT _ (T_Infixl6op $$) }
+  L_Infixr7op { PT _ (T_Infixr7op $$) }
+  L_Infixl8op { PT _ (T_Infixl8op $$) }
 
 %%
 
@@ -194,105 +94,6 @@ Char     : L_charac { (read ( $1)) :: Char }
 Double  :: { Double }
 Double   : L_doubl  { (read ( $1)) :: Double }
 
-Ident   :: { Ident }
-Ident    : L_ident  { Ident $1 }
-
-TokUnit :: { TokUnit}
-TokUnit  : L_TokUnit { TokUnit (mkPosToken $1)}
-
-TokSBrO :: { TokSBrO}
-TokSBrO  : L_TokSBrO { TokSBrO (mkPosToken $1)}
-
-TokSBrC :: { TokSBrC}
-TokSBrC  : L_TokSBrC { TokSBrC (mkPosToken $1)}
-
-TokDefn :: { TokDefn}
-TokDefn  : L_TokDefn { TokDefn (mkPosToken $1)}
-
-TokRun :: { TokRun}
-TokRun  : L_TokRun { TokRun (mkPosToken $1)}
-
-TokTerm :: { TokTerm}
-TokTerm  : L_TokTerm { TokTerm (mkPosToken $1)}
-
-TokData :: { TokData}
-TokData  : L_TokData { TokData (mkPosToken $1)}
-
-TokCodata :: { TokCodata}
-TokCodata  : L_TokCodata { TokCodata (mkPosToken $1)}
-
-TokType :: { TokType}
-TokType  : L_TokType { TokType (mkPosToken $1)}
-
-TokProtocol :: { TokProtocol}
-TokProtocol  : L_TokProtocol { TokProtocol (mkPosToken $1)}
-
-TokCoprotocol :: { TokCoprotocol}
-TokCoprotocol  : L_TokCoprotocol { TokCoprotocol (mkPosToken $1)}
-
-TokGetProt :: { TokGetProt}
-TokGetProt  : L_TokGetProt { TokGetProt (mkPosToken $1)}
-
-TokPutProt :: { TokPutProt}
-TokPutProt  : L_TokPutProt { TokPutProt (mkPosToken $1)}
-
-TokNeg :: { TokNeg}
-TokNeg  : L_TokNeg { TokNeg (mkPosToken $1)}
-
-TokTopBot :: { TokTopBot}
-TokTopBot  : L_TokTopBot { TokTopBot (mkPosToken $1)}
-
-TokFun :: { TokFun}
-TokFun  : L_TokFun { TokFun (mkPosToken $1)}
-
-TokDefault :: { TokDefault}
-TokDefault  : L_TokDefault { TokDefault (mkPosToken $1)}
-
-TokRecord :: { TokRecord}
-TokRecord  : L_TokRecord { TokRecord (mkPosToken $1)}
-
-TokIf :: { TokIf}
-TokIf  : L_TokIf { TokIf (mkPosToken $1)}
-
-TokFold :: { TokFold}
-TokFold  : L_TokFold { TokFold (mkPosToken $1)}
-
-TokUnfold :: { TokUnfold}
-TokUnfold  : L_TokUnfold { TokUnfold (mkPosToken $1)}
-
-TokCase :: { TokCase}
-TokCase  : L_TokCase { TokCase (mkPosToken $1)}
-
-TokProc :: { TokProc}
-TokProc  : L_TokProc { TokProc (mkPosToken $1)}
-
-TokClose :: { TokClose}
-TokClose  : L_TokClose { TokClose (mkPosToken $1)}
-
-TokHalt :: { TokHalt}
-TokHalt  : L_TokHalt { TokHalt (mkPosToken $1)}
-
-TokGet :: { TokGet}
-TokGet  : L_TokGet { TokGet (mkPosToken $1)}
-
-TokPut :: { TokPut}
-TokPut  : L_TokPut { TokPut (mkPosToken $1)}
-
-TokHCase :: { TokHCase}
-TokHCase  : L_TokHCase { TokHCase (mkPosToken $1)}
-
-TokHPut :: { TokHPut}
-TokHPut  : L_TokHPut { TokHPut (mkPosToken $1)}
-
-TokSplit :: { TokSplit}
-TokSplit  : L_TokSplit { TokSplit (mkPosToken $1)}
-
-TokFork :: { TokFork}
-TokFork  : L_TokFork { TokFork (mkPosToken $1)}
-
-TokDCare :: { TokDCare}
-TokDCare  : L_TokDCare { TokDCare (mkPosToken $1)}
-
 UIdent :: { UIdent}
 UIdent  : L_UIdent { UIdent (mkPosToken $1)}
 
@@ -302,345 +103,305 @@ PIdent  : L_PIdent { PIdent (mkPosToken $1)}
 PInteger :: { PInteger}
 PInteger  : L_PInteger { PInteger (mkPosToken $1)}
 
-Infix0op :: { Infix0op}
-Infix0op  : L_Infix0op { Infix0op ($1)}
+Infixl1op :: { Infixl1op}
+Infixl1op  : L_Infixl1op { Infixl1op ($1)}
 
-Infix1op :: { Infix1op}
-Infix1op  : L_Infix1op { Infix1op ($1)}
+Infixl2op :: { Infixl2op}
+Infixl2op  : L_Infixl2op { Infixl2op ($1)}
 
-Infix2op :: { Infix2op}
-Infix2op  : L_Infix2op { Infix2op ($1)}
+Infixl3op :: { Infixl3op}
+Infixl3op  : L_Infixl3op { Infixl3op ($1)}
 
-Infix3op :: { Infix3op}
-Infix3op  : L_Infix3op { Infix3op ($1)}
+Infixl4op :: { Infixl4op}
+Infixl4op  : L_Infixl4op { Infixl4op ($1)}
 
-Infix4op :: { Infix4op}
-Infix4op  : L_Infix4op { Infix4op ($1)}
+Infixl5op :: { Infixl5op}
+Infixl5op  : L_Infixl5op { Infixl5op ($1)}
 
-Infix5op :: { Infix5op}
-Infix5op  : L_Infix5op { Infix5op ($1)}
+Infixl6op :: { Infixl6op}
+Infixl6op  : L_Infixl6op { Infixl6op ($1)}
 
-Infix6op :: { Infix6op}
-Infix6op  : L_Infix6op { Infix6op ($1)}
+Infixr7op :: { Infixr7op}
+Infixr7op  : L_Infixr7op { Infixr7op ($1)}
 
-Infix7op :: { Infix7op}
-Infix7op  : L_Infix7op { Infix7op ($1)}
+Infixl8op :: { Infixl8op}
+Infixl8op  : L_Infixl8op { Infixl8op ($1)}
 
-MPL :: { MPL }
-MPL : ListMPLstmt RUNstmt { Language.AbsMPL.MPLPROG (reverse $1) $2 }
-ListMPLstmt :: { [MPLstmt] }
-ListMPLstmt : {- empty -} { [] }
-            | ListMPLstmt MPLstmt { flip (:) $1 $2 }
-MPLstmt :: { MPLstmt }
-MPLstmt : TokDefn 'of' '{' ListDefn '}' 'where' '{' ListMPLstmtAlt '}' { Language.AbsMPL.WHEREDEFN $1 $4 $8 }
-        | TokDefn 'of' '{' ListDefn '}' { Language.AbsMPL.WOWHEREDEFN $1 $4 }
-        | Defn { Language.AbsMPL.BAREDEFN $1 }
-MPLstmtAlt :: { MPLstmtAlt }
-MPLstmtAlt : MPLstmt { Language.AbsMPL.MPLSTMTALT $1 }
-ListMPLstmtAlt :: { [MPLstmtAlt] }
-ListMPLstmtAlt : {- empty -} { [] }
-               | MPLstmtAlt { (:[]) $1 }
-               | MPLstmtAlt ';' ListMPLstmtAlt { (:) $1 $3 }
-RUNstmt :: { RUNstmt }
-RUNstmt : TokRun '::' ListProtocol '=>' ListProtocol '=' '{' ListChannel '=>' ListChannel Process '}' { Language.AbsMPL.RUNSTMTWITHType $1 $3 $5 $8 $10 $11 }
-        | TokRun ListChannel '=>' ListChannel Process { Language.AbsMPL.RUNSTMTWITHTOUType $1 $2 $4 $5 }
-ListDefn :: { [Defn] }
-ListDefn : Defn { (:[]) $1 } | Defn ';' ListDefn { (:) $1 $3 }
-Defn :: { Defn }
-Defn : TypeDefn { Language.AbsMPL.TYPEDEF $1 }
-     | CTypeDefn { Language.AbsMPL.PROTOCOLDEF $1 }
-     | FunctionDefn { Language.AbsMPL.FUNCTIONDEF $1 }
-     | ProcessDef { Language.AbsMPL.PROCESSDEF $1 }
-TypeDefn :: { TypeDefn }
-TypeDefn : TokData ListDataClause { Language.AbsMPL.DATA $1 $2 }
-         | TokCodata ListCoDataClause { Language.AbsMPL.CODATA $1 $2 }
-         | TokType ListTypeSpec '=' '{' Type '}' { Language.AbsMPL.TYPE $1 $2 $5 }
-ListDataClause :: { [DataClause] }
-ListDataClause : DataClause { (:[]) $1 }
-               | DataClause 'and' ListDataClause { (:) $1 $3 }
-ListCoDataClause :: { [CoDataClause] }
-ListCoDataClause : CoDataClause { (:[]) $1 }
-                 | CoDataClause 'and' ListCoDataClause { (:) $1 $3 }
-ListTypeSpec :: { [TypeSpec] }
-ListTypeSpec : {- empty -} { [] }
-             | TypeSpec { (:[]) $1 }
-             | TypeSpec ',' ListTypeSpec { (:) $1 $3 }
-DataClause :: { DataClause }
-DataClause : TypeSpec '->' UIdent '=' '{' ListDataPhrase '}' { Language.AbsMPL.DATACLAUSE $1 $3 $6 }
-CoDataClause :: { CoDataClause }
-CoDataClause : UIdent '->' TypeSpec '=' '{' ListCoDataPhrase '}' { Language.AbsMPL.CODATACLAUSE $1 $3 $6 }
-ListDataPhrase :: { [DataPhrase] }
-ListDataPhrase : {- empty -} { [] }
-               | DataPhrase { (:[]) $1 }
-               | DataPhrase ';' ListDataPhrase { (:) $1 $3 }
-ListCoDataPhrase :: { [CoDataPhrase] }
-ListCoDataPhrase : {- empty -} { [] }
-                 | CoDataPhrase { (:[]) $1 }
-                 | CoDataPhrase ';' ListCoDataPhrase { (:) $1 $3 }
-DataPhrase :: { DataPhrase }
-DataPhrase : ListStructor '::' ListType '->' UIdent { Language.AbsMPL.DATAPHRASE $1 $3 $5 }
-CoDataPhrase :: { CoDataPhrase }
-CoDataPhrase : ListStructor '::' ListType '->' Type { Language.AbsMPL.CODATAPHRASE $1 $3 $5 }
-ListStructor :: { [Structor] }
-ListStructor : Structor { (:[]) $1 }
-             | Structor ',' ListStructor { (:) $1 $3 }
-ListType :: { [Type] }
-ListType : {- empty -} { [] }
-         | Type { (:[]) $1 }
-         | Type ',' ListType { (:) $1 $3 }
-Structor :: { Structor }
-Structor : UIdent { Language.AbsMPL.STRUCTOR $1 }
-TypeSpec :: { TypeSpec }
-TypeSpec : UIdent '(' ListTypeParam ')' { Language.AbsMPL.TYPESPEC_param $1 $3 }
-         | UIdent { Language.AbsMPL.TYPESPEC_basic $1 }
-ListTypeParam :: { [TypeParam] }
-ListTypeParam : {- empty -} { [] }
-              | TypeParam { (:[]) $1 }
-              | TypeParam ',' ListTypeParam { (:) $1 $3 }
-TypeParam :: { TypeParam }
-TypeParam : UIdent { Language.AbsMPL.TYPEPARAM $1 }
-Type :: { Type }
-Type : TypeN '=>' Type { Language.AbsMPL.TYPEARROW $1 $3 }
-     | TypeN { Language.AbsMPL.TYPENext $1 }
-TypeN :: { TypeN }
-TypeN : TokUnit { Language.AbsMPL.TYPEUNIT $1 }
-      | TokSBrO TypeN TokSBrC { Language.AbsMPL.TYPELIST $1 $2 $3 }
-      | UIdent '(' ListType ')' { Language.AbsMPL.TYPEDATCODAT $1 $3 }
-      | UIdent { Language.AbsMPL.TYPECONST_VAR $1 }
-      | '<' ListType '>' { Language.AbsMPL.TYPEPROD $2 }
-      | '(' Type ')' { Language.AbsMPL.TYPEBRACKET $2 }
-ListTypeN :: { [TypeN] }
-ListTypeN : {- empty -} { [] }
-          | TypeN { (:[]) $1 }
-          | TypeN ',' ListTypeN { (:) $1 $3 }
-ListUIdent :: { [UIdent] }
-ListUIdent : {- empty -} { [] }
-           | UIdent { (:[]) $1 }
-           | UIdent ',' ListUIdent { (:) $1 $3 }
-CTypeDefn :: { CTypeDefn }
-CTypeDefn : TokProtocol ProtocolClause { Language.AbsMPL.PROTOCOL $1 $2 }
-          | TokCoprotocol CoProtocolClause { Language.AbsMPL.COPROTOCOL $1 $2 }
-ProtocolClause :: { ProtocolClause }
-ProtocolClause : TypeSpec '=>' UIdent '=' '{' ListProtocolPhrase '}' { Language.AbsMPL.PROTOCOLCLAUSE $1 $3 $6 }
-CoProtocolClause :: { CoProtocolClause }
-CoProtocolClause : UIdent '=>' TypeSpec '=' '{' ListCoProtocolPhrase '}' { Language.AbsMPL.COPROTOCOLCLAUSE $1 $3 $6 }
-ListProtocolPhrase :: { [ProtocolPhrase] }
-ListProtocolPhrase : {- empty -} { [] }
-                   | ProtocolPhrase { (:[]) $1 }
-                   | ProtocolPhrase ';' ListProtocolPhrase { (:) $1 $3 }
-ListCoProtocolPhrase :: { [CoProtocolPhrase] }
-ListCoProtocolPhrase : {- empty -} { [] }
-                     | CoProtocolPhrase { (:[]) $1 }
-                     | CoProtocolPhrase ';' ListCoProtocolPhrase { (:) $1 $3 }
-ProtocolPhrase :: { ProtocolPhrase }
-ProtocolPhrase : UIdent '::' Protocol '=>' UIdent { Language.AbsMPL.PROTOCOLPHRASE $1 $3 $5 }
-CoProtocolPhrase :: { CoProtocolPhrase }
-CoProtocolPhrase : UIdent '::' UIdent '=>' Protocol { Language.AbsMPL.COPROTOCOLPHRASE $1 $3 $5 }
-Protocol :: { Protocol }
-Protocol : Protocol1 { $1 }
-         | Protocol1 '(*)' Protocol { Language.AbsMPL.PROTOCOLtensor $1 $3 }
-         | Protocol1 '(+)' Protocol { Language.AbsMPL.PROTOCOLpar $1 $3 }
-Protocol1 :: { Protocol }
-Protocol1 : '(' Protocol ')' { $2 }
-          | TokGetProt '(' Type '|' Protocol ')' { Language.AbsMPL.PROTOCOLget $1 $3 $5 }
-          | TokPutProt '(' Type '|' Protocol ')' { Language.AbsMPL.PROTOCOLput $1 $3 $5 }
-          | 'Neg' '(' Protocol ')' { Language.AbsMPL.PROTOCOLneg $3 }
-          | TokTopBot { Language.AbsMPL.PROTOCOLtopbot $1 }
-          | UIdent '(' ListType ')' { Language.AbsMPL.PROTNamedWArgs $1 $3 }
-          | UIdent { Language.AbsMPL.PROTNamedWOArgs $1 }
-ListProtocol :: { [Protocol] }
-ListProtocol : {- empty -} { [] }
-             | Protocol { (:[]) $1 }
-             | Protocol ',' ListProtocol { (:) $1 $3 }
-FunctionDefn :: { FunctionDefn }
-FunctionDefn : TokFun PIdent '::' ListType '->' Type '=' '{' ListPattTermPhrase '}' { Language.AbsMPL.FUNCTIONDEFNfull $1 $2 $4 $6 $9 }
-             | TokFun PIdent '=' '{' ListPattTermPhrase '}' { Language.AbsMPL.FUNCTIONDEFNshort $1 $2 $5 }
-ListFunctionDefn :: { [FunctionDefn] }
-ListFunctionDefn : FunctionDefn { (:[]) $1 }
-                 | FunctionDefn ';' ListFunctionDefn { (:) $1 $3 }
-ListPattTermPhrase :: { [PattTermPhrase] }
-ListPattTermPhrase : PattTermPhrase { (:[]) $1 }
-                   | PattTermPhrase ';' ListPattTermPhrase { (:) $1 $3 }
 ListPIdent :: { [PIdent] }
 ListPIdent : {- empty -} { [] }
            | PIdent { (:[]) $1 }
            | PIdent ',' ListPIdent { (:) $1 $3 }
-FoldPattern :: { FoldPattern }
-FoldPattern : UIdent ':' ListPIdent '=' '{' Term '}' { Language.AbsMPL.FOLDPATT_WOBRAC $1 $3 $6 }
-ListFoldPattern :: { [FoldPattern] }
-ListFoldPattern : {- empty -} { [] }
-                | FoldPattern { (:[]) $1 }
-                | FoldPattern ';' ListFoldPattern { (:) $1 $3 }
-PattTermPhrase :: { PattTermPhrase }
-PattTermPhrase : ListPattern '->' Term { Language.AbsMPL.PATTERNshort $1 $3 }
-               | ListPattern '->' 'switch' '{' ListGuardedTerm '}' { Language.AbsMPL.PATTERNguard $1 $5 }
-ListGuardedTerm :: { [GuardedTerm] }
-ListGuardedTerm : GuardedTerm { (:[]) $1 }
-                | GuardedTerm ';' ListGuardedTerm { (:) $1 $3 }
-GuardedTerm :: { GuardedTerm }
-GuardedTerm : Term '=' '{' Term '}' { Language.AbsMPL.GUARDterm $1 $4 }
-            | TokDefault '=' '{' Term '}' { Language.AbsMPL.GUARDother $1 $4 }
+MplProg :: { MplProg }
+MplProg : ListMplStmt { Language.AbsMPL.MPL_PROG (reverse $1) }
+MplStmt :: { MplStmt }
+MplStmt : 'defn' '{' ListMplDefn '}' 'where' '{' ListMplStmt '}' { Language.AbsMPL.MPL_DEFN_STMS_WHERE $3 (reverse $7) }
+        | 'defn' '{' ListMplDefn '}' { Language.AbsMPL.MPL_DEFN_STMS $3 }
+        | MplDefn { Language.AbsMPL.MPL_STMT $1 }
+ListMplDefn :: { [MplDefn] }
+ListMplDefn : MplDefn { (:[]) $1 }
+            | MplDefn ';' ListMplDefn { (:) $1 $3 }
+ListMplStmt :: { [MplStmt] }
+ListMplStmt : {- empty -} { [] }
+            | ListMplStmt MplStmt { flip (:) $1 $2 }
+MplDefn :: { MplDefn }
+MplDefn : SequentialTypeDefn { Language.AbsMPL.MPL_SEQUENTIAL_TYPE_DEFN $1 }
+        | ConcurrentTypeDefn { Language.AbsMPL.MPL_CONCURRENT_TYPE_DEFN $1 }
+        | FunctionDefn { Language.AbsMPL.MPL_FUNCTION_DEFN $1 }
+        | ProcessDefn { Language.AbsMPL.MPL_PROCESS_DEFN $1 }
+        | 'potato' { Language.AbsMPL.MPLDEFNTEST }
+MplType :: { MplType }
+MplType : MplType0 { Language.AbsMPL.MPL_TYPE $1 }
+MplType0 :: { MplType }
+MplType0 : MplType1 '(+)' MplType1 { Language.AbsMPL.PAR_TYPE $1 $3 }
+         | MplType1 { $1 }
+MplType1 :: { MplType }
+MplType1 : MplType2 '(*)' MplType2 { Language.AbsMPL.TENSOR_TYPE $1 $3 }
+         | MplType2 { $1 }
+MplType2 :: { MplType }
+MplType2 : UIdent '(' MplType '|' MplType ')' { Language.AbsMPL.GETPUT_TYPE $1 $3 $5 }
+         | MplType3 { $1 }
+MplType3 :: { MplType }
+MplType3 : UIdent '(' ListMplType ')' { Language.AbsMPL.MPL_UIDENT_ARGS_TYPE $1 $3 }
+         | UIdent { Language.AbsMPL.MPL_UIDENT_NO_ARGS_TYPE $1 }
+         | '(' ')' { Language.AbsMPL.MPL_UNIT_TYPE }
+         | '(' MplType ')' { Language.AbsMPL.MPL_BRACKETED_TYPE $2 }
+         | '[' MplType ']' { Language.AbsMPL.MPL_LIST_TYPE $2 }
+         | '(' MplType ',' ListTupleListType ')' { Language.AbsMPL.MPL_TUPLE_TYPE $2 $4 }
+TupleListType :: { TupleListType }
+TupleListType : MplType { Language.AbsMPL.TUPLE_LIST_TYPE $1 }
+ListTupleListType :: { [TupleListType] }
+ListTupleListType : TupleListType { (:[]) $1 }
+                  | TupleListType ',' ListTupleListType { (:) $1 $3 }
+ListMplType :: { [MplType] }
+ListMplType : {- empty -} { [] }
+            | MplType { (:[]) $1 }
+            | MplType ',' ListMplType { (:) $1 $3 }
+SequentialTypeDefn :: { SequentialTypeDefn }
+SequentialTypeDefn : 'data' ListSeqTypeClauseDefn { Language.AbsMPL.DATA_DEFN $2 }
+                   | 'codata' ListSeqTypeClauseDefn { Language.AbsMPL.CODATA_DEFN $2 }
+SeqTypeClauseDefn :: { SeqTypeClauseDefn }
+SeqTypeClauseDefn : MplType '->' MplType '=' '{' ListSeqTypePhraseDefn '}' { Language.AbsMPL.SEQ_TYPE_CLAUSE $1 $3 $6 }
+SeqTypePhraseDefn :: { SeqTypePhraseDefn }
+SeqTypePhraseDefn : ListTypeHandleName '::' ListMplType '->' MplType { Language.AbsMPL.SEQ_TYPE_PHRASE $1 $3 $5 }
+ListSeqTypeClauseDefn :: { [SeqTypeClauseDefn] }
+ListSeqTypeClauseDefn : SeqTypeClauseDefn { (:[]) $1 }
+                      | SeqTypeClauseDefn 'and' ListSeqTypeClauseDefn { (:) $1 $3 }
+ListSeqTypePhraseDefn :: { [SeqTypePhraseDefn] }
+ListSeqTypePhraseDefn : {- empty -} { [] }
+                      | SeqTypePhraseDefn { (:[]) $1 }
+                      | SeqTypePhraseDefn ';' ListSeqTypePhraseDefn { (:) $1 $3 }
+ConcurrentTypeDefn :: { ConcurrentTypeDefn }
+ConcurrentTypeDefn : 'protocol' ListConcurrentTypeClauseDefn { Language.AbsMPL.PROTOCOL_DEFN $2 }
+                   | 'coprotocol' ListConcurrentTypeClauseDefn { Language.AbsMPL.COPROTOCOL_DEFN $2 }
+ConcurrentTypeClauseDefn :: { ConcurrentTypeClauseDefn }
+ConcurrentTypeClauseDefn : MplType '=>' MplType '=' '{' ListConcurrentTypePhraseDefn '}' { Language.AbsMPL.CONCURRENT_TYPE_CLAUSE $1 $3 $6 }
+ConcurrentTypePhraseDefn :: { ConcurrentTypePhraseDefn }
+ConcurrentTypePhraseDefn : ListTypeHandleName '::' MplType '=>' MplType { Language.AbsMPL.CONCURRENT_TYPE_PHRASE $1 $3 $5 }
+ListConcurrentTypeClauseDefn :: { [ConcurrentTypeClauseDefn] }
+ListConcurrentTypeClauseDefn : ConcurrentTypeClauseDefn { (:[]) $1 }
+                             | ConcurrentTypeClauseDefn 'and' ListConcurrentTypeClauseDefn { (:) $1 $3 }
+ListConcurrentTypePhraseDefn :: { [ConcurrentTypePhraseDefn] }
+ListConcurrentTypePhraseDefn : {- empty -} { [] }
+                             | ConcurrentTypePhraseDefn { (:[]) $1 }
+                             | ConcurrentTypePhraseDefn ';' ListConcurrentTypePhraseDefn { (:) $1 $3 }
+TypeHandleName :: { TypeHandleName }
+TypeHandleName : UIdent { Language.AbsMPL.TYPE_HANDLE_NAME $1 }
+ListTypeHandleName :: { [TypeHandleName] }
+ListTypeHandleName : TypeHandleName { (:[]) $1 }
+                   | TypeHandleName ',' ListTypeHandleName { (:) $1 $3 }
+Expr :: { Expr }
+Expr : Expr0 { Language.AbsMPL.EXPR $1 }
+     | 'if' Expr 'then' Expr 'else' Expr { Language.AbsMPL.IF_EXPR $2 $4 $6 }
+     | 'let' '{' ListLetExprPhrase '}' 'in' Expr { Language.AbsMPL.LET_EXPR $3 $6 }
+Expr0 :: { Expr }
+Expr0 : Expr1 ':' Expr0 { Language.AbsMPL.INFIXR0_EXPR $1 $3 }
+      | Expr1 { $1 }
+Expr1 :: { Expr }
+Expr1 : Expr1 Infixl1op Expr2 { Language.AbsMPL.INFIXL1_EXPR $1 $2 $3 }
+      | Expr2 { $1 }
+Expr2 :: { Expr }
+Expr2 : Expr2 Infixl2op Expr3 { Language.AbsMPL.INFIXL2_EXPR $1 $2 $3 }
+      | Expr3 { $1 }
+Expr3 :: { Expr }
+Expr3 : Expr3 Infixl3op Expr4 { Language.AbsMPL.INFIXL3_EXPR $1 $2 $3 }
+      | Expr4 { $1 }
+Expr4 :: { Expr }
+Expr4 : Expr4 Infixl4op Expr5 { Language.AbsMPL.INFIXL4_EXPR $1 $2 $3 }
+      | Expr5 { $1 }
+Expr5 :: { Expr }
+Expr5 : Expr5 Infixl5op Expr6 { Language.AbsMPL.INFIXL5_EXPR $1 $2 $3 }
+      | Expr6 { $1 }
+Expr6 :: { Expr }
+Expr6 : Expr6 Infixl6op Expr7 { Language.AbsMPL.INFIXL6_EXPR $1 $2 $3 }
+      | Expr7 { $1 }
+Expr7 :: { Expr }
+Expr7 : Expr8 Infixr7op Expr7 { Language.AbsMPL.INFIXR7_EXPR $1 $2 $3 }
+      | Expr8 { $1 }
+Expr8 :: { Expr }
+Expr8 : Expr8 Infixl8op Expr10 { Language.AbsMPL.INFIXL8_EXPR $1 $2 $3 }
+      | Expr10 { $1 }
+Expr10 :: { Expr }
+Expr10 : '[' ListExpr ']' { Language.AbsMPL.LIST_EXPR $2 }
+       | PIdent { Language.AbsMPL.VAR_EXPR $1 }
+       | PInteger { Language.AbsMPL.INT_EXPR $1 }
+       | String { Language.AbsMPL.STRING_EXPR $1 }
+       | Char { Language.AbsMPL.CHAR_EXPR $1 }
+       | Double { Language.AbsMPL.DOUBLE_EXPR $1 }
+       | '(' ')' { Language.AbsMPL.UNIT_EXPR }
+       | 'fold' PIdent 'of' '{' ListFoldExprPhrase '}' { Language.AbsMPL.FOLD_EXPR $2 $5 }
+       | 'unfold' PIdent 'of' '{' ListUnfoldExprPhrase '}' { Language.AbsMPL.UNFOLD_EXPR $2 $5 }
+       | 'case' Expr 'of' '{' ListPattExprPhrase '}' { Language.AbsMPL.CASE_EXPR $2 $5 }
+       | 'switch' '{' ListSwitchExprPhrase '}' { Language.AbsMPL.SWITCH_EXP $3 }
+       | UIdent '(' ListExpr ')' { Language.AbsMPL.DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR $1 $3 }
+       | UIdent { Language.AbsMPL.DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR $1 }
+       | '(' Expr ',' ListTupleExprList ')' { Language.AbsMPL.TUPLE_EXPR $2 $4 }
+       | PIdent '(' ListExpr ')' { Language.AbsMPL.FUN_EXPR $1 $3 }
+       | '(' ListRecordExprPhrase ')' { Language.AbsMPL.RECORD_EXPR $2 }
+       | '(' Expr ')' { $2 }
+UnfoldExprPhrase :: { UnfoldExprPhrase }
+UnfoldExprPhrase : Expr 'of' '{' ListFoldExprPhrase '}' { Language.AbsMPL.UNFOLD_EXPR_PHRASE $1 $4 }
+ListUnfoldExprPhrase :: { [UnfoldExprPhrase] }
+ListUnfoldExprPhrase : {- empty -} { [] }
+                     | UnfoldExprPhrase { (:[]) $1 }
+                     | UnfoldExprPhrase ';' ListUnfoldExprPhrase { (:) $1 $3 }
+FoldExprPhrase :: { FoldExprPhrase }
+FoldExprPhrase : UIdent ':' ListPIdent '->' Expr { Language.AbsMPL.FOLD_EXPR_PHRASE $1 $3 $5 }
+ListFoldExprPhrase :: { [FoldExprPhrase] }
+ListFoldExprPhrase : {- empty -} { [] }
+                   | FoldExprPhrase { (:[]) $1 }
+                   | FoldExprPhrase ';' ListFoldExprPhrase { (:) $1 $3 }
+LetExprPhrase :: { LetExprPhrase }
+LetExprPhrase : MplStmt { Language.AbsMPL.LET_EXPR_PHRASE $1 }
+ListLetExprPhrase :: { [LetExprPhrase] }
+ListLetExprPhrase : LetExprPhrase { (:[]) $1 }
+                  | LetExprPhrase ';' ListLetExprPhrase { (:) $1 $3 }
+TupleExprList :: { TupleExprList }
+TupleExprList : Expr { Language.AbsMPL.TUPLE_EXPR_LIST $1 }
+ListTupleExprList :: { [TupleExprList] }
+ListTupleExprList : TupleExprList { (:[]) $1 }
+                  | TupleExprList ',' ListTupleExprList { (:) $1 $3 }
+RecordExprPhrase :: { RecordExprPhrase }
+RecordExprPhrase : UIdent ':=' Expr { Language.AbsMPL.RECORD_EXPR_PHRASE $1 $3 }
+ListRecordExprPhrase :: { [RecordExprPhrase] }
+ListRecordExprPhrase : RecordExprPhrase { (:[]) $1 }
+                     | RecordExprPhrase ',' ListRecordExprPhrase { (:) $1 $3 }
+SwitchExprPhrase :: { SwitchExprPhrase }
+SwitchExprPhrase : Expr '->' Expr { Language.AbsMPL.SWITCH_EXPR_PHRASE $1 $3 }
+ListSwitchExprPhrase :: { [SwitchExprPhrase] }
+ListSwitchExprPhrase : SwitchExprPhrase { (:[]) $1 }
+                     | SwitchExprPhrase ';' ListSwitchExprPhrase { (:) $1 $3 }
+ListExpr :: { [Expr] }
+ListExpr : {- empty -} { [] }
+         | Expr { (:[]) $1 }
+         | Expr ',' ListExpr { (:) $1 $3 }
+PattExprPhrase :: { PattExprPhrase }
+PattExprPhrase : ListPattern '->' Expr { Language.AbsMPL.PATTERN_TO_EXPR $1 $3 }
+Pattern :: { Pattern }
+Pattern : Pattern0 { Language.AbsMPL.PATTERN $1 }
 ListPattern :: { [Pattern] }
 ListPattern : {- empty -} { [] }
             | Pattern { (:[]) $1 }
             | Pattern ',' ListPattern { (:) $1 $3 }
-Pattern :: { Pattern }
-Pattern : Pattern1 ':' Pattern { Language.AbsMPL.LISTPATTERN2 $1 $3 }
-        | Pattern1 { $1 }
+Pattern0 :: { Pattern }
+Pattern0 : Pattern1 ':' Pattern0 { Language.AbsMPL.LIST_COLON_PATTERN $1 $3 }
+         | Pattern1 { $1 }
 Pattern1 :: { Pattern }
-Pattern1 : UIdent '(' ListPattern ')' { Language.AbsMPL.CONSPATTERN $1 $3 }
-         | UIdent { Language.AbsMPL.CONSPATTERN_WA $1 }
-         | TokSBrO ListPattern TokSBrC { Language.AbsMPL.LISTPATTERN1 $1 $2 $3 }
-         | '<' ListPattern '>' { Language.AbsMPL.PRODPATTERN $2 }
-         | PIdent { Language.AbsMPL.VARPATTERN $1 }
-         | String { Language.AbsMPL.STR_CONSTPATTERN $1 }
-         | PInteger { Language.AbsMPL.INT_CONSTPATTERN $1 }
-         | TokDCare { Language.AbsMPL.NULLPATTERN $1 }
+Pattern1 : UIdent '(' ListPattern ')' { Language.AbsMPL.CONSTRUCTOR_PATTERN_ARGS $1 $3 }
+         | UIdent { Language.AbsMPL.CONSTRUCTOR_PATTERN_NO_ARGS $1 }
+         | '(' ')' { Language.AbsMPL.UNIT_PATTERN }
+         | '(' DestructorPatternPhrase ',' ListDestructorPatternPhrase ')' { Language.AbsMPL.RECORD_PATTERN $2 $4 }
+         | '[' ListPattern ']' { Language.AbsMPL.LIST_PATTERN $2 }
+         | '(' Pattern ',' ListTupleListPattern ')' { Language.AbsMPL.TUPLE_PATTERN $2 $4 }
+         | PIdent { Language.AbsMPL.VAR_PATTERN $1 }
+         | String { Language.AbsMPL.STR_PATTERN $1 }
+         | PInteger { Language.AbsMPL.INT_PATTERN $1 }
+         | '_' { Language.AbsMPL.NULL_PATTERN }
          | '(' Pattern ')' { $2 }
-Term :: { Term }
-Term : Term1 ':' Term { Language.AbsMPL.LISTTERM2 $1 $3 }
-     | Term1 { $1 }
-     | Term1 'where' '{' ListLetWhere '}' { Language.AbsMPL.LETTERM $1 $4 }
-Term1 :: { Term }
-Term1 : Term1 Infix0op Term2 { Language.AbsMPL.Infix0TERM $1 $2 $3 }
-      | Term2 { $1 }
-Term2 :: { Term }
-Term2 : Term2 Infix1op Term3 { Language.AbsMPL.Infix1TERM $1 $2 $3 }
-      | Term3 { $1 }
-Term3 :: { Term }
-Term3 : Term3 Infix2op Term4 { Language.AbsMPL.Infix2TERM $1 $2 $3 }
-      | Term4 { $1 }
-Term4 :: { Term }
-Term4 : Term4 Infix3op Term5 { Language.AbsMPL.Infix3TERM $1 $2 $3 }
-      | Term5 { $1 }
-Term5 :: { Term }
-Term5 : Term5 Infix4op Term6 { Language.AbsMPL.Infix4TERM $1 $2 $3 }
-      | Term6 { $1 }
-Term6 :: { Term }
-Term6 : Term6 Infix5op Term7 { Language.AbsMPL.Infix5TERM $1 $2 $3 }
-      | Term7 { $1 }
-Term7 :: { Term }
-Term7 : Term8 Infix6op Term7 { Language.AbsMPL.Infix6TERM $1 $2 $3 }
-      | Term8 { $1 }
-Term8 :: { Term }
-Term8 : Term8 Infix7op Term9 { Language.AbsMPL.Infix7TERM $1 $2 $3 }
-      | Term9 { $1 }
-Term9 :: { Term }
-Term9 : TokSBrO ListTerm TokSBrC { Language.AbsMPL.LISTTERM $1 $2 $3 }
-      | PIdent { Language.AbsMPL.VARTERM $1 }
-      | ConstantType { Language.AbsMPL.CONSTTERM $1 }
-      | TokIf Term 'then' Term 'else' '{' Term '}' { Language.AbsMPL.IFTERM $1 $2 $4 $7 }
-      | TokUnfold PIdent 'with' '{' ListFoldPattern '}' { Language.AbsMPL.UNFOLDTERM $1 $2 $5 }
-      | TokFold PIdent 'of' '{' ListFoldPattern '}' { Language.AbsMPL.FOLDTERM $1 $2 $5 }
-      | TokCase Term 'of' '{' ListPattTermPhrase '}' { Language.AbsMPL.CASETERM $1 $2 $5 }
-      | UIdent '(' ListTerm ')' { Language.AbsMPL.GENCONSTERM_WARGS $1 $3 }
-      | UIdent { Language.AbsMPL.GENCONSTERM_WOARGS $1 }
-      | '<' ListTerm '>' { Language.AbsMPL.PRODTERM $2 }
-      | PIdent '(' ListTerm ')' { Language.AbsMPL.FUNAPPTERM $1 $3 }
-      | TokRecord 'of' '{' ListRecordEntry '}' { Language.AbsMPL.RECORDTERM $1 $4 }
-      | '(' ListRecordEntryAlt ')' { Language.AbsMPL.RECORDTERMALT $2 }
-      | '(' Term ')' { $2 }
-LetWhere :: { LetWhere }
-LetWhere : Defn { Language.AbsMPL.DEFN_LetWhere $1 }
-         | PattTerm { Language.AbsMPL.PATTTERM_LetWhere $1 }
-ListLetWhere :: { [LetWhere] }
-ListLetWhere : LetWhere { (:[]) $1 }
-             | LetWhere ';' ListLetWhere { (:) $1 $3 }
-PattTerm :: { PattTerm }
-PattTerm : PIdent '=' '{' Term '}' { Language.AbsMPL.JUSTPATTTERM $1 $4 }
-ListRecordEntry :: { [RecordEntry] }
-ListRecordEntry : {- empty -} { [] }
-                | RecordEntry { (:[]) $1 }
-                | RecordEntry ';' ListRecordEntry { (:) $1 $3 }
-ListRecordEntryAlt :: { [RecordEntryAlt] }
-ListRecordEntryAlt : {- empty -} { [] }
-                   | RecordEntryAlt { (:[]) $1 }
-                   | RecordEntryAlt ',' ListRecordEntryAlt { (:) $1 $3 }
-ListTerm :: { [Term] }
-ListTerm : {- empty -} { [] }
-         | Term { (:[]) $1 }
-         | Term ',' ListTerm { (:) $1 $3 }
-ConstantType :: { ConstantType }
-ConstantType : PInteger { Language.AbsMPL.INTEGER $1 }
-             | String { Language.AbsMPL.STRING $1 }
-             | Char { Language.AbsMPL.CHAR $1 }
-             | Double { Language.AbsMPL.DOUBLE $1 }
-RecordEntryAlt :: { RecordEntryAlt }
-RecordEntryAlt : RecordEntry { Language.AbsMPL.RECORDENTRY_ALT $1 }
-ListIdent :: { [Ident] }
-ListIdent : Ident { (:[]) $1 } | Ident ',' ListIdent { (:) $1 $3 }
-RecordEntry :: { RecordEntry }
-RecordEntry : Pattern ':=' Term { Language.AbsMPL.RECORDENTRY $1 $3 }
-ProcessDef :: { ProcessDef }
-ProcessDef : TokProc PIdent '::' ListType '|' ListProtocol '=>' ListProtocol '=' '{' PatProcessPhr '}' { Language.AbsMPL.PROCESSDEFfull $1 $2 $4 $6 $8 $11 }
-           | TokProc PIdent '=' '{' PatProcessPhr '}' { Language.AbsMPL.PROCESSDEFshort $1 $2 $5 }
-PatProcessPhr :: { PatProcessPhr }
-PatProcessPhr : ListPattern '|' ListChannel '=>' ListChannel Process { Language.AbsMPL.PROCESSPHRASEnoguard $1 $3 $5 $6 }
-ListChannel :: { [Channel] }
-ListChannel : {- empty -} { [] }
-            | Channel { (:[]) $1 }
-            | Channel ',' ListChannel { (:) $1 $3 }
-Process :: { Process }
-Process : '->' 'do' '{' ListProcessCommand '}' { Language.AbsMPL.MANY_PROCESS $4 }
-        | '->' ProcessCommand { Language.AbsMPL.ONE_PROCESS $2 }
+TupleListPattern :: { TupleListPattern }
+TupleListPattern : Pattern { Language.AbsMPL.TUPLE_LIST_PATTERN $1 }
+ListTupleListPattern :: { [TupleListPattern] }
+ListTupleListPattern : TupleListPattern { (:[]) $1 }
+                     | TupleListPattern ',' ListTupleListPattern { (:) $1 $3 }
+DestructorPatternPhrase :: { DestructorPatternPhrase }
+DestructorPatternPhrase : UIdent ':=' Pattern { Language.AbsMPL.DESTRUCTOR_PATTERN_PHRASE $1 $3 }
+ListDestructorPatternPhrase :: { [DestructorPatternPhrase] }
+ListDestructorPatternPhrase : DestructorPatternPhrase { (:[]) $1 }
+                            | DestructorPatternPhrase ',' ListDestructorPatternPhrase { (:) $1 $3 }
+FunctionDefn :: { FunctionDefn }
+FunctionDefn : 'fun' PIdent '::' ListMplType '->' MplType '=' '{' ListPattExprPhrase '}' { Language.AbsMPL.TYPED_FUNCTION_DEFN $2 $4 $6 $9 }
+             | 'fun' PIdent '=' '{' ListPattExprPhrase '}' { Language.AbsMPL.FUNCTION_DEFN $2 $5 }
+ListPattExprPhrase :: { [PattExprPhrase] }
+ListPattExprPhrase : PattExprPhrase { (:[]) $1 }
+                   | PattExprPhrase ';' ListPattExprPhrase { (:) $1 $3 }
+ProcessDefn :: { ProcessDefn }
+ProcessDefn : 'proc' PIdent '::' ListMplType '|' ListMplType '=>' ListMplType '=' '{' ListProcessPhrase '}' { Language.AbsMPL.TYPED_PROCESS_DEFN $2 $4 $6 $8 $11 }
+            | 'proc' PIdent '=' '{' ListProcessPhrase '}' { Language.AbsMPL.PROCESS_DEFN $2 $5 }
+ProcessPhrase :: { ProcessPhrase }
+ProcessPhrase : ListPattern '|' ListPIdent '=>' ListPIdent '->' ProcessCommandsBlock { Language.AbsMPL.PROCESS_PHRASE $1 $3 $5 $7 }
+ListProcessPhrase :: { [ProcessPhrase] }
+ListProcessPhrase : {- empty -} { [] }
+                  | ProcessPhrase { (:[]) $1 }
+                  | ProcessPhrase ';' ListProcessPhrase { (:) $1 $3 }
+ProcessCommandsBlock :: { ProcessCommandsBlock }
+ProcessCommandsBlock : 'do' '{' ListProcessCommand '}' { Language.AbsMPL.PROCESS_COMMANDS_DO_BLOCK $3 }
+                     | ProcessCommand { Language.AbsMPL.PROCESS_COMMANDS_SINGLE_COMMAND_BLOCK $1 }
 ListProcessCommand :: { [ProcessCommand] }
 ListProcessCommand : {- empty -} { [] }
                    | ProcessCommand { (:[]) $1 }
                    | ProcessCommand ';' ListProcessCommand { (:) $1 $3 }
 ProcessCommand :: { ProcessCommand }
-ProcessCommand : PIdent '(' ListTerm '|' ListChannel '=>' ListChannel ')' { Language.AbsMPL.PROCESS_RUN $1 $3 $5 $7 }
-               | TokClose Channel { Language.AbsMPL.PROCESS_CLOSE $1 $2 }
-               | TokHalt Channel { Language.AbsMPL.PROCESS_HALT $1 $2 }
-               | TokGet PIdent 'on' Channel { Language.AbsMPL.PROCESS_GET $1 $2 $4 }
-               | TokHCase Channel 'of' '{' ListHandler '}' { Language.AbsMPL.PROCESS_HCASE $1 $2 $5 }
-               | TokPut Term 'on' Channel { Language.AbsMPL.PROCESS_PUT $1 $2 $4 }
-               | TokHPut UIdent 'on' Channel { Language.AbsMPL.PROCESS_HPUT $1 $2 $4 }
-               | TokSplit Channel 'into' ListChannel { Language.AbsMPL.PROCESS_SPLIT $1 $2 $4 }
-               | TokFork PIdent 'as' '{' ListForkPart '}' { Language.AbsMPL.PROCESS_FORK $1 $2 $5 }
-               | 'plug' '{' ListPlugPart '}' { Language.AbsMPL.Process_PLUG $3 }
-               | 'race' '{' ListRacePart '}' { Language.AbsMPL.Process_RACE $3 }
-               | Channel '|=|' PChannel { Language.AbsMPL.Procss_ID $1 $3 }
-               | Channel '=' '{' 'neg' Channel '}' { Language.AbsMPL.PROCESS_NEG $1 $5 }
-               | TokCase Term 'of' '{' ListProcessPhrase '}' { Language.AbsMPL.PROCESScase $1 $2 $5 }
-PlugPart :: { PlugPart }
-PlugPart : 'do' '{' ListProcessCommand '}' { Language.AbsMPL.PLUGPART_MANY $3 }
-         | ProcessCommand { Language.AbsMPL.PLUGPART_ONE $1 }
-RacePart :: { RacePart }
-RacePart : Channel Process { Language.AbsMPL.RACEPART $1 $2 }
-ListRacePart :: { [RacePart] }
-ListRacePart : RacePart { (:[]) $1 }
-             | RacePart ';' ListRacePart { (:) $1 $3 }
-ListPlugPart :: { [PlugPart] }
-ListPlugPart : PlugPart { (:[]) $1 }
-             | PlugPart ';' ListPlugPart { (:) $1 $3 }
-ListForkPart :: { [ForkPart] }
-ListForkPart : ForkPart { (:[]) $1 }
-             | ForkPart ';' ListForkPart { (:) $1 $3 }
-ForkPart :: { ForkPart }
-ForkPart : PIdent Process { Language.AbsMPL.FORKPARTshort $1 $2 }
-ListHandler :: { [Handler] }
-ListHandler : {- empty -} { [] }
-            | Handler { (:[]) $1 }
-            | Handler ';' ListHandler { (:) $1 $3 }
-Handler :: { Handler }
-Handler : UIdent Process { Language.AbsMPL.HANDLER $1 $2 }
-ListProcessPhrase :: { [ProcessPhrase] }
-ListProcessPhrase : {- empty -} { [] }
-                  | ProcessPhrase { (:[]) $1 }
-                  | ProcessPhrase ';' ListProcessPhrase { (:) $1 $3 }
-ProcessPhrase :: { ProcessPhrase }
-ProcessPhrase : Pattern Process { Language.AbsMPL.CASEPROCESSnoguard $1 $2 }
-ListGuardProcessPhrase :: { [GuardProcessPhrase] }
-ListGuardProcessPhrase : GuardProcessPhrase { (:[]) $1 }
-                       | GuardProcessPhrase ';' ListGuardProcessPhrase { (:) $1 $3 }
-GuardProcessPhrase :: { GuardProcessPhrase }
-GuardProcessPhrase : Term '=' '{' ListProcessCommand '}' { Language.AbsMPL.GUARDEDPROCESSterm $1 $4 }
-                   | TokDefault '=' '{' ListProcessCommand '}' { Language.AbsMPL.GUARDEDPROCESSother $1 $4 }
-PChannel :: { PChannel }
-PChannel : PIdent { Language.AbsMPL.BARECHANNEL $1 }
-         | 'neg' PIdent { Language.AbsMPL.NEGCHANNEL $2 }
-Channel :: { Channel }
-Channel : PIdent { Language.AbsMPL.CHANNEL $1 }
+ProcessCommand : PIdent '(' ListExpr '|' ListPIdent '=>' ListPIdent ')' { Language.AbsMPL.PROCESS_RUN $1 $3 $5 $7 }
+               | 'close' PIdent { Language.AbsMPL.PROCESS_CLOSE $2 }
+               | 'halt' PIdent { Language.AbsMPL.PROCESS_HALT $2 }
+               | 'get' PIdent 'on' PIdent { Language.AbsMPL.PROCESS_GET $2 $4 }
+               | 'put' Expr 'on' PIdent { Language.AbsMPL.PROCESS_PUT $2 $4 }
+               | 'hcase' PIdent 'of' '{' ListHCasePhrase '}' { Language.AbsMPL.PROCESS_HCASE $2 $5 }
+               | 'hput' UIdent 'on' PIdent { Language.AbsMPL.PROCESS_HPUT $2 $4 }
+               | 'split' PIdent 'into' ListPIdent { Language.AbsMPL.PROCESS_SPLIT $2 $4 }
+               | 'fork' PIdent 'as' '{' ListForkPhrase '}' { Language.AbsMPL.PROCESS_FORK $2 $5 }
+               | PIdent '|=|' PIdent { Language.AbsMPL.PROCESS_ID $1 $3 }
+               | PIdent '|=|' 'neg' PIdent { Language.AbsMPL.PROCESS_NEG $1 $4 }
+               | 'race' '{' ListRacePhrase '}' { Language.AbsMPL.PROCESS_RACE $3 }
+               | 'plug' '{' ListPlugPhrase '}' { Language.AbsMPL.PROCESS_PLUG $3 }
+               | 'case' Expr 'of' '{' ListProcessCasePhrase '}' { Language.AbsMPL.PROCESS_CASE $2 $5 }
+               | 'switch' '{' ListProcessSwitchPhrase '}' { Language.AbsMPL.PROCESS_SWITCH $3 }
+HCasePhrase :: { HCasePhrase }
+HCasePhrase : UIdent '->' ProcessCommandsBlock { Language.AbsMPL.HCASE_PHRASE $1 $3 }
+ListHCasePhrase :: { [HCasePhrase] }
+ListHCasePhrase : {- empty -} { [] }
+                | HCasePhrase { (:[]) $1 }
+                | HCasePhrase ';' ListHCasePhrase { (:) $1 $3 }
+ForkPhrase :: { ForkPhrase }
+ForkPhrase : PIdent 'with' ListPIdent '->' ProcessCommandsBlock { Language.AbsMPL.FORK_WITH_PHRASE $1 $3 $5 }
+           | PIdent '->' ProcessCommandsBlock { Language.AbsMPL.FORK_PHRASE $1 $3 }
+ListForkPhrase :: { [ForkPhrase] }
+ListForkPhrase : {- empty -} { [] }
+               | ForkPhrase { (:[]) $1 }
+               | ForkPhrase ';' ListForkPhrase { (:) $1 $3 }
+RacePhrase :: { RacePhrase }
+RacePhrase : PIdent '->' ProcessCommandsBlock { Language.AbsMPL.RACE_PHRASE $1 $3 }
+ListRacePhrase :: { [RacePhrase] }
+ListRacePhrase : {- empty -} { [] }
+               | RacePhrase { (:[]) $1 }
+               | RacePhrase ';' ListRacePhrase { (:) $1 $3 }
+PlugPhrase :: { PlugPhrase }
+PlugPhrase : ProcessCommandsBlock { Language.AbsMPL.PLUG_PHRASE $1 }
+ListPlugPhrase :: { [PlugPhrase] }
+ListPlugPhrase : {- empty -} { [] }
+               | PlugPhrase { (:[]) $1 }
+               | PlugPhrase ';' ListPlugPhrase { (:) $1 $3 }
+ProcessCasePhrase :: { ProcessCasePhrase }
+ProcessCasePhrase : ListPattern '->' ProcessCommandsBlock { Language.AbsMPL.PROCESS_CASE_PHRASE $1 $3 }
+ListProcessCasePhrase :: { [ProcessCasePhrase] }
+ListProcessCasePhrase : {- empty -} { [] }
+                      | ProcessCasePhrase { (:[]) $1 }
+                      | ProcessCasePhrase ';' ListProcessCasePhrase { (:) $1 $3 }
+ProcessSwitchPhrase :: { ProcessSwitchPhrase }
+ProcessSwitchPhrase : Expr '->' ProcessCommandsBlock { Language.AbsMPL.PROCESS_SWITCH_PHRASE $1 $3 }
+ListProcessSwitchPhrase :: { [ProcessSwitchPhrase] }
+ListProcessSwitchPhrase : {- empty -} { [] }
+                        | ProcessSwitchPhrase { (:[]) $1 }
+                        | ProcessSwitchPhrase ';' ListProcessSwitchPhrase { (:) $1 $3 }
 {
 
 returnM :: a -> Err a
