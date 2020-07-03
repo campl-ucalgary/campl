@@ -116,8 +116,8 @@ transExpr x = case x of
   CHAR_EXPR char -> failure x
   DOUBLE_EXPR double -> failure x
   UNIT_EXPR -> failure x
-  FOLD_EXPR pident foldexprphrases -> failure x
-  UNFOLD_EXPR pident unfoldexprphrases -> failure x
+  FOLD_EXPR expr foldexprphrases -> failure x
+  UNFOLD_EXPR expr unfoldexprphrases -> failure x
   CASE_EXPR expr pattexprphrases -> failure x
   SWITCH_EXP switchexprphrases -> failure x
   DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR uident exprs -> failure x
@@ -176,7 +176,7 @@ transProcessDefn x = case x of
   PROCESS_DEFN pident processphrases -> failure x
 transProcessPhrase :: ProcessPhrase -> Result
 transProcessPhrase x = case x of
-  PROCESS_PHRASE patterns pidents1 pidents2 processcommandsblock -> failure x
+  PROCESS_PHRASE patterns1 patterns2 patterns3 processcommandsblock -> failure x
 transProcessCommandsBlock :: ProcessCommandsBlock -> Result
 transProcessCommandsBlock x = case x of
   PROCESS_COMMANDS_DO_BLOCK processcommands -> failure x
@@ -186,7 +186,7 @@ transProcessCommand x = case x of
   PROCESS_RUN pident exprs pidents1 pidents2 -> failure x
   PROCESS_CLOSE pident -> failure x
   PROCESS_HALT pident -> failure x
-  PROCESS_GET pident1 pident2 -> failure x
+  PROCESS_GET pattern pident -> failure x
   PROCESS_PUT expr pident -> failure x
   PROCESS_HCASE pident hcasephrases -> failure x
   PROCESS_HPUT uident pident -> failure x

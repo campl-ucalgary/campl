@@ -261,8 +261,8 @@ instance Print Language.AbsMPL.Expr where
     Language.AbsMPL.CHAR_EXPR c -> prPrec i 10 (concatD [prt 0 c])
     Language.AbsMPL.DOUBLE_EXPR d -> prPrec i 10 (concatD [prt 0 d])
     Language.AbsMPL.UNIT_EXPR -> prPrec i 10 (concatD [doc (showString "("), doc (showString ")")])
-    Language.AbsMPL.FOLD_EXPR pident foldexprphrases -> prPrec i 10 (concatD [doc (showString "fold"), prt 0 pident, doc (showString "of"), doc (showString "{"), prt 0 foldexprphrases, doc (showString "}")])
-    Language.AbsMPL.UNFOLD_EXPR pident unfoldexprphrases -> prPrec i 10 (concatD [doc (showString "unfold"), prt 0 pident, doc (showString "of"), doc (showString "{"), prt 0 unfoldexprphrases, doc (showString "}")])
+    Language.AbsMPL.FOLD_EXPR expr foldexprphrases -> prPrec i 10 (concatD [doc (showString "fold"), prt 0 expr, doc (showString "of"), doc (showString "{"), prt 0 foldexprphrases, doc (showString "}")])
+    Language.AbsMPL.UNFOLD_EXPR expr unfoldexprphrases -> prPrec i 10 (concatD [doc (showString "unfold"), prt 0 expr, doc (showString "of"), doc (showString "{"), prt 0 unfoldexprphrases, doc (showString "}")])
     Language.AbsMPL.CASE_EXPR expr pattexprphrases -> prPrec i 10 (concatD [doc (showString "case"), prt 0 expr, doc (showString "of"), doc (showString "{"), prt 0 pattexprphrases, doc (showString "}")])
     Language.AbsMPL.SWITCH_EXP switchexprphrases -> prPrec i 10 (concatD [doc (showString "switch"), doc (showString "{"), prt 0 switchexprphrases, doc (showString "}")])
     Language.AbsMPL.DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR uident exprs -> prPrec i 10 (concatD [prt 0 uident, doc (showString "("), prt 0 exprs, doc (showString ")")])
@@ -393,8 +393,7 @@ instance Print Language.AbsMPL.ProcessDefn where
 
 instance Print Language.AbsMPL.ProcessPhrase where
   prt i e = case e of
-    Language.AbsMPL.PROCESS_PHRASE patterns pidents1 pidents2 processcommandsblock -> prPrec i 0 (concatD [prt 0 patterns, doc (showString "|"), prt 0 pidents1, doc (showString "=>"), prt 0 pidents2, doc (showString "->"), prt 0 processcommandsblock])
-  prtList _ [] = concatD []
+    Language.AbsMPL.PROCESS_PHRASE patterns1 patterns2 patterns3 processcommandsblock -> prPrec i 0 (concatD [prt 0 patterns1, doc (showString "|"), prt 0 patterns2, doc (showString "=>"), prt 0 patterns3, doc (showString "->"), prt 0 processcommandsblock])
   prtList _ [x] = concatD [prt 0 x]
   prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
@@ -414,7 +413,7 @@ instance Print Language.AbsMPL.ProcessCommand where
     Language.AbsMPL.PROCESS_RUN pident exprs pidents1 pidents2 -> prPrec i 0 (concatD [prt 0 pident, doc (showString "("), prt 0 exprs, doc (showString "|"), prt 0 pidents1, doc (showString "=>"), prt 0 pidents2, doc (showString ")")])
     Language.AbsMPL.PROCESS_CLOSE pident -> prPrec i 0 (concatD [doc (showString "close"), prt 0 pident])
     Language.AbsMPL.PROCESS_HALT pident -> prPrec i 0 (concatD [doc (showString "halt"), prt 0 pident])
-    Language.AbsMPL.PROCESS_GET pident1 pident2 -> prPrec i 0 (concatD [doc (showString "get"), prt 0 pident1, doc (showString "on"), prt 0 pident2])
+    Language.AbsMPL.PROCESS_GET pattern pident -> prPrec i 0 (concatD [doc (showString "get"), prt 0 pattern, doc (showString "on"), prt 0 pident])
     Language.AbsMPL.PROCESS_PUT expr pident -> prPrec i 0 (concatD [doc (showString "put"), prt 0 expr, doc (showString "on"), prt 0 pident])
     Language.AbsMPL.PROCESS_HCASE pident hcasephrases -> prPrec i 0 (concatD [doc (showString "hcase"), prt 0 pident, doc (showString "of"), doc (showString "{"), prt 0 hcasephrases, doc (showString "}")])
     Language.AbsMPL.PROCESS_HPUT uident pident -> prPrec i 0 (concatD [doc (showString "hput"), prt 0 uident, doc (showString "on"), prt 0 pident])

@@ -187,8 +187,8 @@ All other symbols are terminals.
   |  |  **|**  | //Char//
   |  |  **|**  | //Double//
   |  |  **|**  | ``(`` ``)``
-  |  |  **|**  | ``fold`` //PIdent// ``of`` ``{`` //[FoldExprPhrase]// ``}``
-  |  |  **|**  | ``unfold`` //PIdent// ``of`` ``{`` //[UnfoldExprPhrase]// ``}``
+  |  |  **|**  | ``fold`` //Expr// ``of`` ``{`` //[FoldExprPhrase]// ``}``
+  |  |  **|**  | ``unfold`` //Expr// ``of`` ``{`` //[UnfoldExprPhrase]// ``}``
   |  |  **|**  | ``case`` //Expr// ``of`` ``{`` //[PattExprPhrase]// ``}``
   |  |  **|**  | ``switch`` ``{`` //[SwitchExprPhrase]// ``}``
   |  |  **|**  | //UIdent// ``(`` //[Expr]// ``)``
@@ -250,9 +250,8 @@ All other symbols are terminals.
   |  |  **|**  | //PattExprPhrase// ``;`` //[PattExprPhrase]//
   | //ProcessDefn// | -> | ``proc`` //PIdent// ``::`` //[MplType]// ``|`` //[MplType]// ``=>`` //[MplType]// ``=`` ``{`` //[ProcessPhrase]// ``}``
   |  |  **|**  | ``proc`` //PIdent// ``=`` ``{`` //[ProcessPhrase]// ``}``
-  | //ProcessPhrase// | -> | //[Pattern]// ``|`` //[PIdent]// ``=>`` //[PIdent]// ``->`` //ProcessCommandsBlock//
-  | //[ProcessPhrase]// | -> | **eps**
-  |  |  **|**  | //ProcessPhrase//
+  | //ProcessPhrase// | -> | //[Pattern]// ``|`` //[Pattern]// ``=>`` //[Pattern]// ``->`` //ProcessCommandsBlock//
+  | //[ProcessPhrase]// | -> | //ProcessPhrase//
   |  |  **|**  | //ProcessPhrase// ``;`` //[ProcessPhrase]//
   | //ProcessCommandsBlock// | -> | ``do`` ``{`` //[ProcessCommand]// ``}``
   |  |  **|**  | //ProcessCommand//
@@ -262,7 +261,7 @@ All other symbols are terminals.
   | //ProcessCommand// | -> | //PIdent// ``(`` //[Expr]// ``|`` //[PIdent]// ``=>`` //[PIdent]// ``)``
   |  |  **|**  | ``close`` //PIdent//
   |  |  **|**  | ``halt`` //PIdent//
-  |  |  **|**  | ``get`` //PIdent// ``on`` //PIdent//
+  |  |  **|**  | ``get`` //Pattern// ``on`` //PIdent//
   |  |  **|**  | ``put`` //Expr// ``on`` //PIdent//
   |  |  **|**  | ``hcase`` //PIdent// ``of`` ``{`` //[HCasePhrase]// ``}``
   |  |  **|**  | ``hput`` //UIdent// ``on`` //PIdent//

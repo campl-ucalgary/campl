@@ -248,8 +248,8 @@ Expr10 : '[' ListExpr ']' { Language.AbsMPL.LIST_EXPR $2 }
        | Char { Language.AbsMPL.CHAR_EXPR $1 }
        | Double { Language.AbsMPL.DOUBLE_EXPR $1 }
        | '(' ')' { Language.AbsMPL.UNIT_EXPR }
-       | 'fold' PIdent 'of' '{' ListFoldExprPhrase '}' { Language.AbsMPL.FOLD_EXPR $2 $5 }
-       | 'unfold' PIdent 'of' '{' ListUnfoldExprPhrase '}' { Language.AbsMPL.UNFOLD_EXPR $2 $5 }
+       | 'fold' Expr 'of' '{' ListFoldExprPhrase '}' { Language.AbsMPL.FOLD_EXPR $2 $5 }
+       | 'unfold' Expr 'of' '{' ListUnfoldExprPhrase '}' { Language.AbsMPL.UNFOLD_EXPR $2 $5 }
        | 'case' Expr 'of' '{' ListPattExprPhrase '}' { Language.AbsMPL.CASE_EXPR $2 $5 }
        | 'switch' '{' ListSwitchExprPhrase '}' { Language.AbsMPL.SWITCH_EXP $3 }
        | UIdent '(' ListExpr ')' { Language.AbsMPL.DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR $1 $3 }
@@ -337,10 +337,9 @@ ProcessDefn :: { ProcessDefn }
 ProcessDefn : 'proc' PIdent '::' ListMplType '|' ListMplType '=>' ListMplType '=' '{' ListProcessPhrase '}' { Language.AbsMPL.TYPED_PROCESS_DEFN $2 $4 $6 $8 $11 }
             | 'proc' PIdent '=' '{' ListProcessPhrase '}' { Language.AbsMPL.PROCESS_DEFN $2 $5 }
 ProcessPhrase :: { ProcessPhrase }
-ProcessPhrase : ListPattern '|' ListPIdent '=>' ListPIdent '->' ProcessCommandsBlock { Language.AbsMPL.PROCESS_PHRASE $1 $3 $5 $7 }
+ProcessPhrase : ListPattern '|' ListPattern '=>' ListPattern '->' ProcessCommandsBlock { Language.AbsMPL.PROCESS_PHRASE $1 $3 $5 $7 }
 ListProcessPhrase :: { [ProcessPhrase] }
-ListProcessPhrase : {- empty -} { [] }
-                  | ProcessPhrase { (:[]) $1 }
+ListProcessPhrase : ProcessPhrase { (:[]) $1 }
                   | ProcessPhrase ';' ListProcessPhrase { (:) $1 $3 }
 ProcessCommandsBlock :: { ProcessCommandsBlock }
 ProcessCommandsBlock : 'do' '{' ListProcessCommand '}' { Language.AbsMPL.PROCESS_COMMANDS_DO_BLOCK $3 }
@@ -353,7 +352,7 @@ ProcessCommand :: { ProcessCommand }
 ProcessCommand : PIdent '(' ListExpr '|' ListPIdent '=>' ListPIdent ')' { Language.AbsMPL.PROCESS_RUN $1 $3 $5 $7 }
                | 'close' PIdent { Language.AbsMPL.PROCESS_CLOSE $2 }
                | 'halt' PIdent { Language.AbsMPL.PROCESS_HALT $2 }
-               | 'get' PIdent 'on' PIdent { Language.AbsMPL.PROCESS_GET $2 $4 }
+               | 'get' Pattern 'on' PIdent { Language.AbsMPL.PROCESS_GET $2 $4 }
                | 'put' Expr 'on' PIdent { Language.AbsMPL.PROCESS_PUT $2 $4 }
                | 'hcase' PIdent 'of' '{' ListHCasePhrase '}' { Language.AbsMPL.PROCESS_HCASE $2 $5 }
                | 'hput' UIdent 'on' PIdent { Language.AbsMPL.PROCESS_HPUT $2 $4 }

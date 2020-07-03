@@ -117,8 +117,8 @@ data Expr
     | CHAR_EXPR Char
     | DOUBLE_EXPR Double
     | UNIT_EXPR
-    | FOLD_EXPR PIdent [FoldExprPhrase]
-    | UNFOLD_EXPR PIdent [UnfoldExprPhrase]
+    | FOLD_EXPR Expr [FoldExprPhrase]
+    | UNFOLD_EXPR Expr [UnfoldExprPhrase]
     | CASE_EXPR Expr [PattExprPhrase]
     | SWITCH_EXP [SwitchExprPhrase]
     | DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR UIdent [Expr]
@@ -182,7 +182,7 @@ data ProcessDefn
   deriving (Eq, Ord, Show, Read)
 
 data ProcessPhrase
-    = PROCESS_PHRASE [Pattern] [PIdent] [PIdent] ProcessCommandsBlock
+    = PROCESS_PHRASE [Pattern] [Pattern] [Pattern] ProcessCommandsBlock
   deriving (Eq, Ord, Show, Read)
 
 data ProcessCommandsBlock
@@ -194,7 +194,7 @@ data ProcessCommand
     = PROCESS_RUN PIdent [Expr] [PIdent] [PIdent]
     | PROCESS_CLOSE PIdent
     | PROCESS_HALT PIdent
-    | PROCESS_GET PIdent PIdent
+    | PROCESS_GET Pattern PIdent
     | PROCESS_PUT Expr PIdent
     | PROCESS_HCASE PIdent [HCasePhrase]
     | PROCESS_HPUT UIdent PIdent

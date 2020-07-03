@@ -175,8 +175,8 @@ CHAR_EXPR        . Expr10 ::= Char ;
 DOUBLE_EXPR      . Expr10 ::= Double ;
 UNIT_EXPR        . Expr10 ::= "(" ")" ;
 
-FOLD_EXPR        . Expr10 ::= "fold" PIdent "of" "{" [FoldExprPhrase] "}" ;
-UNFOLD_EXPR      . Expr10 ::= "unfold" PIdent "of" "{" [UnfoldExprPhrase] "}" ;
+FOLD_EXPR        . Expr10 ::= "fold" Expr "of" "{" [FoldExprPhrase] "}" ;
+UNFOLD_EXPR      . Expr10 ::= "unfold" Expr "of" "{" [UnfoldExprPhrase] "}" ;
 CASE_EXPR        . Expr10 ::= "case" Expr "of" "{" [PattExprPhrase] "}" ;
 SWITCH_EXP       . Expr10 ::= "switch" "{" [SwitchExprPhrase] "}" ;
 
@@ -265,8 +265,8 @@ PROCESS_DEFN . ProcessDefn ::=
     "proc" PIdent "=" "{" [ProcessPhrase] "}" ;
 
 PROCESS_PHRASE . ProcessPhrase ::=
-    [Pattern]  "|" [PIdent] "=>" [PIdent] "->" ProcessCommandsBlock ;
-separator ProcessPhrase ";" ;
+    [Pattern]  "|" [Pattern] "=>" [Pattern] "->" ProcessCommandsBlock ;
+separator nonempty ProcessPhrase ";" ;
 
 
 PROCESS_COMMANDS_DO_BLOCK             . ProcessCommandsBlock ::= 
@@ -280,7 +280,7 @@ PROCESS_RUN   .   ProcessCommand ::= PIdent "(" [Expr] "|" [PIdent] "=>" [PIdent
 PROCESS_CLOSE .   ProcessCommand ::= "close" PIdent ;
 PROCESS_HALT  .   ProcessCommand ::= "halt" PIdent ;
 
-PROCESS_GET   .   ProcessCommand ::= "get" PIdent "on" PIdent ;
+PROCESS_GET   .   ProcessCommand ::= "get" Pattern "on" PIdent ;
 PROCESS_PUT   .   ProcessCommand ::= "put" Expr "on" PIdent ;
 
 PROCESS_HCASE .   ProcessCommand ::= "hcase" PIdent "of" "{" [HCasePhrase] "}";
@@ -318,7 +318,7 @@ PLUG_PHRASE    . PlugPhrase ::= ProcessCommandsBlock ;
 -- PLUG_PHRASE_AS . PlugPhrase ::= "with" [PIdent] "->" ProcessCommandsBlock ;
 separator PlugPhrase ";" ;
 
-PROCESS_CASE_PHRASE . ProcessCasePhrase ::=  [Pattern] "->" ProcessCommandsBlock ;
+PROCESS_CASE_PHRASE . ProcessCasePhrase ::=  Pattern "->" ProcessCommandsBlock ;
 separator ProcessCasePhrase ";" ;
 
 PROCESS_SWITCH_PHRASE . ProcessSwitchPhrase ::= Expr "->" ProcessCommandsBlock ;
