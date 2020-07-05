@@ -15,9 +15,7 @@ module MPLAST.MPLPatternAST where
 
 import MPLIdent
 
-import Optics.TH
-import Optics.Prism
-import Optics.Operators
+import Optics
 import Data.Functor.Foldable.TH
 
 import Data.Function
@@ -45,8 +43,8 @@ data Pattern def var =
     | PTuple { _pTuple :: (Pattern def var, NonEmpty (Pattern def var)) }
     | PVar { _pVar :: var }
     | PString { _pString :: String }
-    | PInt { _pInt :: Int }
-    | PNull  -- don't care
+    | PInt { _pInt :: (var, Int) }
+    | PNull  { _pNull :: var }
   deriving ( Read, Show, Generic, Out, Data )
 
 

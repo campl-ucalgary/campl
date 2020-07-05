@@ -21,7 +21,7 @@ $i = [$l $d _ ']     -- identifier character
 $u = [. \n]          -- universal: any character
 
 @rsyms =    -- symbols and non-identifier-like reserved words
-   \, | \{ | \} | \; | \( \+ \) | \( \* \) | \( | \| | \) | \[ | \] | \- \> | \= | \: \: | \= \> | \: | \: \= | \_ | \| \= \|
+   \, | \{ | \} | \; | \| | \- \> | \= | \: \: | \= \> | \: \= | \| \= \|
 
 :-
 "--" [.]* ; -- Toss single line comments
@@ -36,6 +36,22 @@ $l ($l | $d | \_ | \')*
     { tok (\p s -> PT p (eitherResIdent (T_PIdent . share) s)) }
 ([\-]$d | $d)$d *
     { tok (\p s -> PT p (eitherResIdent (T_PInteger . share) s)) }
+\( \+ \)
+    { tok (\p s -> PT p (eitherResIdent (T_Par . share) s)) }
+\( \* \)
+    { tok (\p s -> PT p (eitherResIdent (T_Tensor . share) s)) }
+\(
+    { tok (\p s -> PT p (eitherResIdent (T_LBracket . share) s)) }
+\)
+    { tok (\p s -> PT p (eitherResIdent (T_RBracket . share) s)) }
+\[
+    { tok (\p s -> PT p (eitherResIdent (T_LSquareBracket . share) s)) }
+\]
+    { tok (\p s -> PT p (eitherResIdent (T_RSquareBracket . share) s)) }
+\_
+    { tok (\p s -> PT p (eitherResIdent (T_NullPattern . share) s)) }
+\:
+    { tok (\p s -> PT p (eitherResIdent (T_Colon . share) s)) }
 \| \|
     { tok (\p s -> PT p (eitherResIdent (T_Infixl1op . share) s)) }
 \& \&
@@ -81,6 +97,14 @@ data Tok =
  | T_UIdent !String
  | T_PIdent !String
  | T_PInteger !String
+ | T_Par !String
+ | T_Tensor !String
+ | T_LBracket !String
+ | T_RBracket !String
+ | T_LSquareBracket !String
+ | T_RSquareBracket !String
+ | T_NullPattern !String
+ | T_Colon !String
  | T_Infixl1op !String
  | T_Infixl2op !String
  | T_Infixl3op !String
@@ -129,6 +153,14 @@ prToken t = case t of
   PT _ (T_UIdent s) -> s
   PT _ (T_PIdent s) -> s
   PT _ (T_PInteger s) -> s
+  PT _ (T_Par s) -> s
+  PT _ (T_Tensor s) -> s
+  PT _ (T_LBracket s) -> s
+  PT _ (T_RBracket s) -> s
+  PT _ (T_LSquareBracket s) -> s
+  PT _ (T_RSquareBracket s) -> s
+  PT _ (T_NullPattern s) -> s
+  PT _ (T_Colon s) -> s
   PT _ (T_Infixl1op s) -> s
   PT _ (T_Infixl2op s) -> s
   PT _ (T_Infixl3op s) -> s
@@ -150,7 +182,7 @@ eitherResIdent tv s = treeFind resWords
                               | s == a = t
 
 resWords :: BTree
-resWords = b "fun" 28 (b "]" 14 (b ":" 7 (b ")" 4 (b "(*)" 2 (b "(" 1 N N) (b "(+)" 3 N N)) (b "->" 6 (b "," 5 N N) N)) (b "=" 11 (b ":=" 9 (b "::" 8 N N) (b ";" 10 N N)) (b "[" 13 (b "=>" 12 N N) N))) (b "coprotocol" 21 (b "case" 18 (b "and" 16 (b "_" 15 N N) (b "as" 17 N N)) (b "codata" 20 (b "close" 19 N N) N)) (b "else" 25 (b "defn" 23 (b "data" 22 N N) (b "do" 24 N N)) (b "fork" 27 (b "fold" 26 N N) N)))) (b "proc" 42 (b "into" 35 (b "hput" 32 (b "halt" 30 (b "get" 29 N N) (b "hcase" 31 N N)) (b "in" 34 (b "if" 33 N N) N)) (b "on" 39 (b "neg" 37 (b "let" 36 N N) (b "of" 38 N N)) (b "potato" 41 (b "plug" 40 N N) N))) (b "unfold" 49 (b "split" 46 (b "put" 44 (b "protocol" 43 N N) (b "race" 45 N N)) (b "then" 48 (b "switch" 47 N N) N)) (b "|" 53 (b "with" 51 (b "where" 50 N N) (b "{" 52 N N)) (b "}" 55 (b "|=|" 54 N N) N))))
+resWords = b "hput" 24 (b "codata" 12 (b "=" 6 (b "::" 3 (b "->" 2 (b "," 1 N N) N) (b ";" 5 (b ":=" 4 N N) N)) (b "as" 9 (b "and" 8 (b "=>" 7 N N) N) (b "close" 11 (b "case" 10 N N) N))) (b "fold" 18 (b "defn" 15 (b "data" 14 (b "coprotocol" 13 N N) N) (b "else" 17 (b "do" 16 N N) N)) (b "get" 21 (b "fun" 20 (b "fork" 19 N N) N) (b "hcase" 23 (b "halt" 22 N N) N)))) (b "put" 36 (b "of" 30 (b "into" 27 (b "in" 26 (b "if" 25 N N) N) (b "neg" 29 (b "let" 28 N N) N)) (b "potato" 33 (b "plug" 32 (b "on" 31 N N) N) (b "protocol" 35 (b "proc" 34 N N) N))) (b "where" 42 (b "switch" 39 (b "split" 38 (b "race" 37 N N) N) (b "unfold" 41 (b "then" 40 N N) N)) (b "|" 45 (b "{" 44 (b "with" 43 N N) N) (b "}" 47 (b "|=|" 46 N N) N))))
    where b s n = let bs = id s
                   in B bs (TS bs n)
 

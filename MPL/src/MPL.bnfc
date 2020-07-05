@@ -17,11 +17,25 @@ position token UIdent (upper (letter | digit | '_')*) ;
 position token PIdent letter (letter | digit | '_' | '\'')* ;
 position token PInteger (["-"] digit | digit) digit* ;
 
+position token Par {"(+)"} ;
+position token Tensor {"(*)"} ;
+
+position token LBracket '(' ;
+position token RBracket ')' ;
+
+position token LSquareBracket '[' ;
+position token RSquareBracket ']' ;
+
+position token NullPattern '_' ;
+
+position token Colon ':' ;
+
 -- token Infixr0op ({":"});
 -- the reason we don't use this is because ":"
 -- is somewhat amgbiuous in the sense that it is used
 -- both as cons, and as a seperator for fold phrases
--- Instead, we explicitily write ":" when needed
+-- Instead, we have a Colon token (as above) and use that
+-- whereever we require a colon
 token Infixl1op ({"||"});
 token Infixl2op ({"&&"});
 token Infixl3op ({"=="}|{"/="}|'<'|'>'|{"<="}|{">="});
@@ -57,7 +71,7 @@ MPL_CONCURRENT_TYPE_DEFN . MplDefn ::= ConcurrentTypeDefn ;
 MPL_FUNCTION_DEFN        . MplDefn ::= FunctionDefn ;
 MPL_PROCESS_DEFN         . MplDefn ::= ProcessDefn ;
 
-MPLDEFNTEST . MplDefn ::= "potato" ;
+MPL_DEFNTEST . MplDefn ::= "potato" ;
 
 -- ====================================================================
 --  MPL type 
@@ -67,22 +81,22 @@ MPLDEFNTEST . MplDefn ::= "potato" ;
 MPL_TYPE          . MplType ::= MplType0 ;
 
 -- Concurrent types follows... Tensor binds tighter than par
-PAR_TYPE          . MplType0 ::= MplType1 "(+)" MplType1;
+PAR_TYPE          . MplType0 ::= MplType1 Par MplType1;
 _                 . MplType0 ::= MplType1 ;
 
-TENSOR_TYPE       . MplType1 ::= MplType2 "(*)" MplType2;
+TENSOR_TYPE       . MplType1 ::= MplType2 Tensor MplType2;
 _                 . MplType1 ::= MplType2 ;
 
-GETPUT_TYPE       . MplType2 ::= UIdent"(" MplType "|" MplType ")" ;
+GETPUT_TYPE       . MplType2 ::= UIdent LBracket MplType "|" MplType RBracket ;
 _                 . MplType2 ::= MplType3 ;
 
 -- Sequential types / user defined types / type variables follow..
-MPL_UIDENT_ARGS_TYPE    . MplType3 ::= UIdent "(" [MplType] ")" ;
+MPL_UIDENT_ARGS_TYPE    . MplType3 ::= UIdent LBracket [MplType] RBracket ;
 MPL_UIDENT_NO_ARGS_TYPE . MplType3 ::= UIdent ;
-MPL_UNIT_TYPE           . MplType3 ::= "(" ")" ;
-MPL_BRACKETED_TYPE      . MplType3 ::= "(" MplType ")" ;
-MPL_LIST_TYPE           . MplType3 ::= "[" MplType "]" ;
-MPL_TUPLE_TYPE          . MplType3 ::= "(" MplType "," [TupleListType] ")" ;
+MPL_UNIT_TYPE           . MplType3 ::= LBracket RBracket ;
+MPL_BRACKETED_TYPE      . MplType3 ::= LBracket MplType RBracket ;
+MPL_LIST_TYPE           . MplType3 ::= LSquareBracket MplType RSquareBracket ;
+MPL_TUPLE_TYPE          . MplType3 ::= LBracket MplType "," [TupleListType] RBracket ;
 
 TUPLE_LIST_TYPE . TupleListType ::= MplType ;
 
@@ -132,29 +146,29 @@ EXPR      . Expr  ::= Expr0 ;
 IF_EXPR   . Expr  ::= "if" Expr "then"  Expr  "else"  Expr ;
 LET_EXPR  . Expr  ::= "let" "{" [LetExprPhrase] "}" "in" Expr ;
 
-INFIXR0_EXPR . Expr0 ::=  Expr1 ":" Expr0 ;
-_           . Expr0 ::=  Expr1  ;
+INFIXR0_EXPR . Expr0 ::=  Expr1 Colon Expr0 ;
+_            . Expr0 ::=  Expr1  ;
 
 INFIXL1_EXPR . Expr1 ::=  Expr1 Infixl1op Expr2 ;
-_           . Expr1 ::=  Expr2  ;
+_            . Expr1 ::=  Expr2  ;
 
 INFIXL2_EXPR . Expr2 ::=  Expr2 Infixl2op Expr3 ;
-_           . Expr2 ::=  Expr3  ;
+_            . Expr2 ::=  Expr3  ;
 
 INFIXL3_EXPR . Expr3 ::=  Expr3 Infixl3op Expr4 ;
-_           . Expr3 ::=  Expr4  ;
+_            . Expr3 ::=  Expr4  ;
 
 INFIXL4_EXPR . Expr4 ::=  Expr4 Infixl4op Expr5 ;
-_           . Expr4 ::=  Expr5  ;
+_            . Expr4 ::=  Expr5  ;
 
 INFIXL5_EXPR . Expr5 ::=  Expr5 Infixl5op Expr6 ;
-_           . Expr5 ::=  Expr6  ;
+_            . Expr5 ::=  Expr6  ;
 
 INFIXL6_EXPR . Expr6 ::=  Expr6 Infixl6op Expr7 ;
-_           . Expr6 ::=  Expr7  ;
+_            . Expr6 ::=  Expr7  ;
 
 INFIXR7_EXPR . Expr7 ::=  Expr8 Infixr7op Expr7 ;
-_           . Expr7 ::=  Expr8  ;
+_            . Expr7 ::=  Expr8  ;
 
 
 INFIXL8_EXPR . Expr8 ::= Expr8 Infixl8op Expr10 ;
@@ -167,13 +181,13 @@ _            . Expr8 ::= Expr10 ;
 -- LET_EXPR         . Expr9  ::= "let" "{" [LetExprPhrase] "}" "in" Expr ;
 -- _                . Expr9  ::= Expr10 ;
 
-LIST_EXPR        . Expr10 ::= "[" [Expr] "]" ;
+LIST_EXPR        . Expr10 ::= LSquareBracket [Expr] RSquareBracket ;
 VAR_EXPR         . Expr10 ::= PIdent ;
 INT_EXPR         . Expr10 ::= PInteger ;
 STRING_EXPR      . Expr10 ::= String ;
 CHAR_EXPR        . Expr10 ::= Char ;
 DOUBLE_EXPR      . Expr10 ::= Double ;
-UNIT_EXPR        . Expr10 ::= "(" ")" ;
+UNIT_EXPR        . Expr10 ::= LBracket RBracket ;
 
 FOLD_EXPR        . Expr10 ::= "fold" Expr "of" "{" [FoldExprPhrase] "}" ;
 UNFOLD_EXPR      . Expr10 ::= "unfold" Expr "of" "{" [UnfoldExprPhrase] "}" ;
@@ -181,18 +195,18 @@ CASE_EXPR        . Expr10 ::= "case" Expr "of" "{" [PattExprPhrase] "}" ;
 SWITCH_EXP       . Expr10 ::= "switch" "{" [SwitchExprPhrase] "}" ;
 
 
-DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR    . Expr10 ::= UIdent "(" [Expr] ")" ;
+DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR    . Expr10 ::= UIdent LBracket [Expr] RBracket ;
 DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR . Expr10 ::= UIdent ;
-TUPLE_EXPR       . Expr10 ::= "(" Expr "," [TupleExprList] ")" ;
-FUN_EXPR         . Expr10 ::= PIdent "(" [Expr] ")" ;
-RECORD_EXPR      . Expr10 ::= "(" [RecordExprPhrase] ")" ;
+TUPLE_EXPR       . Expr10 ::= LBracket Expr "," [TupleExprList] RBracket ;
+FUN_EXPR         . Expr10 ::= PIdent LBracket [Expr] RBracket ;
+RECORD_EXPR      . Expr10 ::= LBracket [RecordExprPhrase] RBracket ;
 
-_                . Expr10 ::= "(" Expr ")" ;
+BRACKETED_EXPR   . Expr10 ::= LBracket Expr RBracket ;
 
-UNFOLD_EXPR_PHRASE.    UnfoldExprPhrase ::= Expr "of" "{" [FoldExprPhrase] "}"  ;
+UNFOLD_EXPR_PHRASE.    UnfoldExprPhrase ::= Pattern "of" "{" [FoldExprPhrase] "}"  ;
 separator UnfoldExprPhrase ";" ;
 
-FOLD_EXPR_PHRASE.    FoldExprPhrase ::= UIdent ":"  [PIdent]  "->"  Expr   ;
+FOLD_EXPR_PHRASE.    FoldExprPhrase ::= UIdent Colon  [Pattern]  "->"  Expr   ;
 separator FoldExprPhrase ";" ;
 
 LET_EXPR_PHRASE . LetExprPhrase ::= MplStmt ; 
@@ -219,20 +233,20 @@ PATTERN_TO_EXPR . PattExprPhrase ::= [Pattern] "->" Expr ;
 PATTERN  . Pattern ::= Pattern0 ;
 separator Pattern "," ;
 
-LIST_COLON_PATTERN       . Pattern0 ::= Pattern1 ":" Pattern0 ;
+LIST_COLON_PATTERN       . Pattern0 ::= Pattern1 Colon Pattern0 ;
 _                        . Pattern0 ::= Pattern1 ;
 
-CONSTRUCTOR_PATTERN_ARGS    . Pattern1 ::=  UIdent "(" [Pattern] ")" ;
+CONSTRUCTOR_PATTERN_ARGS    . Pattern1 ::=  UIdent LBracket [Pattern] RBracket ;
 CONSTRUCTOR_PATTERN_NO_ARGS . Pattern1 ::=  UIdent ;
-UNIT_PATTERN                . Pattern1 ::= "(" ")" ; 
-RECORD_PATTERN              . Pattern1 ::= "(" DestructorPatternPhrase "," [DestructorPatternPhrase] ")";
-LIST_PATTERN                . Pattern1 ::=  "[" [Pattern] "]" ;
-TUPLE_PATTERN               . Pattern1 ::=  "(" Pattern "," [TupleListPattern] ")" ;
+UNIT_PATTERN                . Pattern1 ::= LBracket RBracket ; 
+RECORD_PATTERN              . Pattern1 ::= LBracket DestructorPatternPhrase "," [DestructorPatternPhrase] RBracket ;
+LIST_PATTERN                . Pattern1 ::=  LSquareBracket [Pattern] RSquareBracket ;
+TUPLE_PATTERN               . Pattern1 ::=  LBracket Pattern "," [TupleListPattern] RBracket ;
 VAR_PATTERN                 . Pattern1 ::=  PIdent ;
 STR_PATTERN                 . Pattern1 ::=  String ;
 INT_PATTERN                 . Pattern1 ::=  PInteger ;
-NULL_PATTERN                . Pattern1 ::=  "_" ;
-_                           . Pattern1 ::=  "(" Pattern ")" ;
+NULL_PATTERN                . Pattern1 ::=  NullPattern ;
+BRACKETED_PATTERN           . Pattern1 ::=  LBracket Pattern RBracket ;
 
 TUPLE_LIST_PATTERN . TupleListPattern ::= Pattern ;
 separator nonempty TupleListPattern "," ;
@@ -265,7 +279,7 @@ PROCESS_DEFN . ProcessDefn ::=
     "proc" PIdent "=" "{" [ProcessPhrase] "}" ;
 
 PROCESS_PHRASE . ProcessPhrase ::=
-    [Pattern]  "|" [Pattern] "=>" [Pattern] "->" ProcessCommandsBlock ;
+    [Pattern]  "|" [PIdent] "=>" [PIdent] "->" ProcessCommandsBlock ;
 separator nonempty ProcessPhrase ";" ;
 
 
@@ -276,7 +290,7 @@ PROCESS_COMMANDS_SINGLE_COMMAND_BLOCK . ProcessCommandsBlock ::=
 
 separator ProcessCommand ";" ;
 
-PROCESS_RUN   .   ProcessCommand ::= PIdent "(" [Expr] "|" [PIdent] "=>" [PIdent] ")" ;
+PROCESS_RUN   .   ProcessCommand ::= PIdent LBracket [Expr] "|" [PIdent] "=>" [PIdent] RBracket ;
 PROCESS_CLOSE .   ProcessCommand ::= "close" PIdent ;
 PROCESS_HALT  .   ProcessCommand ::= "halt" PIdent ;
 
@@ -286,7 +300,7 @@ PROCESS_PUT   .   ProcessCommand ::= "put" Expr "on" PIdent ;
 PROCESS_HCASE .   ProcessCommand ::= "hcase" PIdent "of" "{" [HCasePhrase] "}";
 PROCESS_HPUT  .   ProcessCommand ::= "hput" UIdent "on" PIdent ;
 
-PROCESS_SPLIT . ProcessCommand ::= "split" PIdent "into" [PIdent] ;
+PROCESS_SPLIT . ProcessCommand ::= "split" PIdent "into" [ SplitChannel ] ;
 PROCESS_FORK  . ProcessCommand ::= "fork" PIdent "as" "{" [ ForkPhrase ] "}" ;
 
 PROCESS_ID    . ProcessCommand ::= PIdent "|=|" PIdent ;
@@ -307,9 +321,15 @@ PROCESS_SWITCH . ProcessCommand ::= "switch" "{" [ProcessSwitchPhrase] "}";
 HCASE_PHRASE . HCasePhrase ::= UIdent "->" ProcessCommandsBlock ;
 separator HCasePhrase ";" ;
 
-FORK_WITH_PHRASE . ForkPhrase ::= PIdent "with" [PIdent] "->" ProcessCommandsBlock ;
+SPLIT_CHANNEL . SplitChannel ::= PIdent ;
+separator nonempty SplitChannel "," ;
+
 FORK_PHRASE . ForkPhrase ::= PIdent "->" ProcessCommandsBlock ;
-separator ForkPhrase ";" ;
+FORK_WITH_PHRASE . ForkPhrase ::= PIdent "with" [ForkChannel] "->" ProcessCommandsBlock ;
+separator nonempty ForkPhrase ";" ;
+
+FORK_CHANNEL . ForkChannel ::= PIdent ;
+separator nonempty ForkChannel ";" ;
 
 RACE_PHRASE . RacePhrase ::= PIdent "->" ProcessCommandsBlock ;
 separator RacePhrase ";" ;
@@ -322,4 +342,4 @@ PROCESS_CASE_PHRASE . ProcessCasePhrase ::=  Pattern "->" ProcessCommandsBlock ;
 separator ProcessCasePhrase ";" ;
 
 PROCESS_SWITCH_PHRASE . ProcessSwitchPhrase ::= Expr "->" ProcessCommandsBlock ;
-separator ProcessSwitchPhrase ";" ;
+separator nonempty ProcessSwitchPhrase ";" ;

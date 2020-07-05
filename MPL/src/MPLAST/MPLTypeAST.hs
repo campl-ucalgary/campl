@@ -48,7 +48,7 @@ data Type def var =
   deriving ( Read, Show, Generic, Out, Data )
 
 data SeqTypeF def t = 
-    TypeTupleF { _seqTypeArgs :: (t, NonEmpty t)}
+    TypeTupleF { _seqTypeArgs :: (t, NonEmpty t) }
     | TypeListF { _seqTypeArg :: t }
 
     | TypeCharF { _seqTypeIdent :: def }
@@ -175,6 +175,8 @@ $(concat <$> traverse (makeFieldLabelsWith (fieldLabelsRules & lensField .~ unde
 $(concat <$> traverse makePrisms 
     [ ''Type
     , ''TypePhrase
+    , ''SeqTypeF
+    , ''ConcTypeF
     ]
  )
 

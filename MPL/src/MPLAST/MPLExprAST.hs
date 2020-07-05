@@ -39,36 +39,41 @@ import Text.PrettyPrint.GenericPretty
 -- Expr definition
 --------------------------
 
-data Expr letdef def var =
-    EIf { _eIf :: Expr letdef def var, _eThen :: Expr letdef def var, _eElse :: Expr letdef def var }
-    | ELet { _eLet ::  NonEmpty letdef, _eIn :: Expr letdef def var}
-    | EOp { _eLarg :: Expr letdef def var, _eOp :: InternalOperators , _eRarg :: Expr letdef def var}
-    | EList { _eList :: [Expr letdef def var] }
+data Expr pattern letdef def var =
+    EIf { _eIf :: Expr pattern letdef def var
+        , _eThen :: Expr pattern letdef def var
+        , _eElse :: Expr pattern letdef def var }
+    | ELet { _eLet ::  NonEmpty letdef, _eIn :: Expr pattern letdef def var}
+    | EOp { _eLarg :: Expr pattern letdef def var, _eOp :: InternalOperators , _eRarg :: Expr pattern letdef def var}
+    | EList { _eList :: [Expr pattern letdef def var] }
     | EVar { _eVar :: var }
-    | EInt { _eInt :: Int }
-    | EString { _eString :: String }
-    | EChar { _eChar :: Char }
-    | EDouble { _eDouble :: Double }
-    | EUnit { _eUnit :: () }
-    | EFold { _eFold :: Expr letdef def var, _eFoldPhrases :: [FoldPhraseF def var (Expr letdef def var)] }
-    | EUnfold { _eUnfold :: Expr letdef def var, _eUnfoldPhrases :: [UnfoldPhraseF def var (Expr letdef def var)] }
-    | ECase { _eCaseOn :: Expr letdef def var, _eCases :: [(Pattern def var, Expr letdef def var)] }
-    | ESwitch { _eSwitchOn :: Expr letdef def var, _eSwitches :: [(Expr letdef def var, Expr letdef def var)] }
-    | EDestructorConstructor { _eCalledDestructorConstructor :: def, _eArgs :: [Expr letdef def var] }
-    | ETuple (Expr letdef def var, NonEmpty (Expr letdef def var))
-    | EFun  { _eCalledFun :: def, _eArgs :: [Expr letdef def var] }
-    | ERecord { _eRecordPhrases :: NonEmpty (def, Expr letdef def var) }
+    | EInt { _eInt :: (var,Int) }
+    | EString { _eString :: (var, String) }
+    | EChar { _eChar :: (var, Char) }
+    | EDouble { _eDouble :: (var, Double) }
+    | EUnit { _eUnit :: var }
+    | EFold { _eFold :: Expr pattern letdef def var, _eFoldPhrases :: [FoldPhraseF def pattern (Expr pattern letdef def var)] }
+    | EUnfold { _eUnfold :: Expr pattern letdef def var
+        , _eUnfoldPhrases :: [UnfoldPhraseF def pattern (Expr pattern letdef def var)] }
+    | ECase { _eCaseOn :: Expr pattern letdef def var
+        , _eCases :: NonEmpty ([pattern], Expr pattern letdef def var) }
+    | ESwitch { _eSwitches :: NonEmpty (Expr pattern letdef def var, Expr pattern letdef def var) }
+    | EDestructorConstructor { _eCalledDestructorConstructor :: def, _eArgs :: [Expr pattern letdef def var] }
+    | ETuple (Expr pattern letdef def var, NonEmpty (Expr pattern letdef def var))
+    | EFun  { _eCalledFun :: def, _eArgs :: [Expr pattern letdef def var] }
+    | ERecord { _eRecord :: def, _eRecordPhrases :: NonEmpty (def, Expr pattern letdef def var) }
   deriving ( Read, Show, Generic, Out, Data )
 
-data FoldPhraseF def var t = FoldPhraseF {
+data FoldPhraseF def pattern t = FoldPhraseF {
     _foldPhraseFieldF :: def
-    , _foldPhraseArgsF :: [var]
+    , _foldPhraseArgsF :: [pattern]
     , _foldPhraseExprF :: t
 } deriving ( Read, Show, Generic, Out, Data, Functor, Typeable, Foldable, Traversable )
 
-data UnfoldPhraseF def var t = UnfoldPhraseF {
-    _unfoldPhraseStateF :: def
-    , _unfoldPhraseFolds :: [FoldPhraseF def var t]
+data UnfoldPhraseF def pattern t = UnfoldPhraseF {
+    _unfoldPhraseStateF :: pattern
+        -- TODO this should be a pattern
+    , _unfoldPhraseFolds :: [FoldPhraseF def pattern t]
 } deriving ( Read, Show, Generic, Out, Data, Functor, Typeable, Foldable, Traversable )
 
 

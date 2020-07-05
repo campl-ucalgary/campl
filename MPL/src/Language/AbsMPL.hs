@@ -12,6 +12,30 @@ newtype PIdent = PIdent ((Int,Int),String)
 newtype PInteger = PInteger ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
 
+newtype Par = Par ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+
+newtype Tensor = Tensor ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+
+newtype LBracket = LBracket ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+
+newtype RBracket = RBracket ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+
+newtype LSquareBracket = LSquareBracket ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+
+newtype RSquareBracket = RSquareBracket ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+
+newtype NullPattern = NullPattern ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+
+newtype Colon = Colon ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+
 newtype Infixl1op = Infixl1op String
   deriving (Eq, Ord, Show, Read)
 
@@ -50,20 +74,20 @@ data MplDefn
     | MPL_CONCURRENT_TYPE_DEFN ConcurrentTypeDefn
     | MPL_FUNCTION_DEFN FunctionDefn
     | MPL_PROCESS_DEFN ProcessDefn
-    | MPLDEFNTEST
+    | MPL_DEFNTEST
   deriving (Eq, Ord, Show, Read)
 
 data MplType
     = MPL_TYPE MplType
-    | PAR_TYPE MplType MplType
-    | TENSOR_TYPE MplType MplType
-    | GETPUT_TYPE UIdent MplType MplType
-    | MPL_UIDENT_ARGS_TYPE UIdent [MplType]
+    | PAR_TYPE MplType Par MplType
+    | TENSOR_TYPE MplType Tensor MplType
+    | GETPUT_TYPE UIdent LBracket MplType MplType RBracket
+    | MPL_UIDENT_ARGS_TYPE UIdent LBracket [MplType] RBracket
     | MPL_UIDENT_NO_ARGS_TYPE UIdent
-    | MPL_UNIT_TYPE
-    | MPL_BRACKETED_TYPE MplType
-    | MPL_LIST_TYPE MplType
-    | MPL_TUPLE_TYPE MplType [TupleListType]
+    | MPL_UNIT_TYPE LBracket RBracket
+    | MPL_BRACKETED_TYPE LBracket MplType RBracket
+    | MPL_LIST_TYPE LSquareBracket MplType RSquareBracket
+    | MPL_TUPLE_TYPE LBracket MplType [TupleListType] RBracket
   deriving (Eq, Ord, Show, Read)
 
 data TupleListType = TUPLE_LIST_TYPE MplType
@@ -101,7 +125,7 @@ data Expr
     = EXPR Expr
     | IF_EXPR Expr Expr Expr
     | LET_EXPR [LetExprPhrase] Expr
-    | INFIXR0_EXPR Expr Expr
+    | INFIXR0_EXPR Expr Colon Expr
     | INFIXL1_EXPR Expr Infixl1op Expr
     | INFIXL2_EXPR Expr Infixl2op Expr
     | INFIXL3_EXPR Expr Infixl3op Expr
@@ -110,28 +134,29 @@ data Expr
     | INFIXL6_EXPR Expr Infixl6op Expr
     | INFIXR7_EXPR Expr Infixr7op Expr
     | INFIXL8_EXPR Expr Infixl8op Expr
-    | LIST_EXPR [Expr]
+    | LIST_EXPR LSquareBracket [Expr] RSquareBracket
     | VAR_EXPR PIdent
     | INT_EXPR PInteger
     | STRING_EXPR String
     | CHAR_EXPR Char
     | DOUBLE_EXPR Double
-    | UNIT_EXPR
+    | UNIT_EXPR LBracket RBracket
     | FOLD_EXPR Expr [FoldExprPhrase]
     | UNFOLD_EXPR Expr [UnfoldExprPhrase]
     | CASE_EXPR Expr [PattExprPhrase]
     | SWITCH_EXP [SwitchExprPhrase]
-    | DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR UIdent [Expr]
+    | DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR UIdent LBracket [Expr] RBracket
     | DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR UIdent
-    | TUPLE_EXPR Expr [TupleExprList]
-    | FUN_EXPR PIdent [Expr]
-    | RECORD_EXPR [RecordExprPhrase]
+    | TUPLE_EXPR LBracket Expr [TupleExprList] RBracket
+    | FUN_EXPR PIdent LBracket [Expr] RBracket
+    | RECORD_EXPR LBracket [RecordExprPhrase] RBracket
+    | BRACKETED_EXPR LBracket Expr RBracket
   deriving (Eq, Ord, Show, Read)
 
-data UnfoldExprPhrase = UNFOLD_EXPR_PHRASE Expr [FoldExprPhrase]
+data UnfoldExprPhrase = UNFOLD_EXPR_PHRASE Pattern [FoldExprPhrase]
   deriving (Eq, Ord, Show, Read)
 
-data FoldExprPhrase = FOLD_EXPR_PHRASE UIdent [PIdent] Expr
+data FoldExprPhrase = FOLD_EXPR_PHRASE UIdent Colon [Pattern] Expr
   deriving (Eq, Ord, Show, Read)
 
 data LetExprPhrase = LET_EXPR_PHRASE MplStmt
@@ -151,17 +176,18 @@ data PattExprPhrase = PATTERN_TO_EXPR [Pattern] Expr
 
 data Pattern
     = PATTERN Pattern
-    | LIST_COLON_PATTERN Pattern Pattern
-    | CONSTRUCTOR_PATTERN_ARGS UIdent [Pattern]
+    | LIST_COLON_PATTERN Pattern Colon Pattern
+    | CONSTRUCTOR_PATTERN_ARGS UIdent LBracket [Pattern] RBracket
     | CONSTRUCTOR_PATTERN_NO_ARGS UIdent
-    | UNIT_PATTERN
-    | RECORD_PATTERN DestructorPatternPhrase [DestructorPatternPhrase]
-    | LIST_PATTERN [Pattern]
-    | TUPLE_PATTERN Pattern [TupleListPattern]
+    | UNIT_PATTERN LBracket RBracket
+    | RECORD_PATTERN LBracket DestructorPatternPhrase [DestructorPatternPhrase] RBracket
+    | LIST_PATTERN LSquareBracket [Pattern] RSquareBracket
+    | TUPLE_PATTERN LBracket Pattern [TupleListPattern] RBracket
     | VAR_PATTERN PIdent
     | STR_PATTERN String
     | INT_PATTERN PInteger
-    | NULL_PATTERN
+    | NULL_PATTERN NullPattern
+    | BRACKETED_PATTERN LBracket Pattern RBracket
   deriving (Eq, Ord, Show, Read)
 
 data TupleListPattern = TUPLE_LIST_PATTERN Pattern
@@ -182,7 +208,7 @@ data ProcessDefn
   deriving (Eq, Ord, Show, Read)
 
 data ProcessPhrase
-    = PROCESS_PHRASE [Pattern] [Pattern] [Pattern] ProcessCommandsBlock
+    = PROCESS_PHRASE [Pattern] [PIdent] [PIdent] ProcessCommandsBlock
   deriving (Eq, Ord, Show, Read)
 
 data ProcessCommandsBlock
@@ -191,14 +217,14 @@ data ProcessCommandsBlock
   deriving (Eq, Ord, Show, Read)
 
 data ProcessCommand
-    = PROCESS_RUN PIdent [Expr] [PIdent] [PIdent]
+    = PROCESS_RUN PIdent LBracket [Expr] [PIdent] [PIdent] RBracket
     | PROCESS_CLOSE PIdent
     | PROCESS_HALT PIdent
     | PROCESS_GET Pattern PIdent
     | PROCESS_PUT Expr PIdent
     | PROCESS_HCASE PIdent [HCasePhrase]
     | PROCESS_HPUT UIdent PIdent
-    | PROCESS_SPLIT PIdent [PIdent]
+    | PROCESS_SPLIT PIdent [SplitChannel]
     | PROCESS_FORK PIdent [ForkPhrase]
     | PROCESS_ID PIdent PIdent
     | PROCESS_NEG PIdent PIdent
@@ -211,9 +237,15 @@ data ProcessCommand
 data HCasePhrase = HCASE_PHRASE UIdent ProcessCommandsBlock
   deriving (Eq, Ord, Show, Read)
 
+data SplitChannel = SPLIT_CHANNEL PIdent
+  deriving (Eq, Ord, Show, Read)
+
 data ForkPhrase
-    = FORK_WITH_PHRASE PIdent [PIdent] ProcessCommandsBlock
-    | FORK_PHRASE PIdent ProcessCommandsBlock
+    = FORK_PHRASE PIdent ProcessCommandsBlock
+    | FORK_WITH_PHRASE PIdent [ForkChannel] ProcessCommandsBlock
+  deriving (Eq, Ord, Show, Read)
+
+data ForkChannel = FORK_CHANNEL PIdent
   deriving (Eq, Ord, Show, Read)
 
 data RacePhrase = RACE_PHRASE PIdent ProcessCommandsBlock
@@ -223,7 +255,7 @@ data PlugPhrase = PLUG_PHRASE ProcessCommandsBlock
   deriving (Eq, Ord, Show, Read)
 
 data ProcessCasePhrase
-    = PROCESS_CASE_PHRASE [Pattern] ProcessCommandsBlock
+    = PROCESS_CASE_PHRASE Pattern ProcessCommandsBlock
   deriving (Eq, Ord, Show, Read)
 
 data ProcessSwitchPhrase
