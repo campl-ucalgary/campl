@@ -19,7 +19,7 @@ import Data.Function
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE 
 
-import MPLAST.MPLTypeAST
+import MPLAST.MPLTypeAST hiding (TypePhrase (..))
 import MPLAST.MPLPatternAST
 import MPLAST.MPLExprAST
 import MPLAST.MPLProcessCommandsAST
@@ -42,6 +42,7 @@ type ProgI = Prog DefnI
 type StmtI = Stmt DefnI
 type PatternI = Pattern BnfcIdent BnfcIdent 
 type TypeI = Type BnfcIdent BnfcIdent 
+type DataTypePhraseI = TypePhrase (DataPhrase BnfcIdent BnfcIdent) BnfcIdent BnfcIdent
 type SeqTypeClauseI = SeqTypeClause BnfcIdent BnfcIdent BnfcIdent
 type SeqTypePhraseI = SeqTypePhrase BnfcIdent BnfcIdent BnfcIdent
 type ConcTypeClauseI =  ConcTypeClause BnfcIdent BnfcIdent BnfcIdent

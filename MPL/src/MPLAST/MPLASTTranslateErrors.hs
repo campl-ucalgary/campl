@@ -17,14 +17,14 @@ import Language.AbsMPL as B
 
 data TranslateBnfcErrors =
     IllegalGetPut BnfcIdent
-    | IllegalDataDeclaration { _translateBnfcErrorStateVar :: Type BnfcIdent BnfcIdent
-                                , _translateBnfcErrorDecName :: Type BnfcIdent BnfcIdent }
+    | IllegalDataDeclaration TranslateBnfcErrors
     | IllegalCodataDeclaration { _translateBnfcErrorStateVar :: Type BnfcIdent BnfcIdent
                                 , _translateBnfcErrorDecName :: Type BnfcIdent BnfcIdent }
     | IllegalProtocolDeclaration { _translateBnfcErrorStateVar :: Type BnfcIdent BnfcIdent
                                 , _translateBnfcErrorDecName :: Type BnfcIdent BnfcIdent }
     | IllegalCoprotocolDeclaration { _translateBnfcErrorStateVar :: Type BnfcIdent BnfcIdent
                                 , _translateBnfcErrorDecName :: Type BnfcIdent BnfcIdent }
+    | IllegalTypeName { _translateBnfcErrorIllegalTypeName :: Type BnfcIdent BnfcIdent }
     | IllegalNonTypeVar { _translateBnfcErrorIllegalNonTypeVar :: Type BnfcIdent BnfcIdent }
 
     | IllegalSplit { _translateBnfcErrorIllegalSplit :: [BnfcIdent] }

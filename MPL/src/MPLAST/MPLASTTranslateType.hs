@@ -42,6 +42,7 @@ import Control.Arrow
 
 import Text.PrettyPrint.GenericPretty
 
+{-
 translateSeqTypeClauseArgs ::
     forall e.
     AsTranslateBnfcErrors e => 
@@ -79,6 +80,21 @@ translateSeqTypeClauseArgs err from to handles = do
 
                     _ -> Left $ review err (from',to') :| []
             _ -> Left $ review err (from',to') :| []
+-}
+
+getTypeDeclarationName ::
+    forall e.
+    AsTranslateBnfcErrors e => 
+    TypeI ->
+    Either (NonEmpty e) (BnfcIdent, [BnfcIdent])
+getTypeDeclarationName n = 
+    case n of
+        TypeWithNoArgs name -> return (name, [])
+        TypeWithArgs name args -> do
+            args' <- translateTypeDeclarationArgs (NE.toList args)
+            return (name, args')
+        n -> Left $ ((review _IllegalTypeName n) :|[] )
+
 
 translateConcTypeClauseArgs ::
     forall e.
@@ -107,7 +123,7 @@ translateConcTypeClauseArgs err from to handles = do
                             , concat handles'
                             )
                     TypeWithArgs name args -> do
-                        args' <- translateTypeDeclarationArgs name (NE.toList args)
+                        args' <- translateTypeDeclarationArgs (NE.toList args)
                         return $ review _ConcTypeClause 
                             (  statevar 
                             , args'
@@ -130,13 +146,30 @@ getTypeVar n = Left (review _IllegalNonTypeVar n :| [])
 translateTypeDeclarationArgs ::
     forall e .
     AsTranslateBnfcErrors e => 
-    BnfcIdent -> 
-        -- ^ focused type
     [Type BnfcIdent BnfcIdent] -> 
         -- ^ argument
     Either (NonEmpty e) [BnfcIdent]
-translateTypeDeclarationArgs focus args = 
+translateTypeDeclarationArgs args = 
     map getTypeVar args ^. collectsOnlyIfNoLeftsGetter
+
+translateBnfcSeqTypePhrasesToDataPhrase ::
+    forall e.
+    AsTranslateBnfcErrors e => 
+    SeqTypePhraseDefn -> 
+    Either (NonEmpty e) ([DataTypePhraseI])
+translateBnfcSeqTypePhrasesToDataPhrase (SEQ_TYPE_PHRASE handles fromtypes totype) = 
+    map f handles ^. collectsOnlyIfNoLeftsGetter
+  where
+    f :: TypeHandleName -> Either (NonEmpty e) DataTypePhraseI
+    f (TYPE_HANDLE_NAME name) = do
+        fromtypes' <- map translateBnfcTypeToType fromtypes ^. collectsOnlyIfNoLeftsGetter
+        totype' <- translateBnfcTypeToType totype >>= getTypeVar 
+
+        return $ review _TypePhrase
+            ( name ^. uIdentBnfcIdentGetter
+            , review _DataPhrase (fromtypes' , totype')
+            )
+        -- can apply fusion law..
 
 
 translateBnfcSeqTypePhrasesToSeqTypePhrase ::

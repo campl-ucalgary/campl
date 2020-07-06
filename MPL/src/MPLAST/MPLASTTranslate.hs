@@ -44,6 +44,7 @@ import Data.Either
 import Data.Tuple
 import Data.Semigroup
 import Control.Arrow
+import qualified Data.Bifunctor as Bifunctor
 
 import Text.PrettyPrint.GenericPretty
 
@@ -76,12 +77,18 @@ translateBnfcDefn ::
     Either (NonEmpty e) DefnI
 translateBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.DATA_DEFN seqclauses)) = 
     DefnI . DataDefn . NE.fromList
-    <$> view collectsOnlyIfNoLeftsGetter 
-        (map f seqclauses)
+    <$> -- Bifunctor.first (NE.map (review _IllegalDataDeclaration)) 
+        (view collectsOnlyIfNoLeftsGetter (map f seqclauses))
   where
-    f (B.SEQ_TYPE_CLAUSE from to handles) = 
-        translateSeqTypeClauseArgs _IllegalDataDeclaration to from handles
+    f (B.SEQ_TYPE_CLAUSE from to handles) = do
+        (from', to') <- runAccumEither $ (,) 
+            <$> liftAEither (translateBnfcTypeToType from) <*> liftAEither (translateBnfcTypeToType to)
+        ((name, args), statevar) <- runAccumEither $ (,) 
+            <$> liftAEither (getTypeDeclarationName from') <*> liftAEither (getTypeVar to')
+        handles' <- runAccumEither $ traverse (liftAEither . translateBnfcSeqTypePhrasesToDataPhrase) handles
+        return $ review _TypeClause (name, args, statevar, concat handles')
 
+{-
 translateBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.CODATA_DEFN seqclauses)) = 
     DefnI . CodataDefn . NE.fromList
     <$> view collectsOnlyIfNoLeftsGetter 
@@ -89,6 +96,7 @@ translateBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.CODATA_DEFN seqclauses)) =
   where
     f (B.SEQ_TYPE_CLAUSE from to handles) = 
         translateSeqTypeClauseArgs _IllegalCodataDeclaration from to handles
+        -}
             
 translateBnfcDefn (B.MPL_CONCURRENT_TYPE_DEFN (B.PROTOCOL_DEFN concclauses)) = 
     DefnI . ProtocolDefn . NE.fromList

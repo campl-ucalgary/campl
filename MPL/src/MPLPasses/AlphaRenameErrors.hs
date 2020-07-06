@@ -35,6 +35,8 @@ overlappingStmtsCheck ::
     , AsAlphaRenameErrors e ) =>
     [StmtI] -> m ()
 overlappingStmtsCheck stmts = do
+    undefined
+    {-
     traverse overlappingHelper $ 
         concat 
             [ datacodata 
@@ -80,3 +82,4 @@ overlappingStmtsCheck stmts = do
         $ mapMaybe (\a -> view procName <$> preview _ProcessDecDefn a)
         $ concat
         $ stmtdefnslist
+        -}

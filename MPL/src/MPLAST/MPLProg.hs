@@ -9,7 +9,7 @@
 module MPLAST.MPLProg where
 
 import MPLAST.MPLExprAST
-import MPLAST.MPLTypeAST
+import MPLAST.MPLTypeAST hiding (TypePhrase (..))
 import MPLAST.MPLPatternAST
 import MPLAST.MPLProcessCommandsAST
 
@@ -29,12 +29,9 @@ data Stmt defn = Stmt {
 } deriving (Show, Eq, Read)
 
 data Defn pattern letdef calldef decdef var concvar =
-    DataDefn { 
-            _seqTypeClause:: NonEmpty (SeqTypeClause calldef decdef var) 
-        }
-    | CodataDefn { 
-            _seqTypeClause:: NonEmpty (SeqTypeClause calldef decdef var) 
-        }
+    DataDefn (NonEmpty (TypeClause (TypePhrase (DataPhrase calldef var) decdef var) decdef var))
+    | CodataDefn (NonEmpty (TypeClause (TypePhrase (CodataPhrase calldef var) decdef var) decdef var))
+
     | ProtocolDefn { _concTypeClause:: NonEmpty (ConcTypeClause calldef decdef var) }
     | CoprotocolDefn { _concTypeClause:: NonEmpty (ConcTypeClause calldef decdef var) }
 
@@ -136,5 +133,11 @@ $(concat <$> traverse makePrisms
     , ''ConcTypeClause
     , ''SeqTypePhrase
     , ''SeqTypeClause
+    , ''TypeClause
+    , ''TypePhrase
+    , ''DataPhrase
+    , ''CodataPhrase
+    , ''ProtocolPhrase
+    , ''CoprotocolPhrase
     ]
  )
