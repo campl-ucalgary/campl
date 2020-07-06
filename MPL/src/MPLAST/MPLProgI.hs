@@ -1,5 +1,4 @@
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -13,11 +12,7 @@
 {-# LANGUAGE CPP #-}
 module MPLAST.MPLProgI where
 
-import MPLIdent
-
-import Optics.TH
-import Optics.Prism
-import Optics.Operators
+import Optics
 
 import Data.Function
 
@@ -43,63 +38,55 @@ import Text.PrettyPrint.GenericPretty
 
 #define MPL_TYPE_AST_PLAIN_DATA_DERIVING_CLAUSE ( Eq, Ord, Read, Show, Generic, Out, Data, Typeable )
 
-type BnfcIdent = (String, (Int, Int))
-type ProgI = Prog StmtI
-type StmtI = Stmt (Defn BnfcIdent BnfcIdent)
+type ProgI = Prog DefnI
+type StmtI = Stmt DefnI
 type PatternI = Pattern BnfcIdent BnfcIdent 
 type TypeI = Type BnfcIdent BnfcIdent 
+type SeqTypeClauseI = SeqTypeClause BnfcIdent BnfcIdent BnfcIdent
+type SeqTypePhraseI = SeqTypePhrase BnfcIdent BnfcIdent BnfcIdent
+type ConcTypeClauseI =  ConcTypeClause BnfcIdent BnfcIdent BnfcIdent
+type ConcTypePhraseI = ConcTypePhrase BnfcIdent BnfcIdent BnfcIdent
 type ExprI = Expr 
     (Pattern BnfcIdent BnfcIdent) 
-    (Stmt (Defn BnfcIdent BnfcIdent))
+    StmtI
     BnfcIdent 
     BnfcIdent
-type ProcessCommandsI = ProcessCommands PatternI StmtI BnfcIdent BnfcIdent
 
-data Defn def var =
-    DataDefn  { _seqTypeClause :: NonEmpty (SeqTypeClause def var) }
-    | CodataDefn  { _seqTypeClause :: NonEmpty (SeqTypeClause def var) }
-    | ProtocolDefn  { _concTypeClause :: NonEmpty (ConcTypeClause def var) }
-    | CoprotocolDefn  { _concTypeClause :: NonEmpty (ConcTypeClause def var) }
-    | FunctionDefn  { _funName :: def
-                    , _funTypesFromTo :: Maybe ([Type def var], Type def var)
-                    , _funDefn :: NonEmpty ([Pattern def var], Expr (Pattern def var) (Stmt (Defn def var)) def var) }
-    | ProcessDefn  { _procName :: def
-                    , _procSeqInChsOutChsTypes :: Maybe ([Type def var], [Type def var], [Type def var])
-                    , _procDefn :: NonEmpty 
-                        ( ([Pattern def var], [var], [var])
-                        , ProcessCommands (Pattern def var) (Stmt (Defn def var)) def var) }
+type ProcessCommandsI = ProcessCommands PatternI StmtI BnfcIdent BnfcIdent BnfcIdent
+type ProcessCommandI = ProcessCommand PatternI StmtI BnfcIdent BnfcIdent BnfcIdent
 
-data SeqTypeClause def var = SeqTypeClause {
-    _seqTypeClauseName :: def
-    , _seqTypeClauseArgs :: [var]
-    , _seqTypeClauseStateVar :: var
-    , _seqTypePhrases :: [SeqTypePhrase def var]
-}
+newtype BnfcIdent = BnfcIdent { stringPos :: (String, (Int, Int)) }
+  deriving (Show, Eq, Read, Ord)
 
-data SeqTypePhrase def var = SeqTypePhrase {
-    _seqTypePhraseName :: def
-    , _seqTypePhraseFrom :: [Type def var]
-    , _seqTypePhraseTo :: var
-}
+newtype DefnI = DefnI { 
+    _unDefnI :: Defn (Pattern BnfcIdent BnfcIdent) (Stmt DefnI) BnfcIdent BnfcIdent BnfcIdent BnfcIdent
+    }
+  deriving (Show, Eq, Read)
+$(makeLenses ''DefnI)
 
-data ConcTypeClause def var = ConcTypeClause {
-    _concTypeClauseName :: def
-    , _concTypeClauseArgs :: [var]
-    , _concTypeClauseStateVar :: var
-    , _concTypePhrases :: [ConcTypePhrase def var]
-}
+{-
+data DefnI =
+    DataDefnI  { _seqTypeClauseI :: NonEmpty (SeqTypeClause BnfcIdent BnfcIdent) }
+    | CodataDefnI  { _seqTypeClauseI :: NonEmpty (SeqTypeClause BnfcIdent BnfcIdent) }
+    | ProtocolDefnI  { _concTypeClauseI :: NonEmpty (ConcTypeClause BnfcIdent BnfcIdent) }
+    | CoprotocolDefnI  { _concTypeClauseI :: NonEmpty (ConcTypeClause BnfcIdent BnfcIdent) }
 
-data ConcTypePhrase def var = ConcTypePhrase {
-    _concTypePhraseName :: def
-    , _concTypePhraseFrom :: var
-    , _concTypePhraseTo :: var
-}
+    | FunctionDefnI (FunctionDefn PatternI StmtI BnfcIdent BnfcIdent)
+
+    | ProcessDefnI (ProcessDefn 
+        PatternI 
+        StmtI 
+        BnfcIdent 
+        BnfcIdent
+        BnfcIdent)
+        -}
 
 $(concat <$> traverse (makeFieldLabelsWith (fieldLabelsRules & lensField .~ underscoreNoPrefixNamer))
-    [ ''Defn ]
+    [ ''DefnI ]
  )
-
 
 $(concat <$> traverse makePrisms 
-    [ ''Defn ]
+    [ ''DefnI ]
  )
+
+$(makeClassy ''BnfcIdent)

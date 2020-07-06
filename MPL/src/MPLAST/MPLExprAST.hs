@@ -62,19 +62,19 @@ data Expr pattern letdef def var =
     | ETuple (Expr pattern letdef def var, NonEmpty (Expr pattern letdef def var))
     | EFun  { _eCalledFun :: def, _eArgs :: [Expr pattern letdef def var] }
     | ERecord { _eRecord :: def, _eRecordPhrases :: NonEmpty (def, Expr pattern letdef def var) }
-  deriving ( Read, Show, Generic, Out, Data )
+  deriving ( Read, Show, Generic, Out, Data, Eq )
 
 data FoldPhraseF def pattern t = FoldPhraseF {
     _foldPhraseFieldF :: def
     , _foldPhraseArgsF :: [pattern]
     , _foldPhraseExprF :: t
-} deriving ( Read, Show, Generic, Out, Data, Functor, Typeable, Foldable, Traversable )
+} deriving ( Read, Show, Generic, Out, Data, Functor, Typeable, Foldable, Traversable, Eq )
 
 data UnfoldPhraseF def pattern t = UnfoldPhraseF {
     _unfoldPhraseStateF :: pattern
         -- TODO this should be a pattern
     , _unfoldPhraseFolds :: [FoldPhraseF def pattern t]
-} deriving ( Read, Show, Generic, Out, Data, Functor, Typeable, Foldable, Traversable )
+} deriving ( Read, Show, Generic, Out, Data, Functor, Typeable, Foldable, Traversable, Eq )
 
 
 _InternalOperatorParser :: Prism' String InternalOperators

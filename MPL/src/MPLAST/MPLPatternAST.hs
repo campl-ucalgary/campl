@@ -16,6 +16,7 @@ module MPLAST.MPLPatternAST where
 import MPLIdent
 
 import Optics
+import MPLUtil.Optics.TH
 import Data.Functor.Foldable.TH
 
 import Data.Function
@@ -45,10 +46,10 @@ data Pattern def var =
     | PString { _pString :: String }
     | PInt { _pInt :: (var, Int) }
     | PNull  { _pNull :: var }
-  deriving ( Read, Show, Generic, Out, Data )
+  deriving ( Read, Show, Generic, Out, Data, Eq )
 
 
-$(concat <$> traverse (makeFieldLabelsWith (fieldLabelsRules & lensField .~ underscoreNoPrefixNamer))
+$(concat <$> traverse mplMakeFieldLabels
     [ ''Pattern
     ]
  )

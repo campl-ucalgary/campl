@@ -45,7 +45,7 @@ data Type def var =
 
     | TypeSeq (SeqTypeF def (Type def var))
     | TypeConc (ConcTypeF def (Type def var))
-  deriving ( Read, Show, Generic, Out, Data )
+  deriving ( Read, Show, Generic, Out, Data, Eq )
 
 data SeqTypeF def t = 
     TypeTupleF { _seqTypeArgs :: (t, NonEmpty t) }
@@ -56,7 +56,7 @@ data SeqTypeF def t =
     | TypeString { _seqTypeIdent :: def }
     | TypeUnitF { _seqTypeIdent :: def }
 
-  deriving ( Read, Show, Generic, Out, Data, Functor, Typeable, Foldable, Traversable )
+  deriving ( Read, Show, Generic, Out, Data, Functor, Typeable, Foldable, Traversable, Eq )
 
 data ConcTypeF def t = 
     TypeGetF { _concTypeIdent :: def , _concTypeSeqArg :: t,  _concTypeConcArg :: t }
@@ -68,7 +68,7 @@ data ConcTypeF def t =
     | TypeTopBotF { _concTypeIdent :: def }
 
     | TypeNegF { _concTypeIdent :: def , _concTypeArg :: t  }
-  deriving ( Read, Show, Generic, Out, Data, Functor, Typeable, Foldable, Traversable )
+  deriving ( Read, Show, Generic, Out, Data, Functor, Typeable, Foldable, Traversable, Eq )
 
 data KindPhrase def var =
     -- data defn
@@ -91,9 +91,7 @@ data KindPhrase def var =
         , _kindPhraseChildrenIdents :: [def]
 
     }
-
-
-  deriving ( Read, Show, Generic, Out, Data )
+  deriving ( Read, Show, Generic, Out, Data, Eq )
 data TypePhrase def var =
     TypePhraseProcessDefn { _typePhraseIdent :: def
         , _typeProcessSeqArgs :: [Type def var]
@@ -119,6 +117,7 @@ data TypePhrase def var =
         , _typePhraseConstrInp :: [Type def var]
         , _typePhraseStateVar :: var
     }
+  deriving ( Read, Show, Generic, Out, Data, Eq )
 
 
 data InternalSeqType =

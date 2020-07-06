@@ -10,20 +10,7 @@
 {-# LANGUAGE CPP #-}
 module MPLAST.MPLASTTranslateType where
 
-import Optics.TH
-import Optics.Prism
-import Optics.Operators
-import Optics.Optic
-import Optics.Getter
-import Optics.Setter
-import Optics.Review
-import Optics.Prism
-import Optics.Fold
-import Optics.Empty
-import Optics.AffineFold
-import Data.Either.Optics
-import Optics.Iso
-import Data.Tuple.Optics
+import Optics
 
 import Data.Function
 import qualified Data.Bifunctor as Bifunctor
@@ -32,6 +19,7 @@ import Control.Monad
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE 
 import Data.Maybe
+import Data.Coerce
 
 import MPLAST.MPLTypeAST
 import MPLAST.MPLPatternAST
@@ -64,7 +52,7 @@ translateSeqTypeClauseArgs ::
     -- ^to (name)
     [SeqTypePhraseDefn] ->
     -- ^ handles
-    Either (NonEmpty e) (SeqTypeClause BnfcIdent BnfcIdent)
+    Either (NonEmpty e) SeqTypeClauseI
 translateSeqTypeClauseArgs err from to handles = do
         from' <- translateBnfcTypeToType from
         to' <- translateBnfcTypeToType to
@@ -74,20 +62,21 @@ translateSeqTypeClauseArgs err from to handles = do
             TypeWithNoArgs statevar -> 
                 case to' of
                     TypeWithNoArgs name ->  
-                        return $ SeqTypeClause {
-                                _seqTypeClauseName = statevar 
-                                , _seqTypeClauseArgs = []
-                                , _seqTypeClauseStateVar = name 
-                                , _seqTypePhrases = concat handles'
-                            }
+                        return $ review _SeqTypeClause 
+                            ( coerce statevar 
+                            , []
+                            , name 
+                            , concat handles'
+                            )
                     TypeWithArgs name args -> do
                         args' <- translateTypeDeclarationArgs name (NE.toList args)
-                        return $ SeqTypeClause {
-                                _seqTypeClauseName = statevar 
-                                , _seqTypeClauseArgs = args'
-                                , _seqTypeClauseStateVar = name 
-                                , _seqTypePhrases = concat handles'
-                            }
+                        return $ review _SeqTypeClause 
+                            ( statevar 
+                            , args'
+                            , name 
+                            , concat handles'
+                            )
+
                     _ -> Left $ review err (from',to') :| []
             _ -> Left $ review err (from',to') :| []
 
@@ -101,7 +90,7 @@ translateConcTypeClauseArgs ::
     -- ^to (name)
     [ConcurrentTypePhraseDefn] ->
     -- ^ handles
-    Either (NonEmpty e) (ConcTypeClause BnfcIdent BnfcIdent)
+    Either (NonEmpty e) ConcTypeClauseI
 translateConcTypeClauseArgs err from to handles = do
         from' <- translateBnfcTypeToType from
         to' <- translateBnfcTypeToType to
@@ -111,20 +100,20 @@ translateConcTypeClauseArgs err from to handles = do
             TypeWithNoArgs statevar -> 
                 case to' of
                     TypeWithNoArgs name ->  
-                        return $ ConcTypeClause {
-                                _concTypeClauseName = statevar 
-                                , _concTypeClauseArgs = []
-                                , _concTypeClauseStateVar = name 
-                                , _concTypePhrases = concat handles'
-                            }
+                        return $ review _ConcTypeClause 
+                            ( statevar 
+                            , []
+                            , name 
+                            , concat handles'
+                            )
                     TypeWithArgs name args -> do
                         args' <- translateTypeDeclarationArgs name (NE.toList args)
-                        return $ ConcTypeClause {
-                                _concTypeClauseName = statevar 
-                                , _concTypeClauseArgs = args'
-                                , _concTypeClauseStateVar = name 
-                                , _concTypePhrases = concat handles'
-                            }
+                        return $ review _ConcTypeClause 
+                            (  statevar 
+                            , args'
+                            , name 
+                            , concat handles'
+                            )
                     _ -> Left $ review err (from',to') :| []
             _ -> Left $ review err (from',to') :| []
 
@@ -154,39 +143,38 @@ translateBnfcSeqTypePhrasesToSeqTypePhrase ::
     forall e.
     AsTranslateBnfcErrors e => 
     SeqTypePhraseDefn -> 
-    Either (NonEmpty e) ([SeqTypePhrase BnfcIdent BnfcIdent])
+    Either (NonEmpty e) ([SeqTypePhraseI])
 translateBnfcSeqTypePhrasesToSeqTypePhrase (SEQ_TYPE_PHRASE handles fromtypes totype) = 
     map f handles ^. collectsOnlyIfNoLeftsGetter
   where
-    f :: TypeHandleName -> Either (NonEmpty e) (SeqTypePhrase BnfcIdent BnfcIdent)
+    f :: TypeHandleName -> Either (NonEmpty e) SeqTypePhraseI
     f (TYPE_HANDLE_NAME name) = do
         fromtypes' <- map translateBnfcTypeToType fromtypes ^. collectsOnlyIfNoLeftsGetter
         totype' <- translateBnfcTypeToType totype >>= getTypeVar 
 
-        return $ SeqTypePhrase {
-            _seqTypePhraseName = name ^. uIdentBnfcIdentGetter
-            , _seqTypePhraseFrom = fromtypes'
-            , _seqTypePhraseTo = totype'
-        }
+        return $ review _SeqTypePhrase 
+            ( name ^. uIdentBnfcIdentGetter
+            , fromtypes'
+            , totype')
         -- can apply fusion law..
 
 translateConcurrentTypePhraseToConcTypePhrase ::
     forall e. 
     AsTranslateBnfcErrors e => 
     ConcurrentTypePhraseDefn ->
-    Either (NonEmpty e) [ConcTypePhrase BnfcIdent BnfcIdent]
+    Either (NonEmpty e) [ConcTypePhraseI]
 translateConcurrentTypePhraseToConcTypePhrase (CONCURRENT_TYPE_PHRASE handles a b)  = 
     view collectsOnlyIfNoLeftsGetter $ map f handles 
   where
     f (TYPE_HANDLE_NAME name) = do
-        a' <- translateBnfcTypeToType a >>= getTypeVar
+        a' <- translateBnfcTypeToType a 
         b' <- translateBnfcTypeToType b >>= getTypeVar 
 
-        return $ ConcTypePhrase {
-            _concTypePhraseName = name ^. uIdentBnfcIdentGetter
-            , _concTypePhraseFrom = a'
-            , _concTypePhraseTo = b'
-        }
+        return $ review _ConcTypePhrase 
+            (  name ^. uIdentBnfcIdentGetter
+            , a'
+            , b'
+            )
         -- can apply fusion law..
 
 translateBnfcTypeToType :: 
@@ -199,12 +187,12 @@ translateBnfcTypeToType (MPL_TYPE n) = translateBnfcTypeToType n
 
 translateBnfcTypeToType (PAR_TYPE a (Par p) b) = 
     review (_TypeConc % _TypeParF) 
-        <$> ( (p ^. swapped,, ) 
+        <$> ( (BnfcIdent (p ^. swapped),, ) 
             <$> translateBnfcTypeToType a 
             <*> translateBnfcTypeToType b )
 translateBnfcTypeToType (TENSOR_TYPE a (Tensor p) b) = 
     review (_TypeConc % _TypeTensorF) 
-        <$> ( (p ^. swapped,, ) 
+        <$> ( (BnfcIdent (p ^. swapped),, ) 
             <$> translateBnfcTypeToType a 
             <*> translateBnfcTypeToType b )
 
@@ -217,7 +205,7 @@ translateBnfcTypeToType (GETPUT_TYPE getput _ a b _) = maybe
     f _ = illegalgetput
 
     getput' = getput ^. uIdentBnfcIdentGetter
-    getputname = getput' ^. _1
+    getputname = stringPos getput' ^. _1
     illegalgetput = Left $ review _IllegalGetPut getput' :| []
 
     args = (getput',,) <$> seqarg <*> concarg

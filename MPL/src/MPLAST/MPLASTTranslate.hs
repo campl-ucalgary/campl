@@ -24,6 +24,7 @@ import MPLAST.MPLTypeAST
 import MPLAST.MPLPatternAST
 import MPLAST.MPLExprAST
 import MPLAST.MPLProcessCommandsAST
+
 import MPLAST.MPLProg
 import MPLAST.MPLProgI
 
@@ -46,12 +47,12 @@ import Control.Arrow
 
 import Text.PrettyPrint.GenericPretty
 
-translateBnfcMplToProgI :: 
+translateBnfcMplToProg :: 
     forall e.
     AsTranslateBnfcErrors e => 
     B.MplProg -> 
     ([e], ProgI)
-translateBnfcMplToProgI (B.MPL_PROG prog) = (concatMap NE.toList *** Prog ) 
+translateBnfcMplToProg (B.MPL_PROG prog) = (concatMap NE.toList *** Prog ) 
     (partitionEithers (map translateBnfcStmt prog))
 
 translateBnfcStmt ::    
@@ -59,51 +60,57 @@ translateBnfcStmt ::
      AsTranslateBnfcErrors e =>
      B.MplStmt ->
      Either (NonEmpty e) StmtI
-translateBnfcStmt (B.MPL_DEFN_STMS_WHERE defs wheres) = undefined
-translateBnfcStmt (B.MPL_DEFN_STMS defs) = undefined
-translateBnfcStmt (B.MPL_STMT def) = undefined
+translateBnfcStmt (B.MPL_DEFN_STMS_WHERE defs wheres) = runAccumEither $
+    Stmt <$> ( NE.fromList 
+            <$> traverse (liftAEither . translateBnfcDefn) defs )
+        <*> traverse (liftAEither . translateBnfcStmt) wheres
+translateBnfcStmt (B.MPL_DEFN_STMS defs) = 
+    translateBnfcStmt (B.MPL_DEFN_STMS_WHERE defs [])
+translateBnfcStmt (B.MPL_STMT def) = 
+    translateBnfcStmt (B.MPL_DEFN_STMS_WHERE [def] [])
 
-translateBnfcMplDefnToDefn :: 
+translateBnfcDefn :: 
     forall e.
     AsTranslateBnfcErrors e => 
     B.MplDefn -> 
-    Either (NonEmpty e) (Defn BnfcIdent BnfcIdent)
-translateBnfcMplDefnToDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.DATA_DEFN seqclauses)) = 
-    DataDefn . NE.fromList
+    Either (NonEmpty e) DefnI
+translateBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.DATA_DEFN seqclauses)) = 
+    DefnI . DataDefn . NE.fromList
     <$> view collectsOnlyIfNoLeftsGetter 
         (map f seqclauses)
   where
     f (B.SEQ_TYPE_CLAUSE from to handles) = 
         translateSeqTypeClauseArgs _IllegalDataDeclaration to from handles
 
-translateBnfcMplDefnToDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.CODATA_DEFN seqclauses)) = 
-    CodataDefn . NE.fromList
+translateBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.CODATA_DEFN seqclauses)) = 
+    DefnI . CodataDefn . NE.fromList
     <$> view collectsOnlyIfNoLeftsGetter 
         (map f seqclauses)
   where
     f (B.SEQ_TYPE_CLAUSE from to handles) = 
         translateSeqTypeClauseArgs _IllegalCodataDeclaration from to handles
             
-translateBnfcMplDefnToDefn (B.MPL_CONCURRENT_TYPE_DEFN (B.PROTOCOL_DEFN concclauses)) = 
-    ProtocolDefn . NE.fromList
+translateBnfcDefn (B.MPL_CONCURRENT_TYPE_DEFN (B.PROTOCOL_DEFN concclauses)) = 
+    DefnI . ProtocolDefn . NE.fromList
     <$> view collectsOnlyIfNoLeftsGetter
     (map f concclauses)
   where
     f (B.CONCURRENT_TYPE_CLAUSE from to handles) = 
         translateConcTypeClauseArgs _IllegalProtocolDeclaration to from handles
-translateBnfcMplDefnToDefn (B.MPL_CONCURRENT_TYPE_DEFN (B.COPROTOCOL_DEFN concclauses)) = 
-    CoprotocolDefn . NE.fromList
+translateBnfcDefn (B.MPL_CONCURRENT_TYPE_DEFN (B.COPROTOCOL_DEFN concclauses)) = 
+    DefnI . CoprotocolDefn . NE.fromList
     <$> view collectsOnlyIfNoLeftsGetter
     (map f concclauses)
   where
     f (B.CONCURRENT_TYPE_CLAUSE from to handles) = 
         translateConcTypeClauseArgs _IllegalProtocolDeclaration from to handles
 
-translateBnfcMplDefnToDefn (B.MPL_FUNCTION_DEFN fundef) = review _FunctionDefn <$> translateBnfcFunDefToDefn fundef
-translateBnfcMplDefnToDefn (B.MPL_PROCESS_DEFN procdef) = 
-    review _ProcessDefn <$> translateBnfcProcessDefn procdef
+translateBnfcDefn (B.MPL_FUNCTION_DEFN fundef) = 
+    DefnI . review (_FunctionDecDefn % _FunctionDefn) <$> translateBnfcFunDefToDefn fundef
+translateBnfcDefn (B.MPL_PROCESS_DEFN procdef) = 
+    DefnI . review (_ProcessDecDefn % _ProcessDefn) <$> translateBnfcProcessDefn procdef
 
-translateBnfcMplDefnToDefn B.MPL_DEFNTEST = error "eheh a little easter egg :) No writing potato ;) "
+translateBnfcDefn B.MPL_DEFNTEST = error "eheh a little easter egg :) No writing potato ;) "
 
 translateBnfcFunDefToDefn :: 
     forall e.
@@ -252,7 +259,7 @@ translateBnfcProcessDefn ::
     , Maybe ([TypeI], [TypeI], [TypeI])
     , NonEmpty 
         ( ([PatternI], [BnfcIdent], [BnfcIdent]) 
-        , ProcessCommands PatternI StmtI BnfcIdent BnfcIdent)
+        , ProcessCommandsI)
         )
 translateBnfcProcessDefn (B.TYPED_PROCESS_DEFN ident seqs inchs outchs prcsphrase) = runAccumEither $
     (ident ^. pIdentBnfcIdentGetter,,)
@@ -276,7 +283,7 @@ translateBnfcProcessPhrase ::
     B.ProcessPhrase -> 
     AccumEither (NonEmpty e) 
         ( ( ([PatternI], [BnfcIdent], [BnfcIdent])
-            , ProcessCommands PatternI StmtI BnfcIdent BnfcIdent))
+            , ProcessCommandsI))
 translateBnfcProcessPhrase (B.PROCESS_PHRASE seqs inchs outchs pblock) = 
     let args = ( map translateBnfcPattern seqs
                 , map (^.pIdentBnfcIdentGetter) inchs
@@ -288,8 +295,7 @@ translateBnfcProcessCommandsBlock ::
     forall e.
     AsTranslateBnfcErrors e => 
     B.ProcessCommandsBlock -> 
-    AccumEither (NonEmpty e)
-        (ProcessCommands PatternI StmtI BnfcIdent BnfcIdent)
+    AccumEither (NonEmpty e) ProcessCommandsI
 translateBnfcProcessCommandsBlock (B.PROCESS_COMMANDS_DO_BLOCK cmds) = 
     NE.fromList <$> traverse translateBnfcProcessCommand cmds
     
@@ -302,7 +308,7 @@ translateBnfcProcessCommand ::
     B.ProcessCommand -> 
     AccumEither 
         (NonEmpty e) 
-        (ProcessCommand PatternI StmtI BnfcIdent BnfcIdent)
+        (ProcessCommand PatternI StmtI BnfcIdent BnfcIdent BnfcIdent)
 translateBnfcProcessCommand (B.PROCESS_RUN ident _ seqs inchs outchs _) = 
     let ident'  = ident ^. pIdentBnfcIdentGetter
         seqs' = traverse (liftAEither . translateBnfcExpr) seqs
@@ -354,7 +360,7 @@ translateBnfcHCase ::
     AsTranslateBnfcErrors e => 
     B.HCasePhrase -> 
     AccumEither (NonEmpty e)
-          (BnfcIdent, ProcessCommands PatternI StmtI BnfcIdent BnfcIdent)
+          (BnfcIdent, ProcessCommandsI)
 translateBnfcHCase (B.HCASE_PHRASE uident block) = 
     (uident ^. uIdentBnfcIdentGetter,) <$> translateBnfcProcessCommandsBlock block
 
@@ -390,7 +396,7 @@ translateBnfcRacePhrases ::
     AsTranslateBnfcErrors e => 
     B.RacePhrase -> 
     AccumEither (NonEmpty e)
-        (BnfcIdent, ProcessCommands PatternI StmtI BnfcIdent BnfcIdent)
+        (BnfcIdent, ProcessCommandsI)
 translateBnfcRacePhrases (B.RACE_PHRASE ch pblock) = 
     (ch ^.pIdentBnfcIdentGetter,) 
         <$> translateBnfcProcessCommandsBlock pblock
