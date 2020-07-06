@@ -4,15 +4,13 @@ module MPLAST.MPLProgTraversals where
 import MPLAST.MPLProg
 import Optics
 
+{-=
 -- seqTypeClauseDecDefs :: Traversal (SeqTypeClause def0 var) (SeqTypeClause def1 var) def0 def1
 seqTypeClauseDecDefs  = traversalVL trv 
   where
     trv f (SeqTypeClause a b c d) = 
         SeqTypeClause <$> f a <*> pure b <*> pure c <*>
             traverse (traverseOf seqTypePhraseDecDefs f) d
-{- $>
-:t seqTypePhraseDecDefs
-<$ -}
 
 -- seqTypePhraseDecDefs :: Traversal (SeqTypePhrase def0 var) (SeqTypePhrase def1 var) def0 def1
 seqTypePhraseDecDefs  = traversalVL trv
@@ -32,3 +30,4 @@ concTypePhraseDecDefs = traversalVL trv
   where
     trv f (ConcTypePhrase a b c) = 
         ConcTypePhrase <$> f a <*> pure b <*> pure c
+        -}

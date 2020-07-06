@@ -30,11 +30,13 @@ data Stmt defn = Stmt {
 
 data Defn pattern letdef calldef decdef var concvar =
     DataDefn (NonEmpty (TypeClause (TypePhrase (DataPhrase calldef var) decdef var) decdef var))
-    | CodataDefn (NonEmpty (TypeClause (TypePhrase (CodataPhrase calldef var) decdef var) decdef var))
+    | CodataDefn (NonEmpty (TypeClause 
+        (TypePhrase (CodataPhrase calldef var) decdef var) decdef var))
 
-    | ProtocolDefn { _concTypeClause:: NonEmpty (ConcTypeClause calldef decdef var) }
-    | CoprotocolDefn { _concTypeClause:: NonEmpty (ConcTypeClause calldef decdef var) }
-
+    | ProtocolDefn (NonEmpty 
+        (TypeClause (TypePhrase (ProtocolPhrase calldef var) decdef var) decdef var))
+    | CoprotocolDefn (NonEmpty 
+        (TypeClause (TypePhrase (CoprotocolPhrase calldef var) decdef var) decdef var))
     | FunctionDecDefn (FunctionDefn pattern letdef decdef var)
 
     | ProcessDecDefn (ProcessDefn pattern letdef decdef var concvar)
@@ -58,8 +60,8 @@ data DataPhrase calldef var = DataPhrase {
 }  deriving (Show, Eq, Read, Generic)
 
 data CodataPhrase calldef var = CodataPhrase {
-    _codataFrom :: NonEmpty (Type calldef var)
-    , _codataTo :: var
+    _codataFrom :: [Type calldef var]
+    , _codataTo :: Type calldef var
 }  deriving (Show, Eq, Read, Generic)
 
 data ProtocolPhrase calldef var = ProtocolPhrase {
@@ -72,32 +74,6 @@ data CoprotocolPhrase calldef var = CoprotocolPhrase {
     , _coprotocolTo :: Type calldef var
 }  deriving (Show, Eq, Read, Generic)
 
-
-data SeqTypeClause calldef decdef var = SeqTypeClause {
-    _seqTypeClauseName :: decdef
-    , _seqTypeClauseArgs :: [var]
-    , _seqTypeClauseStateVar :: var
-    , _seqTypePhrases :: [SeqTypePhrase calldef decdef var]
-} deriving (Show, Eq, Read)
-
-data SeqTypePhrase calldef decdef var = SeqTypePhrase {
-    _seqTypePhraseName :: decdef
-    , _seqTypePhraseFrom :: [Type calldef var]
-    , _seqTypePhraseTo :: var
-} deriving (Show, Eq, Read)
-
-data ConcTypeClause calldef decdef var = ConcTypeClause {
-    _concTypeClauseName :: decdef
-    , _concTypeClauseArgs :: [var]
-    , _concTypeClauseStateVar :: var
-    , _concTypePhrases :: [ConcTypePhrase calldef decdef var]
-} deriving (Show, Eq, Read)
-
-data ConcTypePhrase calldef decdef var = ConcTypePhrase {
-    _concTypePhraseName :: decdef
-    , _concTypePhraseArg :: Type calldef var
-    , _concTypePhraseStateVar :: var
-} deriving (Show, Eq, Read)
 
 data FunctionDefn pattern letdef def var = FunctionDefn { 
     _funName :: def
@@ -117,10 +93,6 @@ $(concat <$> traverse makeLenses
     [ ''Stmt
     , ''FunctionDefn
     , ''ProcessDefn
-    , ''ConcTypePhrase
-    , ''ConcTypeClause
-    , ''SeqTypePhrase
-    , ''SeqTypeClause
     ]
  )
 
@@ -129,10 +101,6 @@ $(concat <$> traverse makePrisms
     , ''Defn
     , ''FunctionDefn
     , ''ProcessDefn
-    , ''ConcTypePhrase
-    , ''ConcTypeClause
-    , ''SeqTypePhrase
-    , ''SeqTypeClause
     , ''TypeClause
     , ''TypePhrase
     , ''DataPhrase

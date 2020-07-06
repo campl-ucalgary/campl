@@ -29,6 +29,7 @@ import MPLAST.MPLProg
 import MPLAST.MPLProgI
 
 import MPLUtil.Data.Either
+import MPLUtil.Data.Either.AccumEither
 
 import MPLAST.MPLASTTranslateErrors
 
@@ -42,46 +43,6 @@ import Control.Arrow
 
 import Text.PrettyPrint.GenericPretty
 
-{-
-translateSeqTypeClauseArgs ::
-    forall e.
-    AsTranslateBnfcErrors e => 
-    Prism' e (Type BnfcIdent BnfcIdent, Type BnfcIdent BnfcIdent) ->
-    MplType ->
-    -- ^from (stsatevar)
-    MplType ->
-    -- ^to (name)
-    [SeqTypePhraseDefn] ->
-    -- ^ handles
-    Either (NonEmpty e) SeqTypeClauseI
-translateSeqTypeClauseArgs err from to handles = do
-        from' <- translateBnfcTypeToType from
-        to' <- translateBnfcTypeToType to
-
-        handles' <- map translateBnfcSeqTypePhrasesToSeqTypePhrase handles ^. collectsOnlyIfNoLeftsGetter
-        case from' of
-            TypeWithNoArgs statevar -> 
-                case to' of
-                    TypeWithNoArgs name ->  
-                        return $ review _SeqTypeClause 
-                            ( coerce statevar 
-                            , []
-                            , name 
-                            , concat handles'
-                            )
-                    TypeWithArgs name args -> do
-                        args' <- translateTypeDeclarationArgs name (NE.toList args)
-                        return $ review _SeqTypeClause 
-                            ( statevar 
-                            , args'
-                            , name 
-                            , concat handles'
-                            )
-
-                    _ -> Left $ review err (from',to') :| []
-            _ -> Left $ review err (from',to') :| []
--}
-
 getTypeDeclarationName ::
     forall e.
     AsTranslateBnfcErrors e => 
@@ -94,45 +55,6 @@ getTypeDeclarationName n =
             args' <- translateTypeDeclarationArgs (NE.toList args)
             return (name, args')
         n -> Left $ ((review _IllegalTypeName n) :|[] )
-
-
-translateConcTypeClauseArgs ::
-    forall e.
-    AsTranslateBnfcErrors e => 
-    Prism' e (Type BnfcIdent BnfcIdent, Type BnfcIdent BnfcIdent) ->
-    MplType ->
-    -- ^from (stsatevar)
-    MplType ->
-    -- ^to (name)
-    [ConcurrentTypePhraseDefn] ->
-    -- ^ handles
-    Either (NonEmpty e) ConcTypeClauseI
-translateConcTypeClauseArgs err from to handles = do
-        from' <- translateBnfcTypeToType from
-        to' <- translateBnfcTypeToType to
-
-        handles' <- map translateConcurrentTypePhraseToConcTypePhrase handles ^. collectsOnlyIfNoLeftsGetter
-        case from' of
-            TypeWithNoArgs statevar -> 
-                case to' of
-                    TypeWithNoArgs name ->  
-                        return $ review _ConcTypeClause 
-                            ( statevar 
-                            , []
-                            , name 
-                            , concat handles'
-                            )
-                    TypeWithArgs name args -> do
-                        args' <- translateTypeDeclarationArgs (NE.toList args)
-                        return $ review _ConcTypeClause 
-                            (  statevar 
-                            , args'
-                            , name 
-                            , concat handles'
-                            )
-                    _ -> Left $ review err (from',to') :| []
-            _ -> Left $ review err (from',to') :| []
-
 
 getTypeVar ::
     forall e .
@@ -169,46 +91,91 @@ translateBnfcSeqTypePhrasesToDataPhrase (SEQ_TYPE_PHRASE handles fromtypes totyp
             ( name ^. uIdentBnfcIdentGetter
             , review _DataPhrase (fromtypes' , totype')
             )
-        -- can apply fusion law..
 
-
-translateBnfcSeqTypePhrasesToSeqTypePhrase ::
+-- CODATA
+translateBnfcSeqTypePhrasesToCodataPhrase ::
     forall e.
     AsTranslateBnfcErrors e => 
     SeqTypePhraseDefn -> 
-    Either (NonEmpty e) ([SeqTypePhraseI])
-translateBnfcSeqTypePhrasesToSeqTypePhrase (SEQ_TYPE_PHRASE handles fromtypes totype) = 
+    Either (NonEmpty e) ([CodataTypePhraseI])
+translateBnfcSeqTypePhrasesToCodataPhrase (SEQ_TYPE_PHRASE handles fromtypes totype) = 
     map f handles ^. collectsOnlyIfNoLeftsGetter
   where
-    f :: TypeHandleName -> Either (NonEmpty e) SeqTypePhraseI
+    f :: TypeHandleName -> Either (NonEmpty e) CodataTypePhraseI
     f (TYPE_HANDLE_NAME name) = do
         fromtypes' <- map translateBnfcTypeToType fromtypes ^. collectsOnlyIfNoLeftsGetter
-        totype' <- translateBnfcTypeToType totype >>= getTypeVar 
+        totype' <- translateBnfcTypeToType totype 
 
-        return $ review _SeqTypePhrase 
+        return $ review _TypePhrase
             ( name ^. uIdentBnfcIdentGetter
-            , fromtypes'
-            , totype')
-        -- can apply fusion law..
+            , review _CodataPhrase (fromtypes' , totype')
+            )
 
-translateConcurrentTypePhraseToConcTypePhrase ::
+--  PROTOCOL
+translateConcurrentTypePhraseToProtocolPhrase ::
     forall e. 
     AsTranslateBnfcErrors e => 
     ConcurrentTypePhraseDefn ->
-    Either (NonEmpty e) [ConcTypePhraseI]
-translateConcurrentTypePhraseToConcTypePhrase (CONCURRENT_TYPE_PHRASE handles a b)  = 
+    Either (NonEmpty e) [ProtocolTypePhraseI]
+translateConcurrentTypePhraseToProtocolPhrase (CONCURRENT_TYPE_PHRASE handles a b)  = 
     view collectsOnlyIfNoLeftsGetter $ map f handles 
   where
     f (TYPE_HANDLE_NAME name) = do
         a' <- translateBnfcTypeToType a 
         b' <- translateBnfcTypeToType b >>= getTypeVar 
 
-        return $ review _ConcTypePhrase 
+        return $ review _TypePhrase 
             (  name ^. uIdentBnfcIdentGetter
-            , a'
-            , b'
+            , review _ProtocolPhrase (a', b')
             )
-        -- can apply fusion law..
+
+-- Coprotocol
+translateConcurrentTypePhraseToCoprotocolPhrase ::
+    forall e. 
+    AsTranslateBnfcErrors e => 
+    ConcurrentTypePhraseDefn ->
+    Either (NonEmpty e) [CoprotocolTypePhraseI]
+translateConcurrentTypePhraseToCoprotocolPhrase (CONCURRENT_TYPE_PHRASE handles a b)  = 
+    view collectsOnlyIfNoLeftsGetter $ map f handles 
+  where
+    f (TYPE_HANDLE_NAME name) = do
+        a' <- translateBnfcTypeToType a >>= getTypeVar
+        b' <- translateBnfcTypeToType b 
+
+        return $ review _TypePhrase 
+            ( name ^. uIdentBnfcIdentGetter
+            , review _CoprotocolPhrase (a', b')
+            )
+
+translateNameAndStateVar :: 
+    AsTranslateBnfcErrors e =>
+    MplType -> 
+    MplType -> 
+    Either (NonEmpty e) ((BnfcIdent, [BnfcIdent]), BnfcIdent)
+translateNameAndStateVar from to = do
+    (from', to') <- runAccumEither $ (,) 
+        <$> liftAEither (translateBnfcTypeToType from) 
+        <*> liftAEither (translateBnfcTypeToType to)
+    (name, statevar) <- runAccumEither $ (,) 
+        <$> liftAEither (getTypeDeclarationName from') 
+        <*> liftAEither (getTypeVar to')
+    return (name, statevar)
+
+translateStateVarAndName :: 
+    AsTranslateBnfcErrors e =>
+    MplType -> 
+    MplType -> 
+    Either (NonEmpty e) (BnfcIdent, (BnfcIdent, [BnfcIdent]))
+translateStateVarAndName from to = do
+    (from', to') <- runAccumEither $ (,) 
+        <$> liftAEither (translateBnfcTypeToType from) 
+        <*> liftAEither (translateBnfcTypeToType to)
+    (statevar, name) <- runAccumEither $ (,) 
+        <$> liftAEither (getTypeVar from') 
+        <*> liftAEither (getTypeDeclarationName to')
+    return (statevar, name)
+
+    
 
 translateBnfcTypeToType :: 
     forall e. 

@@ -43,10 +43,10 @@ type StmtI = Stmt DefnI
 type PatternI = Pattern BnfcIdent BnfcIdent 
 type TypeI = Type BnfcIdent BnfcIdent 
 type DataTypePhraseI = TypePhrase (DataPhrase BnfcIdent BnfcIdent) BnfcIdent BnfcIdent
-type SeqTypeClauseI = SeqTypeClause BnfcIdent BnfcIdent BnfcIdent
-type SeqTypePhraseI = SeqTypePhrase BnfcIdent BnfcIdent BnfcIdent
-type ConcTypeClauseI =  ConcTypeClause BnfcIdent BnfcIdent BnfcIdent
-type ConcTypePhraseI = ConcTypePhrase BnfcIdent BnfcIdent BnfcIdent
+type CodataTypePhraseI = TypePhrase (CodataPhrase BnfcIdent BnfcIdent) BnfcIdent BnfcIdent
+type ProtocolTypePhraseI = TypePhrase (ProtocolPhrase BnfcIdent BnfcIdent) BnfcIdent BnfcIdent
+type CoprotocolTypePhraseI = TypePhrase (CoprotocolPhrase BnfcIdent BnfcIdent) BnfcIdent BnfcIdent
+
 type ExprI = Expr 
     (Pattern BnfcIdent BnfcIdent) 
     StmtI
@@ -64,23 +64,6 @@ newtype DefnI = DefnI {
     }
   deriving (Show, Eq, Read)
 $(makeLenses ''DefnI)
-
-{-
-data DefnI =
-    DataDefnI  { _seqTypeClauseI :: NonEmpty (SeqTypeClause BnfcIdent BnfcIdent) }
-    | CodataDefnI  { _seqTypeClauseI :: NonEmpty (SeqTypeClause BnfcIdent BnfcIdent) }
-    | ProtocolDefnI  { _concTypeClauseI :: NonEmpty (ConcTypeClause BnfcIdent BnfcIdent) }
-    | CoprotocolDefnI  { _concTypeClauseI :: NonEmpty (ConcTypeClause BnfcIdent BnfcIdent) }
-
-    | FunctionDefnI (FunctionDefn PatternI StmtI BnfcIdent BnfcIdent)
-
-    | ProcessDefnI (ProcessDefn 
-        PatternI 
-        StmtI 
-        BnfcIdent 
-        BnfcIdent
-        BnfcIdent)
-        -}
 
 $(concat <$> traverse (makeFieldLabelsWith (fieldLabelsRules & lensField .~ underscoreNoPrefixNamer))
     [ ''DefnI ]

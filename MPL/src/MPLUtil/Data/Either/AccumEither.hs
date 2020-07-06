@@ -26,3 +26,7 @@ instance (Semigroup e, Monoid a) => Monoid (AccumEither e a) where
 
 liftAEither :: Semigroup e => Either e a -> AccumEither e a
 liftAEither = AccumEither
+
+{- $>
+runAccumEither (traverse (liftAEither . Left ) [[1],[2],[3]])
+<$ -}

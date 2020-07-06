@@ -77,41 +77,43 @@ translateBnfcDefn ::
     Either (NonEmpty e) DefnI
 translateBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.DATA_DEFN seqclauses)) = 
     DefnI . DataDefn . NE.fromList
-    <$> -- Bifunctor.first (NE.map (review _IllegalDataDeclaration)) 
+    <$> Bifunctor.first (NE.map (review _IllegalDataDeclaration)) 
         (view collectsOnlyIfNoLeftsGetter (map f seqclauses))
   where
     f (B.SEQ_TYPE_CLAUSE from to handles) = do
-        (from', to') <- runAccumEither $ (,) 
-            <$> liftAEither (translateBnfcTypeToType from) <*> liftAEither (translateBnfcTypeToType to)
-        ((name, args), statevar) <- runAccumEither $ (,) 
-            <$> liftAEither (getTypeDeclarationName from') <*> liftAEither (getTypeVar to')
+        ((name, args), statevar) <- translateNameAndStateVar from to
         handles' <- runAccumEither $ traverse (liftAEither . translateBnfcSeqTypePhrasesToDataPhrase) handles
         return $ review _TypeClause (name, args, statevar, concat handles')
 
-{-
 translateBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.CODATA_DEFN seqclauses)) = 
     DefnI . CodataDefn . NE.fromList
-    <$> view collectsOnlyIfNoLeftsGetter 
-        (map f seqclauses)
+    <$> Bifunctor.first (NE.map (review  _IllegalCodataDeclaration)) 
+        (view collectsOnlyIfNoLeftsGetter (map f seqclauses))
   where
-    f (B.SEQ_TYPE_CLAUSE from to handles) = 
-        translateSeqTypeClauseArgs _IllegalCodataDeclaration from to handles
-        -}
+    f (B.SEQ_TYPE_CLAUSE from to handles) = do
+        (statevar, (name, args)) <- translateStateVarAndName from to
+        handles' <- runAccumEither $ traverse (liftAEither . translateBnfcSeqTypePhrasesToCodataPhrase) handles
+        return $ review _TypeClause (name, args, statevar, concat handles')
             
 translateBnfcDefn (B.MPL_CONCURRENT_TYPE_DEFN (B.PROTOCOL_DEFN concclauses)) = 
     DefnI . ProtocolDefn . NE.fromList
-    <$> view collectsOnlyIfNoLeftsGetter
-    (map f concclauses)
+    <$> Bifunctor.first (NE.map (review _IllegalProtocolDeclaration)) 
+    (view collectsOnlyIfNoLeftsGetter (map f concclauses))
   where
-    f (B.CONCURRENT_TYPE_CLAUSE from to handles) = 
-        translateConcTypeClauseArgs _IllegalProtocolDeclaration to from handles
+    f (B.CONCURRENT_TYPE_CLAUSE from to handles) = do
+        ((name, args), statevar) <- translateNameAndStateVar from to
+        handles' <- runAccumEither $ traverse (liftAEither . translateConcurrentTypePhraseToProtocolPhrase) handles
+        return $ review _TypeClause (name, args, statevar, concat handles')
+
 translateBnfcDefn (B.MPL_CONCURRENT_TYPE_DEFN (B.COPROTOCOL_DEFN concclauses)) = 
     DefnI . CoprotocolDefn . NE.fromList
-    <$> view collectsOnlyIfNoLeftsGetter
-    (map f concclauses)
+    <$> (Bifunctor.first (NE.map (review _IllegalCoprotocolDeclaration)) )
+        (view collectsOnlyIfNoLeftsGetter (map f concclauses))
   where
-    f (B.CONCURRENT_TYPE_CLAUSE from to handles) = 
-        translateConcTypeClauseArgs _IllegalProtocolDeclaration from to handles
+    f (B.CONCURRENT_TYPE_CLAUSE from to handles) = do
+        (statevar, (name,args)) <- translateStateVarAndName from to
+        handles' <- runAccumEither $ traverse (liftAEither . translateConcurrentTypePhraseToCoprotocolPhrase) handles
+        return $ review _TypeClause (name, args, statevar, concat handles')
 
 translateBnfcDefn (B.MPL_FUNCTION_DEFN fundef) = 
     DefnI . review (_FunctionDecDefn % _FunctionDefn) <$> translateBnfcFunDefToDefn fundef
@@ -281,9 +283,6 @@ translateBnfcProcessDefn (B.PROCESS_DEFN ident prcsphrase) = runAccumEither $
     (ident ^. pIdentBnfcIdentGetter,,) Nothing
         <$> (NE.fromList <$> traverse translateBnfcProcessPhrase prcsphrase)
     
-    
-    -- | PROCESS_DEFN PIdent [ProcessPhrase]
-
 
 translateBnfcProcessPhrase :: 
     forall e.

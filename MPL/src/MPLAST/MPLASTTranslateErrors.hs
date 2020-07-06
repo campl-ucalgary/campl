@@ -18,12 +18,9 @@ import Language.AbsMPL as B
 data TranslateBnfcErrors =
     IllegalGetPut BnfcIdent
     | IllegalDataDeclaration TranslateBnfcErrors
-    | IllegalCodataDeclaration { _translateBnfcErrorStateVar :: Type BnfcIdent BnfcIdent
-                                , _translateBnfcErrorDecName :: Type BnfcIdent BnfcIdent }
-    | IllegalProtocolDeclaration { _translateBnfcErrorStateVar :: Type BnfcIdent BnfcIdent
-                                , _translateBnfcErrorDecName :: Type BnfcIdent BnfcIdent }
-    | IllegalCoprotocolDeclaration { _translateBnfcErrorStateVar :: Type BnfcIdent BnfcIdent
-                                , _translateBnfcErrorDecName :: Type BnfcIdent BnfcIdent }
+    | IllegalCodataDeclaration TranslateBnfcErrors
+    | IllegalProtocolDeclaration TranslateBnfcErrors
+    | IllegalCoprotocolDeclaration TranslateBnfcErrors
     | IllegalTypeName { _translateBnfcErrorIllegalTypeName :: Type BnfcIdent BnfcIdent }
     | IllegalNonTypeVar { _translateBnfcErrorIllegalNonTypeVar :: Type BnfcIdent BnfcIdent }
 
