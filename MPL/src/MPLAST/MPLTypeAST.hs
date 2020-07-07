@@ -39,8 +39,7 @@ import Text.PrettyPrint.GenericPretty
 
 
 data Type def var =
-    TypeWithArgs { _typeIdentDef :: def, _typeArgs :: NonEmpty (Type def var) }
-    | TypeWithNoArgs { _typeIdentDef :: def }
+    TypeWithArgs { _typeIdentDef :: def, _typeArgs :: [Type def var] }
     | TypeVar { _typeIdent :: var }
 
     | TypeSeq (SeqTypeF def (Type def var))
@@ -92,6 +91,7 @@ data KindPhrase def var =
 
     }
   deriving ( Read, Show, Generic, Out, Data, Eq )
+
 data TypePhrase def var =
     TypePhraseProcessDefn { _typePhraseIdent :: def
         , _typeProcessSeqArgs :: [Type def var]

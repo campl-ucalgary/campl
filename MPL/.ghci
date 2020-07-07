@@ -1,0 +1,17 @@
+:set -isrc
+:set -fwarn-incomplete-patterns
+:set -XTemplateHaskell 
+:set -XDataKinds 
+:set -XUndecidableInstances 
+:set -XTypeFamilies 
+:set -XMultiParamTypeClasses 
+:set -XFlexibleInstances 
+:set -XFunctionalDependencies 
+:set -XDeriveGeneric 
+:set -XFlexibleContexts
+
+import Optics
+import Control.Monad.State
+import Control.Monad.Reader
+import Control.Monad.RWS
+import Data.Maybe

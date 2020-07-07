@@ -5,9 +5,13 @@ potato
 defn
     potato
 defn
-    potato
+    data 
+        A -> [(B, (), A(), (), A( ) , A(B,C) )] =
+            Names, Names :: [([A],B,C(A,(B)))] -> Get(A|B)
 where 
-    potato
+    data 
+        A -> [(B, (), A(), (), A( ) , A(B,C) )] =
+            Names, Names :: [([A],B,C(A,(B)))] -> Get(A|B)
 
 data 
     A -> [(B, (), A(), (), A( ) , A(B,C) )] =
@@ -24,7 +28,8 @@ codata
         Names, Names :: B -> B 
 
 protocol 
-    B => B = Names, Names :: B => B 
+    B => B = 
+        Names, Names :: B => B 
     and
     B => B = Names, Names :: B => B 
 

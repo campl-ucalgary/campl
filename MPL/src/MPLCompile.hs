@@ -1,6 +1,8 @@
 {-# LANGUAGE QuasiQuotes #-}
 module MPLCompile where
 
+import Optics
+
 import Control.Monad.State
 import Control.Monad.Except
 
@@ -34,13 +36,25 @@ defn
     data 
         POTATO(B,C) -> A  =
             Names, Names :: [([A],B,C(A,(B)))] -> A
+
+    fun fUNCTION :: A,B -> A =
+        _ -> a
 where 
     data 
         A -> A =
             Names, Names :: A -> A
 |]
 {- $>
-compile teststr
+case compile teststr of
+    (_, Prog stmts) -> stmts & foldMapOf ( 
+                folded 
+                % stmtDefns
+                % folded
+                % unDefnI
+                % _DataDefn
+                % folded
+                % typeClauseDecDefTraversal
+                ) pure :: [BnfcIdent]
 <$ -}
 
 testing :: Int -> State Int (Either String Int)

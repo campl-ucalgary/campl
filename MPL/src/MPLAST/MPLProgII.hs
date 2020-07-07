@@ -20,14 +20,15 @@ data Polarity =
     | Output
   deriving (Show, Eq, Read, Ord)
 
-data DefIdent = DefIdent {
-    _defIdent :: UniqueTag
-    , _defBnfcIdent :: BnfcIdent
-} deriving (Show, Eq, Read, Ord)
+newtype DefIdent = DefIdent UniqueTagAndBnfcIdent 
+  deriving (Show, Eq, Read, Ord)
 
-data VarIdent = VarIdent {
-    _varIdent :: UniqueTag
-    , _varBnfcIdent :: BnfcIdent
+newtype VarIdent = VarIdent UniqueTagAndBnfcIdent 
+  deriving (Show, Eq, Read, Ord)
+
+data UniqueTagAndBnfcIdent = UniqueTagAndBnfcIdent {
+    _uniqueTagAndBnfcIdentUniqueTag :: UniqueTag
+    , _uniqueTagAndBnfcIdentBnfcIdent :: BnfcIdent
 } deriving (Show, Eq, Read, Ord)
 
 data ConcVarIdent = ConcVarIdent {
@@ -47,72 +48,23 @@ $(concat <$> traverse makeLenses
     , ''ConcVarIdent
     ]
  )
-
-instance HasBnfcIdent DefIdent where
-    bnfcIdent = defBnfcIdent
-
-instance HasBnfcIdent VarIdent where
-    bnfcIdent = varBnfcIdent
-
-instance HasBnfcIdent ConcVarIdent where
-    bnfcIdent = concVarBnfcIdent
-
-instance HasUniqueTag DefIdent where
-    uniqueTag = defIdent
-
-instance HasUniqueTag VarIdent where
-    uniqueTag = varIdent
-
-instance HasUniqueTag ConcVarIdent where
-    uniqueTag = concVarIdent
+$(concat <$> traverse makePrisms
+    [ ''DefIdent
+    , ''VarIdent
+    , ''ConcVarIdent
+    ]
+ )
 
 -- type ProgII = Prog DefIdent
--- type StmtII = Stmt DefnII
 -- type PatternII = Pattern DefIdent VarIdent
 
-{-
-data DefnII =
-    DataDefnII  { 
-            _seqTypeClauseII :: NonEmpty (SeqTypeClause DefIdent VarIdent) 
-        }
-    | CodataDefnII  { 
-            _seqTypeClauseII :: NonEmpty (SeqTypeClause DefIdent VarIdent) 
-        }
-    | ProtocolDefnII  { _concTypeClauseII :: NonEmpty (ConcTypeClause DefIdent VarIdent) }
-    | CoprotocolDefnII  { _concTypeClauseII :: NonEmpty (ConcTypeClause DefIdent VarIdent) }
+type StmtII = Stmt DefnII
+newtype DefnII = DefnII  {
+        _unDefnII :: Defn (Pattern DefIdent VarIdent) (Stmt DefnII) 
+            DefIdent DefIdent VarIdent VarIdent ConcVarIdent
+    }
 
-    | FunctionDefnII (FunctionDefn PatternII StmtII DefIdent VarIdent)
-
-    | ProcessDefnII (ProcessDefn 
-        PatternII 
-        StmtII
-        DefIdent 
-        VarIdent
-        ConcVarIdent)
-        -}
-
-{-
-newtype DefnII = DefnII (Defn (Pattern DefIdent VarIdent) (Stmt DefnII) DefIdent VarIdent ConcVarIdent)
-data Defn pattern letdef def var concvar =
-    DataDefn{ 
-            _seqTypeClause:: NonEmpty (SeqTypeClause def var) 
-        }
-    | CodataDefn{ 
-            _seqTypeClause:: NonEmpty (SeqTypeClause def var) 
-        }
-    | ProtocolDefn{ _concTypeClause:: NonEmpty (ConcTypeClause def var) }
-    | CoprotocolDefn{ _concTypeClause:: NonEmpty (ConcTypeClause def var) }
-
-    | FunctionDefn(FunctionDefn pattern letdef def var)
-
-    | ProcessDefn (ProcessDefn 
-        pattern 
-        letdef
-        def 
-        var
-        concvar)
-        -}
-
+$( makeLenses ''DefnII )
 $( concat <$> traverse makePrisms
     [ ''Polarity ]
  )

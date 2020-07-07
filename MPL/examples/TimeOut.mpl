@@ -30,25 +30,23 @@ proc timed_terminal:: TimeOut  => Terminal
 
 proc kill_timeout:: TimeOut, Get((),Top) => TimeOut 
     = in0, in1 => out -> do
-        % in0 is unused
         plug b
-            with in1 -> do 
+            with in0,in1 -> do 
                 fork b as 
-                    % b :: Get((),Top) (*) TopBot
-                    % unsure of fork with both processes needing in1
-                    b0 with in1 -> b0 |=| in1 
+                    % b :: TimeOut (*) TopBot
+                    b0 with in0 -> b0 |=| in0 
+                        % b0 :: TimeOut
+
                     b1 with in1 -> do 
                         get _ on in1   % accept the beep 
-                        close in1        % kill the thread
-                        halt b1
+                        close in1      % kill the thread
+                        halt b1        % b1 :: TopBot
 
             with out -> do
                 split b into (b0,b1) 
-                close b1      %  b1 is or type Top ... (adding a dummy channel on which to fork)
-                b0 |=| out  
-                % b0 :: Get((),Top) CANNOT UNIFY WITH out :: TimeOut
-                % change to in0 |=| out ?? of course, this would help type check it, but
-                % we are still left with b0 of type Get((),Top) and need to get on that..
+                close b1             % b1 :: TopBot
+                b0 |=| out           % b0 :: TimeOut
+
 
 A possibly neater syntax for killing would be 
 

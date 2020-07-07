@@ -60,7 +60,7 @@ newtype BnfcIdent = BnfcIdent { stringPos :: (String, (Int, Int)) }
   deriving (Show, Eq, Read, Ord)
 
 newtype DefnI = DefnI { 
-    _unDefnI :: Defn (Pattern BnfcIdent BnfcIdent) (Stmt DefnI) BnfcIdent BnfcIdent BnfcIdent BnfcIdent
+    _unDefnI :: Defn (Pattern BnfcIdent BnfcIdent) (Stmt DefnI) BnfcIdent BnfcIdent BnfcIdent BnfcIdent BnfcIdent
     }
   deriving (Show, Eq, Read)
 $(makeLenses ''DefnI)

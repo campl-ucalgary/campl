@@ -44,7 +44,9 @@ data Expr pattern letdef def var =
         , _eThen :: Expr pattern letdef def var
         , _eElse :: Expr pattern letdef def var }
     | ELet { _eLet ::  NonEmpty letdef, _eIn :: Expr pattern letdef def var}
-    | EOp { _eLarg :: Expr pattern letdef def var, _eOp :: InternalOperators , _eRarg :: Expr pattern letdef def var}
+    | EOp { _eLarg :: Expr pattern letdef def var
+        , _eOp :: InternalOperators 
+        , _eRarg :: Expr pattern letdef def var}
     | EList { _eList :: [Expr pattern letdef def var] }
     | EVar { _eVar :: var }
     | EInt { _eInt :: (var,Int) }

@@ -32,6 +32,9 @@ dependencies:
     - GenericPretty
     - array
     - optics
+    - recursion-schemes
+
+    - raw-strings-qq
 
     - mpl-lib
 

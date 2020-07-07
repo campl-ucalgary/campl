@@ -15,8 +15,7 @@ import MPLAST.MPLProcessCommandsAST
 
 import Optics
 
-import GHC.Generics
-
+import GHC.Generics 
 
 import Data.List.NonEmpty
 
@@ -28,19 +27,22 @@ data Stmt defn = Stmt {
     , _stmtWhereBindings :: [Stmt defn] 
 } deriving (Show, Eq, Read)
 
-data Defn pattern letdef calldef decdef var concvar =
-    DataDefn (NonEmpty (TypeClause (TypePhrase (DataPhrase calldef var) decdef var) decdef var))
-    | CodataDefn (NonEmpty (TypeClause 
-        (TypePhrase (CodataPhrase calldef var) decdef var) decdef var))
-
-    | ProtocolDefn (NonEmpty 
-        (TypeClause (TypePhrase (ProtocolPhrase calldef var) decdef var) decdef var))
-    | CoprotocolDefn (NonEmpty 
-        (TypeClause (TypePhrase (CoprotocolPhrase calldef var) decdef var) decdef var))
-    | FunctionDecDefn (FunctionDefn pattern letdef decdef var)
-
-    | ProcessDecDefn (ProcessDefn pattern letdef decdef var concvar)
+-- Explanation of the type variables:
+-- pattern: the type of a pattern (swapped to () after compilation of pattern matching)
+-- letdef: the type for a let definition (swapped to () after lambda lifting)
+-- calldef: identifier for CALLING an already declared constructor, funciton, etc
+-- var: identifier for a variable
+-- concvar: identifier for a concurrent term 
+data Defn pattern letdef calldef decdef metavar var concvar =
+    DataDefn (NonEmpty (TypeClausePhrase (DataPhrase calldef metavar) decdef metavar))
+    | CodataDefn (NonEmpty (TypeClausePhrase (CodataPhrase calldef metavar) decdef metavar))
+    | ProtocolDefn (NonEmpty (TypeClausePhrase (ProtocolPhrase calldef metavar) decdef metavar))
+    | CoprotocolDefn (NonEmpty (TypeClausePhrase (CoprotocolPhrase calldef metavar) decdef metavar))
+    | FunctionDecDefn (FunctionDefn pattern letdef calldef decdef metavar var)
+    | ProcessDecDefn (ProcessDefn pattern letdef calldef decdef metavar var concvar)
   deriving (Show, Eq, Read)
+
+type TypeClausePhrase phrase decdef var = TypeClause (TypePhrase phrase decdef var) decdef var
 
 data TypeClause phrase decdef var = TypeClause {
     _typeClauseName :: decdef
@@ -75,22 +77,29 @@ data CoprotocolPhrase calldef var = CoprotocolPhrase {
 }  deriving (Show, Eq, Read, Generic)
 
 
-data FunctionDefn pattern letdef def var = FunctionDefn { 
-    _funName :: def
-    , _funTypesFromTo :: Maybe ([Type def var], Type def var)
-    , _funDefn :: NonEmpty ([Pattern def var], Expr pattern letdef def var) 
+data FunctionDefn pattern letdef calldef decdef metavar var = FunctionDefn { 
+    _funName :: decdef
+    , _funTypesFromTo :: Maybe ([Type calldef metavar], Type calldef metavar)
+    , _funDefn :: NonEmpty ([Pattern calldef var], Expr pattern letdef calldef var) 
 } deriving (Show, Eq, Read)
 
-data ProcessDefn patterns letdef def var concvar = ProcessDefn { 
-    _procName :: def
-    , _procSeqInChsOutChsTypes :: Maybe ([Type def var], [Type def var], [Type def var])
+data ProcessDefn patterns letdef calldef decdef metavar var concvar = ProcessDefn { 
+    _procName :: decdef
+    , _procSeqInChsOutChsTypes :: Maybe ([Type calldef metavar], [Type calldef metavar], [Type calldef metavar])
     , _procDefn :: NonEmpty 
-            ( ([Pattern def var], [concvar], [concvar])
-            , ProcessCommands patterns letdef def var concvar) 
+            ( ([Pattern calldef var], [concvar], [concvar])
+            , ProcessCommands patterns letdef calldef var concvar) 
 } deriving (Show, Eq, Read)
 
 $(concat <$> traverse makeLenses 
     [ ''Stmt
+    , ''Defn
+    , ''TypeClause
+    , ''TypePhrase
+    , ''DataPhrase
+    , ''CodataPhrase
+    , ''ProtocolPhrase
+    , ''CoprotocolPhrase
     , ''FunctionDefn
     , ''ProcessDefn
     ]

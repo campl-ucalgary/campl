@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: eac21dd49a00b21678517e4be8d569b8606e24b61f8150e57ae71625aa977939
+-- hash: 751f64c6b76521a3b9161e5692f37d70930849de743b7bc01bedc90493402c3f
 
 name:           MPL
 version:        0.1.0.0
@@ -38,7 +38,30 @@ library
       Language.ParMPL
       Language.PrintMPL
       Language.SkelMPL
-      MPLAST.MPLAST
+      MPLAST.MPLASTCore
+      MPLAST.MPLASTTranslate
+      MPLAST.MPLASTTranslateErrors
+      MPLAST.MPLASTTranslateExpr
+      MPLAST.MPLASTTranslatePatterns
+      MPLAST.MPLASTTranslateType
+      MPLAST.MPLExprAST
+      MPLAST.MPLPatternAST
+      MPLAST.MPLProcessCommandsAST
+      MPLAST.MPLProg
+      MPLAST.MPLProgI
+      MPLAST.MPLProgII
+      MPLAST.MPLProgTraversals
+      MPLAST.MPLTypeAST
+      MPLCompile
+      MPLMain
+      MPLPasses.AlphaRenameDecs
+      MPLPasses.AlphaRenameDecsErrors
+      MPLSymbolTable.SymEntry
+      MPLSymbolTable.SymKey
+      MPLUtil.Data.Either
+      MPLUtil.Data.Either.AccumEither
+      MPLUtil.Data.Tuple.Optics
+      MPLUtil.Optics.TH
   other-modules:
       Paths_MPL
   hs-source-dirs:
@@ -52,6 +75,8 @@ library
     , mtl
     , optics
     , pretty
+    , raw-strings-qq
+    , recursion-schemes
   default-language: Haskell2010
 
 executable mpl
@@ -71,6 +96,8 @@ executable mpl
     , mtl
     , optics
     , pretty
+    , raw-strings-qq
+    , recursion-schemes
   default-language: Haskell2010
 
 test-suite MPL-test
@@ -91,4 +118,6 @@ test-suite MPL-test
     , mtl
     , optics
     , pretty
+    , raw-strings-qq
+    , recursion-schemes
   default-language: Haskell2010

@@ -50,9 +50,9 @@ getTypeDeclarationName ::
     Either (NonEmpty e) (BnfcIdent, [BnfcIdent])
 getTypeDeclarationName n = 
     case n of
-        TypeWithNoArgs name -> return (name, [])
+        TypeVar name -> return (name, [])
         TypeWithArgs name args -> do
-            args' <- translateTypeDeclarationArgs (NE.toList args)
+            args' <- translateTypeDeclarationArgs args
             return (name, args')
         n -> Left $ ((review _IllegalTypeName n) :|[] )
 
@@ -62,7 +62,7 @@ getTypeVar ::
     Type BnfcIdent BnfcIdent ->
     Either (NonEmpty e) BnfcIdent
 getTypeVar (TypeVar n) = Right n
-getTypeVar (TypeWithNoArgs n) = Right n
+getTypeVar (TypeWithArgs n []) = Right n
 getTypeVar n = Left (review _IllegalNonTypeVar n :| [])
 
 translateTypeDeclarationArgs ::
@@ -213,12 +213,10 @@ translateBnfcTypeToType (GETPUT_TYPE getput _ a b _) = maybe
     concarg = translateBnfcTypeToType b
 
 translateBnfcTypeToType (MPL_UIDENT_NO_ARGS_TYPE ident) = 
-    review (_Right % _TypeWithNoArgs ) (ident ^. uIdentBnfcIdentGetter)
-translateBnfcTypeToType (MPL_UIDENT_ARGS_TYPE ident _ [] _ ) = 
-    review (_Right % _TypeWithNoArgs ) (ident ^. uIdentBnfcIdentGetter)
+    review (_Right % _TypeVar ) (ident ^. uIdentBnfcIdentGetter)
 translateBnfcTypeToType (MPL_UIDENT_ARGS_TYPE ident _ lst _) =
     review _TypeWithArgs
-        <$> ( (ident ^. uIdentBnfcIdentGetter,) . NE.fromList <$> res ^. collectsOnlyIfNoLeftsGetter )
+        <$> ( (ident ^. uIdentBnfcIdentGetter,)  <$> res ^. collectsOnlyIfNoLeftsGetter )
   where
     res = map translateBnfcTypeToType lst
 
