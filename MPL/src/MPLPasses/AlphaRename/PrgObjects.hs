@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE FlexibleContexts #-}
-module MPLPasses.AlphaRenameDecs where
+module MPLPasses.AlphaRename.PrgObjects where
 
 import Optics
 import Optics.Lens
@@ -15,7 +15,7 @@ import MPLAST.MPLASTCore
 import MPLAST.MPLProgI
 import MPLAST.MPLProgII
 
-import MPLPasses.AlphaRenameDecsErrors
+import MPLPasses.AlphaRename.PrgObjectsErrors
 
 import MPLUtil.Data.Tuple.Optics
 import MPLUtil.Data.Either.AccumEither
@@ -60,7 +60,7 @@ withScope scope action = do
     a <- action
     decsStack %= tail
     return a
-
+	
 scopeLookup :: 
     ( MonadState s m
     , HasAlphaRenameState s
@@ -69,7 +69,7 @@ scopeLookup ::
     Optic' k is DefnII a -> 
     m (Maybe (DefnII, UniqueTag))
 scopeLookup val prism = do 
-    symtable <- guse decsStack
+    symtable <- guse jecsStack
     return $ snd <$> findOf (folded % folded ) 
                     (\(a, (b, c)) -> a == val && has prism b) symtable
 

@@ -4,10 +4,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeApplications #-}
-module MPLPasses.AlphaRenameDecsErrors where
+module MPLPasses.AlphaRename.PrgObjectsErrors where
 
-import Optics
-
+import Optics 
 
 import MPLAST.MPLASTCore
 import MPLAST.MPLProgI
@@ -17,7 +16,7 @@ import MPLUtil.Data.Either.AccumEither
 
 import Control.Monad.Except
 
-import Data.List.NonEmpty ( NonEmpty (..))
+import Data.List.NonEmpty ( NonEmpty (..) )
 import qualified Data.List.NonEmpty as NE
 import Control.Arrow
 import Data.Function
