@@ -13,11 +13,9 @@
 {-# LANGUAGE CPP #-}
 module MPLAST.MPLTypeAST where
 
-import MPLIdent
+import MPLUtil.Data.List.NonEmpty
 
-import Optics.TH
-import Optics.Prism
-import Optics.Operators
+import Optics
 import Data.Functor.Foldable.TH
 
 import Data.Function

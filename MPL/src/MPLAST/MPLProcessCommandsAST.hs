@@ -13,7 +13,7 @@
 {-# LANGUAGE CPP #-}
 module MPLAST.MPLProcessCommandsAST where
 
-import MPLIdent
+import MPLUtil.Data.List.NonEmpty
 
 import Optics.TH
 import Optics.Prism

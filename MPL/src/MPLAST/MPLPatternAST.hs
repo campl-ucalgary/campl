@@ -13,7 +13,7 @@
 {-# LANGUAGE CPP #-}
 module MPLAST.MPLPatternAST where
 
-import MPLIdent
+import MPLUtil.Data.List.NonEmpty
 
 import Optics
 import MPLUtil.Optics.TH
