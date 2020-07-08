@@ -46,7 +46,7 @@ import Text.PrettyPrint.GenericPretty
 getTypeDeclarationName ::
     forall e.
     AsTranslateBnfcErrors e => 
-    TypeI ->
+    TypeIBnfc ->
     Either (NonEmpty e) (BnfcIdent, [BnfcIdent])
 getTypeDeclarationName n = 
     case n of
@@ -59,7 +59,7 @@ getTypeDeclarationName n =
 getTypeVar ::
     forall e .
     AsTranslateBnfcErrors e => 
-    Type BnfcIdent BnfcIdent ->
+    TypeIBnfc ->
     Either (NonEmpty e) BnfcIdent
 getTypeVar (TypeVar n) = Right n
 getTypeVar (TypeWithArgs n []) = Right n
@@ -68,8 +68,8 @@ getTypeVar n = Left (review _IllegalNonTypeVar n :| [])
 translateTypeDeclarationArgs ::
     forall e .
     AsTranslateBnfcErrors e => 
-    [Type BnfcIdent BnfcIdent] -> 
-        -- ^ argument
+    -- |argument
+    [TypeIBnfc] -> 
     Either (NonEmpty e) [BnfcIdent]
 translateTypeDeclarationArgs args = 
     map getTypeVar args ^. collectsOnlyIfNoLeftsGetter
@@ -78,17 +78,18 @@ translateBnfcSeqTypePhrasesToDataPhrase ::
     forall e.
     AsTranslateBnfcErrors e => 
     SeqTypePhraseDefn -> 
-    Either (NonEmpty e) ([DataTypePhraseI])
+    Either (NonEmpty e) ([DataTypePhraseIBnfc])
 translateBnfcSeqTypePhrasesToDataPhrase (SEQ_TYPE_PHRASE handles fromtypes totype) = 
     map f handles ^. collectsOnlyIfNoLeftsGetter
   where
-    f :: TypeHandleName -> Either (NonEmpty e) DataTypePhraseI
+    f :: TypeHandleName -> Either (NonEmpty e) DataTypePhraseIBnfc
     f (TYPE_HANDLE_NAME name) = do
         fromtypes' <- map translateBnfcTypeToType fromtypes ^. collectsOnlyIfNoLeftsGetter
         totype' <- translateBnfcTypeToType totype >>= getTypeVar 
 
         return $ review _TypePhrase
-            ( name ^. uIdentBnfcIdentGetter
+            ( ()
+            , name ^. uIdentBnfcIdentGetter
             , review _DataPhrase (fromtypes' , totype')
             )
 
@@ -97,17 +98,18 @@ translateBnfcSeqTypePhrasesToCodataPhrase ::
     forall e.
     AsTranslateBnfcErrors e => 
     SeqTypePhraseDefn -> 
-    Either (NonEmpty e) ([CodataTypePhraseI])
+    Either (NonEmpty e) ([CodataTypePhraseIBnfc])
 translateBnfcSeqTypePhrasesToCodataPhrase (SEQ_TYPE_PHRASE handles fromtypes totype) = 
     map f handles ^. collectsOnlyIfNoLeftsGetter
   where
-    f :: TypeHandleName -> Either (NonEmpty e) CodataTypePhraseI
+    f :: TypeHandleName -> Either (NonEmpty e) CodataTypePhraseIBnfc
     f (TYPE_HANDLE_NAME name) = do
         fromtypes' <- map translateBnfcTypeToType fromtypes ^. collectsOnlyIfNoLeftsGetter
         totype' <- translateBnfcTypeToType totype 
 
         return $ review _TypePhrase
-            ( name ^. uIdentBnfcIdentGetter
+            ( ()
+            , name ^. uIdentBnfcIdentGetter
             , review _CodataPhrase (fromtypes' , totype')
             )
 
@@ -116,7 +118,7 @@ translateConcurrentTypePhraseToProtocolPhrase ::
     forall e. 
     AsTranslateBnfcErrors e => 
     ConcurrentTypePhraseDefn ->
-    Either (NonEmpty e) [ProtocolTypePhraseI]
+    Either (NonEmpty e) [ProtocolTypePhraseIBnfc]
 translateConcurrentTypePhraseToProtocolPhrase (CONCURRENT_TYPE_PHRASE handles a b)  = 
     view collectsOnlyIfNoLeftsGetter $ map f handles 
   where
@@ -125,7 +127,8 @@ translateConcurrentTypePhraseToProtocolPhrase (CONCURRENT_TYPE_PHRASE handles a 
         b' <- translateBnfcTypeToType b >>= getTypeVar 
 
         return $ review _TypePhrase 
-            (  name ^. uIdentBnfcIdentGetter
+            ( ()
+            , name ^. uIdentBnfcIdentGetter
             , review _ProtocolPhrase (a', b')
             )
 
@@ -134,7 +137,7 @@ translateConcurrentTypePhraseToCoprotocolPhrase ::
     forall e. 
     AsTranslateBnfcErrors e => 
     ConcurrentTypePhraseDefn ->
-    Either (NonEmpty e) [CoprotocolTypePhraseI]
+    Either (NonEmpty e) [CoprotocolTypePhraseIBnfc]
 translateConcurrentTypePhraseToCoprotocolPhrase (CONCURRENT_TYPE_PHRASE handles a b)  = 
     view collectsOnlyIfNoLeftsGetter $ map f handles 
   where
@@ -143,7 +146,8 @@ translateConcurrentTypePhraseToCoprotocolPhrase (CONCURRENT_TYPE_PHRASE handles 
         b' <- translateBnfcTypeToType b 
 
         return $ review _TypePhrase 
-            ( name ^. uIdentBnfcIdentGetter
+            ( ()
+            , name ^. uIdentBnfcIdentGetter
             , review _CoprotocolPhrase (a', b')
             )
 
@@ -181,7 +185,7 @@ translateBnfcTypeToType ::
     forall e. 
     AsTranslateBnfcErrors e => 
     MplType -> 
-    Either (NonEmpty e) (Type BnfcIdent BnfcIdent)
+    Either (NonEmpty e) TypeIBnfc
 
 translateBnfcTypeToType (MPL_TYPE n) = translateBnfcTypeToType n
 
@@ -199,7 +203,7 @@ translateBnfcTypeToType (TENSOR_TYPE a (Tensor p) b) =
 translateBnfcTypeToType (GETPUT_TYPE getput _ a b _) = maybe 
     illegalgetput f (preview _InternalConcTypeParser getputname)
   where
-    f :: InternalConcTypes -> Either (NonEmpty e) (Type BnfcIdent BnfcIdent)
+    f :: InternalConcTypes -> Either (NonEmpty e) TypeIBnfc
     f InternalGet = review (_TypeConc % _TypeGetF) <$> args
     f InternalPut = review (_TypeConc % _TypePutF) <$> args
     f _ = illegalgetput

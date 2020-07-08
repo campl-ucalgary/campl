@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7c9f77629dd737dee571a945b2cadbefa1eaea260e5b9458973d4fe7586d3b84
+-- hash: 14ce501b22c86a07e715b1c7f53572f4ec0dd0db7bd7d30798b76e2ff0c0cb20
 
 name:           MPL
 version:        0.1.0.0
@@ -48,19 +48,19 @@ library
       MPLAST.MPLPatternAST
       MPLAST.MPLProcessCommandsAST
       MPLAST.MPLProg
+      MPLAST.MPLProgGraph
       MPLAST.MPLProgI
-      MPLAST.MPLProgII
       MPLAST.MPLProgTraversals
       MPLAST.MPLTypeAST
       MPLCompile
       MPLMain
-      MPLPasses.AlphaRename.PrgObjects
-      MPLPasses.AlphaRename.PrgObjectsErrors
+      MPLPasses.MPLRunPasses
       MPLPasses.SymbolTable
-      MPLSymbolTable.SymEntry
-      MPLSymbolTable.SymKey
+      MPLPasses.TypeClausePhraseGraphs
+      MPLPasses.TypeClausePhraseGraphsErrors
       MPLUtil.Data.Either
       MPLUtil.Data.Either.AccumEither
+      MPLUtil.Data.List.NonEmpty
       MPLUtil.Data.Tuple.Optics
       MPLUtil.Optics.TH
   other-modules:
@@ -72,7 +72,6 @@ library
     , array
     , base >=4.7 && <5
     , containers
-    , mpl-lib
     , mtl
     , optics
     , pretty
@@ -93,7 +92,6 @@ executable mpl
     , array
     , base >=4.7 && <5
     , containers
-    , mpl-lib
     , mtl
     , optics
     , pretty
@@ -105,17 +103,20 @@ test-suite MPL-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      MPLAST.MPLASTTranslateSpec
       Paths_MPL
   hs-source-dirs:
       test
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -O0 -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       GenericPretty
+    , HUnit
     , MPL
+    , QuickCheck
     , array
     , base >=4.7 && <5
     , containers
-    , mpl-lib
+    , hspec
     , mtl
     , optics
     , pretty

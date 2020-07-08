@@ -4,32 +4,37 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeApplications #-}
-module MPLPasses.AlphaRename.PrgObjectsErrors where
+module MPLPasses.TypeClausePhraseGraphsErrors where
 
 import Optics 
 
 import MPLAST.MPLASTCore
 import MPLAST.MPLProgI
-import MPLAST.MPLProgII
 
 import MPLUtil.Data.Either.AccumEither
 
 import Control.Monad.Except
 
+import Control.Monad.State
 import Data.List.NonEmpty ( NonEmpty (..) )
 import qualified Data.List.NonEmpty as NE
 import Control.Arrow
 import Data.Function
 import Data.Maybe
 
-data AlphaRenameErrors = 
+data TypeClausePhraseGraphsErrors = 
     FreeVariable BnfcIdent
     | OverlappingVariables [BnfcIdent]
     | OverlappingWhereDefs [BnfcIdent]
 
 
-$(makeClassyPrisms ''AlphaRenameErrors)
+$(makeClassyPrisms ''TypeClausePhraseGraphsErrors)
 
+
+
+    
+
+{-
 overlappingStmtsCheck ::
     forall e m.
     ( MonadError (NonEmpty e) m
@@ -77,4 +82,4 @@ overlappingStmtsCheck stmts = do
     functionsdecs = 
         stmts & foldOf ( defnFocus % _FunctionDecDefn % funName  % to pure)
  
-
+-}

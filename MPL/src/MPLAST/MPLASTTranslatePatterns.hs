@@ -43,11 +43,11 @@ import Text.PrettyPrint.GenericPretty
 
 translateBnfcPattern ::
     B.Pattern -> 
-    Pattern BnfcIdent BnfcIdent
+    PatternIBnfc
 translateBnfcPattern (B.PATTERN p) = translateBnfcPattern p
 translateBnfcPattern (B.LIST_COLON_PATTERN a colon b) = error "Colon pattern not implemented yet"
 translateBnfcPattern (B.CONSTRUCTOR_PATTERN_ARGS ident _ patts _) = 
-    review _PConstructor (ident ^. uIdentBnfcIdentGetter, map translateBnfcPattern patts)
+    review _PConstructor (ident ^. uIdentBnfcIdentGetter,  map translateBnfcPattern patts)
 translateBnfcPattern (B.CONSTRUCTOR_PATTERN_NO_ARGS ident) = 
    review _PConstructor (ident ^. uIdentBnfcIdentGetter, [])
 

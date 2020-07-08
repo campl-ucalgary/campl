@@ -6,6 +6,9 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveTraversable #-}
 module MPLAST.MPLProg where
 
 import MPLAST.MPLExprAST
@@ -14,6 +17,9 @@ import MPLAST.MPLPatternAST
 import MPLAST.MPLProcessCommandsAST
 
 import Optics
+
+import Data.Functor.Foldable
+import Data.Functor.Foldable.TH
 
 import GHC.Generics 
 
@@ -25,70 +31,71 @@ newtype Prog defn = Prog [Stmt defn]
 data Stmt defn = Stmt {
     _stmtDefns :: NonEmpty defn
     , _stmtWhereBindings :: [Stmt defn] 
-} deriving (Show, Eq, Read)
+} deriving (Show, Eq, Read, Functor, Foldable, Traversable)
 
--- Explanation of the type variables:
--- pattern: the type of a pattern (swapped to () after compilation of pattern matching)
--- letdef: the type for a let definition (swapped to () after lambda lifting)
--- calldef: identifier for CALLING an already declared constructor, funciton, etc
--- var: identifier for a variable
--- concvar: identifier for a concurrent term 
-data Defn pattern letdef calldef decdef metavar var concvar =
-    DataDefn (NonEmpty (TypeClausePhrase (DataPhrase calldef metavar) decdef metavar))
-    | CodataDefn (NonEmpty (TypeClausePhrase (CodataPhrase calldef metavar) decdef metavar))
-    | ProtocolDefn (NonEmpty (TypeClausePhrase (ProtocolPhrase calldef metavar) decdef metavar))
-    | CoprotocolDefn (NonEmpty (TypeClausePhrase (CoprotocolPhrase calldef metavar) decdef metavar))
-    | FunctionDecDefn (FunctionDefn pattern letdef calldef decdef metavar var)
-    | ProcessDecDefn (ProcessDefn pattern letdef calldef decdef metavar var concvar)
+data Defn datadefn codatadefn protdefn coprotdefn fundefn procdefn =
+    DataDefn datadefn
+    | CodataDefn codatadefn
+    | ProtocolDefn protdefn
+    | CoprotocolDefn coprotdefn
+    | FunctionDecDefn fundefn
+    | ProcessDecDefn procdefn
   deriving (Show, Eq, Read)
 
-type TypeClausePhrase phrase decdef var = TypeClause (TypePhrase phrase decdef var) decdef var
+type TypeClausesPhrases neighbors phrasecontext phrase ident = 
+    NonEmpty (TypeClausePhrase neighbors phrasecontext phrase ident)
 
-data TypeClause phrase decdef var = TypeClause {
-    _typeClauseName :: decdef
-    , _typeClauseArgs :: [var]
-    , _typeClauseStateVar :: var
+type TypeClausePhrase neighbors phrasecontext phrase ident = 
+        TypeClause neighbors
+        (TypePhrase phrasecontext phrase ident) 
+        ident
+
+data TypeClause neighbors phrase ident = TypeClause {
+    _typeClauseName :: ident 
+    , _typeClauseArgs :: [ ident]
+    , _typeClauseStateVar ::  ident
     , _typeClausePhrases :: [phrase]
+    , _typeClauseNeighbors :: neighbors
 }  deriving (Show, Eq, Read, Generic)
 
-data TypePhrase phrase decdef var = TypePhrase {
-    _typePhraseName :: decdef
+data TypePhrase phrasecontext phrase ident = TypePhrase {
+    _typePhraseContext :: phrasecontext
+    , _typePhraseName :: ident
     , _typePhraseType :: phrase
 }  deriving (Show, Eq, Read, Generic)
 
-data DataPhrase calldef var = DataPhrase {
-    _dataFrom :: [Type calldef var]
-    , _dataTo :: var
+data DataPhrase calldef ident = DataPhrase {
+    _dataFrom :: [Type calldef ident]
+    , _dataTo :: ident
 }  deriving (Show, Eq, Read, Generic)
 
-data CodataPhrase calldef var = CodataPhrase {
-    _codataFrom :: [Type calldef var]
-    , _codataTo :: Type calldef var
+data CodataPhrase calldef ident = CodataPhrase {
+    _codataFrom :: [Type calldef ident]
+    , _codataTo :: Type calldef ident 
 }  deriving (Show, Eq, Read, Generic)
 
-data ProtocolPhrase calldef var = ProtocolPhrase {
-    _protocolFrom :: Type calldef var
-    , _protocolTo :: var
+data ProtocolPhrase calldef ident = ProtocolPhrase {
+    _protocolFrom :: Type calldef ident 
+    , _protocolTo :: ident
 }  deriving (Show, Eq, Read, Generic)
 
-data CoprotocolPhrase calldef var = CoprotocolPhrase {
-    _coprotocolFrom :: var
-    , _coprotocolTo :: Type calldef var
+data CoprotocolPhrase calldef ident = CoprotocolPhrase {
+    _coprotocolFrom :: ident
+    , _coprotocolTo :: Type calldef ident
 }  deriving (Show, Eq, Read, Generic)
 
-
-data FunctionDefn pattern letdef calldef decdef metavar var = FunctionDefn { 
-    _funName :: decdef
-    , _funTypesFromTo :: Maybe ([Type calldef metavar], Type calldef metavar)
-    , _funDefn :: NonEmpty ([Pattern calldef var], Expr pattern letdef calldef var) 
+data FunctionDefn pattern letdef calldef ident = FunctionDefn { 
+    _funName :: ident
+    , _funTypesFromTo :: Maybe ([Type calldef ident], Type calldef ident)
+    , _funDefn :: NonEmpty ([Pattern calldef ident], Expr pattern letdef calldef ident) 
 } deriving (Show, Eq, Read)
 
-data ProcessDefn patterns letdef calldef decdef metavar var concvar = ProcessDefn { 
-    _procName :: decdef
-    , _procSeqInChsOutChsTypes :: Maybe ([Type calldef metavar], [Type calldef metavar], [Type calldef metavar])
+data ProcessDefn patterns letdef calldef ident = ProcessDefn { 
+    _procName :: ident
+    , _procSeqInChsOutChsTypes :: Maybe ([Type calldef ident], [Type calldef ident], [Type calldef ident])
     , _procDefn :: NonEmpty 
-            ( ([Pattern calldef var], [concvar], [concvar])
-            , ProcessCommands patterns letdef calldef var concvar) 
+            ( ([Pattern calldef ident], [ident], [ident])
+            , ProcessCommands patterns letdef calldef ident) 
 } deriving (Show, Eq, Read)
 
 $(concat <$> traverse makeLenses 
@@ -118,3 +125,5 @@ $(concat <$> traverse makePrisms
     , ''CoprotocolPhrase
     ]
  )
+
+$(makeBaseFunctor ''Stmt)

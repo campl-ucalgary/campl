@@ -36,8 +36,6 @@ dependencies:
 
     - raw-strings-qq
 
-    - mpl-lib
-
 
 library:
   source-dirs: src
@@ -58,8 +56,19 @@ tests:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
+    - -O0
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
     - MPL
+    - QuickCheck
+    - HUnit
+    - hspec
+
+      #    spec:
+      #        defaults: hspec/hspec@master
+      #        dependencies: 
+      #            - AMPL
+      #            - QuickCheck
+      #            - HUnit

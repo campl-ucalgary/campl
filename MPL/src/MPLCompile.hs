@@ -14,6 +14,8 @@ import MPLAST.MPLASTTranslate
 import MPLAST.MPLASTTranslateErrors
 import MPLAST.MPLProgI
 
+import MPLPasses.MPLRunPasses
+
 import Language.AbsMPL
 import Language.LayoutMPL
 import Language.ParMPL
@@ -24,11 +26,13 @@ import Text.RawString.QQ
 parseAndLex :: String -> Err MplProg
 parseAndLex = pMplProg . resolveLayout True . myLexer
 
-compile :: String -> ([TranslateBnfcErrors], ProgI)
+compile :: String -> ([TranslateBnfcErrors], ProgI BnfcIdent)
 compile str = case parseAndLex str of
         Ok a -> translateBnfcMplToProg a
         Bad str -> error str
 
+unsafecompile :: String -> ProgI BnfcIdent
+unsafecompile = snd . compile
 
 teststr :: String
 teststr = [r|
@@ -44,7 +48,23 @@ where
         A -> A =
             Names, Names :: A -> A
 |]
+
+testrecursive = [r|
+data 
+    Mutually(A,B) -> A =
+        Constructor1 :: A -> A
+        Constructor2 :: A -> A
+    and 
+    OtherMutually(A,B) -> A =
+        Constructor1 :: A -> A
+        Constructor2 :: A -> A
+|]
+
 {- $>
+compile teststr
+<$ -}
+
+{-  
 case compile teststr of
     (_, Prog stmts) -> stmts & foldMapOf ( 
                 folded 
@@ -55,7 +75,7 @@ case compile teststr of
                 % folded
                 % typeClauseDecDefTraversal
                 ) pure :: [BnfcIdent]
-<$ -}
+-}
 
 testing :: Int -> State Int (Either String Int)
 testing n = do
@@ -97,7 +117,7 @@ test1 =
         Left c -> (liftAEither (Left c) <> acc, st)
     
 {- $>
-    test1
+    -- test1
 <$ -}
 
 testing2 :: Int -> ExceptT String (State Char) Int
@@ -116,5 +136,5 @@ test2 =
         [1,2,3]
 
 {- $>
-    test2
+    -- test2
 <$ -}

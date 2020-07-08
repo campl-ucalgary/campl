@@ -36,16 +36,16 @@ import Text.PrettyPrint.GenericPretty
 -- Expr definition
 --------------------------
 
-data Pattern def var =
-    PConstructor { _pConstructor :: def, _pConstructorArgs :: [Pattern def var]}
+data Pattern calldef ident =
+    PConstructor { _pConstructor :: ident, _pConstructorArgs :: [Pattern calldef ident]}
     | PUnit 
-    | PRecord { _pRecordPhrase :: NonEmpty (def, Pattern def var) }
-    | PList { _pList :: [Pattern def var] }
-    | PTuple { _pTuple :: (Pattern def var, NonEmpty (Pattern def var)) }
-    | PVar { _pVar :: var }
+    | PRecord { _pRecordPhrase :: NonEmpty (ident, Pattern calldef ident) }
+    | PList { _pList :: [Pattern calldef ident] }
+    | PTuple { _pTuple :: (Pattern calldef ident, NonEmpty (Pattern calldef ident)) }
+    | PVar { _pVar :: ident }
     | PString { _pString :: String }
-    | PInt { _pInt :: (var, Int) }
-    | PNull  { _pNull :: var }
+    | PInt { _pInt :: (ident, Int) }
+    | PNull  { _pNull :: ident }
   deriving ( Read, Show, Generic, Out, Data, Eq )
 
 

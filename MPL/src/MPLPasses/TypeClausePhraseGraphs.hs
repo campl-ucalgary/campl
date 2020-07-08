@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE FlexibleContexts #-}
-module MPLPasses.AlphaRename.PrgObjects where
+module MPLPasses.TypeClausePhraseGraphs where
 
 import Optics
 import Optics.Lens
@@ -13,9 +13,8 @@ import Data.Functor.Foldable
 
 import MPLAST.MPLASTCore
 import MPLAST.MPLProgI
-import MPLAST.MPLProgII
 
-import MPLPasses.AlphaRename.PrgObjectsErrors
+import MPLPasses.TypeClausePhraseGraphsErrors
 
 import MPLUtil.Data.Tuple.Optics
 import MPLUtil.Data.Either.AccumEither
@@ -35,21 +34,18 @@ import Control.Monad.RWS
 
 import MPLCompile
 
-data AlphaRenameState = AlphaRenameState  {
-    _defIdentTag :: UniqueTag
-    , _decsStack :: [[(String, (DefnII, UniqueTag))]]
-    , _renamedSymbolTable :: Map UniqueTag DefnII
-}
+-- type ObjectDefnI phrase = TypeClausesPhrases () () (phrase () BnfcIdent) BnfcIdent BnfcIdent
+-- type DataDefnI = ObjectDefnI DataPhrase
 
-$(makeClassy ''AlphaRenameState)
 
-freshIdentTag :: 
-    ( MonadState c m
-    , HasAlphaRenameState c ) => 
-    m UniqueTag
-freshIdentTag  = 
-    defIdentTag <<%= succ
 
+-- class ValidateTypePhrase n where
+--     validateTypePhrase :: 
+--         ( MonadError (NonEmpty e) m
+--         , MonadState s m
+--         , AsTypeClausePhraseGraphsErrors e ) => n -> m () 
+
+{-
 withScope ::
     ( MonadState c m
     , HasAlphaRenameState c ) => 
@@ -60,7 +56,7 @@ withScope scope action = do
     a <- action
     decsStack %= tail
     return a
-	
+
 scopeLookup :: 
     ( MonadState s m
     , HasAlphaRenameState s
@@ -69,9 +65,10 @@ scopeLookup ::
     Optic' k is DefnII a -> 
     m (Maybe (DefnII, UniqueTag))
 scopeLookup val prism = do 
-    symtable <- guse jecsStack
-    return $ snd <$> findOf (folded % folded ) 
-                    (\(a, (b, c)) -> a == val && has prism b) symtable
+    undefined
+    -- symtable <- guse undefined 
+    --return $ snd <$> findOf (folded % folded ) 
+                    --(\(a, (b, c)) -> a == val && has prism b) symtable
 
 -- remember to do a large overlappingStmtsCheck over the whole program..
 alphaRenameStep ::
@@ -98,7 +95,6 @@ alphaRenameStmt stmt = do
 
     undefined
     -- alpha rename definitions..
-    {-
     ndefs <- withScope wscopes $ do
                 defs <- mapM alphaRenameDefn (stmt ^. stmtDefns)
                 return defs
@@ -108,9 +104,7 @@ alphaRenameStmt stmt = do
     -- return the new statement with the scope that extends
     -- toe the global context
     return $ (wscopes, Stmt ndefs' wstmtiis)
-    -}
 
-{-
 alphaRenameDefn ::
     forall s m e.
     ( MonadState s m
@@ -131,4 +125,3 @@ alphaRenameDefn n = case n ^. unDefnI of
     
 -- alphaRenameDefn (DataDefn ) = undefined
 -}
-

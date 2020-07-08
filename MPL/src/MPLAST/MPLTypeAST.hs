@@ -36,87 +36,36 @@ import Text.PrettyPrint.GenericPretty
 #define MPL_TYPE_AST_PLAIN_DATA_DERIVING_CLAUSE ( Eq, Ord, Read, Show, Generic, Out, Data, Typeable )
 
 
-data Type def var =
-    TypeWithArgs { _typeIdentDef :: def, _typeArgs :: [Type def var] }
-    | TypeVar { _typeIdent :: var }
+data Type calldef ident =
+    TypeWithArgs { _typeIdent :: ident, _typeArgs :: [Type calldef ident] }
+    | TypeVar { _typeIdent :: ident }
 
-    | TypeSeq (SeqTypeF def (Type def var))
-    | TypeConc (ConcTypeF def (Type def var))
+    | TypeSeq (SeqTypeF ident (Type calldef ident))
+    | TypeConc (ConcTypeF ident (Type calldef ident))
   deriving ( Read, Show, Generic, Out, Data, Eq )
 
-data SeqTypeF def t = 
+data SeqTypeF ident t = 
     TypeTupleF { _seqTypeArgs :: (t, NonEmpty t) }
     | TypeListF { _seqTypeArg :: t }
 
-    | TypeCharF { _seqTypeIdent :: def }
-    | TypeDoubleF { _seqTypeIdent :: def }
-    | TypeString { _seqTypeIdent :: def }
-    | TypeUnitF { _seqTypeIdent :: def }
+    | TypeCharF { _seqTypeIdent :: ident }
+    | TypeDoubleF { _seqTypeIdent :: ident }
+    | TypeString { _seqTypeIdent :: ident }
+    | TypeUnitF { _seqTypeIdent :: ident }
 
   deriving ( Read, Show, Generic, Out, Data, Functor, Typeable, Foldable, Traversable, Eq )
 
-data ConcTypeF def t = 
-    TypeGetF { _concTypeIdent :: def , _concTypeSeqArg :: t,  _concTypeConcArg :: t }
-    | TypePutF { _concTypeIdent :: def , _concTypeSeqArg :: t,  _concTypeConcArg :: t }
+data ConcTypeF ident t = 
+    TypeGetF { _concTypeIdent :: ident , _concTypeSeqArg :: t,  _concTypeConcArg :: t }
+    | TypePutF { _concTypeIdent :: ident , _concTypeSeqArg :: t,  _concTypeConcArg :: t }
 
-    | TypeTensorF { _concTypeIdent :: def , _concTypeLeftArg :: t,  _concTypeRightArg :: t }
-    | TypeParF { _concTypeIdent :: def , _concTypeLeftArg :: t,  _concTypeRightArg :: t }
+    | TypeTensorF { _concTypeIdent :: ident , _concTypeLeftArg :: t,  _concTypeRightArg :: t }
+    | TypeParF { _concTypeIdent :: ident , _concTypeLeftArg :: t,  _concTypeRightArg :: t }
 
-    | TypeTopBotF { _concTypeIdent :: def }
+    | TypeTopBotF { _concTypeIdent :: ident }
 
-    | TypeNegF { _concTypeIdent :: def , _concTypeArg :: t  }
+    | TypeNegF { _concTypeIdent :: ident , _concTypeArg :: t  }
   deriving ( Read, Show, Generic, Out, Data, Functor, Typeable, Foldable, Traversable, Eq )
-
-data KindPhrase def var =
-    -- data defn
-    KindPhraseDataDefn {
-        _kindPhraseIdent :: def
-        , _kindPhraseDataArgs :: [var]
-
-        , _kindPhraseNeighborIdents :: [def]
-        , _kindPhraseChildrenIdents :: [def]
-
-        , _kindPhraseStateVar :: var
-    }
-    -- codata defn
-    | KindPhraseCodataDefn {
-        _kindPhraseIdent :: def
-        , _kindPhraseCodataArgs :: [var]
-        , _kindPhraseStateVar :: var
-
-        , _kindPhraseNeighborIdents :: [def]
-        , _kindPhraseChildrenIdents :: [def]
-
-    }
-  deriving ( Read, Show, Generic, Out, Data, Eq )
-
-data TypePhrase def var =
-    TypePhraseProcessDefn { _typePhraseIdent :: def
-        , _typeProcessSeqArgs :: [Type def var]
-        , _typeProcessInChs :: [Type def var]
-        , _typeProcessOutChs :: [Type def var]
-    }
-    | TypePhraseFunctionDefn {
-        _typePhraseIdent :: def
-        , _typeFunctionInArgs :: [Type def var]
-        , _typeFunctionOut :: Type def var
-    }
-    | TypePhraseDestrDefn {
-        _typePhraseIdent :: def
-        , _typePhraseParentIdent :: def
-
-        , _typePhraseDestrInp :: NonEmpty (Type def var)
-        , _typePhraseStateVar :: var
-    } 
-    | TypePhraseConstrDefn {
-        _typePhraseIdent :: def
-        , _typePhraseParentIdent :: def
-
-        , _typePhraseConstrInp :: [Type def var]
-        , _typePhraseStateVar :: var
-    }
-  deriving ( Read, Show, Generic, Out, Data, Eq )
-
 
 data InternalSeqType =
     InternalInt
@@ -166,12 +115,10 @@ data InternalConcTypes =
 
 $(concat <$> traverse (makeFieldLabelsWith (fieldLabelsRules & lensField .~ underscoreNoPrefixNamer))
     [ ''Type
-    , ''TypePhrase 
     ]
  )
 $(concat <$> traverse makePrisms 
     [ ''Type
-    , ''TypePhrase
     , ''SeqTypeF
     , ''ConcTypeF
     ]

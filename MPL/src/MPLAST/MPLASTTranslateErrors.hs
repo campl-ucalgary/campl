@@ -21,11 +21,11 @@ data TranslateBnfcErrors =
     | IllegalCodataDeclaration TranslateBnfcErrors
     | IllegalProtocolDeclaration TranslateBnfcErrors
     | IllegalCoprotocolDeclaration TranslateBnfcErrors
-    | IllegalTypeName { _translateBnfcErrorIllegalTypeName :: Type BnfcIdent BnfcIdent }
-    | IllegalNonTypeVar { _translateBnfcErrorIllegalNonTypeVar :: Type BnfcIdent BnfcIdent }
+    | IllegalTypeName { _translateBnfcErrorIllegalTypeName :: TypeIBnfc }
+    | IllegalNonTypeVar { _translateBnfcErrorIllegalNonTypeVar :: TypeIBnfc }
 
     | IllegalSplit { _translateBnfcErrorIllegalSplit :: [BnfcIdent] }
-    | IllegalFork { _translateBnfcErrorIllegalSplit :: [BnfcIdent] }
+    | IllegalFork { _translateBnfcErrorIllegalFork :: [BnfcIdent] }
   deriving (Show, Eq, Read)
 
 $(makeClassyPrisms ''TranslateBnfcErrors)

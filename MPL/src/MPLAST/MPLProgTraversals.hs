@@ -5,6 +5,22 @@ import MPLAST.MPLProg
 import Optics
 
 
+
+{-
+objectTypeDeclaredStateVars :: Traversal' (TypeClause phrase decdef a) a
+objectTypeDeclaredStateVars = traversalVL trv
+  where
+    trv f n = n & traverseOf 
+        typeClauseStateVar f
+        -}
+
+{- $>
+<$ -}
+    
+
+
+
+{-
 --defnDecDefTraversal :: Traversal' (Defn pattern letdef calldef decdef var concvar) decdef 
 topLevelDefnDecDefTraversal :: Traversal
        (Defn pattern letdef calldef decdefn metavar var concvar)
@@ -65,4 +81,5 @@ concTypePhraseDecDefs = traversalVL trv
   where
     trv f (ConcTypePhrase a b c) = 
         ConcTypePhrase <$> f a <*> pure b <*> pure c
+        -}
         -}
