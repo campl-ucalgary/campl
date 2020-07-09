@@ -21,6 +21,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
 
 import Control.Monad.State
+import Control.Monad.Except
 
 import Debug.Trace
 
@@ -29,10 +30,12 @@ data SymEntry =
     | SymTypeVar
   deriving Show
 
-type Graph a = RWS 
+type Graph a = RWST
     [TypeClauseKnot SymEntry String] 
     [TypeClauseKnot SymEntry String] 
-    [(String, SymEntry)] a
+    [(String, SymEntry)] 
+    (Either String)
+    a
 
 testingtie :: 
     [TypeClause () () () String] ->
@@ -66,7 +69,7 @@ testingtie ((TypeClause a args stv phrases ()):as) = mdo
         -- this is very important
         case v of 
             Just v' -> return (TypeWithArgs ident v' [])
-            Nothing -> error "my error"
+            Nothing -> throwError $ "AHAHAH IN ETHERERROR"
 
 handtiedd = [clause]
   where
@@ -85,31 +88,40 @@ heknewthewholetime = [
         [ TypePhrase ()
             "Phrase"
             []
-            (TypeWithArgs "ST" () [])
+            (TypeWithArgs "Potato" () [])
         ]
         ()
     , TypeClause "Clause2" [] "Potato"
         [ TypePhrase ()
             "Phrase2"
             []
-            (TypeWithArgs "as" () [])
+            (TypeWithArgs "ST" () [])
         ]
         ()
     ]
 
 runRws rws = w
   where
-    ((), s, w) = runRWS rws w []
+    ((), s, w) = case runRWST rws w [] of
+                    Right a -> a
+                    Left str -> error str
 
 evaluated = runRws (testingtie  heknewthewholetime )
 
 isitreal = case evaluated of
-            [_, TypeClause _ _ _ phrase b ] -> 
+            [TypeClause _ _ _ phrase b, _ ] -> 
                 case phrase of
                     [TypePhrase ctxt ident [] 
                         (TypeWithArgs argident to [])] ->  
                             case to of
                                 SymTypeClause n -> n ^. typeClauseName
+isitreal2 = case evaluated of
+            [TypeClause _ _ _ phrase b, _ ] -> 
+                case phrase of
+                    [TypePhrase ctxt ident [] 
+                        (TypeWithArgs argident to [])] ->  
+                            case to of
+                                SymTypeClause n -> ctxt
     
 
 
