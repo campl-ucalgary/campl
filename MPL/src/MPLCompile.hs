@@ -13,6 +13,7 @@ import MPLUtil.Data.Either.AccumEither
 import MPLAST.MPLASTTranslate
 import MPLAST.MPLASTTranslateErrors
 import MPLAST.MPLProgI
+import MPLPasses.ToGraph
 
 import MPLPasses.MPLRunPasses
 

@@ -9,6 +9,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module MPLAST.MPLProg where
 
 import MPLAST.MPLExprAST
@@ -25,8 +26,9 @@ import GHC.Generics
 
 import Data.List.NonEmpty
 
-newtype Prog defn = Prog [Stmt defn]
-  deriving (Show, Eq, Read)
+newtype Prog defn = Prog { _prog :: [Stmt defn] }
+  deriving (Show, Eq, Read, Semigroup, Monoid)
+
 
 data Stmt defn = Stmt {
     _stmtDefns :: NonEmpty defn
@@ -42,28 +44,33 @@ data Defn datadefn codatadefn protdefn coprotdefn fundefn procdefn =
     | ProcessDecDefn procdefn
   deriving (Show, Eq, Read)
 
-type TypeClausesPhrases neighbors phrasecontext phrase ident = 
-    NonEmpty (TypeClausePhrase neighbors phrasecontext phrase ident)
+type TypeClausesPhrases neighbors phrasecontext calldef ident = 
+    NonEmpty (TypeClause neighbors phrasecontext calldef ident)
 
-type TypeClausePhrase neighbors phrasecontext phrase ident = 
-        TypeClause neighbors
-        (TypePhrase phrasecontext phrase ident) 
-        ident
-
-data TypeClause neighbors phrase ident = TypeClause {
+data TypeClause neighbors phrasecontext calldef ident = TypeClause {
     _typeClauseName :: ident 
-    , _typeClauseArgs :: [ ident]
+    , _typeClauseArgs :: [ident]
     , _typeClauseStateVar ::  ident
-    , _typeClausePhrases :: [phrase]
+    , _typeClausePhrases :: [TypePhrase phrasecontext calldef ident]
     , _typeClauseNeighbors :: neighbors
 }  deriving (Show, Eq, Read, Generic)
 
-data TypePhrase phrasecontext phrase ident = TypePhrase {
+data TypePhrase phrasecontext calldef ident = TypePhrase {
     _typePhraseContext :: phrasecontext
     , _typePhraseName :: ident
-    , _typePhraseType :: phrase
-}  deriving (Show, Eq, Read, Generic)
+    , _typePhraseFrom :: [Type calldef ident]
+    , _typePhraseTo :: Type calldef ident
+} deriving (Show, Eq, Read, Generic)
 
+{-
+typeClausePhraseIdentTraversal :: Traversal (TypeClausePhrase a b c ident) (TypeClausePhrase  a b c ident') ident ident'
+typeClausePhraseIdentTraversal = traversalVL trv
+  where 
+    trv k (TypeClause a b c d e)= TypeClause <$> k a <*> traverse k b <*> k c <*> traverse (g k) d <*> pure e
+    g k (TypePhrase a b c) = TypePhrase a <$> k b <*> pure c
+    -}
+
+{-
 data DataPhrase calldef ident = DataPhrase {
     _dataFrom :: [Type calldef ident]
     , _dataTo :: ident
@@ -83,6 +90,7 @@ data CoprotocolPhrase calldef ident = CoprotocolPhrase {
     _coprotocolFrom :: ident
     , _coprotocolTo :: Type calldef ident
 }  deriving (Show, Eq, Read, Generic)
+-}
 
 data FunctionDefn pattern letdef calldef ident = FunctionDefn { 
     _funName :: ident
@@ -99,30 +107,34 @@ data ProcessDefn patterns letdef calldef ident = ProcessDefn {
 } deriving (Show, Eq, Read)
 
 $(concat <$> traverse makeLenses 
-    [ ''Stmt
+    [ ''Prog
+    , ''Stmt
     , ''Defn
     , ''TypeClause
     , ''TypePhrase
-    , ''DataPhrase
-    , ''CodataPhrase
-    , ''ProtocolPhrase
-    , ''CoprotocolPhrase
+    -- , ''TypePhraseFromTo
+    -- , ''DataPhrase
+    -- , ''CodataPhrase
+    -- , ''ProtocolPhrase
+    -- , ''CoprotocolPhrase
     , ''FunctionDefn
     , ''ProcessDefn
     ]
  )
 
 $(concat <$> traverse makePrisms  
-    [ ''Stmt
+    [ ''Prog
+    , ''Stmt
     , ''Defn
     , ''FunctionDefn
     , ''ProcessDefn
     , ''TypeClause
     , ''TypePhrase
-    , ''DataPhrase
-    , ''CodataPhrase
-    , ''ProtocolPhrase
-    , ''CoprotocolPhrase
+    -- , ''TypePhraseFromTo
+    -- , ''DataPhrase
+    -- , ''CodataPhrase
+    -- , ''ProtocolPhrase
+    -- , ''CoprotocolPhrase
     ]
  )
 

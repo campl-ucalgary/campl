@@ -3,6 +3,7 @@ module MPLAST.MPLASTCore (
     , module MPLAST.MPLPatternAST
     , module MPLAST.MPLProcessCommandsAST
     , module MPLAST.MPLProg
+    , module MPLAST.MPLProgI
     , module MPLAST.MPLProgTraversals
     , module MPLAST.MPLProgGraph
     ) where
@@ -13,3 +14,5 @@ import MPLAST.MPLProcessCommandsAST
 import MPLAST.MPLProg
 import MPLAST.MPLProgGraph
 import MPLAST.MPLProgTraversals
+import MPLAST.MPLProgGraph
+import MPLAST.MPLProgI

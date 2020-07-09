@@ -51,7 +51,7 @@ getTypeDeclarationName ::
 getTypeDeclarationName n = 
     case n of
         TypeVar name -> return (name, [])
-        TypeWithArgs name args -> do
+        TypeWithArgs name () args -> do
             args' <- translateTypeDeclarationArgs args
             return (name, args')
         n -> Left $ ((review _IllegalTypeName n) :|[] )
@@ -62,7 +62,7 @@ getTypeVar ::
     TypeIBnfc ->
     Either (NonEmpty e) BnfcIdent
 getTypeVar (TypeVar n) = Right n
-getTypeVar (TypeWithArgs n []) = Right n
+getTypeVar (TypeWithArgs n () []) = Right n
 getTypeVar n = Left (review _IllegalNonTypeVar n :| [])
 
 translateTypeDeclarationArgs ::
@@ -90,7 +90,8 @@ translateBnfcSeqTypePhrasesToDataPhrase (SEQ_TYPE_PHRASE handles fromtypes totyp
         return $ review _TypePhrase
             ( ()
             , name ^. uIdentBnfcIdentGetter
-            , review _DataPhrase (fromtypes' , totype')
+            , fromtypes' 
+            , TypeVar totype'
             )
 
 -- CODATA
@@ -104,13 +105,15 @@ translateBnfcSeqTypePhrasesToCodataPhrase (SEQ_TYPE_PHRASE handles fromtypes tot
   where
     f :: TypeHandleName -> Either (NonEmpty e) CodataTypePhraseIBnfc
     f (TYPE_HANDLE_NAME name) = do
-        fromtypes' <- map translateBnfcTypeToType fromtypes ^. collectsOnlyIfNoLeftsGetter
+        fromtypes' <- map translateBnfcTypeToType fromtypes 
+                        ^.  collectsOnlyIfNoLeftsGetter
         totype' <- translateBnfcTypeToType totype 
 
         return $ review _TypePhrase
             ( ()
             , name ^. uIdentBnfcIdentGetter
-            , review _CodataPhrase (fromtypes' , totype')
+            , fromtypes' 
+            , totype'
             )
 
 --  PROTOCOL
@@ -129,7 +132,8 @@ translateConcurrentTypePhraseToProtocolPhrase (CONCURRENT_TYPE_PHRASE handles a 
         return $ review _TypePhrase 
             ( ()
             , name ^. uIdentBnfcIdentGetter
-            , review _ProtocolPhrase (a', b')
+            , [a']
+            , TypeVar b'
             )
 
 -- Coprotocol
@@ -148,7 +152,8 @@ translateConcurrentTypePhraseToCoprotocolPhrase (CONCURRENT_TYPE_PHRASE handles 
         return $ review _TypePhrase 
             ( ()
             , name ^. uIdentBnfcIdentGetter
-            , review _CoprotocolPhrase (a', b')
+            , [TypeVar a']
+            , b'
             )
 
 translateNameAndStateVar :: 
@@ -209,7 +214,7 @@ translateBnfcTypeToType (GETPUT_TYPE getput _ a b _) = maybe
     f _ = illegalgetput
 
     getput' = getput ^. uIdentBnfcIdentGetter
-    getputname = stringPos getput' ^. _1
+    getputname = getput' ^. stringPos %_1 
     illegalgetput = Left $ review _IllegalGetPut getput' :| []
 
     args = (getput',,) <$> seqarg <*> concarg
@@ -219,8 +224,7 @@ translateBnfcTypeToType (GETPUT_TYPE getput _ a b _) = maybe
 translateBnfcTypeToType (MPL_UIDENT_NO_ARGS_TYPE ident) = 
     review (_Right % _TypeVar ) (ident ^. uIdentBnfcIdentGetter)
 translateBnfcTypeToType (MPL_UIDENT_ARGS_TYPE ident _ lst _) =
-    review _TypeWithArgs
-        <$> ( (ident ^. uIdentBnfcIdentGetter,)  <$> res ^. collectsOnlyIfNoLeftsGetter )
+    review _TypeWithArgs <$> ( (ident ^. uIdentBnfcIdentGetter,(),)  <$> res ^. collectsOnlyIfNoLeftsGetter )
   where
     res = map translateBnfcTypeToType lst
 

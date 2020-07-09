@@ -37,7 +37,7 @@ import Text.PrettyPrint.GenericPretty
 
 
 data Type calldef ident =
-    TypeWithArgs { _typeIdent :: ident, _typeArgs :: [Type calldef ident] }
+    TypeWithArgs { _typeIdent :: ident, _typeCallDef :: calldef, _typeArgs :: [Type calldef ident] }
     | TypeVar { _typeIdent :: ident }
 
     | TypeSeq (SeqTypeF ident (Type calldef ident))

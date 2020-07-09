@@ -14,30 +14,15 @@ import Control.Monad.Except
 import Data.Map ( Map (..) )
 import qualified Data.Map as Map
 
-data SymEntry =
-    SeqDec (SeqGraphPhrase TaggedBnfcIdent)
-
-data SymbolTableState = SymbolTableState {
-    _uniqueTagGenerator :: UniqueTag
-    , _scopeLookup :: [[(String, (UniqueTag, SymEntry))]]
-    , _symbolTable :: Map UniqueTag SymEntry
-}
-
-$(concat <$> traverse makeClassy 
-    [ ''SymbolTableState]
- )
-$(concat <$> traverse makePrisms 
-    [ ''SymEntry]
- )
-
 {-
-freshUniqueTag ::
-    ( MonadState c m
-    , HasSymbolTableState c ) => 
-    m UniqueTag
-freshUniqueTag = 
-    uniqueTagGenerator <<%= succ
+data SymEntry =
+    SymTypeArgVar
+    | SymTypeStateVar (SeqClauseG TaggedBnfcIdent)
+    | SymSeqClause (SeqClauseG TaggedBnfcIdent)
 
+type Scope = [(String, (UniqueTag, SymEntry))]
+type SymbolTable = [Scope]
+{-
 withScope  :: 
     ( MonadState c m
     , HasSymbolTableState c ) => 
@@ -52,4 +37,5 @@ insertSymbolTable ::
 insertSymbolTable entry = do
     tag <- freshUniqueTag
     symbolTable %= Map.insert tag entry
+    -}
     -}

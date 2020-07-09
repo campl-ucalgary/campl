@@ -39,6 +39,8 @@ import MPLCompile
 
 
 
+
+
 -- class ValidateTypePhrase n where
 --     validateTypePhrase :: 
 --         ( MonadError (NonEmpty e) m

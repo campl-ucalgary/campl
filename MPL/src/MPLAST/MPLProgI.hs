@@ -28,7 +28,7 @@ import MPLAST.MPLProg
 
 import Data.Functor.Foldable
 
-import GHC.Generics
+import GHC.Generics hiding (to)
 import Data.Data
 import Data.Typeable
 
@@ -45,10 +45,10 @@ type ProgI ident = Prog (DefnI ident)
 type StmtI ident = Stmt (DefnI ident) 
 type PatternI ident = Pattern () ident 
 type TypeI ident = Type () ident 
-type DataTypePhraseI ident = TypePhrase () (DataPhrase () ident) ident 
-type CodataTypePhraseI ident = TypePhrase () (CodataPhrase () ident) ident 
-type ProtocolTypePhraseI ident = TypePhrase () (ProtocolPhrase () ident) ident 
-type CoprotocolTypePhraseI ident = TypePhrase () (CoprotocolPhrase () ident) ident 
+type DataTypePhraseI ident = TypePhrase () () ident 
+type CodataTypePhraseI ident = TypePhrase () () ident 
+type ProtocolTypePhraseI ident = TypePhrase () () ident 
+type CoprotocolTypePhraseI ident = TypePhrase () () ident 
 type ProcessCommandsI ident = ProcessCommands (PatternI ident) (StmtI ident) () ident 
 type ProcessCommandI ident = ProcessCommand (PatternI ident) (StmtI ident) () ident 
 type ExprI ident = Expr 
@@ -58,14 +58,14 @@ type ExprI ident = Expr
     BnfcIdent
 
 
-newtype BnfcIdent = BnfcIdent { stringPos :: (String, (Int, Int)) }
+newtype BnfcIdent = BnfcIdent { _stringPos :: (String, (Int, Int)) }
   deriving (Show, Eq, Read, Ord)
 
-type ObjectDefnI phrase ident = TypeClausesPhrases () () (phrase () ident) ident
-type DataDefnI ident = ObjectDefnI DataPhrase ident
-type CodataDefnI ident = ObjectDefnI CodataPhrase ident
-type ProtocolDefnI ident = ObjectDefnI ProtocolPhrase ident
-type CoprotocolDefnI ident = ObjectDefnI CoprotocolPhrase ident
+type ObjectDefnI ident = NonEmpty (TypeClause () () () ident)
+type DataDefnI ident = ObjectDefnI ident
+type CodataDefnI ident = ObjectDefnI ident
+type ProtocolDefnI ident = ObjectDefnI ident
+type CoprotocolDefnI ident = ObjectDefnI ident
 type ProcessDefnI ident = ProcessDefn (PatternI ident) (Stmt (DefnI ident)) () ident
 type FunctionDefnI ident = FunctionDefn (PatternI ident) (Stmt (DefnI ident)) () ident
 
@@ -84,7 +84,7 @@ $(concat <$> traverse makePrisms
     [ ''DefnI ]
  )
 
-$(makeClassy ''BnfcIdent)
+$(makeLenses ''BnfcIdent)
 
 type DefnIBnfc = DefnI BnfcIdent
 type ProgIBnfc = ProgI BnfcIdent
@@ -100,15 +100,15 @@ type ProcessCommandIBnfc = ProcessCommandI BnfcIdent
 type ExprIBnfc = ExprI BnfcIdent 
 
 data TaggedBnfcIdent = TaggedBnfcIdent {
-    _taggedBnfcIdentTag :: UniqueTag
-    , _taggedBnfcIdentBnfcIdent :: BnfcIdent
+    _taggedBnfcIdentBnfcIdent :: BnfcIdent
+    , _taggedBnfcIdentTag :: UniqueTag
 } deriving (Show, Eq, Read, Ord)
 
 newtype UniqueTag = UniqueTag Int
   deriving (Show, Eq, Ord, Read, Enum)
 
-
 $(makeClassy ''UniqueTag)
+
 
 $(concat <$> traverse makeLenses
     [ ''TaggedBnfcIdent
@@ -119,3 +119,5 @@ $(concat <$> traverse makePrisms
     ]
  )
 
+taggedBnfcIdentName :: Getter TaggedBnfcIdent String
+taggedBnfcIdentName = to (^. taggedBnfcIdentBnfcIdent % stringPos % _1 )
