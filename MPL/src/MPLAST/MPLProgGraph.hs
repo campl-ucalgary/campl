@@ -9,9 +9,11 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module MPLAST.MPLProgGraph where
 
 import MPLAST.MPLProg
+import MPLAST.MPLProgI
 import MPLAST.MPLTypeAST
 
 import Optics
@@ -26,13 +28,17 @@ import GHC.Generics
 import Data.List.NonEmpty ( NonEmpty (..) )
 import qualified Data.List.NonEmpty as NE
 
-newtype ClausesKnot calldef ident = ClausesKnot {
-    _clauseNeighbors :: [(TypeClause  
+newtype ClausesGraph calldef ident = ClausesGraph {
+    -- _clauseGraphObjectType :: ObjectType
+    _clauseGraphSpine :: [ (TypeClause  
             (ClausesKnot calldef ident)
             (ClausePhraseKnot (ClausesKnot calldef ident) calldef ident)
-            calldef ident
-        )]
-}  deriving (Show,Eq)
+            calldef ident) ]
+}  deriving (Show, Semigroup, Monoid)
+
+newtype ClausesKnot calldef ident = ClausesKnot {
+    _clauseGraph :: ClausesGraph calldef ident
+}  deriving Show
 
 newtype ClausePhraseKnot neighbors calldef ident = ClausePhraseKnot { 
         _phraseParent :: TypeClause 
@@ -40,7 +46,7 @@ newtype ClausePhraseKnot neighbors calldef ident = ClausePhraseKnot {
             (ClausePhraseKnot neighbors calldef ident)
             calldef
             ident
-    }   deriving (Show, Eq)
+    }   deriving Show
 
 type TypeClauseKnot calldef ident =
     TypeClause 
@@ -49,11 +55,10 @@ type TypeClauseKnot calldef ident =
         calldef 
         ident
 
-
-testClause = TypeClause 
-    'a' [] 'b' [TypePhrase () 'z' [] (TypeVar 'y')] ()
-    
-
+data TypeClauseNode = 
+    TypeClauseNode (TypeClauseKnot TypeClauseNode  TaggedBnfcIdent)
+    | TypeClauseTerminal
+  deriving Show
 
 
 {-
@@ -105,13 +110,15 @@ newtype DefnG ident = DefnG {
     }
 
 
+-}
 $(concat <$> traverse makeLenses 
     [ ''ClausesKnot
     , ''ClausePhraseKnot 
+    , ''ClausesGraph 
     ]
  )
 $(concat <$> traverse makePrisms 
-    [ ''SeqClauseG
+    [ ''ClausesGraph 
+    , ''TypeClauseNode
     ]
  )
--}

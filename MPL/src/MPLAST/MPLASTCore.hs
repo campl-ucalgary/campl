@@ -6,6 +6,7 @@ module MPLAST.MPLASTCore (
     , module MPLAST.MPLProgI
     , module MPLAST.MPLProgTraversals
     , module MPLAST.MPLProgGraph
+    , module MPLAST.MPLTypeAST
     ) where
 
 import MPLAST.MPLExprAST
@@ -16,3 +17,4 @@ import MPLAST.MPLProgGraph
 import MPLAST.MPLProgTraversals
 import MPLAST.MPLProgGraph
 import MPLAST.MPLProgI
+import MPLAST.MPLTypeAST 

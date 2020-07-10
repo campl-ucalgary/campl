@@ -27,13 +27,11 @@ import Text.RawString.QQ
 parseAndLex :: String -> Err MplProg
 parseAndLex = pMplProg . resolveLayout True . myLexer
 
-compile :: String -> ([TranslateBnfcErrors], ProgI BnfcIdent)
-compile str = case parseAndLex str of
-        Ok a -> translateBnfcMplToProg a
-        Bad str -> error str
 
-unsafecompile :: String -> ProgI BnfcIdent
-unsafecompile = snd . compile
+unsafeTranslateParseLex :: String -> ProgI BnfcIdent
+unsafeTranslateParseLex str = case parseAndLex str of
+        Ok a -> snd (translateBnfcMplToProg a :: ([TranslateBnfcErrors], ProgI BnfcIdent))
+        Bad str -> error str
 
 teststr :: String
 teststr = [r|
@@ -62,11 +60,11 @@ data
 |]
 
 {- $>
-compile teststr
+-- unsafeTranslateParseLex teststr
 <$ -}
 
 {-  
-case compile teststr of
+case unsafeTranslateParseLex teststr of
     (_, Prog stmts) -> stmts & foldMapOf ( 
                 folded 
                 % stmtDefns

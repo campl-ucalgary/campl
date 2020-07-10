@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 14ce501b22c86a07e715b1c7f53572f4ec0dd0db7bd7d30798b76e2ff0c0cb20
+-- hash: 34898f6231dcf79c28d2ae2b1b33e579874a8cfb034bed09750669d601ed124a
 
 name:           MPL
 version:        0.1.0.0
@@ -56,8 +56,10 @@ library
       MPLMain
       MPLPasses.MPLRunPasses
       MPLPasses.SymbolTable
-      MPLPasses.TypeClausePhraseGraphs
-      MPLPasses.TypeClausePhraseGraphsErrors
+      MPLPasses.TieTypeClause
+      MPLPasses.ToGraph
+      MPLPasses.ToGraphErrors
+      MPLPasses.ToGraphTypes
       MPLUtil.Data.Either
       MPLUtil.Data.Either.AccumEither
       MPLUtil.Data.List.NonEmpty
@@ -104,6 +106,7 @@ test-suite MPL-test
   main-is: Spec.hs
   other-modules:
       MPLAST.MPLASTTranslateSpec
+      MPLPasses.TieTypeClauseSpec
       Paths_MPL
   hs-source-dirs:
       test

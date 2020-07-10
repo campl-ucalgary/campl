@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 module MPLPasses.ToGraphErrors where
 
 import Optics

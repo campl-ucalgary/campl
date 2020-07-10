@@ -113,7 +113,13 @@ data InternalConcTypes =
     | InternalPar
   deriving MPL_TYPE_AST_PLAIN_DATA_DERIVING_CLAUSE 
 
+{-
 $(concat <$> traverse (makeFieldLabelsWith (fieldLabelsRules & lensField .~ underscoreNoPrefixNamer))
+    [ ''Type
+    ]
+ )
+ -}
+$(concat <$> traverse makeLenses
     [ ''Type
     ]
  )

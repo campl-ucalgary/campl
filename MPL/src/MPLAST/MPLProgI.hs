@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE DeriveGeneric #-}
@@ -14,6 +15,7 @@
 module MPLAST.MPLProgI where
 
 import Optics
+import Optics.State.Operators
 
 import Data.Function
 
@@ -31,6 +33,8 @@ import Data.Functor.Foldable
 import GHC.Generics hiding (to)
 import Data.Data
 import Data.Typeable
+
+import Control.Monad.State
 
 import Text.PrettyPrint.GenericPretty
 
@@ -60,6 +64,7 @@ type ExprI ident = Expr
 
 newtype BnfcIdent = BnfcIdent { _stringPos :: (String, (Int, Int)) }
   deriving (Show, Eq, Read, Ord)
+
 
 type ObjectDefnI ident = NonEmpty (TypeClause () () () ident)
 type DataDefnI ident = ObjectDefnI ident
@@ -104,10 +109,11 @@ data TaggedBnfcIdent = TaggedBnfcIdent {
     , _taggedBnfcIdentTag :: UniqueTag
 } deriving (Show, Eq, Read, Ord)
 
-newtype UniqueTag = UniqueTag Int
+newtype UniqueTag = UniqueTag { _uniqueTagInt :: Int }
   deriving (Show, Eq, Ord, Read, Enum)
 
 $(makeClassy ''UniqueTag)
+
 
 
 $(concat <$> traverse makeLenses
@@ -116,8 +122,36 @@ $(concat <$> traverse makeLenses
  )
 $(concat <$> traverse makePrisms
     [ ''TaggedBnfcIdent
+    , ''BnfcIdent
     ]
  )
 
-taggedBnfcIdentName :: Getter TaggedBnfcIdent String
-taggedBnfcIdentName = to (^. taggedBnfcIdentBnfcIdent % stringPos % _1 )
+freshUniqueTag ::
+    ( MonadState c m
+    , HasUniqueTag c ) => 
+    m UniqueTag
+freshUniqueTag = 
+    uniqueTag <<%= succ
+
+tagBnfcIdent ::
+    ( MonadState c m
+    , HasUniqueTag c ) => 
+    BnfcIdent ->
+    m TaggedBnfcIdent
+tagBnfcIdent ident = do
+    review _TaggedBnfcIdent . (ident,) <$> freshUniqueTag
+
+taggedBnfcIdentName :: Lens' TaggedBnfcIdent String
+taggedBnfcIdentName = lens get set
+  where
+    get n = n ^. taggedBnfcIdentBnfcIdent % bnfcIdentName
+    set n v = n & taggedBnfcIdentBnfcIdent % bnfcIdentName .~ v
+
+bnfcIdentName :: Lens' BnfcIdent String
+bnfcIdentName = lens get set
+  where
+    get n = n ^. stringPos % _1
+    set n v = n & stringPos % _1 .~ v
+
+instance HasUniqueTag TaggedBnfcIdent where
+    uniqueTag = taggedBnfcIdentTag 

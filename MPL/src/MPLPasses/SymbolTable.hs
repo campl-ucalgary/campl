@@ -10,9 +10,29 @@ import Optics.State.Operators
 import Control.Monad.State
 import Control.Monad.Except
 
-
 import Data.Map ( Map (..) )
 import qualified Data.Map as Map
+
+type Scope = [(String, SymEntry SymInfo)]
+type SymbolTable = [Scope]
+
+
+data SymEntry info = SymEntry {
+    _symEntryUniqueTag :: UniqueTag
+    , _symEntryInfo :: info
+}  deriving Show
+
+
+data SymInfo = 
+    DataClause TypeClauseNode
+    | CodataClause TypeClauseNode
+    | ProtocolClause TypeClauseNode
+    | CoprotocolClause TypeClauseNode
+
+
+$(makePrisms ''SymEntry)
+$(makeLenses ''SymEntry)
+
 
 {-
 data SymEntry =
@@ -20,8 +40,6 @@ data SymEntry =
     | SymTypeStateVar (SeqClauseG TaggedBnfcIdent)
     | SymSeqClause (SeqClauseG TaggedBnfcIdent)
 
-type Scope = [(String, (UniqueTag, SymEntry))]
-type SymbolTable = [Scope]
 {-
 withScope  :: 
     ( MonadState c m

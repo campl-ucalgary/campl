@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 module MPLPasses.ToGraphTypes where
 
 import Optics
@@ -6,9 +7,6 @@ import Optics.State.Operators
 import MPLPasses.SymbolTable
 import MPLAST.MPLASTCore
 import Control.Monad.State
-{-
-
-
 data ToGraphEnv = ToGraphEnv {
     }
 data ToGraphState = ToGraphState {
@@ -26,6 +24,7 @@ $(concat <$> traverse makePrisms
     , ''ToGraphState
     ]
  )
+{-
 
 defaultGraphEnv :: ToGraphEnv
 defaultGraphEnv = review _ToGraphEnv ()

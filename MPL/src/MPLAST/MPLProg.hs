@@ -47,6 +47,13 @@ data Defn datadefn codatadefn protdefn coprotdefn fundefn procdefn =
 type TypeClausesPhrases neighbors phrasecontext calldef ident = 
     NonEmpty (TypeClause neighbors phrasecontext calldef ident)
 
+data ObjectType =
+    DataObj
+    | CodataObj
+    | ProtocolObj
+    | CoprotocolObj
+  deriving (Show, Eq)
+
 data TypeClause neighbors phrasecontext calldef ident = TypeClause {
     _typeClauseName :: ident 
     , _typeClauseArgs :: [ident]
@@ -61,6 +68,7 @@ data TypePhrase phrasecontext calldef ident = TypePhrase {
     , _typePhraseFrom :: [Type calldef ident]
     , _typePhraseTo :: Type calldef ident
 } deriving (Show, Eq, Read, Generic)
+
 
 {-
 typeClausePhraseIdentTraversal :: Traversal (TypeClausePhrase a b c ident) (TypeClausePhrase  a b c ident') ident ident'
@@ -130,6 +138,7 @@ $(concat <$> traverse makePrisms
     , ''ProcessDefn
     , ''TypeClause
     , ''TypePhrase
+    , ''ObjectType
     -- , ''TypePhraseFromTo
     -- , ''DataPhrase
     -- , ''CodataPhrase

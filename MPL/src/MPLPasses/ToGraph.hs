@@ -23,107 +23,6 @@ import qualified Data.List.NonEmpty as NE
 import Control.Monad.State
 import Control.Monad.Except
 
-import Debug.Trace
-
-data SymEntry =
-    SymTypeClause (TypeClauseKnot SymEntry String)
-    | SymTypeVar
-  deriving Show
-
-type Graph a = RWST
-    [TypeClauseKnot SymEntry String] 
-    [TypeClauseKnot SymEntry String] 
-    [(String, SymEntry)] 
-    (Either String)
-    a
-
-testingtie :: 
-    [TypeClause () () () String] ->
-    Graph ()
-    -- State [(String, SymEntry)] [TypeClauseKnot SymEntry String]  
-testingtie [] = return ()
-testingtie ((TypeClause a args stv phrases ()):as) = mdo
-    env <- ask
-    let clause = TypeClause a args stv phrases' (ClausesKnot env)
-    tell [ clause ]
-    modify ((stv, symtab):)
-    testingtie as
-    let symtab = SymTypeClause clause
-    phrases' <- mapM (f clause) phrases
-    return ()
-
-  where
-    f clause (TypePhrase () ident [] toty) = mdo
-        toty' <- getTypeVar toty
-        return $ TypePhrase 
-            (ClausePhraseKnot clause)
-            ident
-            []
-            toty'
-
-    getTypeVar :: 
-        Type () String -> 
-        Graph (Type SymEntry String)
-    getTypeVar (TypeWithArgs ident () args) = mdo
-        ~v <- gets (lookup ident )
-        -- this is very important
-        case v of 
-            Just v' -> return (TypeWithArgs ident v' [])
-            Nothing -> throwError $ "AHAHAH IN ETHERERROR"
-
-handtiedd = [clause]
-  where
-    clause = TypeClause "Clause" [] "ST"
-        [ TypePhrase 
-            (ClausePhraseKnot $ clause)
-            "Phrase"
-            []
-            (TypeWithArgs "ST" (SymTypeClause $ clause) [])
-        ]
-        (ClausesKnot handtiedd)
-
-
-heknewthewholetime = [
-    TypeClause "Clause" [] "ST"
-        [ TypePhrase ()
-            "Phrase"
-            []
-            (TypeWithArgs "Potato" () [])
-        ]
-        ()
-    , TypeClause "Clause2" [] "Potato"
-        [ TypePhrase ()
-            "Phrase2"
-            []
-            (TypeWithArgs "ST" () [])
-        ]
-        ()
-    ]
-
-runRws rws = w
-  where
-    ((), s, w) = case runRWST rws w [] of
-                    Right a -> a
-                    Left str -> error str
-
-evaluated = runRws (testingtie  heknewthewholetime )
-
-isitreal = case evaluated of
-            [TypeClause _ _ _ phrase b, _ ] -> 
-                case phrase of
-                    [TypePhrase ctxt ident [] 
-                        (TypeWithArgs argident to [])] ->  
-                            case to of
-                                SymTypeClause n -> n ^. typeClauseName
-isitreal2 = case evaluated of
-            [TypeClause _ _ _ phrase b, _ ] -> 
-                case phrase of
-                    [TypePhrase ctxt ident [] 
-                        (TypeWithArgs argident to [])] ->  
-                            case to of
-                                SymTypeClause n -> ctxt
-    
-
 
 {-
 progInterfaceToGraph :: 
@@ -132,7 +31,7 @@ progInterfaceToGraph ::
 progInterfaceToGraph = undefined
 
 runTieKnots :: 
-    ( AsToGraphErrors e 
+j   ( AsToGraphErrors e 
     , HasToGraphEnv env
     , HasToGraphState s ) =>
     env -> s ->
