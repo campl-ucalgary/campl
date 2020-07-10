@@ -48,9 +48,11 @@ data SeqTypeF ident t =
     TypeTupleF { _seqTypeArgs :: (t, NonEmpty t) }
     | TypeListF { _seqTypeArg :: t }
 
+    -- TODO -- IMPLEMENT INT INPUT ON THE FRONT END
+    | TypeIntF { _seqTypeIdent :: ident }
     | TypeCharF { _seqTypeIdent :: ident }
     | TypeDoubleF { _seqTypeIdent :: ident }
-    | TypeString { _seqTypeIdent :: ident }
+    | TypeStringF { _seqTypeIdent :: ident }
     | TypeUnitF { _seqTypeIdent :: ident }
 
   deriving ( Read, Show, Generic, Out, Data, Functor, Typeable, Foldable, Traversable, Eq )

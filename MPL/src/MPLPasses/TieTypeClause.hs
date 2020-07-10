@@ -24,6 +24,7 @@ import Control.Monad.State
 
 import Control.Arrow
 
+import Data.Maybe
 import Data.Bool
 import Data.List
 import Data.List.NonEmpty (NonEmpty (..))
@@ -61,23 +62,24 @@ $(concat <$> traverse makeClassyPrisms
  ) 
 
 makeTypeClauseGraph :: 
-    -- AsTieTypeClauseError e =>
+    AsTieTypeClauseError e =>
     ObjectType -> 
     TieTypeClauseContext -> 
     NonEmpty (TypeClause () () () BnfcIdent) -> 
-    -- Either e (UniqueTag, ClausesGraph TypeClauseNode TaggedBnfcIdent)
-    Either TieTypeClauseError (UniqueTag, ClausesGraph TypeClauseNode TaggedBnfcIdent)
+    Either e (UniqueTag, ClausesGraph TypeClauseNode TaggedBnfcIdent)
+    -- Either TieTypeClauseError (UniqueTag, ClausesGraph TypeClauseNode TaggedBnfcIdent)
 makeTypeClauseGraph obj cxt clause = mdo
-    ((), st, res) <- runRWST (tieTypeClauseKnot clause) res cxt
-    return $ (st ^. uniqueTag, res)
+    let clausegraph = _ClausesGraph # (obj, fromJust res)
+    ((), st, res) <- runRWST (tieTypeClauseKnot clause) clausegraph cxt
+    return $ (st ^. uniqueTag, clausegraph)
 
 type TypeClauseKnotTying a = forall e. 
-    --AsTieTypeClauseError e => 
+    AsTieTypeClauseError e => 
         RWST 
         (ClausesGraph TypeClauseNode TaggedBnfcIdent)
-        (ClausesGraph TypeClauseNode TaggedBnfcIdent)
+        (Maybe (ClauseGraphSpine TypeClauseNode TaggedBnfcIdent))
         TieTypeClauseContext
-        (Either TieTypeClauseError) 
+        (Either e)
         a
 
 tieTypeClauseKnot :: 
@@ -85,6 +87,9 @@ tieTypeClauseKnot ::
     TypeClauseKnotTying ()
 tieTypeClauseKnot clauses = do
     args' <- typeClausesArgs clauses
+    tieTypeClauseSymTable %= 
+        ((map (view taggedBnfcIdentName &&& review _SymEntry . (,SymTypeVar) . view uniqueTag ) args')++)
+        -- add the variables to the scope..
     f args' (NE.toList clauses)
   where
     f :: [TaggedBnfcIdent] -> [TypeClause () () () BnfcIdent] -> TypeClauseKnotTying ()
@@ -95,11 +100,10 @@ tieTypeClauseKnot clauses = do
         name' <- tagBnfcIdent name
         stv'  <- tagBnfcIdent stv
         rec let clause = TypeClause name' args stv' phrases' (ClausesKnot res)
-            -- clauseGraphSpine %= ( _ ((ClausesGraph [clause])<>))
-            tell (ClausesGraph [clause])
+            tell (Just $ clause :| [])
             tieTypeClauseSymTable %= (( stv' ^. taggedBnfcIdentName
-                        , review _SymEntry (stv' ^. uniqueTag
-                        , review _SymTypeClause (TypeClauseNode clause))):)
+                        , _SymEntry # (stv' ^. uniqueTag
+                        , _SymTypeClause # (TypeClauseNode clause))):)
             f args rst
             phrases' <- mapM (g clause) phrases
         return ()
@@ -120,20 +124,72 @@ tieTypeClauseKnot clauses = do
       where
         f (TypeWithArgsF ident () args) = do
             args' <- traverse snd args
-            entry <- guses tieTypeClauseSymTable
-                    (lookupSymTable ident) 
+            entry <- guses tieTypeClauseSymTable (lookupSymTable ident) 
             case entry of
                 Just (SymEntry uniquetag n) -> case n of
                     SymTypeVar -> return $ TypeWithArgs 
-                        (review _TaggedBnfcIdent (ident, uniquetag)) 
-                        TypeClauseTerminal args'
+                        (_TaggedBnfcIdent # (ident, uniquetag)) 
+                        (_TypeClauseLeaf # ()) args'
                     SymTypeClause node ->  return $ TypeWithArgs
-                        (review _TaggedBnfcIdent (ident,uniquetag))
+                        (_TaggedBnfcIdent # (ident,uniquetag))
                         node args'
                 Nothing -> throwError 
                     $ review _TypeNotInScope (TypeWithArgs ident () (map fst args))
         f (TypeVarF ident) = do
-            undefined
+            entry <- guses tieTypeClauseSymTable (lookupSymTable ident) 
+            case entry of
+                Just (SymEntry uniquetag n) -> case n of
+                    SymTypeVar -> return $ _TypeVar # _TaggedBnfcIdent # (ident, uniquetag)
+                    SymTypeClause node -> return $ TypeWithArgs
+                        (_TaggedBnfcIdent # (ident,uniquetag))
+                        node []
+                Nothing -> throwError $ _TypeNotInScope # TypeVar ident
+        f (TypeSeqF n) = TypeSeq <$> case n of
+            TypeTupleF (a, b :| rst) -> do
+                (a, rst) <- (,) <$> snd a <*> ((:|) <$> snd b <*> traverse snd rst)
+                return $ TypeTupleF (a,rst)
+            TypeListF ty -> TypeListF <$> snd ty
+
+            -- Duplicated code..
+            TypeIntF ident -> do
+                entry <- guses tieTypeClauseSymTable (lookupSymTable ident) 
+                case entry of
+                    Just (SymEntry uniquetag n) -> case n of
+                        SymTypeVar -> return $ _TypeIntF # _TaggedBnfcIdent # (ident, uniquetag)
+                    Nothing -> throwError $ _TypeNotInScope # _TypeSeq # _TypeIntF # ident
+
+            TypeCharF ident -> do
+                entry <- guses tieTypeClauseSymTable (lookupSymTable ident) 
+                case entry of
+                    Just (SymEntry uniquetag n) -> case n of
+                        SymTypeVar -> return $ _TypeCharF # _TaggedBnfcIdent # (ident, uniquetag)
+                    Nothing -> throwError $ _TypeNotInScope # _TypeSeq # _TypeCharF # ident
+            TypeDoubleF ident -> do
+                entry <- guses tieTypeClauseSymTable (lookupSymTable ident) 
+                case entry of
+                    Just (SymEntry uniquetag n) -> case n of
+                        SymTypeVar -> return $ _TypeDoubleF # _TaggedBnfcIdent # (ident, uniquetag)
+                    Nothing -> throwError $ _TypeNotInScope # _TypeSeq # _TypeDoubleF # ident
+            TypeStringF ident -> do
+                entry <- guses tieTypeClauseSymTable (lookupSymTable ident) 
+                case entry of
+                    Just (SymEntry uniquetag n) -> case n of
+                        SymTypeVar -> return $ _TypeStringF # _TaggedBnfcIdent # (ident, uniquetag)
+                    Nothing -> throwError $ _TypeNotInScope # _TypeSeq # _TypeStringF # ident
+            TypeUnitF ident -> do
+                entry <- guses tieTypeClauseSymTable (lookupSymTable ident) 
+                case entry of
+                    Just (SymEntry uniquetag n) -> case n of
+                        SymTypeVar -> return $ _TypeUnitF # _TaggedBnfcIdent # (ident, uniquetag)
+                    Nothing -> throwError $ _TypeNotInScope # _TypeSeq # _TypeUnitF # ident
+
+        f (TypeConcF n) = TypeConc <$> case n of
+            -- TODO -- either implement these cases ore generalize it so it all is a lookup!
+            _ -> undefined
+            
+
+
+                    
 
     lookupSymTable ident [] = Nothing
     lookupSymTable ident (~(str, entry):as) 
@@ -149,7 +205,8 @@ typeClausesArgs clause@(TypeClause name args stv phrases () :| rst)
         mapM tagBnfcIdent args
     | not mutuallyrecursivevalidity = throwError $ 
         review _InvalidMutuallyRecursiveTypeArgDec clause
-    | not overlappingargsvalidity = throwError $ 
+    -- | not overlappingargsvalidity = throwError $ 
+    | otherwise = throwError $ 
         review _OverlappingTypeVariables clause
     -- we can get better error messages if we spread it out
     -- and test overlappingargsvalidity for all clauses
@@ -163,116 +220,3 @@ typeClausesArgs clause@(TypeClause name args stv phrases () :| rst)
 
 
 emptyClauseContext = TieTypeClauseContext [] (UniqueTag 0)
-
-testt = makeTypeClauseGraph DataObj emptyClauseContext heknewthewholetime
-
-
-heknewthewholetime = NE.fromList [
-    TypeClause (mkident "Clause") [] (mkident "ST")
-        [ TypePhrase ()
-            (mkident "Phrase")
-            []
-            (TypeWithArgs (mkident "Potato") () [])
-        ]
-        ()
-    , TypeClause (mkident "Clause2") [] (mkident "Potato")
-        [ TypePhrase ()
-            (mkident "Phrase2")
-            []
-            (TypeWithArgs (mkident "ST") () [])
-        ]
-        ()
-    ]
-  where
-    mkident str = (review _BnfcIdent (str, (1,1)))
-
-
-
-
-{-
-testingtie :: 
-    [TypeClause () () () String] ->
-    TypeClauseKnotTying ()
-    -- State [(String, SymEntry)] [TypeClauseKnot SymEntry String]  
-testingtie [] = return ()
-testingtie ((TypeClause a args stv phrases ()):as) = do
-    env <- ask
-    rec let clause = TypeClause a args stv phrases' (ClausesKnot env)
-        modify ((stv, SymTypeClause $ TypeClauseNode clause):)
-        tell [ clause ]
-        testingtie as
-        phrases' <- mapM (f clause) phrases
-    return ()
-
-  where
-    f clause (TypePhrase () ident [] toty) = do
-        toty' <- getTypeVar toty
-        return $ TypePhrase 
-            (ClausePhraseKnot clause)
-            ident
-            []
-            toty'
-
-    getTypeVar :: 
-        Type () String -> 
-        TypeClauseKnotTying (Type TypeClauseNode String)
-    getTypeVar (TypeWithArgs ident () args) = mdo
-        v <- gets (foldr lookupp Nothing)
-        case v of 
-            Just v' -> return (TypeWithArgs ident v' [])
-            Nothing -> throwError $ "AHAHAH IN ETHERERROR" ++ ident
-      where
-        lookupp (a, v) (Just n) = (Just n)
-        lookupp (a, v) Nothing
-            | a == ident = case v of
-                    SymTypeClause n -> Just $ n
-                    _ -> Nothing
-            | otherwise = Nothing
-
-handtiedd = [clause]
-  where
-    clause = TypeClause "Clause" [] "ST"
-        [ TypePhrase 
-            (ClausePhraseKnot $ clause)
-            "Phrase"
-            []
-            (TypeWithArgs "ST" (TypeClauseNode $ clause) [])
-        ]
-        (ClausesKnot handtiedd)
-
-
-heknewthewholetime = [
-    TypeClause "Clause" [] "ST"
-        [ TypePhrase ()
-            "Phrase"
-            []
-            (TypeWithArgs "ST" () [])
-        ]
-        ()
-    , TypeClause "Clause2" [] "Potato"
-        [ TypePhrase ()
-            "Phrase2"
-            []
-            (TypeWithArgs "ST" () [])
-        ]
-        ()
-    ]
-
-
-isitreal = case evaluated of
-            [TypeClause _ _ _ phrase b, _ ] -> 
-                case phrase of
-                    [TypePhrase ctxt ident [] 
-                        (TypeWithArgs argident to [])] ->  
-                            case to of
-                                TypeClauseNode n -> n ^. typeClauseName
-isitreal2 = case evaluated of
-            [TypeClause _ _ _ phrase b, _ ] -> 
-                case phrase of
-                    [TypePhrase ctxt ident [] 
-                        (TypeWithArgs argident to [])] ->  
-                            case to of
-                                TypeClauseNode n -> ctxt
-    
--}
-

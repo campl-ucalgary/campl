@@ -31,14 +31,12 @@ spec :: Spec
 spec = do
     describe "Tie type clause wth hand written example.."  $ do
         it "Testing if graph spine is the same size.." $ do
-            -- assertEqual "" (length (testClauses' ^. clauseGraphSpine)) 2
             let spine = (unsafeRunMakeTypeClauseGraph mutuallyrecursiveTest) ^. clauseGraphSpine
                 spineTest tspine = do
                     assertEqual "" 2 (length spine) 
 
-                    clause1Test (tspine !! 0)
-                    clause2Test (tspine !! 1)
-
+                    clause1Test (NE.toList tspine !! 0)
+                    clause2Test (NE.toList tspine !! 1)
 
                 clause1Test tspine = do
                     assertEqual "" "Clause1" (tspine ^. typeClauseName % taggedBnfcIdentName) 
@@ -57,17 +55,17 @@ spec = do
 
             -- testing if the spine is the same between neighbors
             spineTest spine
-            spineTest (spine !! 0 ^. typeClauseNeighbors % clauseGraph % clauseGraphSpine)
-            spineTest (spine !! 1 ^. typeClauseNeighbors % clauseGraph % clauseGraphSpine)
+            spineTest (NE.toList spine !! 0 ^. typeClauseNeighbors % clauseGraph % clauseGraphSpine)
+            spineTest (NE.toList spine !! 1 ^. typeClauseNeighbors % clauseGraph % clauseGraphSpine)
 
             -- testing the parent child relatioship..
-            clause1Test ((spine !! 0 ^. typeClausePhrases) !! 0 ^. typePhraseContext % phraseParent)
-            clause2Test ((spine !! 1 ^. typeClausePhrases) !! 0 ^. typePhraseContext % phraseParent)
+            clause1Test ((NE.toList spine !! 0 ^. typeClausePhrases) !! 0 ^. typePhraseContext % phraseParent)
+            clause2Test ((NE.toList spine !! 1 ^. typeClausePhrases) !! 0 ^. typePhraseContext % phraseParent)
 
             -- testing if the substituted variables really are substituted to the correct parts 
-            clause2Test $ fromJust (((spine !! 0 ^. typeClausePhrases) !! 0) ^? typePhraseTo 
+            clause2Test $ fromJust (((NE.toList spine !! 0 ^. typeClausePhrases) !! 0) ^? typePhraseTo 
                             % _TypeWithArgs % _2 % _TypeClauseNode)
-            clause1Test $ fromJust (((spine !! 1 ^. typeClausePhrases) !! 0) ^? typePhraseTo 
+            clause1Test $ fromJust (((NE.toList spine !! 1 ^. typeClausePhrases) !! 0) ^? typePhraseTo 
                             % _TypeWithArgs % _2 % _TypeClauseNode)
 
 

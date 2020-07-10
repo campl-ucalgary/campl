@@ -28,13 +28,12 @@ import GHC.Generics
 import Data.List.NonEmpty ( NonEmpty (..) )
 import qualified Data.List.NonEmpty as NE
 
-newtype ClausesGraph calldef ident = ClausesGraph {
-    -- _clauseGraphObjectType :: ObjectType
-    _clauseGraphSpine :: [ (TypeClause  
-            (ClausesKnot calldef ident)
-            (ClausePhraseKnot (ClausesKnot calldef ident) calldef ident)
-            calldef ident) ]
-}  deriving (Show, Semigroup, Monoid)
+data ClausesGraph calldef ident = ClausesGraph {
+    _clauseGraphObjectType :: ObjectType
+    , _clauseGraphSpine ::ClauseGraphSpine calldef ident
+}  deriving Show
+
+type ClauseGraphSpine calldef ident = NonEmpty (TypeClause  (ClausesKnot calldef ident) (ClausePhraseKnot (ClausesKnot calldef ident) calldef ident) calldef ident)
 
 newtype ClausesKnot calldef ident = ClausesKnot {
     _clauseGraph :: ClausesGraph calldef ident
@@ -57,60 +56,22 @@ type TypeClauseKnot calldef ident =
 
 data TypeClauseNode = 
     TypeClauseNode (TypeClauseKnot TypeClauseNode  TaggedBnfcIdent)
-    | TypeClauseTerminal
+    | TypeClauseLeaf 
   deriving Show
 
 
-{-
-
--- type TypeClausePhraseKnot (TypeClause (ClausesKnot phrase ident) (TypePhrase (ClausePhraseKnot (ClausesKnot phrase ident) phrase ident) phrase ident) ident)
-
-type TypePhraseKnot phrase ident = TypePhrase 
-            (ClausePhraseKnot 
-                (ClausesKnot phrase ident) 
-                    phrase ident) 
-            phrase ident
-
-type TypeClauseKnot phrase ident = TypeClausePhrase 
-    (ClausesKnot phrase ident) 
-    (ClausePhraseKnot (ClausesKnot phrase ident) phrase ident) 
-    phrase ident
-
-type TypeClausePhraseKnots phrase ident = NonEmpty (TypeClauseKnot phrase ident)
-
-tieSpineGraph :: 
-    TypeClausesPhrases () () phrase ident ->
-    TypeClausePhraseKnots phrase ident
-tieSpineGraph clauses = res
-  where
-    res = NE.map f clauses
-    f clause = 
-        let phrases' = (clause & typeClausePhrases % traversed % typePhraseContext .~ ClausePhraseKnot clause') ^. typeClausePhrases
-            clause' = (clause & typeClauseNeighbors .~ ClausesKnot res) & typeClausePhrases .~ phrases' 
-        in clause'
-
-{-
-data SeqPhraseG ident =
-    SeqPhraseGData (TypePhraseKnot (TypePhraseFromTo 
-        (SeqPhraseG ident) ident) ident)
-    | SeqPhraseGCodata (TypePhraseKnot (CodataPhrase 
-        (SeqGraphPhrase ident) ident) ident)
-        -}
-        
-data SeqClauseG ident =
-    SeqDataClauseG (TypeClauseKnot (TypePhraseFromTo 
-        (SeqClauseG ident) ident) ident)
-    | SeqCodataClauseG (TypeClauseKnot (TypePhraseFromTo 
-        (SeqClauseG ident) ident) ident)
-
-type SeqObjectG ident = TypeClausePhraseKnots (TypePhraseFromTo (SeqClauseG ident) ident) ident
 
 newtype DefnG ident = DefnG {
-        unDefnG :: Defn (SeqObjectG ident) (SeqObjectG ident) Void Void Void Void
+        unDefnG :: Defn  
+            (ClausesGraph TypeClauseNode TaggedBnfcIdent)
+            (ClausesGraph TypeClauseNode TaggedBnfcIdent)
+            (ClausesGraph TypeClauseNode TaggedBnfcIdent)
+            (ClausesGraph TypeClauseNode TaggedBnfcIdent)
+            Void
+            Void
     }
 
 
--}
 $(concat <$> traverse makeLenses 
     [ ''ClausesKnot
     , ''ClausePhraseKnot 
