@@ -149,7 +149,13 @@ tieTypeClauseKnot clauses = do
                 (a, rst) <- (,) <$> snd a <*> ((:|) <$> snd b <*> traverse snd rst)
                 return $ TypeTupleF (a,rst)
             TypeListF ty -> TypeListF <$> snd ty
-
+            -- unique id of built in types do not matter, so we just assign it a new one (so it type checks..)
+            TypeIntF ident -> review _TypeIntF .  review _TaggedBnfcIdent .  (ident,) <$> freshUniqueTag
+            TypeCharF ident -> review _TypeCharF .  review _TaggedBnfcIdent .  (ident,) <$> freshUniqueTag
+            TypeDoubleF ident -> review _TypeDoubleF .  review _TaggedBnfcIdent .  (ident,) <$> freshUniqueTag
+            TypeStringF ident -> review _TypeStringF .  review _TaggedBnfcIdent .  (ident,) <$> freshUniqueTag
+            TypeUnitF ident -> review _TypeUnitF .  review _TaggedBnfcIdent .  (ident,) <$> freshUniqueTag
+            {-
             -- Duplicated code..
             TypeIntF ident -> do
                 entry <- guses tieTypeClauseSymTable (lookupSymTable ident) 
@@ -182,20 +188,28 @@ tieTypeClauseKnot clauses = do
                     Just (SymEntry uniquetag n) -> case n of
                         SymTypeVar -> return $ _TypeUnitF # _TaggedBnfcIdent # (ident, uniquetag)
                     Nothing -> throwError $ _TypeNotInScope # _TypeSeq # _TypeUnitF # ident
+            -}
+
 
         f (TypeConcF n) = TypeConc <$> case n of
             -- TODO -- either implement these cases ore generalize it so it all is a lookup!
-            _ -> undefined
-            
-
-
+            TypeGetF ident a b -> review _TypeGetF <$> 
+                ((,,) <$> (review _TaggedBnfcIdent . (ident,) <$> freshUniqueTag) <*> snd a <*> snd b)
+            TypePutF ident a b -> review _TypePutF <$> 
+                ((,,) <$> (review _TaggedBnfcIdent . (ident,) <$> freshUniqueTag) <*> snd a <*> snd b)
+            TypeTensorF ident a b -> review _TypeTensorF <$> 
+                ((,,) <$> (review _TaggedBnfcIdent . (ident,) <$> freshUniqueTag) <*> snd a <*> snd b)
+            TypeParF ident a b -> review _TypeParF <$> 
+                ((,,) <$> (review _TaggedBnfcIdent . (ident,) <$> freshUniqueTag) <*> snd a <*> snd b)
+            TypeTopBotF ident -> review _TypeTopBotF <$> (review _TaggedBnfcIdent . (ident,) <$> freshUniqueTag)
+            TypeNegF ident t -> review _TypeNegF <$> ((,)
+                <$> (review _TaggedBnfcIdent . (ident,) <$> freshUniqueTag)
+                <*> snd t)
                     
-
     lookupSymTable ident [] = Nothing
     lookupSymTable ident (~(str, entry):as) 
         | ident ^. bnfcIdentName == str = Just entry 
         | otherwise = lookupSymTable ident as
-
     
 typeClausesArgs ::
     NonEmpty (TypeClause () () () BnfcIdent) ->

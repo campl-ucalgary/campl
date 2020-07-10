@@ -1,4 +1,5 @@
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module MPLPasses.TieTypeClauseSpec ( spec ) where
 
 import Optics
@@ -20,9 +21,10 @@ import qualified Data.List.NonEmpty as NE
 
 -- helper functions for running the graph maker..
 emptyContext = TieTypeClauseContext [] (UniqueTag 0)
+unsafeRunMakeTypeClauseGraph :: NonEmpty (TypeClause () () () BnfcIdent) -> ClausesGraph TypeClauseNode TaggedBnfcIdent
 unsafeRunMakeTypeClauseGraph a = case makeTypeClauseGraph DataObj emptyContext a of
         Right n -> snd n
-        Left n -> error $ show n
+        Left (n :: TieTypeClauseError) -> error $ show n 
 
 unsafeMakeTypeClauseGraphFromStr str = case unsafeTranslateParseLex str of
     Prog [Stmt (DefnI (DataDefn n):| []) _] -> unsafeRunMakeTypeClauseGraph n
