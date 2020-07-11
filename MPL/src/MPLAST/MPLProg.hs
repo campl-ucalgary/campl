@@ -69,15 +69,6 @@ data TypePhrase phrasecontext calldef ident = TypePhrase {
     , _typePhraseTo :: Type calldef ident
 } deriving (Show, Eq, Read, Generic)
 
-
-{-
-typeClausePhraseIdentTraversal :: Traversal (TypeClausePhrase a b c ident) (TypeClausePhrase  a b c ident') ident ident'
-typeClausePhraseIdentTraversal = traversalVL trv
-  where 
-    trv k (TypeClause a b c d e)= TypeClause <$> k a <*> traverse k b <*> k c <*> traverse (g k) d <*> pure e
-    g k (TypePhrase a b c) = TypePhrase a <$> k b <*> pure c
-    -}
-
 {-
 data DataPhrase calldef ident = DataPhrase {
     _dataFrom :: [Type calldef ident]

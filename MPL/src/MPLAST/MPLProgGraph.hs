@@ -28,40 +28,53 @@ import GHC.Generics
 import Data.List.NonEmpty ( NonEmpty (..) )
 import qualified Data.List.NonEmpty as NE
 
-data ClausesGraph calldef ident = ClausesGraph {
+data ClausesGraph ident = ClausesGraph {
     _clauseGraphObjectType :: ObjectType
-    , _clauseGraphSpine ::ClauseGraphSpine calldef ident
+    , _clauseGraphSpine :: ClauseGraphSpine  ident
 }  deriving Show
 
-type ClauseGraphSpine calldef ident = NonEmpty (TypeClause  (ClausesKnot calldef ident) (ClausePhraseKnot (ClausesKnot calldef ident) calldef ident) calldef ident)
+type ClauseGraphSpine ident = NonEmpty (
+    TypeClause 
+        (ClausesKnot ident) 
+        (ClausePhraseKnot (ClausesKnot ident) ident) 
+        (TypeClauseNode ident) 
+        ident
+        )
 
-newtype ClausesKnot calldef ident = ClausesKnot {
-    _clauseGraph :: ClausesGraph calldef ident
+newtype ClausesKnot ident = ClausesKnot {
+    _clauseGraph :: ClausesGraph ident
 }  deriving Show
 
-newtype ClausePhraseKnot neighbors calldef ident = ClausePhraseKnot { 
+newtype ClausePhraseKnot neighbors ident = ClausePhraseKnot { 
         _phraseParent :: TypeClause 
             neighbors 
-            (ClausePhraseKnot neighbors calldef ident)
-            calldef
+            (ClausePhraseKnot neighbors ident)
+            (TypeClauseNode ident)
             ident
-    }   deriving Show
+    }  deriving Show
 
-type TypeClauseKnot calldef ident =
+type TypeClauseKnot ident =
     TypeClause 
-        (ClausesKnot calldef ident) 
-        (ClausePhraseKnot (ClausesKnot calldef ident) calldef ident)
-        calldef 
+        (ClausesKnot ident) 
+        (ClausePhraseKnot (ClausesKnot ident) ident)
+        (TypeClauseNode ident)
         ident
 
-data TypeClauseNode = 
-    TypeClauseNode (TypeClauseKnot TypeClauseNode  TaggedBnfcIdent)
+-- type TypeClauseG ident = TypeClause (ClauseGraphSpine  ident) phrasecontext calldef ident
+-- type TypePhraseG calldef ident = ()
+
+data TypeClauseNode ident = 
+    TypeClauseNode (TypeClauseKnot ident)
     | TypeClauseLeaf 
   deriving Show
 
+data DefnG ident = 
+    ObjectG (ClausesGraph ident)
+    | FunctionDefG
+    | ProcessDefG
 
-
-newtype DefnG ident = DefnG {
+{-
+{
         unDefnG :: Defn  
             (ClausesGraph TypeClauseNode TaggedBnfcIdent)
             (ClausesGraph TypeClauseNode TaggedBnfcIdent)
@@ -69,8 +82,8 @@ newtype DefnG ident = DefnG {
             (ClausesGraph TypeClauseNode TaggedBnfcIdent)
             Void
             Void
-    }
-
+    } 
+    -}
 
 $(concat <$> traverse makeLenses 
     [ ''ClausesKnot
@@ -81,5 +94,6 @@ $(concat <$> traverse makeLenses
 $(concat <$> traverse makePrisms 
     [ ''ClausesGraph 
     , ''TypeClauseNode
+    , ''DefnG
     ]
  )

@@ -13,8 +13,7 @@ import Control.Monad.Except
 import Data.Map ( Map (..) )
 import qualified Data.Map as Map
 
-type Scope = [(String, SymEntry SymInfo)]
-type SymbolTable = [Scope]
+type SymbolTable = [(String, SymEntry SymInfo)]
 
 
 data SymEntry info = SymEntry {
@@ -24,11 +23,8 @@ data SymEntry info = SymEntry {
 
 
 data SymInfo = 
-    DataClause TypeClauseNode
-    | CodataClause TypeClauseNode
-    | ProtocolClause TypeClauseNode
-    | CoprotocolClause TypeClauseNode
-
+    SymSeqClause (TypeClauseNode TaggedBnfcIdent)
+    | SymConcClause (TypeClauseNode TaggedBnfcIdent)
 
 $(makePrisms ''SymEntry)
 $(makeLenses ''SymEntry)

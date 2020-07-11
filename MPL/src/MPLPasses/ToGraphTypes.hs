@@ -7,8 +7,10 @@ import Optics.State.Operators
 import MPLPasses.SymbolTable
 import MPLAST.MPLASTCore
 import Control.Monad.State
+
 data ToGraphEnv = ToGraphEnv {
     }
+
 data ToGraphState = ToGraphState {
         _toGraphSymbolTable :: SymbolTable
         , _toGraphUniqueTagGen :: UniqueTag
@@ -24,6 +26,10 @@ $(concat <$> traverse makePrisms
     , ''ToGraphState
     ]
  )
+
+instance HasUniqueTag ToGraphState where
+    uniqueTag = toGraphUniqueTagGen
+
 {-
 
 defaultGraphEnv :: ToGraphEnv

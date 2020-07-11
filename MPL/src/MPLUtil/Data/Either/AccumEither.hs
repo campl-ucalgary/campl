@@ -1,6 +1,7 @@
 module MPLUtil.Data.Either.AccumEither where
 
 import Control.Monad.Except
+import Data.Bifunctor
 
 newtype AccumEither e a = AccumEither { runAccumEither :: Either e a }
 
@@ -25,6 +26,9 @@ instance (Semigroup e, Semigroup a) => Semigroup (AccumEither e a) where
 
 instance (Semigroup e, Monoid a) => Monoid (AccumEither e a) where
     mempty = liftAEither (Right mempty)
+
+instance Bifunctor AccumEither where
+    bimap f g (AccumEither e) = AccumEither $ bimap f g e
 
 liftAEither :: Semigroup e => Either e a -> AccumEither e a
 liftAEither = AccumEither

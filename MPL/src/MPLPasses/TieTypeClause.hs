@@ -22,6 +22,7 @@ import Control.Monad.RWS
 import Control.Monad.Except
 import Control.Monad.State
 
+import qualified Data.Bifunctor as Bifunctor
 import Control.Arrow
 
 import Data.Maybe
@@ -34,7 +35,7 @@ import Debug.Trace
 
 data TieTypeClauseSymInfo =
     SymTypeVar
-    | SymTypeClause TypeClauseNode
+    | SymTypeClause (TypeClauseNode TaggedBnfcIdent)
   deriving Show
 
 data TieTypeClauseContext = TieTypeClauseContext  {
@@ -45,14 +46,15 @@ data TieTypeClauseContext = TieTypeClauseContext  {
 $(concat <$> traverse makeLenses 
     [ ''TieTypeClauseContext ]
  )
+$(concat <$> traverse makePrisms 
+    [ ''TieTypeClauseContext ]
+ )
 
 instance HasUniqueTag TieTypeClauseContext where
     uniqueTag = tieTypeClauseUniqueTagGen 
 
 data TieTypeClauseError =
     TypeNotInScope (Type () BnfcIdent)
-    | InvalidMutuallyRecursiveTypeArgDec (NonEmpty (TypeClause () () () BnfcIdent))
-    | OverlappingTypeVariables (NonEmpty (TypeClause () () () BnfcIdent))
   deriving Show
 
 $(concat <$> traverse makeClassyPrisms 
@@ -66,18 +68,18 @@ makeTypeClauseGraph ::
     ObjectType -> 
     TieTypeClauseContext -> 
     NonEmpty (TypeClause () () () BnfcIdent) -> 
-    Either e (UniqueTag, ClausesGraph TypeClauseNode TaggedBnfcIdent)
+    Either (NonEmpty e) (UniqueTag, ClausesGraph TaggedBnfcIdent)
     -- Either TieTypeClauseError (UniqueTag, ClausesGraph TypeClauseNode TaggedBnfcIdent)
-makeTypeClauseGraph obj cxt clause = mdo
-    let clausegraph = _ClausesGraph # (obj, fromJust res)
-    ((), st, res) <- runRWST (tieTypeClauseKnot clause) clausegraph cxt
+makeTypeClauseGraph obj cxt clause = do
+    rec let clausegraph = _ClausesGraph # (obj, fromJust res)
+        ((), st, res) <- Bifunctor.first (:|[]) $ runRWST (tieTypeClauseKnot clause) clausegraph cxt
     return $ (st ^. uniqueTag, clausegraph)
 
 type TypeClauseKnotTying a = forall e. 
     AsTieTypeClauseError e => 
         RWST 
-        (ClausesGraph TypeClauseNode TaggedBnfcIdent)
-        (Maybe (ClauseGraphSpine TypeClauseNode TaggedBnfcIdent))
+        (ClausesGraph TaggedBnfcIdent)
+        (Maybe (ClauseGraphSpine TaggedBnfcIdent))
         TieTypeClauseContext
         (Either e)
         a
@@ -119,7 +121,7 @@ tieTypeClauseKnot clauses = do
             toty'
 
     substituteTyVar :: Type () BnfcIdent -> 
-        TypeClauseKnotTying (Type TypeClauseNode TaggedBnfcIdent)
+        TypeClauseKnotTying (Type (TypeClauseNode TaggedBnfcIdent) TaggedBnfcIdent)
     substituteTyVar = para f 
       where
         f (TypeWithArgsF ident () args) = do
@@ -214,23 +216,6 @@ tieTypeClauseKnot clauses = do
 typeClausesArgs ::
     NonEmpty (TypeClause () () () BnfcIdent) ->
     TypeClauseKnotTying [TaggedBnfcIdent]
-typeClausesArgs clause@(TypeClause name args stv phrases () :| rst) 
-    | mutuallyrecursivevalidity && overlappingargsvalidity =
-        mapM tagBnfcIdent args
-    | not mutuallyrecursivevalidity = throwError $ 
-        review _InvalidMutuallyRecursiveTypeArgDec clause
-    -- | not overlappingargsvalidity = throwError $ 
-    | otherwise = throwError $ 
-        review _OverlappingTypeVariables clause
-    -- we can get better error messages if we spread it out
-    -- and test overlappingargsvalidity for all clauses
-  where
-    focusedargsnames = map (view bnfcIdentName) args
-    otherclauseargs = map (map (view bnfcIdentName) . view typeClauseArgs) rst
-    -- mutually recursive things MUST have the same type variables (as part of 
-    -- the programming language specification)..
-    mutuallyrecursivevalidity = all (==focusedargsnames) otherclauseargs
-    overlappingargsvalidity = length (nub args) == length args
-
+typeClausesArgs clause@(TypeClause name args stv phrases () :| rst) = mapM tagBnfcIdent args
 
 emptyClauseContext = TieTypeClauseContext [] (UniqueTag 0)
