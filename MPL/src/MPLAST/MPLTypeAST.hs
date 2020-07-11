@@ -35,9 +35,9 @@ import Text.PrettyPrint.GenericPretty
 -- #define MplAstDerivingClause ( Read, Show, Generic, Out, Functor, Foldable, Traversable, Data, Typeable )
 #define MPL_TYPE_AST_PLAIN_DATA_DERIVING_CLAUSE ( Eq, Ord, Read, Show, Generic, Out, Data, Typeable )
 
-
 data Type calldef ident =
-    TypeWithArgs { _typeIdent :: ident, _typeCallDef :: calldef, _typeArgs :: [Type calldef ident] }
+    TypeWithArgs { _typeIdent :: ident, _typeCallDef :: calldef
+        , _typeArgs :: [Type calldef ident] }
     | TypeVar { _typeIdent :: ident }
 
     | TypeSeq (SeqTypeF ident (Type calldef ident))

@@ -19,6 +19,7 @@ import MPLPasses.ToGraphTypes
 import MPLPasses.ToGraphErrors
 
 import MPLPasses.TieTypeClause
+import MPLPasses.TieFunctionDef
 import MPLPasses.TypeClauseSanityErrors
 import MPLPasses.Unification
 import MPLPasses.InferExprType
@@ -83,10 +84,9 @@ defInterfaceToGraph n = case n ^. unDefnI of
     FunctionDecDefn n -> undefined
     ProcessDecDefn n ->  undefined
 
-functionDefnIToGraph ::
-    FunctionDefnI BnfcIdent 
-functionDefnIToGraph = undefined
-
+---------------------
+-- object defn to graph
+---------------------
 -- errorprism is the prism to construct the error...
 -- matchprism is used to match the type from the symbol table...
 -- checks is a list of AccumEither so that we can check the validity of the object
@@ -98,12 +98,12 @@ objectDefnIToGraph errorprism matchprism checks n = do
     uniquetag <- freshUniqueTag
     let symtable' = mapMaybe f symtable
         -- filters the relevant symbol table entries
-        f (str, (SymEntry tag info)) = case preview matchprism info of
+        f (str, (SymEntry tag info)) = case info ^? matchprism of
             Just clauseg -> Just (str, _SymEntry # (tag, _SymTypeClause # clauseg ))
             _ -> Nothing
         tie = liftAEither $ makeTypeClauseGraph DataObj (_TieTypeClauseContext # (symtable', uniquetag)) n
 
-    liftEither $ Bifunctor.first (review errorprism )
+    liftEither $ Bifunctor.first (review errorprism)
         $ runAccumEither 
         $ sequenceA checks
 

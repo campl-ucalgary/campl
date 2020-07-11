@@ -91,10 +91,12 @@ data CoprotocolPhrase calldef ident = CoprotocolPhrase {
 }  deriving (Show, Eq, Read, Generic)
 -}
 
-data FunctionDefn pattern letdef typedef typecalldef calldef ident = FunctionDefn { 
+
+data FunctionDefn pattern letdef typedef typesig calldef ident = FunctionDefn { 
     _funName :: ident
-    , _funTypesFromTo :: Maybe ([Type typecalldef ident], Type typecalldef ident)
-    , _funDefn :: NonEmpty ([Pattern typedef calldef ident], Expr pattern letdef typedef calldef ident) 
+    -- , _funTypesFromTo :: Maybe ([Type typecalldef ident], Type typecalldef ident)
+    , _funTypesFromTo :: typesig
+    , _funDefn :: NonEmpty ([pattern], Expr pattern letdef typedef calldef ident) 
 } deriving (Show, Eq, Read)
 
 data ProcessDefn patterns letdef typedef calldef ident = ProcessDefn { 
@@ -130,11 +132,6 @@ $(concat <$> traverse makePrisms
     , ''TypeClause
     , ''TypePhrase
     , ''ObjectType
-    -- , ''TypePhraseFromTo
-    -- , ''DataPhrase
-    -- , ''CodataPhrase
-    -- , ''ProtocolPhrase
-    -- , ''CoprotocolPhrase
     ]
  )
 

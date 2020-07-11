@@ -15,8 +15,15 @@ data TypeClauseError =
     TypeClauseSanityCheck TypeClauseSanityCheckError
     | TieTypeClause TieTypeClauseError
 
+data FunctionError = 
+    SeqPhraseNotInScope BnfcIdent
+    | ExpectedDataConstructor BnfcIdent
+    | ArityMismatch BnfcIdent Int Int
+        -- expected n, but got m
+
 $(concat <$> traverse makeClassyPrisms 
-    [ ''TypeClauseError ]
+    [ ''TypeClauseError
+    , ''FunctionError ]
  )
 
 instance AsTieTypeClauseError TypeClauseError where
@@ -26,14 +33,18 @@ instance AsTypeClauseSanityCheckError TypeClauseError where
     _TypeClauseSanityCheckError = _TypeClauseSanityCheck
 
 
+
 newtype ToGraphErrors = ToGraphError 
     (Defn 
         (NonEmpty TypeClauseError) 
          (NonEmpty TypeClauseError) 
         (NonEmpty TypeClauseError) 
-        (NonEmpty TypeClauseError) Void Void)
+        (NonEmpty TypeClauseError) 
+        (NonEmpty FunctionError) 
+        Void)
 
 $(concat <$> traverse makeClassyPrisms 
     [ ''ToGraphErrors ]
  )
 
+liftFunctionError err = _ToGraphError # _FunctionDecDefn # (err :| [])

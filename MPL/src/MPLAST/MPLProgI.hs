@@ -73,7 +73,9 @@ type CodataDefnI ident = ObjectDefnI ident
 type ProtocolDefnI ident = ObjectDefnI ident
 type CoprotocolDefnI ident = ObjectDefnI ident
 type ProcessDefnI ident = ProcessDefn (PatternI ident) (Stmt (DefnI ident)) () () ident
-type FunctionDefnI ident = FunctionDefn (PatternI ident) (Stmt (DefnI ident)) () () () ident
+type FunctionDefnI ident = FunctionDefn (PatternI ident) (Stmt (DefnI ident)) () (FunctionDefSigI ident) () ident
+
+type FunctionDefSigI ident = Maybe ([Type () ident], Type () ident)
 
 newtype DefnI ident = DefnI { 
     _unDefnI :: Defn (DataDefnI ident) (CodataDefnI ident) (ProtocolDefnI ident) (CoprotocolDefnI ident) (FunctionDefnI ident) (ProcessDefnI ident)

@@ -58,6 +58,7 @@ type TypeClauseKnot ident =
 type TypeClauseG ident = TypeClause (ClausesKnot ident) (ClausePhraseKnot (ClausesKnot ident) ident) (TypeClauseNode ident) ident
 type TypePhraseG ident = TypePhrase (ClausePhraseKnot (ClausesKnot ident) ident) (TypeClauseNode ident) ident
 
+
 data TypeClauseNode ident = 
     TypeClauseNode (TypeClauseKnot ident)
     | TypeClauseLeaf 
@@ -75,12 +76,14 @@ data FunctionCallValueKnot ident =
     FunctionKnot (FunctionDefG ident)
     | ConstructorDestructorKnot (TypePhraseG ident)
 
+type FunctionDefSigG ident = ([TypeG ident], TypeG ident)
+
 type FunctionDefG ident = 
     FunctionDefn
         (PatternG ident)
         (Stmt (DefnG ident))
         (TypeG ident)
-        (TypePhraseG ident)
+        (FunctionDefSigG ident)
         (FunctionCallValueKnot ident)
         ident
 
@@ -102,3 +105,17 @@ $(concat <$> traverse makePrisms
     , ''DefnG
     ]
  )
+
+phraseGObjType = typePhraseContext 
+    % phraseParent 
+    % clauseGObjType
+
+phraseGClauseTypeArgs = 
+    typePhraseContext 
+    % phraseParent 
+    % typeClauseArgs
+
+clauseGObjType = 
+    typeClauseNeighbors 
+    % clauseGraph 
+    % clauseGraphObjectType 

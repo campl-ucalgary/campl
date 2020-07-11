@@ -21,12 +21,20 @@ data SymEntry info = SymEntry {
     , _symEntryInfo :: info
 }  deriving Show
 
+newtype TypeTag = TypeTag UniqueTag
+  deriving (Eq, Ord)
 
 data SymInfo = 
     SymSeqClause (TypeClauseG TaggedBnfcIdent)
     | SymSeqPhrase (TypePhraseG TaggedBnfcIdent)
     | SymConcClause (TypeClauseG TaggedBnfcIdent)
     | SymConcPhrase (TypePhraseG TaggedBnfcIdent)
+
+    | SymFunDefn (FunctionDefG TaggedBnfcIdent)
+    | SymCallSeqPhrase (TypePhraseG TaggedBnfcIdent)
+    | SymValType (TypeG TaggedBnfcIdent)
+    -- used for look up types
+    | SymLocalVar TypeTag
 
 $(concat <$> traverse makePrisms 
     [ ''SymEntry 

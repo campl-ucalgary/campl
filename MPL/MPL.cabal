@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d34d2812775d605e6a5b2abac56349a0eedd194d1b4832ed59543e6aba3d63b0
+-- hash: 30fcacc82f60b5ffd88613007def4dbde0d67361f7bad74bb3b6090cc34f688e
 
 name:           MPL
 version:        0.1.0.0
@@ -57,6 +57,7 @@ library
       MPLPasses.InferExprType
       MPLPasses.MPLRunPasses
       MPLPasses.SymbolTable
+      MPLPasses.TieFunctionDef
       MPLPasses.TieTypeClause
       MPLPasses.ToGraph
       MPLPasses.ToGraphErrors
