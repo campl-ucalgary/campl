@@ -47,17 +47,18 @@ import Text.PrettyPrint.GenericPretty
 
 type ProgI ident = Prog (DefnI ident)
 type StmtI ident = Stmt (DefnI ident) 
-type PatternI ident = Pattern () ident 
+type PatternI ident = Pattern () () ident 
 type TypeI ident = Type () ident 
 type DataTypePhraseI ident = TypePhrase () () ident 
 type CodataTypePhraseI ident = TypePhrase () () ident 
 type ProtocolTypePhraseI ident = TypePhrase () () ident 
 type CoprotocolTypePhraseI ident = TypePhrase () () ident 
-type ProcessCommandsI ident = ProcessCommands (PatternI ident) (StmtI ident) () ident 
-type ProcessCommandI ident = ProcessCommand (PatternI ident) (StmtI ident) () ident 
+type ProcessCommandsI ident = ProcessCommands (PatternI ident) (StmtI ident) () () ident 
+type ProcessCommandI ident = ProcessCommand (PatternI ident) (StmtI ident) () () ident 
 type ExprI ident = Expr 
     (PatternI ident)
     (StmtI ident)
+    ()
     ()
     BnfcIdent
 
@@ -71,8 +72,8 @@ type DataDefnI ident = ObjectDefnI ident
 type CodataDefnI ident = ObjectDefnI ident
 type ProtocolDefnI ident = ObjectDefnI ident
 type CoprotocolDefnI ident = ObjectDefnI ident
-type ProcessDefnI ident = ProcessDefn (PatternI ident) (Stmt (DefnI ident)) () ident
-type FunctionDefnI ident = FunctionDefn (PatternI ident) (Stmt (DefnI ident)) () ident
+type ProcessDefnI ident = ProcessDefn (PatternI ident) (Stmt (DefnI ident)) () () ident
+type FunctionDefnI ident = FunctionDefn (PatternI ident) (Stmt (DefnI ident)) () () () ident
 
 newtype DefnI ident = DefnI { 
     _unDefnI :: Defn (DataDefnI ident) (CodataDefnI ident) (ProtocolDefnI ident) (CoprotocolDefnI ident) (FunctionDefnI ident) (ProcessDefnI ident)

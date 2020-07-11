@@ -15,6 +15,7 @@ module MPLAST.MPLProgGraph where
 import MPLAST.MPLProg
 import MPLAST.MPLProgI
 import MPLAST.MPLTypeAST
+import MPLAST.MPLPatternAST
 
 import Optics
 
@@ -30,16 +31,10 @@ import qualified Data.List.NonEmpty as NE
 
 data ClausesGraph ident = ClausesGraph {
     _clauseGraphObjectType :: ObjectType
-    , _clauseGraphSpine :: ClauseGraphSpine  ident
+    , _clauseGraphSpine :: ClauseGraphSpine ident
 }  deriving Show
 
-type ClauseGraphSpine ident = NonEmpty (
-    TypeClause 
-        (ClausesKnot ident) 
-        (ClausePhraseKnot (ClausesKnot ident) ident) 
-        (TypeClauseNode ident) 
-        ident
-        )
+type ClauseGraphSpine ident = NonEmpty ( TypeClauseG ident )
 
 newtype ClausesKnot ident = ClausesKnot {
     _clauseGraph :: ClausesGraph ident
@@ -60,30 +55,40 @@ type TypeClauseKnot ident =
         (TypeClauseNode ident)
         ident
 
--- type TypeClauseG ident = TypeClause (ClauseGraphSpine  ident) phrasecontext calldef ident
--- type TypePhraseG calldef ident = ()
+type TypeClauseG ident = TypeClause (ClausesKnot ident) (ClausePhraseKnot (ClausesKnot ident) ident) (TypeClauseNode ident) ident
+type TypePhraseG ident = TypePhrase (ClausePhraseKnot (ClausesKnot ident) ident) (TypeClauseNode ident) ident
 
 data TypeClauseNode ident = 
     TypeClauseNode (TypeClauseKnot ident)
     | TypeClauseLeaf 
   deriving Show
 
+type TypeG ident = Type (TypeClauseNode ident) ident
+
+type PatternG ident = 
+    Pattern 
+        (TypeG ident)
+        (TypePhraseG ident)
+        ident
+
+data FunctionCallValueKnot ident = 
+    FunctionKnot (FunctionDefG ident)
+    | ConstructorDestructorKnot (TypePhraseG ident)
+
+type FunctionDefG ident = 
+    FunctionDefn
+        (PatternG ident)
+        (Stmt (DefnG ident))
+        (TypeG ident)
+        (TypePhraseG ident)
+        (FunctionCallValueKnot ident)
+        ident
+
+
 data DefnG ident = 
     ObjectG (ClausesGraph ident)
-    | FunctionDefG
-    | ProcessDefG
-
-{-
-{
-        unDefnG :: Defn  
-            (ClausesGraph TypeClauseNode TaggedBnfcIdent)
-            (ClausesGraph TypeClauseNode TaggedBnfcIdent)
-            (ClausesGraph TypeClauseNode TaggedBnfcIdent)
-            (ClausesGraph TypeClauseNode TaggedBnfcIdent)
-            Void
-            Void
-    } 
-    -}
+    | FunctionDecDefG (FunctionDefG ident)
+    | ProcessDecDefG
 
 $(concat <$> traverse makeLenses 
     [ ''ClausesKnot

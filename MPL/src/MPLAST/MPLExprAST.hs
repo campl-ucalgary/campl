@@ -39,32 +39,33 @@ import Text.PrettyPrint.GenericPretty
 -- Expr definition
 --------------------------
 
-data Expr pattern letdef calleddef ident =
-    EIf { _eIf :: Expr pattern letdef calleddef ident
-        , _eThen :: Expr pattern letdef calleddef ident
-        , _eElse :: Expr pattern letdef calleddef ident }
-    | ELet { _eLet ::  NonEmpty letdef, _eIn :: Expr pattern letdef calleddef ident }
-    | EOp { _eLarg :: Expr pattern letdef calleddef ident
+data Expr pattern letdef typedef calleddef ident =
+    EIf { _eIf :: Expr pattern letdef typedef calleddef ident
+        , _eThen :: Expr pattern letdef typedef calleddef ident
+        , _eElse :: Expr pattern letdef typedef calleddef ident
+        , _eType :: typedef }
+    | ELet { _eLet ::  NonEmpty letdef, _eIn :: Expr pattern letdef typedef calleddef ident, _eType :: typedef }
+    | EOp { _eLarg :: Expr pattern letdef typedef calleddef ident
         , _eOp :: InternalOperators 
-        , _eRarg :: Expr pattern letdef calleddef ident}
-    | EList { _eList :: [Expr pattern letdef calleddef ident] }
-    | EVar { _eVar :: ident }
-    | EInt { _eInt :: (ident,Int) }
-    | EString { _eString :: (ident, String) }
-    | EChar { _eChar :: (ident, Char) }
-    | EDouble { _eDouble :: (ident, Double) }
-    | EUnit { _eUnit :: ident }
-    | EFold { _eFold :: Expr pattern letdef calleddef ident
-        , _eFoldPhrases :: [FoldPhraseF pattern calleddef ident (Expr pattern letdef calleddef ident)] }
-    | EUnfold { _eUnfold :: Expr pattern letdef calleddef ident
-        , _eUnfoldPhrases :: [UnfoldPhraseF pattern calleddef ident (Expr pattern letdef calleddef ident)] }
-    | ECase { _eCaseOn :: Expr pattern letdef calleddef ident
-        , _eCases :: NonEmpty ([pattern], Expr pattern letdef calleddef ident) }
-    | ESwitch { _eSwitches :: NonEmpty (Expr pattern letdef calleddef ident, Expr pattern letdef calleddef ident) }
-    | EDestructorConstructor { _eCalledDestructorConstructor :: ident, _eCalledDestructorConstructorDef :: calleddef, _eArgs :: [Expr pattern letdef calleddef ident] }
-    | ETuple (Expr pattern letdef calleddef ident, NonEmpty (Expr pattern letdef calleddef ident))
-    | EFun  { _eCalledFun :: ident, _eFunDef :: calleddef, _eArgs :: [Expr pattern letdef calleddef ident] }
-    | ERecord { _eRecord :: ident, _eRecordDef :: calleddef,  _eRecordPhrases :: NonEmpty (ident, Expr pattern letdef calleddef ident) }
+        , _eRarg :: Expr pattern letdef typedef calleddef ident, _eType :: typedef}
+    | EList { _eList :: [Expr pattern letdef typedef calleddef ident] , _eType :: typedef}
+    | EVar { _eVar :: ident , _eType :: typedef}
+    | EInt { _eInt :: (ident,Int), _eType :: typedef }
+    | EString { _eString :: (ident, String) , _eType :: typedef}
+    | EChar { _eChar :: (ident, Char) , _eType :: typedef}
+    | EDouble { _eDouble :: (ident, Double) , _eType :: typedef}
+    | EUnit { _eUnit :: ident , _eType :: typedef}
+    | EFold { _eFold :: Expr pattern letdef typedef calleddef ident
+        , _eFoldPhrases :: [FoldPhraseF pattern calleddef ident (Expr pattern letdef typedef calleddef ident)], _eType :: typedef }
+    | EUnfold { _eUnfold :: Expr pattern letdef typedef calleddef ident
+        , _eUnfoldPhrases :: [UnfoldPhraseF pattern calleddef ident (Expr pattern letdef typedef calleddef ident)] , _eType :: typedef}
+    | ECase { _eCaseOn :: Expr pattern letdef typedef calleddef ident
+        , _eCases :: NonEmpty ([pattern], Expr pattern letdef typedef calleddef ident) , _eType :: typedef}
+    | ESwitch { _eSwitches :: NonEmpty (Expr pattern letdef typedef calleddef ident, Expr pattern letdef typedef calleddef ident) , _eType :: typedef}
+    | EDestructorConstructor { _eCalledDestructorConstructor :: ident, _eCalledDestructorConstructorDef :: calleddef, _eArgs :: [Expr pattern letdef typedef calleddef ident], _eType :: typedef }
+    | ETuple { _eTupleArgs :: (Expr pattern letdef typedef calleddef ident, NonEmpty (Expr pattern letdef typedef calleddef ident)), _eType :: typedef }
+    | EFun  { _eCalledFun :: ident, _eFunDef :: calleddef, _eArgs :: [Expr pattern letdef typedef calleddef ident] , _eType :: typedef}
+    | ERecord { _eRecord :: ident, _eRecordDef :: calleddef,  _eRecordPhrases :: NonEmpty (ident, Expr pattern letdef typedef calleddef ident) , _eType :: typedef}
   deriving ( Read, Show, Generic, Out, Data, Eq )
 
 data FoldPhraseF pattern calleddef ident t = FoldPhraseF {

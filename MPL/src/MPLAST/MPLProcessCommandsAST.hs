@@ -40,38 +40,38 @@ import Text.PrettyPrint.GenericPretty
 -- Expr definition
 --------------------------
 
-type ProcessCommands pattern letdef calleddef ident = NonEmpty (ProcessCommand pattern letdef calleddef ident)
+type ProcessCommands pattern letdef typedef calleddef ident = NonEmpty (ProcessCommand pattern letdef typedef calleddef ident)
 
-data ProcessCommand pattern letdef calleddef ident =
+data ProcessCommand pattern letdef typedef calleddef ident =
     CRun { _cCalledProcess :: ident
-        , _cSeqArgs :: [Expr pattern letdef calleddef ident]
+        , _cSeqArgs :: [Expr pattern letdef typedef calleddef ident]
         , _cInChsArgs :: [ident]
         , _cOutChsArgs :: [ident] }
     | CClose { _cClose :: ident }
     | CHalt { _cHalt :: ident }
 
     | CGet { _cGet :: pattern, _cGetCh :: ident }
-    | CPut { _cPut :: Expr pattern letdef calleddef ident, _cPutCh :: ident }
+    | CPut { _cPut :: Expr pattern letdef typedef calleddef ident, _cPutCh :: ident }
 
-    | CHCase { _cHCase :: ident, _cHCases :: NonEmpty (ident, calleddef, ProcessCommands pattern letdef calleddef ident) }
+    | CHCase { _cHCase :: ident, _cHCases :: NonEmpty (ident, calleddef, ProcessCommands pattern letdef typedef calleddef ident) }
     | CHPut  { _cHPut :: ident, _cHPutDef :: calleddef , _cHPutCh :: ident }
 
     | CSplit  { _cSplit :: ident, _cSplitInto :: (ident, ident) }
     | CFork  { _cFork :: ident, _cForkInto :: 
-        ( (ident, [ident], ProcessCommands pattern letdef calleddef ident)
-        , (ident, [ident], ProcessCommands pattern letdef calleddef ident) ) }
+        ( (ident, [ident], ProcessCommands pattern letdef typedef calleddef ident)
+        , (ident, [ident], ProcessCommands pattern letdef typedef calleddef ident) ) }
 
     | CId { _cIdLarg :: ident, _cIdRarg :: ident}
     | CIdNeg { _cIdLarg :: ident, _cIdNegArg :: ident}
     
-    | CRace { _cRaces :: NonEmpty (ident, ProcessCommands pattern letdef calleddef ident) }
+    | CRace { _cRaces :: NonEmpty (ident, ProcessCommands pattern letdef typedef calleddef ident) }
 
     | CPlug { _cPlugs :: [ident]
-        , _cPlugged :: [([ident], ProcessCommands pattern letdef calleddef ident)] }
+        , _cPlugged :: [([ident], ProcessCommands pattern letdef typedef calleddef ident)] }
 
-    | CCase { _cCase :: Expr pattern letdef calleddef ident
-        , _cCases :: [(pattern, ProcessCommands pattern letdef calleddef ident)] }
-    | CSwitch { _cSwitches :: NonEmpty (Expr pattern letdef calleddef ident, ProcessCommands pattern letdef calleddef ident) }
+    | CCase { _cCase :: Expr pattern letdef typedef calleddef ident
+        , _cCases :: [(pattern, ProcessCommands pattern letdef typedef calleddef ident)] }
+    | CSwitch { _cSwitches :: NonEmpty (Expr pattern letdef typedef calleddef ident, ProcessCommands pattern letdef typedef calleddef ident) }
   deriving ( Read, Show, Generic, Out, Data, Eq )
     
 

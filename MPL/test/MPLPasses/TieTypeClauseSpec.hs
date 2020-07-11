@@ -32,7 +32,7 @@ unsafeMakeTypeClauseGraphFromStr str = case unsafeTranslateParseLex str of
 spec :: Spec
 spec = do
     describe "Tie type clause wth hand written example.."  $ do
-        it "Testing if graph spine is the same size.." $ do
+        it "Exhaustively testing equalities.." $ do
             let spine = (unsafeRunMakeTypeClauseGraph mutuallyrecursiveTest) ^. clauseGraphSpine
                 spineTest tspine = do
                     assertEqual "" 2 (length spine) 

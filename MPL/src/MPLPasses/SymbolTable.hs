@@ -23,11 +23,19 @@ data SymEntry info = SymEntry {
 
 
 data SymInfo = 
-    SymSeqClause (TypeClauseNode TaggedBnfcIdent)
-    | SymConcClause (TypeClauseNode TaggedBnfcIdent)
+    SymSeqClause (TypeClauseG TaggedBnfcIdent)
+    | SymSeqPhrase (TypePhraseG TaggedBnfcIdent)
+    | SymConcClause (TypeClauseG TaggedBnfcIdent)
+    | SymConcPhrase (TypePhraseG TaggedBnfcIdent)
 
-$(makePrisms ''SymEntry)
-$(makeLenses ''SymEntry)
+$(concat <$> traverse makePrisms 
+    [ ''SymEntry 
+    , ''SymInfo ]
+ )
+$(concat <$> traverse makeLenses 
+    [ ''SymEntry 
+    , ''SymInfo ]
+ )
 
 
 {-

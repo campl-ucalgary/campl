@@ -29,7 +29,7 @@ instance AsTypeClauseSanityCheckError TypeClauseError where
 newtype ToGraphErrors = ToGraphError 
     (Defn 
         (NonEmpty TypeClauseError) 
-        (NonEmpty TypeClauseError) 
+         (NonEmpty TypeClauseError) 
         (NonEmpty TypeClauseError) 
         (NonEmpty TypeClauseError) Void Void)
 

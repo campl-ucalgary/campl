@@ -91,18 +91,18 @@ data CoprotocolPhrase calldef ident = CoprotocolPhrase {
 }  deriving (Show, Eq, Read, Generic)
 -}
 
-data FunctionDefn pattern letdef calldef ident = FunctionDefn { 
+data FunctionDefn pattern letdef typedef typecalldef calldef ident = FunctionDefn { 
     _funName :: ident
-    , _funTypesFromTo :: Maybe ([Type calldef ident], Type calldef ident)
-    , _funDefn :: NonEmpty ([Pattern calldef ident], Expr pattern letdef calldef ident) 
+    , _funTypesFromTo :: Maybe ([Type typecalldef ident], Type typecalldef ident)
+    , _funDefn :: NonEmpty ([Pattern typedef calldef ident], Expr pattern letdef typedef calldef ident) 
 } deriving (Show, Eq, Read)
 
-data ProcessDefn patterns letdef calldef ident = ProcessDefn { 
+data ProcessDefn patterns letdef typedef calldef ident = ProcessDefn { 
     _procName :: ident
     , _procSeqInChsOutChsTypes :: Maybe ([Type calldef ident], [Type calldef ident], [Type calldef ident])
     , _procDefn :: NonEmpty 
-            ( ([Pattern calldef ident], [ident], [ident])
-            , ProcessCommands patterns letdef calldef ident) 
+            ( ([Pattern typedef calldef ident], [ident], [ident])
+            , ProcessCommands patterns letdef typedef calldef ident) 
 } deriving (Show, Eq, Read)
 
 $(concat <$> traverse makeLenses 

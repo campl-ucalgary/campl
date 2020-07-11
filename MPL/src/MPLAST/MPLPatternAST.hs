@@ -36,16 +36,20 @@ import Text.PrettyPrint.GenericPretty
 -- Expr definition
 --------------------------
 
-data Pattern calldef ident =
-    PConstructor { _pConstructor :: ident, _pConstructorArgs :: [Pattern calldef ident]}
-    | PUnit 
-    | PRecord { _pRecordPhrase :: NonEmpty (ident, Pattern calldef ident) }
-    | PList { _pList :: [Pattern calldef ident] }
-    | PTuple { _pTuple :: (Pattern calldef ident, NonEmpty (Pattern calldef ident)) }
-    | PVar { _pVar :: ident }
-    | PString { _pString :: String }
-    | PInt { _pInt :: (ident, Int) }
-    | PNull  { _pNull :: ident }
+data Pattern typedef calldef ident =
+    PConstructor { _pConstructor :: ident
+        , _pConstructorCallDef :: calldef
+        , _pConstructorArgs :: [Pattern typedef calldef ident]
+        , _pType :: typedef}
+    | PUnit { _pUnit :: ident, _pType :: typedef }
+    | PRecord { _pRecordPhrase :: NonEmpty (ident , Pattern typedef calldef ident), _pRecordCallDef :: calldef
+    , _pType :: typedef }
+    | PList { _pList :: [Pattern typedef calldef ident], _pType :: typedef }
+    | PTuple { _pTuple :: (Pattern typedef calldef ident, NonEmpty (Pattern typedef calldef ident)), _pType :: typedef }
+    | PVar { _pVar :: ident, _pType :: typedef }
+    | PString { _pString :: String, _pType :: typedef }
+    | PInt { _pInt :: (ident, Int), _pType :: typedef }
+    | PNull  { _pNull :: ident, _pType :: typedef }
   deriving ( Read, Show, Generic, Out, Data, Eq )
 
 

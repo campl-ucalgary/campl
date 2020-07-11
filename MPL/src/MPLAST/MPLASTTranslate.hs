@@ -167,12 +167,12 @@ translateBnfcExpr (B.IF_EXPR iif ithen ielse) = do
             <*> liftAEither (translateBnfcExpr ielse)
         )
 
-    return $ review _EIf (iif', ithen', ielse')
+    return $ review _EIf (iif', ithen', ielse', ())
 translateBnfcExpr (B.LET_EXPR stmts expr) = do
     (stmts', expr') <- runAccumEither $ (,) 
         <$> foldMap (liftAEither . f) stmts
         <*> liftAEither (translateBnfcExpr expr)
-    return $ review _ELet (NE.fromList stmts', expr')
+    return $ review _ELet (NE.fromList stmts', expr', ())
   where
     f (B.LET_EXPR_PHRASE stmt) = fmap pure (translateBnfcStmt stmt)
 
@@ -188,66 +188,71 @@ translateBnfcExpr (B.INFIXL8_EXPR a op b) = error "not implemented instr"
 
 translateBnfcExpr (B.LIST_EXPR lbr exprs rbr) = error "not implemented instr"
 
-translateBnfcExpr (B.VAR_EXPR v) = return $ review _EVar (v ^. pIdentBnfcIdentGetter)
-translateBnfcExpr (B.INT_EXPR v) = return $ review _EInt (v ^. pIntegerGetter)
+translateBnfcExpr (B.VAR_EXPR v) = return $ review _EVar (v ^. pIdentBnfcIdentGetter, ())
+translateBnfcExpr (B.INT_EXPR v) = return $ review _EInt (v ^. pIntegerGetter, ())
 
 translateBnfcExpr (B.CHAR_EXPR v) = error "not implemented"
 translateBnfcExpr (B.STRING_EXPR v) = error "not implemented"
 translateBnfcExpr (B.DOUBLE_EXPR v) = error "not implemented"
 
-translateBnfcExpr (B.UNIT_EXPR lbr rbr) = return $ review _EUnit (lbr ^. lBracketBnfcIdentGetter)
+translateBnfcExpr (B.UNIT_EXPR lbr rbr) = return $ review _EUnit (lbr ^. lBracketBnfcIdentGetter, ())
 
 translateBnfcExpr (B.FOLD_EXPR expr phrases) = do
-    n <- runAccumEither $ (,)
+    n <- runAccumEither $ (,,)
         <$> liftAEither (translateBnfcExpr expr)
         <*> traverse translateBnfcFoldPhrase phrases
+        <*> pure ()
     return $ review _EFold n
 translateBnfcExpr (B.UNFOLD_EXPR expr phrases) = do
-    n <- runAccumEither $ (,)
+    n <- runAccumEither $ (,,)
         <$> liftAEither (translateBnfcExpr expr)
         <*> traverse translateBnfcUnfoldPhrase phrases
+        <*> pure ()
     return $ review _EUnfold n
 
 translateBnfcExpr (B.CASE_EXPR expr pattexprs) = do
     (expr, n) <- runAccumEither $ (,)
         <$> liftAEither (translateBnfcExpr expr)
         <*> translateBnfcPattExprPhrase pattexprs
-    return $ review _ECase (expr, n)
+    return $ review _ECase (expr, n, ())
 
 translateBnfcExpr (B.SWITCH_EXP switches) = 
     ESwitch . NE.fromList 
         <$> runAccumEither (traverse (liftAEither . translateBnfcSwitchExprPhrase) switches)
+        <*> pure ()
 
 translateBnfcExpr (B.DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR ident) =
-    return $ review _EDestructorConstructor (ident ^. uIdentBnfcIdentGetter, (), [])
+    return $ review _EDestructorConstructor (ident ^. uIdentBnfcIdentGetter, (), [], ())
 
 translateBnfcExpr (B.DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR ident _ exprs _) = do
     exprs' <- runAccumEither $ traverse (liftAEither . translateBnfcExpr) exprs
-    return $ review _EDestructorConstructor (ident ^. uIdentBnfcIdentGetter, (), exprs')
+    return $ review _EDestructorConstructor (ident ^. uIdentBnfcIdentGetter, (), exprs', ())
 
 translateBnfcExpr (B.TUPLE_EXPR _ a as _) = do
-    n <- runAccumEither $ (,) 
+    (a,b,c) <- runAccumEither $ (,,) 
         <$> liftAEither (translateBnfcExpr a)
         <*> (NE.fromList <$> traverse (liftAEither . translateBnfcTupleExprList) as)
-    return $ review _ETuple n
+        <*> pure ()
+    return $ review _ETuple ((a,b),c)
 
 translateBnfcExpr (B.FUN_EXPR fun _ args _) = do
-    review _EFun <$> ( (fun ^. pIdentBnfcIdentGetter,(),) 
-            <$> runAccumEither (traverse (liftAEither . translateBnfcExpr) args)
-        )
+    (a,b,c)<- ( (fun ^. pIdentBnfcIdentGetter,(),) 
+            <$> runAccumEither (traverse (liftAEither . translateBnfcExpr) args) )
+    return $ review _EFun (a,b,c,())
 translateBnfcExpr (B.RECORD_EXPR lbr exprs _) = 
     ERecord (lbr ^. lBracketBnfcIdentGetter) () . NE.fromList
         <$> runAccumEither (traverse (liftAEither . translateBnfcRecordExprPhrase) exprs)
+        <*> pure ()
 
 translateBnfcExpr (B.BRACKETED_EXPR _ expr _) =  translateBnfcExpr expr
 
 -- EXPRESSION TRANSLATIONS...
 translateBnfcFoldPhrase (B.FOLD_EXPR_PHRASE ident _ patts expr) = 
     FoldPhraseF 
-        (ident ^. uIdentBnfcIdentGetter) 
-        ()
-        (map translateBnfcPattern patts)
-        <$> liftAEither (translateBnfcExpr expr)
+        <$> pure (ident ^. uIdentBnfcIdentGetter) 
+        <*> pure ()
+        <*> pure (map translateBnfcPattern patts)
+        <*> liftAEither (translateBnfcExpr expr)
 
 translateBnfcUnfoldPhrase (B.UNFOLD_EXPR_PHRASE exp foldphrases) = UnfoldPhraseF (translateBnfcPattern exp) 
     <$> traverse translateBnfcFoldPhrase foldphrases

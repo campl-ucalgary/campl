@@ -35,7 +35,8 @@ import Debug.Trace
 
 data TieTypeClauseSymInfo =
     SymTypeVar
-    | SymTypeClause (TypeClauseNode TaggedBnfcIdent)
+    -- | SymTypeClause (TypeClauseNode TaggedBnfcIdent)
+    | SymTypeClause (TypeClauseG TaggedBnfcIdent)
   deriving Show
 
 data TieTypeClauseContext = TieTypeClauseContext  {
@@ -105,7 +106,7 @@ tieTypeClauseKnot clauses = do
             tell (Just $ clause :| [])
             tieTypeClauseSymTable %= (( stv' ^. taggedBnfcIdentName
                         , _SymEntry # (stv' ^. uniqueTag
-                        , _SymTypeClause # (TypeClauseNode clause))):)
+                        , _SymTypeClause # (clause))):)
             f args rst
             phrases' <- mapM (g clause) phrases
         return ()
@@ -121,7 +122,7 @@ tieTypeClauseKnot clauses = do
             toty'
 
     substituteTyVar :: Type () BnfcIdent -> 
-        TypeClauseKnotTying (Type (TypeClauseNode TaggedBnfcIdent) TaggedBnfcIdent)
+        TypeClauseKnotTying (TypeG TaggedBnfcIdent)
     substituteTyVar = para f 
       where
         f (TypeWithArgsF ident () args) = do
@@ -132,9 +133,9 @@ tieTypeClauseKnot clauses = do
                     SymTypeVar -> return $ TypeWithArgs 
                         (_TaggedBnfcIdent # (ident, uniquetag)) 
                         (_TypeClauseLeaf # ()) args'
-                    SymTypeClause node ->  return $ TypeWithArgs
+                    SymTypeClause clauseg ->  return $ TypeWithArgs
                         (_TaggedBnfcIdent # (ident,uniquetag))
-                        node args'
+                        (TypeClauseNode clauseg) args'
                 Nothing -> throwError 
                     $ review _TypeNotInScope (TypeWithArgs ident () (map fst args))
         f (TypeVarF ident) = do
@@ -142,9 +143,9 @@ tieTypeClauseKnot clauses = do
             case entry of
                 Just (SymEntry uniquetag n) -> case n of
                     SymTypeVar -> return $ _TypeVar # _TaggedBnfcIdent # (ident, uniquetag)
-                    SymTypeClause node -> return $ TypeWithArgs
+                    SymTypeClause clauseg -> return $ TypeWithArgs
                         (_TaggedBnfcIdent # (ident,uniquetag))
-                        node []
+                        (TypeClauseNode clauseg) []
                 Nothing -> throwError $ _TypeNotInScope # TypeVar ident
         f (TypeSeqF n) = TypeSeq <$> case n of
             TypeTupleF (a, b :| rst) -> do
