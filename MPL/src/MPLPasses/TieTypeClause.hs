@@ -104,9 +104,17 @@ tieTypeClauseKnot clauses = do
         stv'  <- tagBnfcIdent stv
         rec let clause = TypeClause name' args stv' phrases' (ClausesKnot res)
             tell (Just $ clause :| [])
+            -- we do not replace the actual definiition because in type checking,
+            -- we will need to substitite the variable anyways with its own
+            -- distinct type variables... 
+            {-
             tieTypeClauseSymTable %= (( stv' ^. taggedBnfcIdentName
                         , _SymEntry # (stv' ^. uniqueTag
                         , _SymTypeClause # (clause))):)
+                        -}
+            tieTypeClauseSymTable %= (( stv' ^. taggedBnfcIdentName
+                        , _SymEntry # (stv' ^. uniqueTag
+                        , _SymTypeVar # ())):)
             f args rst
             phrases' <- mapM (g clause) phrases
         return ()

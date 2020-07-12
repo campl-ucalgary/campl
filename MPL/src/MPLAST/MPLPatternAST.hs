@@ -42,8 +42,9 @@ data Pattern typedef calldef ident =
         , _pConstructorArgs :: [Pattern typedef calldef ident]
         , _pType :: typedef}
     | PUnit { _pUnit :: ident, _pType :: typedef }
-    | PRecord { _pRecordPhrase :: NonEmpty (ident , Pattern typedef calldef ident), _pRecordCallDef :: calldef
-    , _pType :: typedef }
+    | PRecord { _pRecordPhrase :: NonEmpty (ident , Pattern typedef calldef ident)
+                , _pRecordCallDef :: calldef 
+                , _pType :: typedef }
     | PList { _pList :: [Pattern typedef calldef ident], _pType :: typedef }
     | PTuple { _pTuple :: (Pattern typedef calldef ident, NonEmpty (Pattern typedef calldef ident)), _pType :: typedef }
     | PVar { _pVar :: ident, _pType :: typedef }

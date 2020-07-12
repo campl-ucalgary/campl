@@ -67,18 +67,30 @@ patternIToGraph ::
     PatternI BnfcIdent -> 
     StateT ToGraphState 
         (Either ToGraphErrors) 
-        ((SymbolTable, [TypeEqns BnfcIdent TypeTag], TypeTag), PatternG TaggedBnfcIdent)
-patternIToGraph tagmap = cata f 
+        ( (SymbolTable, [TypeEqns TaggedBnfcIdent TypeTag], TypeTag)
+        , PatternG TaggedBnfcIdent)
+patternIToGraph tagmap pattern = do
+    typetag <- freshTypeTag
+    fix f typetag pattern
   where
-    f :: PatternF () () BnfcIdent (StateT ToGraphState (Either ToGraphErrors) ((SymbolTable, [TypeEqns BnfcIdent TypeTag], TypeTag), PatternG TaggedBnfcIdent)) -> 
-        StateT
-                  ToGraphState
-                  (Either ToGraphErrors)
-                  ((SymbolTable, [TypeEqns BnfcIdent TypeTag], TypeTag),
+    f :: (TypeTag -> PatternI BnfcIdent -> StateT ToGraphState (Either ToGraphErrors) ((SymbolTable, [TypeEqns TaggedBnfcIdent TypeTag], TypeTag), PatternG TaggedBnfcIdent)) -> 
+        TypeTag -> 
+        PatternI BnfcIdent -> 
+        StateT ToGraphState (Either ToGraphErrors)
+                  ((SymbolTable, [TypeEqns TaggedBnfcIdent TypeTag], TypeTag),
                    PatternG TaggedBnfcIdent)
-
+    f fx typetag (PConstructor ident () args ()) = undefined
+    {-
+    f :: PatternF () () 
+        BnfcIdent 
+        (StateT ToGraphState (Either ToGraphErrors) ((SymbolTable, [TypeEqns TaggedBnfcIdent TypeTag], TypeTag), PatternG TaggedBnfcIdent)) -> 
+        StateT 
+            ToGraphState
+            (Either ToGraphErrors)
+            ( (SymbolTable, [TypeEqns TaggedBnfcIdent TypeTag], TypeTag)
+            , PatternG TaggedBnfcIdent)
     f (PConstructorF ident () args ()) = do
-        ((symtab, eqns, tags), patts) <- fmap 
+        ((symtab, eqns, typetags), patts) <- fmap 
                         (first (over _2 concat . over _1 concat . unzip3) 
                         . unzip)
                         (sequenceA args)
@@ -99,18 +111,59 @@ patternIToGraph tagmap = cata f
             (throwError $ liftFunctionError 
                 (_ArityMismatch # (ident, expectedarity, actualarity)))
 
-        typeArgSubs <- traverse 
-            (\n -> second TypeVar . (n,) <$> freshUniqueTag) 
-            (phraseg ^. phraseGClauseTypeArgs) 
+        (phraseclausetype, freshargsmapping, substitions) <- 
+                phraseSubstitutions phraseg
 
+        -- type tags for the type equations
+        typetag' <- freshTypeTag
+        typetags' <- mapM (const (freshTypeTag)) typetags
 
+        -- type equations
+        let neweqns = zipWith 
+                (\a b -> TypeEqnsEq 
+                    ( TypeVar a
+                    , fromJust $ forceSubstitutes substitions b 
+                    ) )
+                typetags'
+                (phraseg ^. typePhraseFrom) 
+
+        -- the new constructor with the type...
         let cts' = _PConstructor #
                     ( _TaggedBnfcIdent # (ident, tag)
                     , phraseg
                     , patts
-                    , fromJust $ Map.lookup (TypeTag tag) tagmap )
+                    , fromJust $ Map.lookup typetag' tagmap )
+
+        return ((symtab, neweqns ++ eqns, typetag'), cts')
+
+        -}
+    {-
+    f (PUnitF ident ()) = do
+        -- TODO constants unique tag do not matter
+        typetag' <- freshTypeTag
+        ident' <- tagBnfcIdent ident
+        return ( ([]
+                , [TypeEqnsEq (TypeVar typetag', TypeSeq $ TypeUnitF ident')]
+                , typetag' )
+                , PUnit ident' $ fromJust $ Map.lookup typetag' tagmap)
+
+    f (PRecordF phrases () ()) = do
         undefined
-        -- return cts'
+        -}
+    {-
+    | PRecord { _pRecordPhrase :: NonEmpty (ident , Pattern typedef calldef ident)
+                , _pRecordCallDef :: calldef 
+                , _pType :: typedef }
+    | PList { _pList :: [Pattern typedef calldef ident], _pType :: typedef }
+    | PTuple { 
+            _pTuple :: (Pattern typedef calldef ident, NonEmpty (Pattern typedef calldef ident))
+            , _pType :: typedef }
+    | PVar { _pVar :: ident, _pType :: typedef }
+    | PString { _pString :: String, _pType :: typedef }
+    | PInt { _pInt :: (ident, Int), _pType :: typedef }
+    | PNull  { _pNull :: ident, _pType :: typedef }
+    -}
+        
 
 lookupSeqPhrase :: 
     BnfcIdent -> 
@@ -128,4 +181,45 @@ lookupSeqPhrase ident = do
     helper [] = Nothing
 
     errormsg = liftFunctionError (_SeqPhraseNotInScope # ident)
+
+phraseSubstitutions :: 
+    ( MonadState s m 
+    , HasUniqueTag s ) =>
+    TypePhraseG TaggedBnfcIdent ->
+    m ( TaggedType
+      , [TypeTag]
+      , [(TaggedBnfcIdent, Type () TaggedBnfcIdent TypeTag)] )
+    -- ( Clause type of the phrase of the statevar
+    -- , fresh vars used to substitte
+    -- , substition list of unique tags to corresponsing types
+        -- ( this includes the state variables )
+phraseSubstitutions phraseg = do
+    -- get the sub args
+    clauseArgSubs <- traverse 
+        (\n -> second TypeTag . (n,) <$> freshUniqueTag) 
+        (phraseg ^. typePhraseContext % phraseParent % typeClauseArgs) 
+
+    let clausestatevartype = _TypeWithArgs # 
+            ( phraseg ^.  typePhraseContext % phraseParent % typeClauseName
+            , ()
+            , map snd argsubstitions )
+        clausegraphspine = NE.toList $ phraseg ^. typePhraseContext 
+            % phraseParent 
+            % typeClauseNeighbors 
+            % clauseGraph 
+            % clauseGraphSpine
+        argsubstitions = map 
+            (second TypeVar) 
+            clauseArgSubs
+        statevarsubstitiions = map 
+            (\n -> 
+                ( n ^. typeClauseStateVar
+                , _TypeWithArgs # 
+                    (n^. typeClauseStateVar, (), map snd argsubstitions ))) 
+            clausegraphspine
+
+    return ( clausestatevartype
+            , map snd clauseArgSubs
+            , statevarsubstitiions ++ argsubstitions)
+
 

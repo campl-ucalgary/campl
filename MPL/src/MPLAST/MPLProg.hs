@@ -65,7 +65,7 @@ data TypeClause neighbors phrasecontext calldef ident typevar = TypeClause {
 data TypePhrase phrasecontext calldef ident typevar = TypePhrase {
     _typePhraseContext :: phrasecontext
     , _typePhraseName :: ident
-    , _typePhraseFrom :: [Type calldef ident typevar ]
+    , _typePhraseFrom :: [Type calldef ident typevar]
     , _typePhraseTo :: Type calldef ident typevar
 } deriving (Show, Eq, Read, Generic)
 

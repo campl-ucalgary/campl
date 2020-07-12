@@ -42,7 +42,7 @@ data Type calldef ident typevar =
 
     | TypeSeq (SeqTypeF ident (Type calldef ident typevar))
     | TypeConc (ConcTypeF ident (Type calldef ident typevar))
-  deriving ( Read, Show, Generic, Out, Data, Eq )
+  deriving ( Read, Show, Generic, Out, Data, Eq, Functor, Foldable, Traversable )
 
 data SeqTypeF ident t = 
     TypeTupleF { _seqTypeArgs :: (t, NonEmpty t) }
@@ -68,6 +68,15 @@ data ConcTypeF ident t =
 
     | TypeNegF { _concTypeIdent :: ident , _concTypeArg :: t  }
   deriving ( Read, Show, Generic, Out, Data, Functor, Typeable, Foldable, Traversable, Eq )
+
+typeCallDefTraversal :: Traversal (Type a ident typevar) (Type a' ident typevar) a a'
+typeCallDefTraversal = traversalVL trv 
+  where
+    trv f (TypeWithArgs ident calldef rst) = 
+        TypeWithArgs ident <$> f calldef <*> traverse (trv f) rst
+    trv f (TypeVar n) = pure $ TypeVar n
+    trv f (TypeSeq seq) = TypeSeq <$> traverse (trv f) seq
+    trv f (TypeConc conc) = TypeConc <$> traverse (trv f) conc
 
 data InternalSeqType =
     InternalInt

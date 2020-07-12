@@ -97,7 +97,7 @@ type FunctionDefG ident =
 
 
 data DefnG ident = 
-    ObjectG (ClausesGraph ident )
+    ObjectG (ClausesGraph ident)
     | FunctionDecDefG (FunctionDefG ident)
     | ProcessDecDefG
 

@@ -110,7 +110,13 @@ type ExprIBnfc = ExprI BnfcIdent
 data TaggedBnfcIdent = TaggedBnfcIdent {
     _taggedBnfcIdentBnfcIdent :: BnfcIdent
     , _taggedBnfcIdentTag :: UniqueTag
-} deriving (Show, Eq, Read, Ord)
+} deriving (Show, Read)
+
+-- equality of tagged bnfcidents should depend only 
+-- on equality of the unique tag
+instance Eq TaggedBnfcIdent where
+    TaggedBnfcIdent _ a == TaggedBnfcIdent _ b =  a == b
+
 
 newtype UniqueTag = UniqueTag { _uniqueTagInt :: Int }
   deriving (Show, Eq, Ord, Read, Enum)

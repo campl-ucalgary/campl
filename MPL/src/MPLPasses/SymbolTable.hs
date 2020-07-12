@@ -3,6 +3,7 @@ module MPLPasses.SymbolTable where
 
 import MPLAST.MPLProgI
 import MPLAST.MPLASTCore
+import MPLPasses.Unification
 
 import Optics
 import Optics.State.Operators
@@ -20,9 +21,6 @@ data SymEntry info = SymEntry {
     _symEntryUniqueTag :: UniqueTag
     , _symEntryInfo :: info
 }  deriving Show
-
-newtype TypeTag = TypeTag UniqueTag
-  deriving (Eq, Ord)
 
 data SymInfo = 
     SymSeqClause (TypeClauseG TaggedBnfcIdent)
