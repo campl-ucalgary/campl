@@ -44,8 +44,8 @@ data Defn datadefn codatadefn protdefn coprotdefn fundefn procdefn =
     | ProcessDecDefn procdefn
   deriving (Show, Eq, Read)
 
-type TypeClausesPhrases neighbors phrasecontext calldef ident = 
-    NonEmpty (TypeClause neighbors phrasecontext calldef ident)
+type TypeClausesPhrases neighbors phrasecontext calldef ident typevar = 
+    NonEmpty (TypeClause neighbors phrasecontext calldef ident typevar)
 
 data ObjectType =
     DataObj
@@ -54,19 +54,19 @@ data ObjectType =
     | CoprotocolObj
   deriving (Show, Eq)
 
-data TypeClause neighbors phrasecontext calldef ident = TypeClause {
+data TypeClause neighbors phrasecontext calldef ident typevar = TypeClause {
     _typeClauseName :: ident 
     , _typeClauseArgs :: [ident]
     , _typeClauseStateVar ::  ident
-    , _typeClausePhrases :: [TypePhrase phrasecontext calldef ident]
+    , _typeClausePhrases :: [TypePhrase phrasecontext calldef ident typevar]
     , _typeClauseNeighbors :: neighbors
 }  deriving (Show, Eq, Read, Generic)
 
-data TypePhrase phrasecontext calldef ident = TypePhrase {
+data TypePhrase phrasecontext calldef ident typevar = TypePhrase {
     _typePhraseContext :: phrasecontext
     , _typePhraseName :: ident
-    , _typePhraseFrom :: [Type calldef ident]
-    , _typePhraseTo :: Type calldef ident
+    , _typePhraseFrom :: [Type calldef ident typevar ]
+    , _typePhraseTo :: Type calldef ident typevar
 } deriving (Show, Eq, Read, Generic)
 
 {-
@@ -99,9 +99,9 @@ data FunctionDefn pattern letdef typedef typesig calldef ident = FunctionDefn {
     , _funDefn :: NonEmpty ([pattern], Expr pattern letdef typedef calldef ident) 
 } deriving (Show, Eq, Read)
 
-data ProcessDefn patterns letdef typedef calldef ident = ProcessDefn { 
+data ProcessDefn patterns letdef typedef calldef ident typevar = ProcessDefn { 
     _procName :: ident
-    , _procSeqInChsOutChsTypes :: Maybe ([Type calldef ident], [Type calldef ident], [Type calldef ident])
+    , _procSeqInChsOutChsTypes :: Maybe ([Type calldef ident typevar], [Type calldef ident typevar], [Type calldef ident typevar])
     , _procDefn :: NonEmpty 
             ( ([Pattern typedef calldef ident], [ident], [ident])
             , ProcessCommands patterns letdef typedef calldef ident) 

@@ -48,11 +48,11 @@ import Text.PrettyPrint.GenericPretty
 type ProgI ident = Prog (DefnI ident)
 type StmtI ident = Stmt (DefnI ident) 
 type PatternI ident = Pattern () () ident 
-type TypeI ident = Type () ident 
-type DataTypePhraseI ident = TypePhrase () () ident 
-type CodataTypePhraseI ident = TypePhrase () () ident 
-type ProtocolTypePhraseI ident = TypePhrase () () ident 
-type CoprotocolTypePhraseI ident = TypePhrase () () ident 
+type TypeI ident = Type () ident ident
+type DataTypePhraseI ident = TypePhrase () () ident ident
+type CodataTypePhraseI ident = TypePhrase () () ident ident
+type ProtocolTypePhraseI ident = TypePhrase () () ident ident
+type CoprotocolTypePhraseI ident = TypePhrase () () ident ident
 type ProcessCommandsI ident = ProcessCommands (PatternI ident) (StmtI ident) () () ident 
 type ProcessCommandI ident = ProcessCommand (PatternI ident) (StmtI ident) () () ident 
 type ExprI ident = Expr 
@@ -67,15 +67,15 @@ newtype BnfcIdent = BnfcIdent { _stringPos :: (String, (Int, Int)) }
   deriving (Show, Eq, Read, Ord)
 
 
-type ObjectDefnI ident = NonEmpty (TypeClause () () () ident)
+type ObjectDefnI ident = NonEmpty (TypeClause () () () ident ident)
 type DataDefnI ident = ObjectDefnI ident
 type CodataDefnI ident = ObjectDefnI ident
 type ProtocolDefnI ident = ObjectDefnI ident
 type CoprotocolDefnI ident = ObjectDefnI ident
-type ProcessDefnI ident = ProcessDefn (PatternI ident) (Stmt (DefnI ident)) () () ident
+type ProcessDefnI ident = ProcessDefn (PatternI ident) (Stmt (DefnI ident)) () () ident ident
 type FunctionDefnI ident = FunctionDefn (PatternI ident) (Stmt (DefnI ident)) () (FunctionDefSigI ident) () ident
 
-type FunctionDefSigI ident = Maybe ([Type () ident], Type () ident)
+type FunctionDefSigI ident = Maybe ([Type () ident ident], Type () ident ident)
 
 newtype DefnI ident = DefnI { 
     _unDefnI :: Defn (DataDefnI ident) (CodataDefnI ident) (ProtocolDefnI ident) (CoprotocolDefnI ident) (FunctionDefnI ident) (ProcessDefnI ident)

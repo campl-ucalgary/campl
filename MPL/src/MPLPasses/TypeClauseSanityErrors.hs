@@ -32,10 +32,10 @@ import MPLUtil.Data.Either.AccumEither
 import Debug.Trace
 
 data TypeClauseSanityCheckError =
-    InvalidMutuallyRecursiveTypeArgDec (NonEmpty (TypeClause () () () BnfcIdent))
-    | OverlappingTypeVariables (NonEmpty (TypeClause () () () BnfcIdent))
-    | CodataInputArgStateVarOccurence (TypeClause () () () BnfcIdent)
-    | PhraseToMustBeStateVar (TypeClause () () () BnfcIdent)
+    InvalidMutuallyRecursiveTypeArgDec (NonEmpty (TypeClause () () () BnfcIdent BnfcIdent))
+    | OverlappingTypeVariables (NonEmpty (TypeClause () () () BnfcIdent BnfcIdent))
+    | CodataInputArgStateVarOccurence (TypeClause () () () BnfcIdent BnfcIdent)
+    | PhraseToMustBeStateVar (TypeClause () () () BnfcIdent BnfcIdent)
 
 $(makeClassyPrisms ''TypeClauseSanityCheckError)
 
@@ -44,12 +44,12 @@ $(makeClassyPrisms ''TypeClauseSanityCheckError)
 codataStateVarOccurenceCheck :: 
     forall e.
     ( AsTypeClauseSanityCheckError e ) =>
-    NonEmpty (TypeClause () () () BnfcIdent) ->
+    NonEmpty (TypeClause () () () BnfcIdent BnfcIdent) ->
     Either (NonEmpty e) ()
 codataStateVarOccurenceCheck clauses = void $ liftEither 
     $ runAccumEither $ traverse (liftAEither . f) clauses
   where
-    f :: TypeClause () () () BnfcIdent -> Either (NonEmpty e) ()
+    f :: TypeClause () () () BnfcIdent BnfcIdent -> Either (NonEmpty e) ()
     f clause = bool (Left $ _CodataInputArgStateVarOccurence # clause :| []) (return ()) check
       where
         check = all
@@ -63,12 +63,12 @@ codataStateVarOccurenceCheck clauses = void $ liftEither
 phraseToVarsAreStateVar ::
     forall e.
     ( AsTypeClauseSanityCheckError e ) =>
-    NonEmpty (TypeClause () () () BnfcIdent) ->
+    NonEmpty (TypeClause () () () BnfcIdent BnfcIdent) ->
     Either (NonEmpty e) ()
 phraseToVarsAreStateVar clauses = void $ liftEither 
     $ runAccumEither $ traverse (liftAEither . f) clauses
   where
-    f :: TypeClause () () () BnfcIdent -> Either (NonEmpty e) ()
+    f :: TypeClause () () () BnfcIdent BnfcIdent -> Either (NonEmpty e) ()
     f clause = bool (Left $ _PhraseToMustBeStateVar # clause :| []) (return ()) True
       where
         stvname = clause ^. typeClauseStateVar % bnfcIdentName
@@ -81,12 +81,12 @@ phraseToVarsAreStateVar clauses = void $ liftEither
 phraseFromVarsAreStateVar ::
     forall e.
     ( AsTypeClauseSanityCheckError e ) =>
-    NonEmpty (TypeClause () () () BnfcIdent) ->
+    NonEmpty (TypeClause () () () BnfcIdent BnfcIdent) ->
     Either (NonEmpty e) ()
 phraseFromVarsAreStateVar clauses = void $ liftEither 
     $ runAccumEither $ traverse (liftAEither . f) clauses
   where
-    f :: TypeClause () () () BnfcIdent -> Either (NonEmpty e) ()
+    f :: TypeClause () () () BnfcIdent BnfcIdent -> Either (NonEmpty e) ()
     f clause = bool (Left $ _PhraseToMustBeStateVar # clause :| []) (return ()) True
       where
         stvname = clause ^. typeClauseStateVar % bnfcIdentName
@@ -96,7 +96,7 @@ phraseFromVarsAreStateVar clauses = void $ liftEither
 
 typeClauseArgsSanityCheck ::
     ( AsTypeClauseSanityCheckError e ) =>
-    NonEmpty (TypeClause () () () BnfcIdent) ->
+    NonEmpty (TypeClause () () () BnfcIdent BnfcIdent) ->
     Either (NonEmpty e) ()
 typeClauseArgsSanityCheck clause@(TypeClause name args stv phrases () :| rst) 
     | mutuallyrecursivevalidity && overlappingargsvalidity = return ()

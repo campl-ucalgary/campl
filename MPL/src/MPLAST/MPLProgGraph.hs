@@ -31,40 +31,48 @@ import qualified Data.List.NonEmpty as NE
 
 data ClausesGraph ident = ClausesGraph {
     _clauseGraphObjectType :: ObjectType
-    , _clauseGraphSpine :: ClauseGraphSpine ident
+    , _clauseGraphSpine :: ClauseGraphSpine ident 
 }  deriving Show
 
 type ClauseGraphSpine ident = NonEmpty ( TypeClauseG ident )
 
-newtype ClausesKnot ident = ClausesKnot {
-    _clauseGraph :: ClausesGraph ident
+newtype ClausesKnot ident typevar = ClausesKnot {
+    _clauseGraph :: ClausesGraph ident 
 }  deriving Show
 
-newtype ClausePhraseKnot neighbors ident = ClausePhraseKnot { 
+newtype ClausePhraseKnot neighbors ident typevar = ClausePhraseKnot { 
         _phraseParent :: TypeClause 
             neighbors 
-            (ClausePhraseKnot neighbors ident)
-            (TypeClauseNode ident)
+            (ClausePhraseKnot neighbors ident typevar)
+            (TypeClauseNode ident typevar)
             ident
+            typevar
     }  deriving Show
 
-type TypeClauseKnot ident =
+type TypeClauseKnot ident typevar =
     TypeClause 
-        (ClausesKnot ident) 
-        (ClausePhraseKnot (ClausesKnot ident) ident)
-        (TypeClauseNode ident)
+        (ClausesKnot ident typevar) 
+        (ClausePhraseKnot (ClausesKnot ident typevar) ident typevar)
+        (TypeClauseNode ident typevar)
         ident
+        typevar
 
-type TypeClauseG ident = TypeClause (ClausesKnot ident) (ClausePhraseKnot (ClausesKnot ident) ident) (TypeClauseNode ident) ident
-type TypePhraseG ident = TypePhrase (ClausePhraseKnot (ClausesKnot ident) ident) (TypeClauseNode ident) ident
+type TypeClauseG ident = TypeClause 
+    (ClausesKnot ident ident) 
+    (ClausePhraseKnot (ClausesKnot ident ident) ident ident) 
+    (TypeClauseNode ident ident) ident ident
+
+type TypePhraseG ident = TypePhrase 
+    (ClausePhraseKnot (ClausesKnot ident ident) ident ident) 
+    (TypeClauseNode ident ident) ident ident
 
 
-data TypeClauseNode ident = 
-    TypeClauseNode (TypeClauseKnot ident)
+data TypeClauseNode ident typevar = 
+    TypeClauseNode (TypeClauseKnot ident typevar)
     | TypeClauseLeaf 
   deriving Show
 
-type TypeG ident = Type (TypeClauseNode ident) ident
+type TypeG ident = Type (TypeClauseNode ident ident) ident ident
 
 type PatternG ident = 
     Pattern 
@@ -89,7 +97,7 @@ type FunctionDefG ident =
 
 
 data DefnG ident = 
-    ObjectG (ClausesGraph ident)
+    ObjectG (ClausesGraph ident )
     | FunctionDecDefG (FunctionDefG ident)
     | ProcessDecDefG
 

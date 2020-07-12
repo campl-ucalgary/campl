@@ -55,7 +55,7 @@ instance HasUniqueTag TieTypeClauseContext where
     uniqueTag = tieTypeClauseUniqueTagGen 
 
 data TieTypeClauseError =
-    TypeNotInScope (Type () BnfcIdent)
+    TypeNotInScope (Type () BnfcIdent BnfcIdent)
   deriving Show
 
 $(concat <$> traverse makeClassyPrisms 
@@ -68,7 +68,7 @@ makeTypeClauseGraph ::
     AsTieTypeClauseError e =>
     ObjectType -> 
     TieTypeClauseContext -> 
-    NonEmpty (TypeClause () () () BnfcIdent) -> 
+    NonEmpty (TypeClause () () () BnfcIdent BnfcIdent) -> 
     Either (NonEmpty e) (UniqueTag, ClausesGraph TaggedBnfcIdent)
     -- Either TieTypeClauseError (UniqueTag, ClausesGraph TypeClauseNode TaggedBnfcIdent)
 makeTypeClauseGraph obj cxt clause = do
@@ -86,7 +86,7 @@ type TypeClauseKnotTying a = forall e.
         a
 
 tieTypeClauseKnot :: 
-    NonEmpty (TypeClause () () () BnfcIdent) ->
+    NonEmpty (TypeClause () () () BnfcIdent BnfcIdent) ->
     TypeClauseKnotTying ()
 tieTypeClauseKnot clauses = do
     args' <- typeClausesArgs clauses
@@ -95,7 +95,7 @@ tieTypeClauseKnot clauses = do
         -- add the variables to the scope..
     f args' (NE.toList clauses)
   where
-    f :: [TaggedBnfcIdent] -> [TypeClause () () () BnfcIdent] -> TypeClauseKnotTying ()
+    f :: [TaggedBnfcIdent] -> [TypeClause () () () BnfcIdent BnfcIdent] -> TypeClauseKnotTying ()
     f args [] = return ()
     f args (TypeClause name _ stv phrases () : rst) = do
         res <- ask
@@ -121,7 +121,7 @@ tieTypeClauseKnot clauses = do
             fromtys'
             toty'
 
-    substituteTyVar :: Type () BnfcIdent -> 
+    substituteTyVar :: Type () BnfcIdent BnfcIdent -> 
         TypeClauseKnotTying (TypeG TaggedBnfcIdent)
     substituteTyVar = para f 
       where
@@ -215,7 +215,7 @@ tieTypeClauseKnot clauses = do
         | otherwise = lookupSymTable ident as
     
 typeClausesArgs ::
-    NonEmpty (TypeClause () () () BnfcIdent) ->
+    NonEmpty (TypeClause () () () BnfcIdent BnfcIdent) ->
     TypeClauseKnotTying [TaggedBnfcIdent]
 typeClausesArgs clause@(TypeClause name args stv phrases () :| rst) = mapM tagBnfcIdent args
 

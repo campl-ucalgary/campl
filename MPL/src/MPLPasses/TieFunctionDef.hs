@@ -67,13 +67,14 @@ patternIToGraph ::
     PatternI BnfcIdent -> 
     StateT ToGraphState 
         (Either ToGraphErrors) 
-        ((SymbolTable, [TypeEqns TypeTag], TypeTag), PatternG TaggedBnfcIdent)
+        ((SymbolTable, [TypeEqns BnfcIdent TypeTag], TypeTag), PatternG TaggedBnfcIdent)
 patternIToGraph tagmap = cata f 
   where
-    f :: PatternF () () BnfcIdent (StateT ToGraphState (Either ToGraphErrors) ((SymbolTable, [TypeEqns TypeTag], TypeTag), PatternG TaggedBnfcIdent)) -> StateT
+    f :: PatternF () () BnfcIdent (StateT ToGraphState (Either ToGraphErrors) ((SymbolTable, [TypeEqns BnfcIdent TypeTag], TypeTag), PatternG TaggedBnfcIdent)) -> 
+        StateT
                   ToGraphState
                   (Either ToGraphErrors)
-                  ((SymbolTable, [TypeEqns TypeTag], TypeTag),
+                  ((SymbolTable, [TypeEqns BnfcIdent TypeTag], TypeTag),
                    PatternG TaggedBnfcIdent)
 
     f (PConstructorF ident () args ()) = do
