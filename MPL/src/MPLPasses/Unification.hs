@@ -18,8 +18,8 @@ import Control.Monad.State
 
 data TypeEqns ident typevar =
     TypeEqnsEq (Type () ident typevar, Type () ident typevar)
-    | TypeEqnsExist [ident] [TypeEqns ident typevar]
-    | TypeEqnsForall [ident] [TypeEqns ident typevar]
+    | TypeEqnsExist [typevar] [TypeEqns ident typevar]
+    | TypeEqnsForall [typevar] [TypeEqns ident typevar]
 
 $(concat <$> traverse makeBaseFunctor 
     [ ''TypeEqns ]
@@ -72,11 +72,11 @@ substitutes ::
 substitutes = undefined
 
 -- unsafe substitutions that just blindly substitute 
-forceSubstitutes :: 
+substitutesTypeGToTaggedType :: 
     [(TaggedBnfcIdent, Type () TaggedBnfcIdent TypeTag)] -> 
     TypeG TaggedBnfcIdent -> 
     Maybe (Type () TaggedBnfcIdent TypeTag)
-forceSubstitutes subs typeg = cata f $ typeg & typeCallDefTraversal .~ ()
+substitutesTypeGToTaggedType subs typeg = cata f $ typeg & typeCallDefTraversal .~ ()
   where
     f :: TypeF 
         () TaggedBnfcIdent TaggedBnfcIdent 

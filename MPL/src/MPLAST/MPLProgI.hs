@@ -64,7 +64,11 @@ type ExprI ident = Expr
 
 
 newtype BnfcIdent = BnfcIdent { _stringPos :: (String, (Int, Int)) }
-  deriving (Show, Eq, Read, Ord)
+  deriving (Show, Read)
+
+instance Eq BnfcIdent where
+    BnfcIdent (str0, _) == BnfcIdent (str1, _) = str0 == str1
+
 
 
 type ObjectDefnI ident = NonEmpty (TypeClause () () () ident ident)

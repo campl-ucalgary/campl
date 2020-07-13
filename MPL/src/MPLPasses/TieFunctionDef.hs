@@ -64,100 +64,112 @@ patternsIToGraph = undefined
 
 patternIToGraph :: 
     Map TypeTag (TypeG TaggedBnfcIdent) -> 
+    TypeTag -> 
     PatternI BnfcIdent -> 
     StateT ToGraphState 
         (Either ToGraphErrors) 
-        ( (SymbolTable, [TypeEqns TaggedBnfcIdent TypeTag], TypeTag)
+        ( (SymbolTable, [TypeEqns TaggedBnfcIdent TypeTag])
         , PatternG TaggedBnfcIdent)
-patternIToGraph tagmap pattern = do
-    typetag <- freshTypeTag
-    fix f typetag pattern
+patternIToGraph tagmap ttype pattern = 
+    f ttype pattern
   where
-    f :: (TypeTag -> PatternI BnfcIdent -> StateT ToGraphState (Either ToGraphErrors) ((SymbolTable, [TypeEqns TaggedBnfcIdent TypeTag], TypeTag), PatternG TaggedBnfcIdent)) -> 
-        TypeTag -> 
-        PatternI BnfcIdent -> 
-        StateT ToGraphState (Either ToGraphErrors)
-                  ((SymbolTable, [TypeEqns TaggedBnfcIdent TypeTag], TypeTag),
-                   PatternG TaggedBnfcIdent)
-    f fx typetag (PConstructor ident () args ()) = undefined
-    {-
-    f :: PatternF () () 
-        BnfcIdent 
-        (StateT ToGraphState (Either ToGraphErrors) ((SymbolTable, [TypeEqns TaggedBnfcIdent TypeTag], TypeTag), PatternG TaggedBnfcIdent)) -> 
-        StateT 
-            ToGraphState
-            (Either ToGraphErrors)
-            ( (SymbolTable, [TypeEqns TaggedBnfcIdent TypeTag], TypeTag)
-            , PatternG TaggedBnfcIdent)
-    f (PConstructorF ident () args ()) = do
-        ((symtab, eqns, typetags), patts) <- fmap 
-                        (first (over _2 concat . over _1 concat . unzip3) 
-                        . unzip)
-                        (sequenceA args)
+    f ttype (PConstructor ident () ctsargs ()) = do
         (tag, phraseg) <- lookupSeqPhrase ident
 
-        -- Some error checking TODO -- change so that this uses AccumEither
-        -- for better error messages...
-
-        -- check that it must be a data object
-        when 
+        -- check if it is a data type
+        unless 
             (has _DataObj (phraseg ^. phraseGObjType)) 
             (throwError $ liftFunctionError (_ExpectedDataConstructor # ident))
         -- check arity
         let expectedarity = length (phraseg ^. typePhraseFrom)
-            actualarity = length args
-        when 
-            (expectedarity /=  actualarity)
+            actualarity = length ctsargs
+        unless
+            (expectedarity == actualarity)
             (throwError $ liftFunctionError 
                 (_ArityMismatch # (ident, expectedarity, actualarity)))
 
-        (phraseclausetype, freshargsmapping, substitions) <- 
-                phraseSubstitutions phraseg
+        --  query the phrase substitutions from the graph
+        (clausetype, ttypeargs, clausesubstitutions) <- 
+                clauseSubstitutions (phraseg ^. typePhraseContext % phraseParent)
 
-        -- type tags for the type equations
-        typetag' <- freshTypeTag
-        typetags' <- mapM (const (freshTypeTag)) typetags
+        -- fresh type vars for the constructor args
+        ttypeCtsArgs <- traverse (const freshTypeTag) ctsargs
 
-        -- type equations
-        let neweqns = zipWith 
-                (\a b -> TypeEqnsEq 
-                    ( TypeVar a
-                    , fromJust $ forceSubstitutes substitions b 
-                    ) )
-                typetags'
-                (phraseg ^. typePhraseFrom) 
+        ((ctsargssym, ctsargstypeeqs), ctsargspatts) <- 
+                fs ttypeCtsArgs ctsargs
 
-        -- the new constructor with the type...
-        let cts' = _PConstructor #
-                    ( _TaggedBnfcIdent # (ident, tag)
-                    , phraseg
-                    , patts
-                    , fromJust $ Map.lookup typetag' tagmap )
+        let syms = []  
+            typeeqs = TypeEqnsExist (ttypeCtsArgs ++ ttypeargs) $
+                [ TypeEqnsEq ( _TypeVar # ttype
+                    , clausetype ) ] 
+                ++ zipWith g ttypeCtsArgs (phraseg ^. typePhraseFrom)
+                ++ ctsargstypeeqs
+            g typetag ctsargtype = TypeEqnsEq
+                ( TypeVar typetag
+                , fromJust $ substitutesTypeGToTaggedType 
+                    clausesubstitutions ctsargtype )
+            pat' = PConstructor 
+                (_TaggedBnfcIdent # (ident, tag)) 
+                phraseg ctsargspatts (fromJust 
+                    $ Map.lookup ttype tagmap)
+        return 
+            ( (syms ++ ctsargssym, [typeeqs] )
+            , pat')
 
-        return ((symtab, neweqns ++ eqns, typetag'), cts')
-
-        -}
-    {-
-    f (PUnitF ident ()) = do
-        -- TODO constants unique tag do not matter
-        typetag' <- freshTypeTag
+    f ttype (PUnit ident ()) = do
+        -- tag doesn't matter for constants...
         ident' <- tagBnfcIdent ident
-        return ( ([]
-                , [TypeEqnsEq (TypeVar typetag', TypeSeq $ TypeUnitF ident')]
-                , typetag' )
-                , PUnit ident' $ fromJust $ Map.lookup typetag' tagmap)
+        return 
+            ( ([], [TypeEqnsEq (TypeVar ttype, TypeSeq $ TypeUnitF ident')] )
+            , PUnit ident' $ fromJust $ Map.lookup ttype tagmap )
 
-    f (PRecordF phrases () ()) = do
+    f ttype (PRecord recordphrases () ()) = do
+        (phrasestags, phrasesg@(focusedphraseg :| rstphraseg)) <- NE.unzip <$> 
+            traverse (lookupSeqPhrase . fst) recordphrases
+
+        -- the focused clause (should be the same of all the 
+        -- phrases ideally....) we check this immediately after
+        let focusedclauseg = focusedphraseg ^. typePhraseContext % phraseParent
+
+        -- check if all destructors
+        unless (all (CodataObj==) $ fmap (view phraseGObjType) phrasesg)
+            (throwError $ liftFunctionError 
+                (_ExpectedCodataDestructor # fmap fst recordphrases))
+
+        -- check if all from the same codata clause
+        unless (all (focusedclauseg ^. typeClauseName ==) $
+            map (view $ typePhraseContext % phraseParent % typeClauseName) rstphraseg)
+            (throwError $ liftFunctionError 
+                (_ExpectedDestructorsFromSameClause # fmap fst recordphrases))
+
+        -- check if the records (phrases) match the declaration in the 
+        -- codata clause..
+        unless (and $ 
+                zipWith (\a b -> a ^. typePhraseName % taggedBnfcIdentName 
+                                == b ^. _1 % bnfcIdentName)
+                    (focusedclauseg ^. typeClausePhrases) 
+                    (NE.toList recordphrases))
+            (throwError $ liftFunctionError 
+                (_IllegalRecordPhrases # recordphrases)) 
+
+        (clausetype, ttypeargs, clausesubstitutions) <- 
+                clauseSubstitutions focusedclauseg
+
         undefined
-        -}
+
+
+    -- traversal for multiple patterns 
+    -- requires a pairing of the typetags and patterns (Which should be the same length -- check this yourself.
+    -- returns (([symboltable], [typeeqs]), patterng)
+    fs ttypetags patterns = first ( concat *** concat <<< unzip) . unzip <$> 
+                traverse (uncurry f) (zip ttypetags patterns)
+
     {-
     | PRecord { _pRecordPhrase :: NonEmpty (ident , Pattern typedef calldef ident)
                 , _pRecordCallDef :: calldef 
                 , _pType :: typedef }
     | PList { _pList :: [Pattern typedef calldef ident], _pType :: typedef }
-    | PTuple { 
-            _pTuple :: (Pattern typedef calldef ident, NonEmpty (Pattern typedef calldef ident))
-            , _pType :: typedef }
+    | PTuple { _pTuple :: (Pattern typedef calldef ident, NonEmpty (Pattern typedef calldef ident)), _pType :: typedef }
     | PVar { _pVar :: ident, _pType :: typedef }
     | PString { _pString :: String, _pType :: typedef }
     | PInt { _pInt :: (ident, Int), _pType :: typedef }
@@ -182,32 +194,29 @@ lookupSeqPhrase ident = do
 
     errormsg = liftFunctionError (_SeqPhraseNotInScope # ident)
 
-phraseSubstitutions :: 
+clauseSubstitutions :: 
     ( MonadState s m 
     , HasUniqueTag s ) =>
-    TypePhraseG TaggedBnfcIdent ->
+    TypeClauseG TaggedBnfcIdent ->
     m ( TaggedType
       , [TypeTag]
       , [(TaggedBnfcIdent, Type () TaggedBnfcIdent TypeTag)] )
-    -- ( Clause type of the phrase of the statevar
+    -- ( Clause type of the of the statevar
     -- , fresh vars used to substitte
     -- , substition list of unique tags to corresponsing types
         -- ( this includes the state variables )
-phraseSubstitutions phraseg = do
+clauseSubstitutions clauseg = do
     -- get the sub args
     clauseArgSubs <- traverse 
         (\n -> second TypeTag . (n,) <$> freshUniqueTag) 
-        (phraseg ^. typePhraseContext % phraseParent % typeClauseArgs) 
+        (clauseg ^. typeClauseArgs) 
 
     let clausestatevartype = _TypeWithArgs # 
-            ( phraseg ^.  typePhraseContext % phraseParent % typeClauseName
+            ( clauseg ^.  typeClauseName
             , ()
             , map snd argsubstitions )
-        clausegraphspine = NE.toList $ phraseg ^. typePhraseContext 
-            % phraseParent 
-            % typeClauseNeighbors 
-            % clauseGraph 
-            % clauseGraphSpine
+        clausegraphspine = NE.toList $ 
+            clauseg ^.  typeClauseNeighbors % clauseGraph % clauseGraphSpine
         argsubstitions = map 
             (second TypeVar) 
             clauseArgSubs

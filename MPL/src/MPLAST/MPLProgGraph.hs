@@ -95,7 +95,6 @@ type FunctionDefG ident =
         (FunctionCallValueKnot ident)
         ident
 
-
 data DefnG ident = 
     ObjectG (ClausesGraph ident)
     | FunctionDecDefG (FunctionDefG ident)

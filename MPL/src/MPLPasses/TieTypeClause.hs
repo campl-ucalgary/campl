@@ -5,6 +5,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# OPTIONS -fno-warn-overlapping-patterns #-}
 module MPLPasses.TieTypeClause where
 
 import Optics
@@ -161,11 +162,24 @@ tieTypeClauseKnot clauses = do
                 return $ TypeTupleF (a,rst)
             TypeListF ty -> TypeListF <$> snd ty
             -- unique id of built in types do not matter, so we just assign it a new one (so it type checks..)
-            TypeIntF ident -> review _TypeIntF .  review _TaggedBnfcIdent .  (ident,) <$> freshUniqueTag
-            TypeCharF ident -> review _TypeCharF .  review _TaggedBnfcIdent .  (ident,) <$> freshUniqueTag
-            TypeDoubleF ident -> review _TypeDoubleF .  review _TaggedBnfcIdent .  (ident,) <$> freshUniqueTag
-            TypeStringF ident -> review _TypeStringF .  review _TaggedBnfcIdent .  (ident,) <$> freshUniqueTag
-            TypeUnitF ident -> review _TypeUnitF .  review _TaggedBnfcIdent .  (ident,) <$> freshUniqueTag
+            TypeIntF ident -> review _TypeIntF 
+                .  review _TaggedBnfcIdent 
+                .  (ident,) <$> freshUniqueTag
+            TypeCharF ident -> review _TypeCharF 
+                .  review _TaggedBnfcIdent 
+                .  (ident,) <$> freshUniqueTag
+            TypeDoubleF ident -> review _TypeDoubleF 
+                .  review _TaggedBnfcIdent 
+                .  (ident,) <$> freshUniqueTag
+            TypeStringF ident -> review _TypeStringF 
+                .  review _TaggedBnfcIdent 
+                .  (ident,) <$> freshUniqueTag
+            TypeUnitF ident -> review _TypeUnitF 
+                .  review _TaggedBnfcIdent 
+                .  (ident,) <$> freshUniqueTag
+            -- TODO: implement this / give it more thought...
+            -- TypeArrF ident from to -> review _TypeArrF 
+            
             {-
             -- Duplicated code..
             TypeIntF ident -> do

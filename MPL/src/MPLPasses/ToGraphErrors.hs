@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS -fno-warn-overlapping-patterns #-}
 module MPLPasses.ToGraphErrors where
 
 import MPLPasses.TypeClauseSanityErrors
@@ -17,7 +18,12 @@ data TypeClauseError =
 
 data FunctionError = 
     SeqPhraseNotInScope BnfcIdent
+    -- pattern errors
     | ExpectedDataConstructor BnfcIdent
+    | ExpectedCodataDestructor (NonEmpty BnfcIdent)
+    | ExpectedDestructorsFromSameClause (NonEmpty BnfcIdent)
+    | IllegalRecordPhrases (NonEmpty (BnfcIdent , Pattern () () BnfcIdent))
+    -- pattern errors
     | ArityMismatch BnfcIdent Int Int
         -- expected n, but got m
 

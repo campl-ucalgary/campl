@@ -54,6 +54,9 @@ data SeqTypeF ident t =
     | TypeDoubleF { _seqTypeIdent :: ident }
     | TypeStringF { _seqTypeIdent :: ident }
     | TypeUnitF { _seqTypeIdent :: ident }
+    -- arrow types (these cannot be generated from the parser but are used internally in unification)
+    | TypeDesF { _seqTypeIdent :: ident, _seqArrFrom :: [t], _seqArrTo :: t }
+    | TypeFunF { _seqTypeIdent :: ident, _seqArrFrom :: [t], _seqArrTo :: t }
 
   deriving ( Read, Show, Generic, Out, Data, Functor, Typeable, Foldable, Traversable, Eq )
 
