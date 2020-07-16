@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 30fcacc82f60b5ffd88613007def4dbde0d67361f7bad74bb3b6090cc34f688e
+-- hash: bec14ef426e2ec1030d4808bc2cedce2e02f8ed1ebd1d881928ea030c547a7ca
 
 name:           MPL
 version:        0.1.0.0
@@ -41,11 +41,12 @@ library
       MPLAST.MPLASTCore
       MPLAST.MPLASTTranslate
       MPLAST.MPLASTTranslateErrors
-      MPLAST.MPLASTTranslateExpr
       MPLAST.MPLASTTranslatePatterns
       MPLAST.MPLASTTranslateType
+      MPLAST.MPLBuiltIn
       MPLAST.MPLExprAST
       MPLAST.MPLPatternAST
+      MPLAST.MPLPrinter
       MPLAST.MPLProcessCommandsAST
       MPLAST.MPLProg
       MPLAST.MPLProgGraph
@@ -57,7 +58,8 @@ library
       MPLPasses.InferExprType
       MPLPasses.MPLRunPasses
       MPLPasses.SymbolTable
-      MPLPasses.TieFunctionDef
+      MPLPasses.TiePattern
+      MPLPasses.TieTermUtils
       MPLPasses.TieTypeClause
       MPLPasses.ToGraph
       MPLPasses.ToGraphErrors
@@ -112,6 +114,7 @@ test-suite MPL-test
   other-modules:
       MPLAST.MPLASTTranslateSpec
       MPLPasses.TieTypeClauseSpec
+      MPLPasses.UnificationSpec
       Paths_MPL
   hs-source-dirs:
       test

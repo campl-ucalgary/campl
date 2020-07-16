@@ -21,7 +21,7 @@ import qualified Data.List.NonEmpty as NE
 
 -- helper functions for running the graph maker..
 emptyContext = TieTypeClauseContext [] (UniqueTag 0)
-unsafeRunMakeTypeClauseGraph :: NonEmpty (TypeClause () () () BnfcIdent) -> ClausesGraph TaggedBnfcIdent
+unsafeRunMakeTypeClauseGraph :: NonEmpty (TypeClause () () () BnfcIdent BnfcIdent) -> ClausesGraph TaggedBnfcIdent
 unsafeRunMakeTypeClauseGraph a = case makeTypeClauseGraph DataObj emptyContext a of
         Right n -> snd n
         Left (n :: NonEmpty TieTypeClauseError) -> error $ show n 
@@ -65,10 +65,11 @@ spec = do
             clause2Test ((NE.toList spine !! 1 ^. typeClausePhrases) !! 0 ^. typePhraseContext % phraseParent)
 
             -- testing if the substituted variables really are substituted to the correct parts 
-            clause2Test $ fromJust (((NE.toList spine !! 0 ^. typeClausePhrases) !! 0) ^? typePhraseTo 
-                            % _TypeWithArgs % _2 % _TypeClauseNode)
-            clause1Test $ fromJust (((NE.toList spine !! 1 ^. typeClausePhrases) !! 0) ^? typePhraseTo 
-                            % _TypeWithArgs % _2 % _TypeClauseNode)
+            -- we no longer immediately substitute the state variables when making the graph
+            -- clause2Test $ fromJust (((NE.toList spine !! 0 ^. typeClausePhrases) !! 0) ^? typePhraseTo 
+            --                 % _TypeWithArgs % _2 % _TypeClauseNode)
+            -- clause1Test $ fromJust (((NE.toList spine !! 1 ^. typeClausePhrases) !! 0) ^? typePhraseTo 
+            --                 % _TypeWithArgs % _2 % _TypeClauseNode)
 
 
 

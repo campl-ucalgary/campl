@@ -12,10 +12,9 @@ import Optics
 import Optics.State.Operators
 
 import MPLAST.MPLASTCore
-import MPLPasses.SymbolTable
 import MPLAST.MPLTypeAST
 import MPLAST.MPLProgGraph
-import MPLPasses.ToGraphTypes
+import MPLPasses.SymbolTable
 
 import Data.Functor.Foldable
 

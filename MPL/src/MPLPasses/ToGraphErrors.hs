@@ -79,16 +79,3 @@ instance AsUnificationError ToGraphError where
 
 liftToGraphErrors err =
     _MkToGraphErrors # (err :| [])
-
-
-{-
-ToGraphError 
-    (Defn 
-        (NonEmpty TypeClauseError) 
-         (NonEmpty TypeClauseError) 
-        (NonEmpty TypeClauseError) 
-        (NonEmpty TypeClauseError) 
-        (NonEmpty FunctionError) 
-        Void)
-        -}
-
