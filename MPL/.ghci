@@ -9,6 +9,7 @@
 :set -XFunctionalDependencies 
 :set -XDeriveGeneric 
 :set -XFlexibleContexts
+:set prompt "> "
 
 import Optics
 import Control.Monad.State
@@ -18,3 +19,5 @@ import Data.Maybe
 import Data.List
 import qualified Data.List.NonEmpty as NE
 import Data.List.NonEmpty (NonEmpty (..))
+
+

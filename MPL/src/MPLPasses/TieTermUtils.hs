@@ -73,13 +73,13 @@ clauseSubstitutions clauseg = do
         clausegraphspine = NE.toList $ 
             clauseg ^. typeClauseNeighbors % clauseGraph % clauseGraphSpine
         argsubstitions = map 
-            (second TypeVar) 
+            (second (flip TypeVar [])) 
             clauseArgSubs
         statevarsubstitiions = map 
             (\n -> 
                 ( n ^. typeClauseStateVar
                 , _TypeWithArgs # 
-                    ( n ^. typeClauseStateVar
+                    ( n ^. typeClauseName
                     , TypeClauseNode n 
                     , map snd argsubstitions )
                 )

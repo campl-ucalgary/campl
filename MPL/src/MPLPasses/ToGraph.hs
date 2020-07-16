@@ -235,9 +235,9 @@ exprIToGraph tagmap ttype expr =
             ( EIf eifg etheng eelseg $ fromJust $ Map.lookup ttype tagmap
             , TypeEqnsExist 
                 [ttypeif, ttypethen, ttypeelse] $ 
-                [ TypeEqnsEq (TypeVar ttypeif, TypeSeq TypeBoolF)
-                , TypeEqnsEq (TypeVar ttype, TypeVar ttypethen)
-                , TypeEqnsEq (TypeVar ttype, TypeVar ttypeelse)
+                [ TypeEqnsEq (TypeVar ttypeif [], TypeSeq TypeBoolF)
+                , TypeEqnsEq (TypeVar ttype [], TypeVar ttypethen [])
+                , TypeEqnsEq (TypeVar ttype [], TypeVar ttypeelse [])
                 , eifeqns
                 , etheneqns
                 , eelseeqns                
@@ -276,12 +276,12 @@ exprIToGraph tagmap ttype expr =
                 $ zip ttypectsargs args
 
             let typeeqs = TypeEqnsExist (ttypectsargs ++ ttypeargs) $
-                    [ TypeEqnsEq ( _TypeVar # ttype
+                    [ TypeEqnsEq ( _TypeVar # (ttype, [])
                         , clausetype ) ] 
                     ++ zipWith g ttypectsargs (phraseg ^. typePhraseFrom)
                     ++ argseqns
                 g typetag ctsargtype = TypeEqnsEq
-                    ( TypeVar typetag
+                    ( TypeVar typetag []
                     , fromJust $ substitutesTypeGToTypeGTypeTag 
                         clausesubstitutions ctsargtype )
                 expr' = EConstructorDestructor 
@@ -330,9 +330,9 @@ exprIToGraph tagmap ttype expr =
             ttypeexprs      = NE.toList $ fmap (fst . snd) ttypetaggedcases
             typeeqs = TypeEqnsExist 
                 (ttypecaseon : ttypepatts ++ ttypeexprs)
-                $ map (TypeEqnsEq . (TypeVar ttypecaseon,) . TypeVar) ttypepatts
+                $ map (TypeEqnsEq . (TypeVar ttypecaseon [],) . flip TypeVar []) ttypepatts
                     -- the type being cased on must be the same as the patterns 
-                ++ map (TypeEqnsEq . (TypeVar ttype,) . TypeVar) ttypeexprs
+                ++ map (TypeEqnsEq . (TypeVar ttype [],) . flip TypeVar []) ttypeexprs
                     -- the type of the expression is the same as the result of the case
                 ++ concat eqns
                 -- collecting the equations..
@@ -354,7 +354,7 @@ patternsIAndExprsIToGraph tagmap ttype pattsandexps = do
 
     let ttypephrases = map fst ttypepattsandexps
         typeeqns = TypeEqnsExist ttypephrases $
-            map (TypeEqnsEq . (TypeVar ttype,) . TypeVar) ttypephrases
+            map (TypeEqnsEq . (TypeVar ttype [],) . flip TypeVar []) ttypephrases
             ++ eqns
     return (pattsgexpsg, typeeqns)
 
@@ -393,10 +393,10 @@ patternIAndExprIToGraph tagmap ttype (patts, expr) = do
 
     let ttypeeqn = TypeEqnsExist (ttypeexpr : map fst ttypepatts) $ 
                 [ TypeEqnsEq 
-                    ( TypeVar ttype
+                    ( _TypeVar # (ttype, [])
                     , TypeSeq $ TypeSeqArrF 
-                        (map (TypeVar . fst) ttypepatts) 
-                        (TypeVar ttypeexpr) 
+                        (map (flip TypeVar [] . fst) ttypepatts) 
+                        (TypeVar ttypeexpr []) 
                     ) ]
                 ++ patteqns ++ [expreqns]
 

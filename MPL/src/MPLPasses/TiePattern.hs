@@ -89,12 +89,12 @@ patternIToGraph tagmap ttype pattern =
 
         let syms = []  
             typeeqs = TypeEqnsExist (ttypectsargs ++ ttypeargs) $
-                [ TypeEqnsEq ( _TypeVar # ttype
+                [ TypeEqnsEq ( _TypeVar # (ttype, [])
                     , clausetype ) ] 
                 ++ zipWith g ttypectsargs (phraseg ^. typePhraseFrom)
                 ++ ctsargstypeeqs
             g typetag ctsargtype = TypeEqnsEq
-                ( TypeVar typetag
+                ( _TypeVar # (typetag, [])
                 , fromJust $ substitutesTypeGToTypeGTypeTag 
                     clausesubstitutions ctsargtype )
             pat' = PConstructor 
@@ -109,7 +109,7 @@ patternIToGraph tagmap ttype pattern =
         -- tag doesn't matter for constants...
         ident' <- tagBnfcIdent ident
         return 
-            ( ([], [TypeEqnsEq (TypeVar ttype, TypeSeq $ TypeUnitF ident')] )
+            ( ([], [TypeEqnsEq (_TypeVar # (ttype, []), TypeSeq $ TypeUnitF ident')] )
             , PUnit ident' $ fromJust $ Map.lookup ttype tagmap )
 
     f ttype (PRecord recordphrases ()) = do
@@ -154,11 +154,11 @@ patternIToGraph tagmap ttype pattern =
 
         let syms = dtsargsym
             typeeqs = TypeEqnsExist (ttypedtsargs ++ ttypeargs) $
-                [ _TypeEqnsEq # (_TypeVar # ttype, clausetype ) ]
+                [ _TypeEqnsEq # (_TypeVar # (ttype, []), clausetype ) ]
                 ++ zipWith g ttypedtsargs (NE.toList phrasesg)
                 ++ dtsargstypeeqs
             g ttypedts phraseg = _TypeEqnsEq # 
-                ( _TypeVar # ttypedts
+                ( _TypeVar # (ttypedts, [])
                 , _TypeSeq # _TypeSeqArrF # 
                     (  fromJust $ traverse (substitutesTypeGToTypeGTypeTag 
                         clausesubstitutions) (phraseg ^. typePhraseFrom)
@@ -193,10 +193,10 @@ patternIToGraph tagmap ttype pattern =
             ttypetuple1:ttypetuplerest = ttypetuples
             typeeqs = TypeEqnsExist ttypetuples $
                 [TypeEqnsEq 
-                    ( TypeVar ttype
+                    ( TypeVar ttype []
                     , TypeSeq $ TypeTupleF 
-                        ( TypeVar ttypetuple1
-                        , NE.fromList $ map TypeVar ttypetuplerest)
+                        ( TypeVar ttypetuple1 []
+                        , NE.fromList $ map (flip TypeVar []) ttypetuplerest)
                     ) ]
                 ++ eqns
             tuplepatt1:tuplepatts = patts

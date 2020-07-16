@@ -53,19 +53,49 @@ progGTypes (Prog defsg) = concat $ map f defsg
 
 typeTester = intercalate "\n" . map pprint . progGTypes . unsafeTranslateParseLexGraph
 
-testprg = [r|
-
+testnat = [r|
 defn 
     fun functiontest =
-        Succ(a),Zero -> 
-            case Zero of
-                Zero -> Zero
+        Nat(Nat(a)),Zero -> Zero
 where
     data
-        Nat -> C =
-            Succ :: C -> C
-            Zero ::   -> C
+        Nat -> STATEVAR =
+            Nat :: STATEVAR -> STATEVAR
+            Zero ::         -> STATEVAR
 |]
+
+testmutnat = [r|
+defn 
+    fun functiontest =
+        Ones(Zeros(TwosEnd),b) -> Twos(TwosEnd, Zeros (TwosEnd))
+where
+    data
+        Ones(A) -> ONES =
+            Ones :: ONES, TWOS -> ONES
+            Zeros :: A -> ONES
+        and
+        Twos(A) -> TWOS =
+            Twos :: TWOS, ONES -> TWOS
+            TwosEnd ::         -> TWOS
+|]
+
+{-
+testmutnat = [r|
+defn 
+    fun functiontest =
+        Ones(a,b) -> Twos(Twos(TwosEnd ,Zeros), Zeros)
+where
+    data
+        Ones -> ONES =
+            Ones :: ONES, TWOS -> ONES
+            Zeros ::   -> ONES
+        and
+        Twos -> TWOS =
+            Twos :: TWOS, ONES -> TWOS
+            TwosEnd ::         -> TWOS
+|]
+-}
+
 
 
 

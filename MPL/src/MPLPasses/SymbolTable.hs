@@ -10,11 +10,11 @@ import Optics.State.Operators
 
 import Control.Monad.State
 import Control.Monad.Except
+import Control.Monad.Writer
+import Control.Monad.RWS
 
 import Data.Map ( Map (..) )
 import qualified Data.Map as Map
-
-type SymbolTable = [(String, SymEntry SymInfo)]
 
 
 data SymEntry info = SymEntry {
@@ -43,28 +43,20 @@ $(concat <$> traverse makeLenses
     , ''SymInfo ]
  )
 
-
-
+type SymbolTable = [(String, SymEntry SymInfo)] 
 {-
-data SymEntry =
-    SymTypeArgVar
-    | SymTypeStateVar (SeqClauseG TaggedBnfcIdent)
-    | SymSeqClause (SeqClauseG TaggedBnfcIdent)
+newtype SymbolTable = SymbolTable { 
+    _unSymbolTable :: [(String, SymEntry SymInfo)] }
 
-{-
-withScope  :: 
-    ( MonadState c m
-    , HasSymbolTableState c ) => 
-    SymEntry ->
-    m ()
+$(makeLenses ''SymbolTable)
+-- flip the append so that when working 
+-- with the writer monad, we get the
+-- correct look up properties i.e.,
+-- things put later in the symbol table
+-- are looked up first.
+instance Semigroup SymbolTable where
+    SymbolTable a <> SymbolTable b = SymbolTable (b <> a)
 
-insertSymbolTable :: 
-    ( MonadState c m
-    , HasSymbolTableState c ) => 
-    SymEntry ->
-    m ()
-insertSymbolTable entry = do
-    tag <- freshUniqueTag
-    symbolTable %= Map.insert tag entry
-    -}
-    -}
+instance Monoid SymbolTable where
+    mempty = SymbolTable []
+-}

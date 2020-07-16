@@ -73,7 +73,8 @@ makeTypeClauseGraph ::
     -- Either TieTypeClauseError (UniqueTag, ClausesGraph TypeClauseNode TaggedBnfcIdent)
 makeTypeClauseGraph obj cxt clause = do
     rec let clausegraph = _ClausesGraph # (obj, fromJust res)
-        ((), st, res) <- Bifunctor.first (:|[]) $ runRWST (tieTypeClauseKnot clause) clausegraph cxt
+        ((), st, res) <- Bifunctor.first (:|[]) $ 
+            runRWST (tieTypeClauseKnot clause) clausegraph cxt
     return $ (st ^. uniqueTag, clausegraph)
 
 type TypeClauseKnotTying a = forall e. 
@@ -91,7 +92,8 @@ tieTypeClauseKnot ::
 tieTypeClauseKnot clauses = do
     args' <- typeClausesArgs clauses
     tieTypeClauseSymTable %= 
-        ((map (view taggedBnfcIdentName &&& review _SymEntry . (,SymTypeVar) . view uniqueTag ) args')++)
+        ((map (view taggedBnfcIdentName &&& review _SymEntry . (,SymTypeVar) . view uniqueTag ) 
+            args')++)
         -- add the variables to the scope..
     f args' (NE.toList clauses)
   where
@@ -138,23 +140,28 @@ tieTypeClauseKnot clauses = do
             entry <- guses tieTypeClauseSymTable (lookupSymTable ident) 
             case entry of
                 Just (SymEntry uniquetag n) -> case n of
-                    SymTypeVar -> return $ TypeWithArgs 
-                        (_TaggedBnfcIdent # (ident, uniquetag)) 
-                        (_TypeClauseLeaf # ()) args'
+                    SymTypeVar -> return $ TypeVar 
+                        (_TaggedBnfcIdent # (ident, uniquetag)) args'
                     SymTypeClause clauseg ->  return $ TypeWithArgs
                         (_TaggedBnfcIdent # (ident,uniquetag))
                         (TypeClauseNode clauseg) args'
                 Nothing -> throwError 
                     $ review _TypeNotInScope (TypeWithArgs ident () (map fst args))
-        f (TypeVarF ident) = do
+
+        f (TypeVarF ident (a:as)) = error "higher kinded data not supported yet.."
+        f (TypeVarF ident []) = do
+            -- TODO literally does NOT support anything with higher kinded data!
+            -- in the future, change it so that it will substitute and check arity!
             entry <- guses tieTypeClauseSymTable (lookupSymTable ident) 
             case entry of
                 Just (SymEntry uniquetag n) -> case n of
-                    SymTypeVar -> return $ _TypeVar # _TaggedBnfcIdent # (ident, uniquetag)
+                    SymTypeVar -> return $ _TypeVar # (_TaggedBnfcIdent # (ident, uniquetag), [])
                     SymTypeClause clauseg -> return $ TypeWithArgs
                         (_TaggedBnfcIdent # (ident,uniquetag))
                         (TypeClauseNode clauseg) []
-                Nothing -> throwError $ _TypeNotInScope # TypeVar ident
+                -- Nothing -> throwError $ _TypeNotInScope # _TypeVar # (ident, fst $ unzip args)
+                --  if we had higher kinded data we would use the above code
+                Nothing -> throwError $ _TypeNotInScope # _TypeVar # (ident, [])
         f (TypeSeqF n) = TypeSeq <$> case n of
             TypeTupleF (a, b :| rst) -> do
                 (a, rst) <- (,) <$> snd a <*> ((:|) <$> snd b <*> traverse snd rst)

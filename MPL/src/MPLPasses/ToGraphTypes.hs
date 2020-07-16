@@ -33,4 +33,4 @@ instance HasUniqueTag ToGraphState where
     uniqueTag = toGraphUniqueTagGen
 
 defaultToGraphState :: ToGraphState
-defaultToGraphState = _ToGraphState # ([], (UniqueTag 0))
+defaultToGraphState = _ToGraphState # (mempty, (UniqueTag 0))

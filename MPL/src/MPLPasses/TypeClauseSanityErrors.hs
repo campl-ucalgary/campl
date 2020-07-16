@@ -54,8 +54,11 @@ codataStateVarOccurenceCheck clauses = void $ liftEither
       where
         check = all
             ( any ( maybe False 
-                    ( (clause ^. typeClauseStateVar % bnfcIdentName ==)
-                    . view bnfcIdentName)) . map (preview _TypeVar) 
+                    (\(ident, args) -> 
+                            bool False 
+                                (clause ^. typeClauseStateVar % bnfcIdentName 
+                                    == ident ^. bnfcIdentName) (null args)
+                     ) ) . map (preview _TypeVar)
                 . view typePhraseFrom ) 
             ( clause ^. typeClausePhrases)
 
@@ -73,7 +76,8 @@ phraseToVarsAreStateVar clauses = void $ liftEither
       where
         stvname = clause ^. typeClauseStateVar % bnfcIdentName
         check = all 
-            ( maybe False ((stvname==) . view bnfcIdentName)
+            ( maybe False (\(ident, args) -> 
+                        bool False (ident ^. bnfcIdentName == stvname) (null args))
             . preview (typePhraseTo % _TypeVar) ) (clause ^. typeClausePhrases)
 
 -- used for co protocol 
@@ -91,7 +95,7 @@ phraseFromVarsAreStateVar clauses = void $ liftEither
       where
         stvname = clause ^. typeClauseStateVar % bnfcIdentName
         check = all ( g . view typePhraseFrom ) (clause ^. typeClausePhrases)
-        g [TypeVar tpvar] = stvname ==  view bnfcIdentName tpvar
+        g [TypeVar tpvar []] = stvname ==  view bnfcIdentName tpvar
         g _ = False
 
 typeClauseArgsSanityCheck ::
