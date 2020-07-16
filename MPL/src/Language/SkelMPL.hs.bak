@@ -96,8 +96,8 @@ transMplType x = case x of
   MPL_BRACKETED_TYPE lbracket mpltype rbracket -> failure x
   MPL_LIST_TYPE lsquarebracket mpltype rsquarebracket -> failure x
   MPL_TUPLE_TYPE lbracket mpltype tuplelisttypes rbracket -> failure x
-  MPL_SEQ_ARROW_TYPE forallvarlists mpltypes mpltype -> failure x
-  MPL_CONC_ARROW_TYPE forallvarlists mpltypes1 mpltypes2 mpltypes3 -> failure x
+  MPL_SEQ_ARROW_TYPE upident forallvarlists mpltypes mpltype -> failure x
+  MPL_CONC_ARROW_TYPE upident forallvarlists mpltypes1 mpltypes2 mpltypes3 -> failure x
 transTupleListType :: TupleListType -> Result
 transTupleListType x = case x of
   TUPLE_LIST_TYPE mpltype -> failure x

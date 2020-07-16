@@ -62,14 +62,11 @@ type ExprI ident = Expr
     ()
     BnfcIdent
 
-
 newtype BnfcIdent = BnfcIdent { _stringPos :: (String, (Int, Int)) }
-  deriving (Show, Read)
+  deriving (Show, Read, Data)
 
 instance Eq BnfcIdent where
-    BnfcIdent (str0, _) == BnfcIdent (str1, _) = str0 == str1
-
-
+    BnfcIdent (str0, _) == BnfcIdent (str1, _) = str0 == str1 
 
 type ObjectDefnI ident = NonEmpty (TypeClause () () () ident ident)
 type DataDefnI ident = ObjectDefnI ident
@@ -84,7 +81,7 @@ type FunctionDefSigI ident = Maybe ([Type () ident ident], Type () ident ident)
 newtype DefnI ident = DefnI { 
     _unDefnI :: Defn (DataDefnI ident) (CodataDefnI ident) (ProtocolDefnI ident) (CoprotocolDefnI ident) (FunctionDefnI ident) (ProcessDefnI ident)
     }
-  deriving (Show, Eq, Read)
+  deriving (Show, Eq, Read, Data)
 $(makeLenses ''DefnI)
 
 

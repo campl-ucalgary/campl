@@ -31,7 +31,6 @@ import MPLAST.MPLProgI
 import MPLAST.MPLASTTranslateType
 import MPLAST.MPLASTTranslatePatterns
 import MPLAST.MPLASTTranslateErrors
-import MPLAST.MPLASTTranslateExpr
 
 import MPLUtil.Data.Either
 import MPLUtil.Data.Either.AccumEither
@@ -53,7 +52,8 @@ translateBnfcMplToProg ::
     AsTranslateBnfcErrors e => 
     B.MplProg -> 
     ([e], ProgIBnfc)
-translateBnfcMplToProg (B.MPL_PROG prog) = (concatMap NE.toList *** Prog ) 
+translateBnfcMplToProg (B.MPL_PROG prog) = 
+    (concatMap NE.toList *** Prog ) 
     (partitionEithers (map translateBnfcStmt prog))
 
 translateBnfcStmt ::    
@@ -186,16 +186,19 @@ translateBnfcExpr (B.INFIXL6_EXPR a op b) = error "not implemented instr"
 translateBnfcExpr (B.INFIXR7_EXPR a op b) = error "not implemented instr"
 translateBnfcExpr (B.INFIXL8_EXPR a op b) = error "not implemented instr"
 
-translateBnfcExpr (B.LIST_EXPR lbr exprs rbr) = error "not implemented instr"
 
 translateBnfcExpr (B.VAR_EXPR v) = return $ review _EVar (v ^. pIdentBnfcIdentGetter, ())
 translateBnfcExpr (B.INT_EXPR v) = return $ review _EInt (v ^. pIntegerGetter, ())
-
 translateBnfcExpr (B.CHAR_EXPR v) = error "not implemented"
-translateBnfcExpr (B.STRING_EXPR v) = error "not implemented"
 translateBnfcExpr (B.DOUBLE_EXPR v) = error "not implemented"
 
+{-
+translateBnfcExpr (B.LIST_EXPR lbr exprs rbr) = error "not implemented instr"
+
+translateBnfcExpr (B.STRING_EXPR v) = error "not implemented"
+
 translateBnfcExpr (B.UNIT_EXPR lbr rbr) = return $ review _EUnit (lbr ^. lBracketBnfcIdentGetter, ())
+-}
 
 translateBnfcExpr (B.FOLD_EXPR expr phrases) = do
     n <- runAccumEither $ (,,)
@@ -214,7 +217,13 @@ translateBnfcExpr (B.CASE_EXPR expr pattexprs) = do
     (expr, n) <- runAccumEither $ (,)
         <$> liftAEither (translateBnfcExpr expr)
         <*> translateBnfcPattExprPhrase pattexprs
-    return $ review _ECase (expr, n, ())
+    n' <- traverse 
+        (\(patts, expr) -> 
+            if length patts == 1 
+                then pure (head patts, expr) 
+                else Left $ _IllegalCasePattern # patts :| [] )
+        n
+    return $ review _ECase (expr, n', ())
 
 translateBnfcExpr (B.SWITCH_EXP switches) = 
     ESwitch . NE.fromList 
@@ -222,11 +231,11 @@ translateBnfcExpr (B.SWITCH_EXP switches) =
         <*> pure ()
 
 translateBnfcExpr (B.DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR ident) =
-    return $ review _EDestructorConstructor (ident ^. uIdentBnfcIdentGetter, (), [], ())
+    return $ review _EConstructorDestructor (ident ^. uIdentBnfcIdentGetter, (), [], ())
 
 translateBnfcExpr (B.DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR ident _ exprs _) = do
     exprs' <- runAccumEither $ traverse (liftAEither . translateBnfcExpr) exprs
-    return $ review _EDestructorConstructor (ident ^. uIdentBnfcIdentGetter, (), exprs', ())
+    return $ review _EConstructorDestructor (ident ^. uIdentBnfcIdentGetter, (), exprs', ())
 
 translateBnfcExpr (B.TUPLE_EXPR _ a as _) = do
     (a,b,c) <- runAccumEither $ (,,) 

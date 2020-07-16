@@ -7,13 +7,20 @@ import Control.Monad.State
 import Control.Monad.Except
 
 import Data.Either
+import Data.Maybe
+import Data.List
+import qualified Data.List.NonEmpty as NE
+
 import Control.Arrow
 import MPLUtil.Data.Either.AccumEither
 
 import MPLAST.MPLASTTranslate
 import MPLAST.MPLASTTranslateErrors
 import MPLAST.MPLProgI
+import MPLAST.MPLASTCore
+
 import MPLPasses.ToGraph
+import MPLPasses.ToGraphErrors
 
 import MPLPasses.MPLRunPasses
 
@@ -27,10 +34,46 @@ import Text.RawString.QQ
 parseAndLex :: String -> Err MplProg
 parseAndLex = pMplProg . resolveLayout True . myLexer
 
+unsafeTranslateParseLexGraph :: 
+    String -> 
+    (Prog (DefnG TaggedBnfcIdent TypeTag))
+unsafeTranslateParseLexGraph str = 
+    case progInterfaceToGraph $ unsafeTranslateParseLex str of
+        Right graph -> graph
+        Left errs -> error $ show (errs :: ToGraphErrors)
+
+progGTypes :: 
+    (Prog (DefnG TaggedBnfcIdent TypeTag)) -> 
+    [TypeGTypeTag]
+progGTypes (Prog defsg) = concat $ map f defsg
+  where
+    f (Stmt defns wdefs) = mapMaybe g (NE.toList defns) ++ progGTypes (Prog wdefs)
+    g (FunctionDecDefG defn) = Just $ defn ^. funTypesFromTo
+    g _ = Nothing
+
+typeTester = intercalate "\n" . map pprint . progGTypes . unsafeTranslateParseLexGraph
+
+testprg = [r|
+
+defn 
+    fun functiontest =
+        Succ(a),Zero -> 
+            case Zero of
+                Zero -> Zero
+where
+    data
+        Nat -> C =
+            Succ :: C -> C
+            Zero ::   -> C
+|]
+
+
 
 unsafeTranslateParseLex :: String -> ProgI BnfcIdent
 unsafeTranslateParseLex str = case parseAndLex str of
-        Ok a -> snd (translateBnfcMplToProg a :: ([TranslateBnfcErrors], ProgI BnfcIdent))
+        Ok a -> case translateBnfcMplToProg a :: ([TranslateBnfcErrors], ProgI BnfcIdent) of
+            ([], prog) -> prog
+            (errs, _) -> error $ show errs
         Bad str -> error str
 
 teststr :: String

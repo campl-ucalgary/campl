@@ -30,6 +30,9 @@ $(concat <$> traverse makePrisms
 instance HasUniqueTag ToGraphState where
     uniqueTag = toGraphUniqueTagGen
 
+defaultToGraphState :: ToGraphState
+defaultToGraphState = _ToGraphState # ([], (UniqueTag 0))
+
 {-
 
 defaultGraphEnv :: ToGraphEnv

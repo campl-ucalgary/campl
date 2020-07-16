@@ -28,11 +28,11 @@ data SymInfo =
     | SymConcClause (TypeClauseG TaggedBnfcIdent)
     | SymConcPhrase (TypePhraseG TaggedBnfcIdent)
 
-    | SymFunDefn (FunctionDefG TaggedBnfcIdent)
+    | SymFunDefn (FunctionDefG TaggedBnfcIdent TypeTag)
     | SymCallSeqPhrase (TypePhraseG TaggedBnfcIdent)
-    | SymValType (TypeG TaggedBnfcIdent)
     -- used for look up types
-    | SymLocalVar TypeTag
+    | SymLocalSeqVar TypeTag
+  deriving Show
 
 $(concat <$> traverse makePrisms 
     [ ''SymEntry 
@@ -42,6 +42,7 @@ $(concat <$> traverse makeLenses
     [ ''SymEntry 
     , ''SymInfo ]
  )
+
 
 
 {-

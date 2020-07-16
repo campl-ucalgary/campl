@@ -36,7 +36,9 @@ import Text.PrettyPrint.GenericPretty
 #define MPL_TYPE_AST_PLAIN_DATA_DERIVING_CLAUSE ( Eq, Ord, Read, Show, Generic, Out, Data, Typeable )
 
 data Type calldef ident typevar =
-    TypeWithArgs { _typeIdent :: ident, _typeCallDef :: calldef
+    TypeWithArgs { 
+        _typeIdent :: ident
+        , _typeCallDef :: calldef
         , _typeArgs :: [Type calldef ident typevar] }
     | TypeVar { _typeVarIdent :: typevar }
 
@@ -46,7 +48,6 @@ data Type calldef ident typevar =
 
 data SeqTypeF ident t = 
     TypeTupleF { _seqTypeArgs :: (t, NonEmpty t) }
-    | TypeListF { _seqTypeArg :: t }
 
     -- TODO -- IMPLEMENT INT INPUT ON THE FRONT END
     | TypeIntF { _seqTypeIdent :: ident }
@@ -54,9 +55,12 @@ data SeqTypeF ident t =
     | TypeDoubleF { _seqTypeIdent :: ident }
     | TypeStringF { _seqTypeIdent :: ident }
     | TypeUnitF { _seqTypeIdent :: ident }
+    | TypeBoolF 
+    | TypeListF { _seqTypeArg :: t }
     -- arrow types (these cannot be generated from the parser but are used internally in unification)
-    | TypeDesF { _seqTypeIdent :: ident, _seqArrFrom :: [t], _seqArrTo :: t }
-    | TypeFunF { _seqTypeIdent :: ident, _seqArrFrom :: [t], _seqArrTo :: t }
+    | TypeSeqArrF { 
+        _seqArrFrom :: [t]
+        , _seqArrTo :: t }
 
   deriving ( Read, Show, Generic, Out, Data, Functor, Typeable, Foldable, Traversable, Eq )
 

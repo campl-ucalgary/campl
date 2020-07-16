@@ -2,9 +2,12 @@
 module MPLPasses.UnificationErrors where
 
 import Optics
-
-{-
+import MPLAST.MPLASTCore
 
 data UnificationError =
-    MatchFailure (Type BnfcIdent) (Type ident)
--}
+    MatchFailure TypeGTypeTag TypeGTypeTag 
+    | OccursCheck TypeTag TypeGTypeTag 
+    | ForallMatchFailure [(TypeTag, TypeGTypeTag)] 
+  deriving (Show, Eq)
+
+$(makeClassyPrisms ''UnificationError)

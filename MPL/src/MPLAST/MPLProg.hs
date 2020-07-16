@@ -8,6 +8,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module MPLAST.MPLProg where
@@ -25,15 +26,16 @@ import Data.Functor.Foldable.TH
 import GHC.Generics 
 
 import Data.List.NonEmpty
+import Data.Data
 
 newtype Prog defn = Prog { _prog :: [Stmt defn] }
-  deriving (Show, Eq, Read, Semigroup, Monoid)
+  deriving (Show, Eq, Read, Semigroup, Monoid, Data)
 
 
 data Stmt defn = Stmt {
     _stmtDefns :: NonEmpty defn
     , _stmtWhereBindings :: [Stmt defn] 
-} deriving (Show, Eq, Read, Functor, Foldable, Traversable)
+} deriving (Show, Eq, Read, Functor, Data, Foldable, Traversable)
 
 data Defn datadefn codatadefn protdefn coprotdefn fundefn procdefn =
     DataDefn datadefn
@@ -42,7 +44,7 @@ data Defn datadefn codatadefn protdefn coprotdefn fundefn procdefn =
     | CoprotocolDefn coprotdefn
     | FunctionDecDefn fundefn
     | ProcessDecDefn procdefn
-  deriving (Show, Eq, Read)
+  deriving (Show, Eq, Read, Data)
 
 type TypeClausesPhrases neighbors phrasecontext calldef ident typevar = 
     NonEmpty (TypeClause neighbors phrasecontext calldef ident typevar)
@@ -52,7 +54,7 @@ data ObjectType =
     | CodataObj
     | ProtocolObj
     | CoprotocolObj
-  deriving (Show, Eq)
+  deriving (Show, Eq, Data)
 
 data TypeClause neighbors phrasecontext calldef ident typevar = TypeClause {
     _typeClauseName :: ident 
@@ -60,14 +62,14 @@ data TypeClause neighbors phrasecontext calldef ident typevar = TypeClause {
     , _typeClauseStateVar ::  ident
     , _typeClausePhrases :: [TypePhrase phrasecontext calldef ident typevar]
     , _typeClauseNeighbors :: neighbors
-}  deriving (Show, Eq, Read, Generic)
+}  deriving (Show, Eq, Read, Data, Generic)
 
 data TypePhrase phrasecontext calldef ident typevar = TypePhrase {
     _typePhraseContext :: phrasecontext
     , _typePhraseName :: ident
     , _typePhraseFrom :: [Type calldef ident typevar]
     , _typePhraseTo :: Type calldef ident typevar
-} deriving (Show, Eq, Read, Generic)
+} deriving (Show, Eq, Read, Data, Generic)
 
 {-
 data DataPhrase calldef ident = DataPhrase {
@@ -97,7 +99,7 @@ data FunctionDefn pattern letdef typedef typesig calldef ident = FunctionDefn {
     -- , _funTypesFromTo :: Maybe ([Type typecalldef ident], Type typecalldef ident)
     , _funTypesFromTo :: typesig
     , _funDefn :: NonEmpty ([pattern], Expr pattern letdef typedef calldef ident) 
-} deriving (Show, Eq, Read)
+} deriving (Show, Eq, Read, Data)
 
 data ProcessDefn patterns letdef typedef calldef ident typevar = ProcessDefn { 
     _procName :: ident
@@ -105,7 +107,7 @@ data ProcessDefn patterns letdef typedef calldef ident typevar = ProcessDefn {
     , _procDefn :: NonEmpty 
             ( ([Pattern typedef calldef ident], [ident], [ident])
             , ProcessCommands patterns letdef typedef calldef ident) 
-} deriving (Show, Eq, Read)
+} deriving (Show, Eq, Read, Data)
 
 $(concat <$> traverse makeLenses 
     [ ''Prog

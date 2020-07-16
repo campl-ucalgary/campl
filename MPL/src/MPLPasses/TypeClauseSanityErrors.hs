@@ -36,6 +36,7 @@ data TypeClauseSanityCheckError =
     | OverlappingTypeVariables (NonEmpty (TypeClause () () () BnfcIdent BnfcIdent))
     | CodataInputArgStateVarOccurence (TypeClause () () () BnfcIdent BnfcIdent)
     | PhraseToMustBeStateVar (TypeClause () () () BnfcIdent BnfcIdent)
+  deriving Show
 
 $(makeClassyPrisms ''TypeClauseSanityCheckError)
 

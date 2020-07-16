@@ -24,8 +24,11 @@ data TranslateBnfcErrors =
     | IllegalTypeName { _translateBnfcErrorIllegalTypeName :: TypeIBnfc }
     | IllegalNonTypeVar { _translateBnfcErrorIllegalNonTypeVar :: TypeIBnfc }
 
+    | IllegalCasePattern { _translateBnfcErrorIllegalCase :: [PatternIBnfc] }
+
     | IllegalSplit { _translateBnfcErrorIllegalSplit :: [BnfcIdent] }
     | IllegalFork { _translateBnfcErrorIllegalFork :: [BnfcIdent] }
+
   deriving (Show, Eq, Read)
 
 $(makeClassyPrisms ''TranslateBnfcErrors)

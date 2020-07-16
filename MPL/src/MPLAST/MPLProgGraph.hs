@@ -16,6 +16,8 @@ import MPLAST.MPLProg
 import MPLAST.MPLProgI
 import MPLAST.MPLTypeAST
 import MPLAST.MPLPatternAST
+import MPLAST.MPLExprAST
+
 
 import Optics
 
@@ -25,6 +27,8 @@ import Data.Functor.Foldable.TH
 import Data.Void
 
 import GHC.Generics 
+
+import Control.Monad.State
 
 import Data.List.NonEmpty ( NonEmpty (..) )
 import qualified Data.List.NonEmpty as NE
@@ -70,35 +74,73 @@ type TypePhraseG ident = TypePhrase
 data TypeClauseNode ident typevar = 
     TypeClauseNode (TypeClauseKnot ident typevar)
     | TypeClauseLeaf 
-  deriving Show
 
-type TypeG ident = Type (TypeClauseNode ident ident) ident ident
+-- do NOT recurse...
+instance (Eq ident, Eq typevar) => Eq (TypeClauseNode ident typevar) where
+    TypeClauseNode _ == TypeClauseNode _ = True
+    TypeClauseLeaf == TypeClauseLeaf = True
+    _ == _ = False
 
-type PatternG ident = 
+instance (Show ident, Show typevar) => Show (TypeClauseNode ident typevar) where
+    show (TypeClauseNode _) = "TypeClauseNode"
+    show (TypeClauseLeaf) = "TypeClauseLeaf"
+
+type TypeG ident = TypeGTypeVar ident ident
+type TypeGTypeVar ident typevar = Type (TypeClauseNode ident ident) ident typevar
+
+type PatternG ident typevar = 
     Pattern 
-        (TypeG ident)
+        (TypeGTypeVar ident typevar)
         (TypePhraseG ident)
         ident
 
-data FunctionCallValueKnot ident = 
-    FunctionKnot (FunctionDefG ident)
+type ExprG ident typevar = 
+    Expr 
+        (PatternG ident typevar)
+        (Stmt (DefnG ident typevar)) 
+        (TypeGTypeVar ident typevar) 
+        (FunctionCallValueKnot ident typevar) ident
+
+data FunctionCallValueKnot ident typevar = 
+    FunctionKnot (FunctionDefG ident typevar)
     | ConstructorDestructorKnot (TypePhraseG ident)
+  deriving Show
 
-type FunctionDefSigG ident = ([TypeG ident], TypeG ident)
+type StmtG ident typevar = Stmt (DefnG ident typevar)
 
-type FunctionDefG ident = 
+type FunctionDefSigG ident typevar = ([TypeGTypeVar ident typevar], TypeGTypeVar ident typevar)
+
+type FunctionDefG ident typevar = 
     FunctionDefn
-        (PatternG ident)
-        (Stmt (DefnG ident))
-        (TypeG ident)
-        (FunctionDefSigG ident)
-        (FunctionCallValueKnot ident)
+        (PatternG ident typevar)
+        (StmtG ident typevar)
+        (TypeGTypeVar ident typevar)
+        (TypeGTypeVar ident typevar) -- (FunctionDefSigG ident typevar)
+        (FunctionCallValueKnot ident typevar)
         ident
 
-data DefnG ident = 
+
+data DefnG ident typevar = 
     ObjectG (ClausesGraph ident)
-    | FunctionDecDefG (FunctionDefG ident)
+    | FunctionDecDefG (FunctionDefG ident typevar)
     | ProcessDecDefG
+  deriving Show
+
+newtype TypeTag = TypeTag UniqueTag
+  deriving (Eq, Ord)
+
+type TypeGTypeTag = 
+    TypeGTypeVar TaggedBnfcIdent TypeTag
+
+instance Show TypeTag where
+    show (TypeTag (UniqueTag n)) = show n
+
+freshTypeTag ::
+    ( MonadState c m
+    , HasUniqueTag c ) => 
+    m TypeTag
+freshTypeTag = TypeTag <$> freshUniqueTag
+
 
 $(concat <$> traverse makeLenses 
     [ ''ClausesKnot

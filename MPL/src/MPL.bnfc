@@ -13,8 +13,12 @@ layout stop "in" ;
 -- ====================================================================
 --  MPL tokens
 -- ====================================================================
-position token UIdent (upper (letter | digit | '_')*) ;
+-- old version without hashtag
+-- position token UIdent (upper (letter | digit | '_')*) ;
+position token UIdent (('#'upper | upper) (letter | digit | '_')*) ;
 position token PIdent letter (letter | digit | '_' | '\'')* ;
+position token UPIdent (letter | upper) (letter | digit | '_' | '\'')* ;
+
 position token PInteger (["-"] digit | digit) digit* ;
 
 position token Par {"(+)"} ;
@@ -98,7 +102,13 @@ MPL_BRACKETED_TYPE      . MplType3 ::= LBracket MplType RBracket ;
 MPL_LIST_TYPE           . MplType3 ::= LSquareBracket MplType RSquareBracket ;
 MPL_TUPLE_TYPE          . MplType3 ::= LBracket MplType "," [TupleListType] RBracket ;
 
+internal MPL_SEQ_ARROW_TYPE  . MplType3 ::= "forall" [ForallVarList] "." [MplType] "->" MplType ;
+internal MPL_CONC_ARROW_TYPE . MplType3 ::= "forall" [ForallVarList] "." [MplType] "|" [MplType] "=>" [MplType] ;
+
 TUPLE_LIST_TYPE . TupleListType ::= MplType ;
+
+MPL_SEQ_FUN_TYPE_FORALL_LIST . ForallVarList ::= UIdent ;
+separator ForallVarList "," ;
 
 separator nonempty TupleListType "," ;
 

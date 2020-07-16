@@ -68,7 +68,6 @@ L_charac { PT _ (TC $$) }
 L_doubl  { PT _ (TD $$) }
 L_UIdent { PT _ (T_UIdent _) }
 L_PIdent { PT _ (T_PIdent _) }
-L_UPIdent { PT _ (T_UPIdent _) }
 L_PInteger { PT _ (T_PInteger _) }
 L_Par { PT _ (T_Par _) }
 L_Tensor { PT _ (T_Tensor _) }
@@ -95,7 +94,6 @@ Char    :: { Char }    : L_charac { (read ( $1)) :: Char }
 Double  :: { Double }  : L_doubl  { (read ( $1)) :: Double }
 UIdent    :: { UIdent} : L_UIdent { UIdent (mkPosToken $1)}
 PIdent    :: { PIdent} : L_PIdent { PIdent (mkPosToken $1)}
-UPIdent    :: { UPIdent} : L_UPIdent { UPIdent (mkPosToken $1)}
 PInteger    :: { PInteger} : L_PInteger { PInteger (mkPosToken $1)}
 Par    :: { Par} : L_Par { Par (mkPosToken $1)}
 Tensor    :: { Tensor} : L_Tensor { Tensor (mkPosToken $1)}

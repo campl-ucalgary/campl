@@ -5,7 +5,6 @@ module Main where
 import System.IO ( stdin, hGetContents )
 import System.Environment ( getArgs, getProgName )
 import System.Exit ( exitFailure, exitSuccess )
-import Control.Monad (when)
 
 import Language.LexMPL
 import Language.ParMPL
@@ -25,7 +24,7 @@ myLLexer = resolveLayout True . myLexer
 type Verbosity = Int
 
 putStrV :: Verbosity -> String -> IO ()
-putStrV v s = when (v > 1) $ putStrLn s
+putStrV v s = if v > 1 then putStrLn s else return ()
 
 runFile :: (Print a, Show a) => Verbosity -> ParseFun a -> FilePath -> IO ()
 runFile v p f = putStrLn f >> readFile f >>= run v p
@@ -65,7 +64,7 @@ main = do
   args <- getArgs
   case args of
     ["--help"] -> usage
-    [] -> getContents >>= run 2 pMplProg
+    [] -> hGetContents stdin >>= run 2 pMplProg
     "-s":fs -> mapM_ (runFile 0 pMplProg) fs
     fs -> mapM_ (runFile 2 pMplProg) fs
 
