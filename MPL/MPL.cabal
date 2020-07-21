@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 430f63a9252dc808b472e249fd5e1890fe8cd7c794b390bf3a79fbf749defd96
+-- hash: 61491a44e320d524e9a656684ca77640a3f97e8352db49d8876a5e51122e1c7b
 
 name:           MPL
 version:        0.1.0.0
@@ -55,15 +55,16 @@ library
       MPLAST.MPLTypeAST
       MPLCompile
       MPLMain
+      MPLPasses.GraphGenCore
       MPLPasses.InferExprType
       MPLPasses.MPLRunPasses
       MPLPasses.SymbolTable
+      MPLPasses.TieDefns
+      MPLPasses.TieDefnsErrors
+      MPLPasses.TieDefnsTypes
+      MPLPasses.TieDefnsUtils
       MPLPasses.TiePattern
-      MPLPasses.TieTermUtils
       MPLPasses.TieTypeClause
-      MPLPasses.ToGraph
-      MPLPasses.ToGraphErrors
-      MPLPasses.ToGraphTypes
       MPLPasses.TypeClauseSanityErrors
       MPLPasses.Unification
       MPLPasses.UnificationErrors
@@ -72,6 +73,7 @@ library
       MPLUtil.Data.List.NonEmpty
       MPLUtil.Data.Tuple.Optics
       MPLUtil.Optics.TH
+      MPLUtil.UniqueSupply
   other-modules:
       Paths_MPL
   hs-source-dirs:

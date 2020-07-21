@@ -1,5 +1,4 @@
-{-# LANGUAGE QuasiQuotes #-}
-module TypeInferenceSpec ( spec ) where
+{-# LANGUAGE QuasiQuotes #-} module TypeInferenceSpec ( spec ) where
 
 import Test.Hspec
 import Test.QuickCheck
@@ -16,24 +15,23 @@ import MPLAST.MPLProgI
 import MPLAST.MPLASTCore
 import MPLCompile
 
-import MPLPasses.ToGraph
-import MPLPasses.ToGraphErrors
-
 import Language.AbsMPL
 import Language.LayoutMPL
 import Language.ParMPL
 import Language.ErrM
 
+spec :: Spec
+spec = do
+    describe "TODO"  $ do
+        it "TODO" $ do
+            assertEqual "" True True
+
+{-
 translateParseLexGraph :: 
     String -> 
     Either ToGraphErrors (Prog (DefnG TaggedBnfcIdent TypeTag))
 translateParseLexGraph str = progInterfaceToGraph $ unsafeTranslateParseLex str 
 
-spec :: Spec
-spec = do
-    describe "hmmm"  $ do
-        it "Exhaustively testing equalities.." $ do
-            assertEqual "" True True
 
 natfun = [r|
 defn 
@@ -45,3 +43,4 @@ where
             Nat :: STATEVAR -> STATEVAR
             Zero ::         -> STATEVAR
 |]
+-}

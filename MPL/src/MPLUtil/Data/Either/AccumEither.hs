@@ -3,6 +3,9 @@ module MPLUtil.Data.Either.AccumEither where
 import Control.Monad.Except
 import Data.Bifunctor
 
+import Data.List.NonEmpty ( NonEmpty (..) )
+import qualified Data.List.NonEmpty as NE 
+
 newtype AccumEither e a = AccumEither { runAccumEither :: Either e a }
 
 instance Semigroup e => Functor (AccumEither e) where
@@ -35,6 +38,14 @@ liftAEither = AccumEither
 
 liftAccumEither :: (MonadError e m, Semigroup e) => AccumEither e a -> m a
 liftAccumEither = liftEither . runAccumEither
+
+accumEithers :: 
+    ( Traversable t
+    , Traversable s 
+    , Semigroup (s e)) => 
+    t (Either (s e) a) ->
+    Either (s e) (t a)
+accumEithers = runAccumEither . traverse liftAEither
 
 {- $>
 runAccumEither (traverse (liftAEither . Left ) [[1],[2],[3]])

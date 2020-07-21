@@ -11,6 +11,7 @@ import Text.RawString.QQ
 
 import MPLCompile
 import MPLPasses.TieTypeClause
+import MPLPasses.GraphGenCore
 import MPLAST.MPLProgGraph
 import MPLAST.MPLTypeAST
 import MPLAST.MPLASTCore
@@ -18,13 +19,16 @@ import MPLAST.MPLASTCore
 import Data.Maybe
 import Data.List.NonEmpty ( NonEmpty (..) )
 import qualified Data.List.NonEmpty as NE
+import Control.Monad.RWS
 
 -- helper functions for running the graph maker..
-emptyContext = TieTypeClauseContext [] (UniqueTag 0)
+--
 unsafeRunMakeTypeClauseGraph :: NonEmpty (TypeClause () () () BnfcIdent BnfcIdent) -> ClausesGraph TaggedBnfcIdent
-unsafeRunMakeTypeClauseGraph a = case makeTypeClauseGraph DataObj emptyContext a of
-        Right n -> snd n
-        Left (n :: NonEmpty TieTypeClauseError) -> error $ show n 
+unsafeRunMakeTypeClauseGraph a = 
+    case runRWS (unGraphGenCore (tieTypeClauseGraph [] DataObj a))
+        defaultGraphGenCoreEnv defaultGraphGenCoreState of
+        (res,_, []) -> res
+        (_ ,_,errs) -> error $ show errs
 
 unsafeMakeTypeClauseGraphFromStr str = case unsafeTranslateParseLex str of
     Prog [Stmt (DefnI (DataDefn n):| []) _] -> unsafeRunMakeTypeClauseGraph n

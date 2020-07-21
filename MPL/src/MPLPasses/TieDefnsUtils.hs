@@ -1,6 +1,6 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE TupleSections #-}
-module MPLPasses.TieTermUtils where
+module MPLPasses.TieDefnsUtils where
 
 import Optics 
 import Optics.State
@@ -11,8 +11,8 @@ import Control.Applicative
 import MPLAST.MPLASTCore
 import MPLAST.MPLTypeAST
 import MPLPasses.SymbolTable
-import MPLPasses.ToGraphTypes
-import MPLPasses.ToGraphErrors
+import MPLPasses.TieDefnsTypes
+import MPLPasses.TieDefnsErrors
 import MPLPasses.Unification
 
 import MPLPasses.Unification
@@ -34,20 +34,27 @@ import Debug.Trace
 
 lookupSeqPhrase :: 
     BnfcIdent -> 
-    StateT ToGraphState 
-        (Either ToGraphErrors) 
-        (UniqueTag, TypePhraseG TaggedBnfcIdent)
-lookupSeqPhrase ident = do
-    symtable <- guse toGraphSymbolTable
+    SymbolTable -> 
+    Maybe (UniqueTag, TypePhraseG TaggedBnfcIdent)
+lookupSeqPhrase ident ~symtable =  
     let candidates = filter ((ident ^. bnfcIdentName==) . fst) symtable
         res = helper candidates
-    maybe (throwError errormsg) pure res
+    in res
   where
-    helper ((_, SymEntry tag (SymSeqPhrase n)):rst) = Just (tag, n)
+    helper ((_, SymEntry tag (SymPhrase n)):rst) 
+        | objtype == CodataObj || objtype == DataObj = Just (tag, n)
+      where
+        objtype = n ^. 
+            typePhraseContext 
+            % phraseParent 
+            % typeClauseNeighbors 
+            % clauseGraph 
+            % clauseGraphObjectType
+
     helper ((_, SymEntry _ _):rst) = helper rst
     helper [] = Nothing
 
-    errormsg = liftToGraphErrors (_SeqPhraseNotInScope # ident)
+    -- errormsg = liftToGraphErrors (_SeqPhraseNotInScope # ident)
 
 clauseSubstitutions :: 
     ( MonadState s m 
@@ -62,7 +69,12 @@ clauseSubstitutions ::
         -- ( this includes the state variables )
 clauseSubstitutions clauseg = do
     -- get the sub args
-    clauseArgSubs <- traverse 
+    -- THE PROBLEM: the valueof the unique ID depends 
+    -- in the future MUST EVALUATE THIS. Hence, to fix this,
+    -- we need a way to ``split" the unique number generator
+    -- so we can have 2 distinct paths of unique ids so this
+    -- can be truly lazy..
+    clauseargsubs <- traverse 
         (\n -> second TypeTag . (n,) <$> freshUniqueTag) 
         (clauseg ^. typeClauseArgs) 
 
@@ -74,7 +86,7 @@ clauseSubstitutions clauseg = do
             clauseg ^. typeClauseNeighbors % clauseGraph % clauseGraphSpine
         argsubstitions = map 
             (second (flip TypeVar [])) 
-            clauseArgSubs
+            clauseargsubs
         statevarsubstitiions = map 
             (\n -> 
                 ( n ^. typeClauseStateVar
@@ -87,5 +99,5 @@ clauseSubstitutions clauseg = do
             clausegraphspine
 
     return ( clausestatevartype
-            , map snd clauseArgSubs
+            , map snd clauseargsubs
             , statevarsubstitiions ++ argsubstitions)
