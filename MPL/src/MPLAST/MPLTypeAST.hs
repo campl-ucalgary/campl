@@ -40,7 +40,12 @@ data Type calldef ident typevar =
         _typeIdent :: ident
         , _typeCallDef :: calldef
         , _typeArgs :: [Type calldef ident typevar] }
-    | TypeVar { _typeVarIdent :: typevar }
+    | TypeVar { 
+        _typeVarIdent :: typevar 
+        , _typeArgs :: [Type calldef ident typevar] 
+            -- normally, typeArgs is empty. If we have higher kinded 
+            -- data, this is NON empty
+        }
 
     | TypeSeq (SeqTypeF ident (Type calldef ident typevar))
     | TypeConc (ConcTypeF ident (Type calldef ident typevar))
@@ -81,7 +86,7 @@ typeCallDefTraversal = traversalVL trv
   where
     trv f (TypeWithArgs ident calldef rst) = 
         TypeWithArgs ident <$> f calldef <*> traverse (trv f) rst
-    trv f (TypeVar n) = pure $ TypeVar n
+    trv f (TypeVar n ns) = TypeVar n <$> traverse (trv f) ns
     trv f (TypeSeq seq) = TypeSeq <$> traverse (trv f) seq
     trv f (TypeConc conc) = TypeConc <$> traverse (trv f) conc
 

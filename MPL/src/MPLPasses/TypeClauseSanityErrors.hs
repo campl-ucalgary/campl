@@ -9,7 +9,8 @@ import Optics.State.Operators
 import MPLAST.MPLASTCore
 import MPLAST.MPLTypeAST
 import MPLAST.MPLProgGraph
-import MPLPasses.ToGraphTypes
+import MPLPasses.TieDefnsTypes
+import MPLPasses.TieDefnsErrors
 
 import Data.Functor.Foldable
 
@@ -25,85 +26,84 @@ import Data.Bool
 import Data.List
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
+import Data.Foldable
 
 import MPLUtil.Data.Either.AccumEither
 
 import Debug.Trace
 
-data TypeClauseSanityCheckError =
-    InvalidMutuallyRecursiveTypeArgDec (NonEmpty (TypeClause () () () BnfcIdent BnfcIdent))
-    | OverlappingTypeVariables (NonEmpty (TypeClause () () () BnfcIdent BnfcIdent))
-    | CodataInputArgStateVarOccurence (TypeClause () () () BnfcIdent BnfcIdent)
-    | PhraseToMustBeStateVar (TypeClause () () () BnfcIdent BnfcIdent)
-  deriving Show
-
-$(makeClassyPrisms ''TypeClauseSanityCheckError)
-
 -- recall that a statevar MUST occur in the input args of
 -- codata
 codataStateVarOccurenceCheck :: 
-    forall e.
-    ( AsTypeClauseSanityCheckError e ) =>
+    forall m e.
+    ( AsTypeClauseError e
+    , MonadWriter [e] m ) =>
     NonEmpty (TypeClause () () () BnfcIdent BnfcIdent) ->
-    Either (NonEmpty e) ()
-codataStateVarOccurenceCheck clauses = void $ liftEither 
-    $ runAccumEither $ traverse (liftAEither . f) clauses
+    -- Either (NonEmpty e) ()
+    m ()
+codataStateVarOccurenceCheck clauses = traverse_ f clauses
   where
-    f :: TypeClause () () () BnfcIdent BnfcIdent -> Either (NonEmpty e) ()
-    f clause = bool (Left $ _CodataInputArgStateVarOccurence # clause :| []) (return ()) check
+    f :: TypeClause () () () BnfcIdent BnfcIdent -> m ()
+    f clause = bool (tell [_CodataInputArgStateVarOccurence # clause]) (return ()) check
       where
         check = all
             ( any ( maybe False 
-                    ( (clause ^. typeClauseStateVar % bnfcIdentName ==)
-                    . view bnfcIdentName)) . map (preview _TypeVar) 
+                    (\(ident, args) -> 
+                            bool False 
+                                (clause ^. typeClauseStateVar % bnfcIdentName 
+                                    == ident ^. bnfcIdentName) (null args)
+                     ) ) . map (preview _TypeVar)
                 . view typePhraseFrom ) 
             ( clause ^. typeClausePhrases)
 
 -- used for data, protocol, 
-phraseToVarsAreStateVar ::
-    forall e.
-    ( AsTypeClauseSanityCheckError e ) =>
+phraseToVarsAreStateVarCheck ::
+    forall m e.
+    ( AsTypeClauseError e
+    , MonadWriter [e] m ) =>
     NonEmpty (TypeClause () () () BnfcIdent BnfcIdent) ->
-    Either (NonEmpty e) ()
-phraseToVarsAreStateVar clauses = void $ liftEither 
-    $ runAccumEither $ traverse (liftAEither . f) clauses
+    m ()
+phraseToVarsAreStateVarCheck clauses = traverse_ f clauses
   where
-    f :: TypeClause () () () BnfcIdent BnfcIdent -> Either (NonEmpty e) ()
-    f clause = bool (Left $ _PhraseToMustBeStateVar # clause :| []) (return ()) True
+    f :: TypeClause () () () BnfcIdent BnfcIdent -> m ()
+    f clause = bool (tell [_PhraseToMustBeStateVar # clause]) (return ()) check
       where
         stvname = clause ^. typeClauseStateVar % bnfcIdentName
         check = all 
-            ( maybe False ((stvname==) . view bnfcIdentName)
+            ( maybe False (\(ident, args) -> 
+                        bool False (ident ^. bnfcIdentName == stvname) (null args))
             . preview (typePhraseTo % _TypeVar) ) (clause ^. typeClausePhrases)
 
 -- used for co protocol 
 -- mostly duplicated code of switching to checking the from vars
-phraseFromVarsAreStateVar ::
-    forall e.
-    ( AsTypeClauseSanityCheckError e ) =>
+phraseFromVarsAreStateVarCheck ::
+    forall m e.
+    ( AsTypeClauseError e
+    , MonadWriter [e] m ) =>
     NonEmpty (TypeClause () () () BnfcIdent BnfcIdent) ->
-    Either (NonEmpty e) ()
-phraseFromVarsAreStateVar clauses = void $ liftEither 
-    $ runAccumEither $ traverse (liftAEither . f) clauses
+    m ()
+phraseFromVarsAreStateVarCheck clauses = traverse_ f clauses
   where
-    f :: TypeClause () () () BnfcIdent BnfcIdent -> Either (NonEmpty e) ()
-    f clause = bool (Left $ _PhraseToMustBeStateVar # clause :| []) (return ()) True
+    f :: TypeClause () () () BnfcIdent BnfcIdent -> m ()
+    f clause = bool (tell [_PhraseToMustBeStateVar # clause]) (return ()) check
       where
         stvname = clause ^. typeClauseStateVar % bnfcIdentName
         check = all ( g . view typePhraseFrom ) (clause ^. typeClausePhrases)
-        g [TypeVar tpvar] = stvname ==  view bnfcIdentName tpvar
+        g [TypeVar tpvar []] = stvname ==  view bnfcIdentName tpvar
         g _ = False
 
 typeClauseArgsSanityCheck ::
-    ( AsTypeClauseSanityCheckError e ) =>
+    forall m e.
+    ( AsTypeClauseError e
+    , MonadWriter [e] m ) =>
     NonEmpty (TypeClause () () () BnfcIdent BnfcIdent) ->
-    Either (NonEmpty e) ()
+    m ()
 typeClauseArgsSanityCheck clause@(TypeClause name args stv phrases () :| rst) 
     | mutuallyrecursivevalidity && overlappingargsvalidity = return ()
-    | not mutuallyrecursivevalidity && not overlappingargsvalidity = throwError $ 
-        mutuallyrecursivevalidityerror <> overlappingtypevarerror
-    | not mutuallyrecursivevalidity = throwError mutuallyrecursivevalidityerror
-    | otherwise = throwError $ overlappingtypevarerror
+    | not mutuallyrecursivevalidity && not overlappingargsvalidity = 
+        tell [mutuallyrecursivevalidityerror, overlappingtypevarerror ]
+    | not mutuallyrecursivevalidity = tell [mutuallyrecursivevalidityerror]
+    | otherwise = tell [overlappingtypevarerror]
   where
     focusedargsnames = map (view bnfcIdentName) args
     otherclauseargs = map (map (view bnfcIdentName) . view typeClauseArgs) rst
@@ -115,5 +115,5 @@ typeClauseArgsSanityCheck clause@(TypeClause name args stv phrases () :| rst)
     argsandstatevars = args ++ statevars
     overlappingargsvalidity = length (nub argsandstatevars) == length argsandstatevars
 
-    mutuallyrecursivevalidityerror = _InvalidMutuallyRecursiveTypeArgDec # clause :| []
-    overlappingtypevarerror = _OverlappingTypeVariables # clause :| []
+    mutuallyrecursivevalidityerror = _InvalidMutuallyRecursiveTypeArgDec # clause 
+    overlappingtypevarerror = _OverlappingTypeVariables # clause 

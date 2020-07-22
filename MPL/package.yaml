@@ -28,6 +28,7 @@ dependencies:
     - base >= 4.7 && < 5
     - containers
     - mtl
+
     - pretty
     - GenericPretty
     - array

@@ -42,7 +42,7 @@ thesisEx = (thesisExSol, thesisExEq)
     thesisExSol = emptyPackage 
         & packageExisVar  .~ Set.fromList [x4]
         & packageFreeVars .~ Set.fromList [x0]
-        & packageSubs     .~ [(x0, TypeWithArgs list TypeClauseLeaf [TypeWithArgs list TypeClauseLeaf [TypeVar x4]])]
+        & packageSubs     .~ [(x0, TypeWithArgs list TypeClauseLeaf [TypeWithArgs list TypeClauseLeaf [TypeVar x4 []]])]
     
     thesisExEq = TypeEqnsExist [x1, x2] [x0IsListx1, x1isx2, TypeEqnsExist [x3,x4] [x3IsListx4, x2isx3]]
     
@@ -53,20 +53,20 @@ thesisEx = (thesisExSol, thesisExEq)
     x4 = TypeTag $ UniqueTag 4
     
     x0IsListx1 = TypeEqnsEq 
-        ( TypeVar x0
+        ( TypeVar x0 []
         , TypeWithArgs 
             list
             TypeClauseLeaf
-            [TypeVar x1]
+            [TypeVar x1 []]
         )
-    x1isx2 = TypeEqnsEq (TypeVar x1,TypeVar x2)
+    x1isx2 = TypeEqnsEq (TypeVar x1 [],TypeVar x2 [])
     
     x3IsListx4 = TypeEqnsEq 
-        ( TypeVar x3
-        , TypeWithArgs list TypeClauseLeaf [TypeVar x4])
+        ( TypeVar x3 []
+        , TypeWithArgs list TypeClauseLeaf [TypeVar x4 []])
     
     x2isx3 = TypeEqnsEq
-        ( TypeVar x2
-        , TypeVar x3 )
+        ( TypeVar x2 []
+        , TypeVar x3 [] )
     
     list = TaggedBnfcIdent (BnfcIdent ("List", (-1,-1))) (UniqueTag 5)

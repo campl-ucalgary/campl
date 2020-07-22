@@ -55,9 +55,9 @@ substitute ::
      TypeGTypeTag
 substitute (v, sub) = cata f
   where
-    f (TypeVarF ident) 
+    f (TypeVarF ident args) 
         | v == ident = sub
-        | otherwise = TypeVar ident
+        | otherwise = TypeVar ident args
     f n = embed n
 
 -- converts the graph type to the tagged type
@@ -68,7 +68,11 @@ substitutesTypeGToTypeGTypeTag ::
 substitutesTypeGToTypeGTypeTag subs typeg = cata f typeg 
   where
     f (TypeWithArgsF a call bs) = TypeWithArgs a call <$> sequenceA bs
-    f (TypeVarF a) = lookup a subs
+    f (TypeVarF a []) = lookup a subs
+        -- TODO - fix this! We need proper error handling of data with 
+        -- the wrong kind -- for now, we completely ignore higher kinded
+        -- data...
+    f (TypeVarF a args) = trace "Warning: higher kinded data not supported yet!" (lookup a subs)
     f (TypeSeqF seq) = TypeSeq <$> sequenceA seq
     f (TypeConcF conc) = TypeConc <$> sequenceA conc
 
@@ -119,8 +123,26 @@ match = f
             concat <$> traverse (uncurry f) (zip args0 args1)
         | otherwise = Left $ _MatchFailure # (t0, t1)
     -- one is a type varaible (need symmetry as well)
-    f (TypeVar a) b = pure <$> mkValidSub a b
-    f a (TypeVar b) = pure <$> mkValidSub b a
+    f (TypeVar a []) b = pure <$> mkValidSub a b
+    f a (TypeVar b []) = pure <$> mkValidSub b a
+
+    -- cases for higher kinded data
+    f t0@(TypeVar a args) t1@(TypeVar b brgs) 
+        | length args /= length brgs = Left $ _MatchFailure # (t0, t1)
+        | otherwise = 
+            (:) <$> mkValidSub a (TypeVar b []) 
+            <*> (concat <$> traverse (uncurry f) (zip args brgs))
+    f t0@(TypeVar a args) t1@(TypeWithArgs b cxt brgs) 
+        | length args /= length brgs = Left $ _MatchFailure # (t0, t1)
+        | otherwise = 
+            (:) <$> mkValidSub a (TypeWithArgs b cxt []) 
+            <*> (concat <$> traverse (uncurry f) (zip args brgs))
+    -- perhaps in the future, we need to add more cases for
+    -- passing built in types in a higher order fashion...
+    -- Although, it will be strange because of the changing sequential types
+    -- and the fact that it literally can't parse passing a tensor / par in 
+    -- a higher kinded way. This would require some serious changing of
+    -- how this system handles operators..
 
     f (TypeSeq a) (TypeSeq b) = case (a,b) of
         (TypeIntF _, TypeIntF _) -> pure []
@@ -156,7 +178,7 @@ failsOccursCheck ::
     TypeTag -> 
     TypeGTypeTag ->
     Bool
-failsOccursCheck _ (TypeVar _) = False
+failsOccursCheck _ (TypeVar _ []) = False
 failsOccursCheck n tp = n `elem` toList tp
 
 mkValidSub :: 
@@ -220,7 +242,7 @@ solveTypeEq = cata f
         packageUniversalElim pkg
 
 isTrivialSubstitution :: (TypeTag, TypeGTypeTag) -> Bool
-isTrivialSubstitution (s, TypeVar t) = s == t
+isTrivialSubstitution (s, TypeVar t []) = s == t
 isTrivialSubstitution _ = False
 
 -- prashant does both elimatino of both existential and forall at the same time?
@@ -241,7 +263,7 @@ packageExistentialElim pkg = do
         Either e (Package TaggedBnfcIdent TypeTag)
     f v acc = let subs = alignSubs v $ acc ^. packageSubs in case find ((== v) . fst) subs of
         Just sub -> do 
-            subs' <- coalesce sub $ deleteBy (\v n -> fst v == fst n) (v, TypeVar v) subs
+            subs' <- coalesce sub $ deleteBy (\v n -> fst v == fst n) (v, TypeVar v []) subs
                 -- some stupid stuff just to get deleteBy to type check...
             subs'' <- linearize subs'
             return $ acc & packageSubs .~ subs''
@@ -269,7 +291,7 @@ packageUniversalElim pkg = do
 alignSubs :: TypeTag -> [(TypeTag, TypeGTypeTag)] -> [(TypeTag, TypeGTypeTag)]
 alignSubs k = map g
   where
-    g (a, TypeVar b) 
-        | k == b = (b, TypeVar a)
-        | otherwise = (a, TypeVar b)
+    g (a, TypeVar b []) 
+        | k == b = (b, TypeVar a [])
+        | otherwise = (a, TypeVar b [])
     g n = n 

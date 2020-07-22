@@ -19,8 +19,8 @@ import MPLAST.MPLASTTranslateErrors
 import MPLAST.MPLProgI
 import MPLAST.MPLASTCore
 
-import MPLPasses.ToGraph
-import MPLPasses.ToGraphErrors
+import MPLPasses.TieDefns
+import MPLPasses.TieDefnsErrors
 
 import MPLPasses.MPLRunPasses
 
@@ -40,7 +40,9 @@ unsafeTranslateParseLexGraph ::
 unsafeTranslateParseLexGraph str = 
     case progInterfaceToGraph $ unsafeTranslateParseLex str of
         Right graph -> graph
-        Left errs -> error $ show (errs :: ToGraphErrors)
+        Left errs -> error $ show errs
+
+translateParseLexGraph str = progInterfaceToGraph $ unsafeTranslateParseLex str 
 
 progGTypes :: 
     (Prog (DefnG TaggedBnfcIdent TypeTag)) -> 
@@ -53,20 +55,64 @@ progGTypes (Prog defsg) = concat $ map f defsg
 
 typeTester = intercalate "\n" . map pprint . progGTypes . unsafeTranslateParseLexGraph
 
-testprg = [r|
-
-defn 
-    fun functiontest =
-        Succ(a),Zero -> 
-            case Zero of
-                Zero -> Zero
-where
+testdata = [r|
+defn
     data
-        Nat -> C =
-            Succ :: C -> C
-            Zero ::   -> C
+        DataOne(A,B) -> Chicken =
+            DataOne :: Beef -> Chicken
+            DataOne ::   DataThree(A),B      -> Chicken
+        and 
+        DataTwo(A,B) -> Beef =
+            DataTwo :: Chicken, Beef -> Beef
+
+    data 
+        DataThree(A) -> Pork =
+            DataThree :: DataThree(Pork) -> Pork
+
 |]
 
+testnat = [r|
+defn 
+    fun functiontest =
+        Nat(Nat(a)),Zero -> Zero
+where
+    data
+        Nat -> STATEVAR =
+            Nat :: STATEVAR -> STATEVAR
+            Zero ::         -> STATEVAR
+|]
+
+testdataoutofscope = [r|
+data 
+    Unit -> S =
+        Unit :: -> S
+
+fun functiontest =
+    Potato -> Unit
+
+|]
+
+
+testmutnat = [r|
+data 
+    ThatsSomeCool -> S =
+        ThatsSomeCool :: -> S
+defn 
+    fun functiontest =
+        -- Potato -> Twos(TwosEnd, Zeros (TwosEnd))
+        Ones(Zeros(TwosEnd),b) -> Twos(TwosEnd, Zeros (TwosEnd))
+        Ones(Zeros(ThatsSomeCool),b) -> Twos(TwosEnd, Zeros (TwosEnd))
+where
+    data
+        Ones(A) -> ONES =
+            Ones :: ONES, TWOS -> ONES
+            Zeros :: A -> ONES
+        and
+        Twos(A) -> TWOS =
+            Twos :: TWOS, ONES -> TWOS
+            TwosEnd ::         -> TWOS
+
+|]
 
 
 unsafeTranslateParseLex :: String -> ProgI BnfcIdent

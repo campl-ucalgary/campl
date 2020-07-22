@@ -16,8 +16,7 @@ import MPLAST.MPLProg
 import MPLAST.MPLProgI
 import MPLAST.MPLTypeAST
 import MPLAST.MPLPatternAST
-import MPLAST.MPLExprAST
-
+import MPLAST.MPLExprAST 
 
 import Optics
 
@@ -42,7 +41,10 @@ type ClauseGraphSpine ident = NonEmpty ( TypeClauseG ident )
 
 newtype ClausesKnot ident typevar = ClausesKnot {
     _clauseGraph :: ClausesGraph ident 
-}  deriving Show
+}  
+
+instance Show (ClausesKnot ident typevar) where
+    show (ClausesKnot _) = "ClausesKnot _ "
 
 newtype ClausePhraseKnot neighbors ident typevar = ClausePhraseKnot { 
         _phraseParent :: TypeClause 
@@ -51,7 +53,9 @@ newtype ClausePhraseKnot neighbors ident typevar = ClausePhraseKnot {
             (TypeClauseNode ident typevar)
             ident
             typevar
-    }  deriving Show
+    }  
+instance Show (ClausePhraseKnot neighbors ident typevar) where
+    show (ClausePhraseKnot _) = "ClausePhraseKnot _ "
 
 type TypeClauseKnot ident typevar =
     TypeClause 

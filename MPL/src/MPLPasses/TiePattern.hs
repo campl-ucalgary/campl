@@ -1,5 +1,6 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE FlexibleContexts #-}
 module MPLPasses.TiePattern where
 
 import Optics 
@@ -11,9 +12,9 @@ import Control.Applicative
 import MPLAST.MPLASTCore
 import MPLAST.MPLTypeAST
 import MPLPasses.SymbolTable
-import MPLPasses.ToGraphTypes
-import MPLPasses.ToGraphErrors
-import MPLPasses.TieTermUtils
+import MPLPasses.TieDefnsTypes
+import MPLPasses.TieDefnsErrors
+import MPLPasses.TieDefnsUtils
 
 import MPLPasses.Unification
 
@@ -23,59 +24,80 @@ import Data.Map ( Map (..) )
 import qualified Data.Map as Map
 
 import Control.Monad.State
+import Control.Monad.Reader
 import Control.Monad.Except
+import Control.Monad.Writer
 
 import Data.List.NonEmpty ( NonEmpty (..) )
 import qualified Data.List.NonEmpty as NE
 import Data.Maybe
 
+
 import Control.Arrow
 
+{-
 patternsIToGraph :: 
+    ( MonadReader e m
+    , MonadWriter [err] m
+    , MonadState s m
+    , HasTieDefnsState e 
+    , HasUniqueTag s 
+    , AsTieDefnsError err ) =>
     TagTypeMap -> 
     [(TypeTag, PatternI BnfcIdent)] -> 
-    StateT ToGraphState 
-        (Either ToGraphErrors) 
-        [ ( (SymbolTable, [TypeEqns TaggedBnfcIdent TypeTag])
+    m [ ( (SymbolTable, [TypeEqns TaggedBnfcIdent TypeTag])
         , PatternG TaggedBnfcIdent TypeTag) ]
 patternsIToGraph tagmap tagspatts = traverse (uncurry (patternIToGraph tagmap)) tagspatts
 
 unwrappedPatternsIToGraph ::
+    ( MonadReader e m
+    , MonadWriter [err] m
+    , MonadState s m
+    , HasTieDefnsState e 
+    , HasUniqueTag s 
+    , AsTieDefnsError err ) =>
     TagTypeMap -> 
     [(TypeTag, PatternI BnfcIdent)] -> 
-    StateT ToGraphState 
-        (Either ToGraphErrors) 
-        ( (SymbolTable, [TypeEqns TaggedBnfcIdent TypeTag])
-        , [PatternG TaggedBnfcIdent TypeTag])
+    m ( (SymbolTable, [TypeEqns TaggedBnfcIdent TypeTag])
+      , [PatternG TaggedBnfcIdent TypeTag])
 unwrappedPatternsIToGraph tagmap patts = 
-    first (concat *** concat <<< unzip) . unzip 
+    first (mconcat *** mconcat <<< unzip) . unzip 
     <$> patternsIToGraph tagmap patts
 
 patternIToGraph :: 
+    ( MonadReader e m
+    , MonadWriter [err] m
+    , MonadState s m
+    , HasTieDefnsState e 
+    , HasUniqueTag s 
+    , AsTieDefnsError err ) =>
     TagTypeMap -> 
     TypeTag -> 
     PatternI BnfcIdent -> 
-    StateT ToGraphState 
-        (Either ToGraphErrors) 
-        ( (SymbolTable, [TypeEqns TaggedBnfcIdent TypeTag])
+    m ( (SymbolTable, [TypeEqns TaggedBnfcIdent TypeTag])
         , PatternG TaggedBnfcIdent TypeTag)
 patternIToGraph tagmap ttype pattern = 
     f ttype pattern
   where
     f ttype (PConstructor ident () ctsargs ()) = do
-        (tag, phraseg) <- lookupSeqPhrase ident
+        symtable <- gview tieDefnsSymbolTable
+        -- (tag, phraseg) <- lookupSeqPhrase ident symtable
+        let lkup = lookupSeqPhrase ident symtable
 
+        undefined
+    {-
         -- check if it is a data type
         unless 
             (has _DataObj (phraseg ^. phraseGObjType)) 
-            (throwError $ liftToGraphErrors (_ExpectedDataConstructor # ident))
+            undefined
+            -- (throwError $ liftTieDefnsError (_ExpectedDataConstructor # ident))
         -- check arity
         let expectedarity = length (phraseg ^. typePhraseFrom)
             actualarity = length ctsargs
         unless
             (expectedarity == actualarity)
-            (throwError $ liftToGraphErrors 
-                (_ArityMismatch # (ident, expectedarity, actualarity)))
+            undefined
+            -- (throwError $ liftTieDefnsError (_ArityMismatch # (ident, expectedarity, actualarity)))
 
         --  query the phrase substitutions from the graph
         (clausetype, ttypeargs, clausesubstitutions) <- 
@@ -87,14 +109,14 @@ patternIToGraph tagmap ttype pattern =
         ((ctsargssym, ctsargstypeeqs), ctsargspatts) <- 
             unwrappedPatternsIToGraph tagmap $ zip ttypectsargs ctsargs
 
-        let syms = []  
+        let syms = ctsargssym  
             typeeqs = TypeEqnsExist (ttypectsargs ++ ttypeargs) $
-                [ TypeEqnsEq ( _TypeVar # ttype
+                [ TypeEqnsEq ( _TypeVar # (ttype, [])
                     , clausetype ) ] 
                 ++ zipWith g ttypectsargs (phraseg ^. typePhraseFrom)
                 ++ ctsargstypeeqs
             g typetag ctsargtype = TypeEqnsEq
-                ( TypeVar typetag
+                ( _TypeVar # (typetag, [])
                 , fromJust $ substitutesTypeGToTypeGTypeTag 
                     clausesubstitutions ctsargtype )
             pat' = PConstructor 
@@ -102,19 +124,21 @@ patternIToGraph tagmap ttype pattern =
                 phraseg ctsargspatts (fromJust 
                     $ Map.lookup ttype tagmap)
         return 
-            ( (syms ++ ctsargssym, [typeeqs] )
+            ( (ctsargssym, [typeeqs] )
             , pat')
+
 
     f ttype (PUnit ident ()) = do
         -- tag doesn't matter for constants...
         ident' <- tagBnfcIdent ident
         return 
-            ( ([], [TypeEqnsEq (TypeVar ttype, TypeSeq $ TypeUnitF ident')] )
+            ( (mempty, [TypeEqnsEq (_TypeVar # (ttype, []), TypeSeq $ TypeUnitF ident')] )
             , PUnit ident' $ fromJust $ Map.lookup ttype tagmap )
 
     f ttype (PRecord recordphrases ()) = do
+        symtable <- gview toGraphEnvSymbolTable
         (phrasestags, phrasesg@(focusedphraseg :| rstphraseg)) <- NE.unzip <$> 
-            traverse (lookupSeqPhrase . fst) recordphrases
+            traverse (liftEither . flip lookupSeqPhrase symtable . fst) recordphrases
 
         -- the focused clause (should be the same of all the 
         -- phrases ideally....) we check this immediately after
@@ -122,14 +146,14 @@ patternIToGraph tagmap ttype pattern =
 
         -- check if all destructors
         unless (all (CodataObj==) $ fmap (view phraseGObjType) phrasesg)
-            (throwError $ liftToGraphErrors 
-                (_ExpectedCodataDestructor # fmap fst recordphrases))
+            undefined
+            -- (throwError $ liftTieDefnsError (_ExpectedCodataDestructor # fmap fst recordphrases))
 
         -- check if all from the same codata clause
         unless (all (focusedclauseg ^. typeClauseName ==) $
             map (view $ typePhraseContext % phraseParent % typeClauseName) rstphraseg)
-            (throwError $ liftToGraphErrors 
-                (_ExpectedDestructorsFromSameClause # fmap fst recordphrases))
+            undefined
+            -- (throwError $ liftTieDefnsError (_ExpectedDestructorsFromSameClause # fmap fst recordphrases))
 
         -- check if the records (phrases) match the declaration in the 
         -- codata clause..
@@ -138,8 +162,8 @@ patternIToGraph tagmap ttype pattern =
                                 == b ^. _1 % bnfcIdentName)
                     (focusedclauseg ^. typeClausePhrases) 
                     (NE.toList recordphrases))
-            (throwError $ liftToGraphErrors 
-                (_IllegalRecordPhrases # recordphrases)) 
+            undefined
+            -- (throwError $ liftTieDefnsError (_IllegalRecordPhrases # recordphrases)) 
 
         -- get the required substitutions from a codata
         (clausetype, ttypeargs, clausesubstitutions) <- 
@@ -154,11 +178,11 @@ patternIToGraph tagmap ttype pattern =
 
         let syms = dtsargsym
             typeeqs = TypeEqnsExist (ttypedtsargs ++ ttypeargs) $
-                [ _TypeEqnsEq # (_TypeVar # ttype, clausetype ) ]
+                [ _TypeEqnsEq # (_TypeVar # (ttype, []), clausetype ) ]
                 ++ zipWith g ttypedtsargs (NE.toList phrasesg)
                 ++ dtsargstypeeqs
             g ttypedts phraseg = _TypeEqnsEq # 
-                ( _TypeVar # ttypedts
+                ( _TypeVar # (ttypedts, [])
                 , _TypeSeq # _TypeSeqArrF # 
                     (  fromJust $ traverse (substitutesTypeGToTypeGTypeTag 
                         clausesubstitutions) (phraseg ^. typePhraseFrom)
@@ -193,10 +217,10 @@ patternIToGraph tagmap ttype pattern =
             ttypetuple1:ttypetuplerest = ttypetuples
             typeeqs = TypeEqnsExist ttypetuples $
                 [TypeEqnsEq 
-                    ( TypeVar ttype
+                    ( TypeVar ttype []
                     , TypeSeq $ TypeTupleF 
-                        ( TypeVar ttypetuple1
-                        , NE.fromList $ map TypeVar ttypetuplerest)
+                        ( TypeVar ttypetuple1 []
+                        , NE.fromList $ map (flip TypeVar []) ttypetuplerest)
                     ) ]
                 ++ eqns
             tuplepatt1:tuplepatts = patts
@@ -206,7 +230,7 @@ patternIToGraph tagmap ttype pattern =
 
     f ttype ( PVar ident () ) = do
         ident' <- tagBnfcIdent ident
-        let syms = [
+        let syms = SymbolTable [
                 ( ident' ^. taggedBnfcIdentName
                 , SymEntry (ident' ^. uniqueTag) $ SymLocalSeqVar ttype ) ]
             typeeqs = []
@@ -217,8 +241,9 @@ patternIToGraph tagmap ttype pattern =
     f ttype (PNull ident ()) = do
         -- tags for null tags do not matter
         ident' <- tagBnfcIdent ident
-        return (([],[]), PNull ident' $ fromJust $ Map.lookup ttype tagmap)
+        return ((mempty,[]), PNull ident' $ fromJust $ Map.lookup ttype tagmap)
 
     -- TODO
     f ttype n = error $ "ERROR not implemented yet:" ++ show n
-
+-}
+    -}

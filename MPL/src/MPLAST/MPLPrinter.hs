@@ -40,10 +40,17 @@ translateTypeToBnfcType ::
     Type calldef ident typevar -> 
     MplType
 translateTypeToBnfcType n = case n of
+    TypeWithArgs ident _ [] -> 
+        MPL_UIDENT_NO_ARGS_TYPE (toBnfcUIdent $ pprint ident) 
+    TypeVar ident [] -> MPL_UIDENT_NO_ARGS_TYPE (toBnfcUIdent $ pprint ident) 
+
     TypeWithArgs ident _ args -> 
         let args' = map translateTypeToBnfcType args
         in MPL_UIDENT_ARGS_TYPE (toBnfcUIdent $ pprint ident) bnfcLBracket args' bnfcRBracket
-    TypeVar ident -> MPL_UIDENT_NO_ARGS_TYPE (toBnfcUIdent $ pprint ident) 
+    TypeVar ident args -> 
+        let args' = map translateTypeToBnfcType args
+        in MPL_UIDENT_ARGS_TYPE (toBnfcUIdent $ pprint ident) bnfcLBracket args' bnfcRBracket
+
     TypeSeq n -> case n of
         TypeIntF ident -> 
             MPL_UIDENT_NO_ARGS_TYPE (toBnfcUIdent $ pprint ident) 

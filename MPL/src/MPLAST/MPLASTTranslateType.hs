@@ -50,7 +50,9 @@ getTypeDeclarationName ::
     Either (NonEmpty e) (BnfcIdent, [BnfcIdent])
 getTypeDeclarationName n = 
     case n of
-        TypeVar name -> return (name, [])
+        TypeVar name args -> do
+            args' <- translateTypeDeclarationArgs args
+            return (name, args')
         TypeWithArgs name () args -> do
             args' <- translateTypeDeclarationArgs args
             return (name, args')
@@ -61,7 +63,7 @@ getTypeVar ::
     AsTranslateBnfcErrors e => 
     TypeIBnfc ->
     Either (NonEmpty e) BnfcIdent
-getTypeVar (TypeVar n) = Right n
+getTypeVar (TypeVar n []) = Right n
 getTypeVar (TypeWithArgs n () []) = Right n
 getTypeVar n = Left (review _IllegalNonTypeVar n :| [])
 
@@ -91,7 +93,7 @@ translateBnfcSeqTypePhrasesToDataPhrase (SEQ_TYPE_PHRASE handles fromtypes totyp
             ( ()
             , name ^. uIdentBnfcIdentGetter
             , fromtypes' 
-            , TypeVar totype'
+            , TypeVar totype' []
             )
 
 -- CODATA
@@ -133,7 +135,7 @@ translateConcurrentTypePhraseToProtocolPhrase (CONCURRENT_TYPE_PHRASE handles a 
             ( ()
             , name ^. uIdentBnfcIdentGetter
             , [a']
-            , TypeVar b'
+            , TypeVar b' []
             )
 
 -- Coprotocol
@@ -152,7 +154,7 @@ translateConcurrentTypePhraseToCoprotocolPhrase (CONCURRENT_TYPE_PHRASE handles 
         return $ review _TypePhrase 
             ( ()
             , name ^. uIdentBnfcIdentGetter
-            , [TypeVar a']
+            , [TypeVar a' []]
             , b'
             )
 
@@ -223,7 +225,7 @@ translateBnfcTypeToType (GETPUT_TYPE getput _ a b _) = maybe
 
 -- WE TRANSLATE THE TYPES TO THE INTERNAL VARIANTS HERE...
 translateBnfcTypeToType (MPL_UIDENT_NO_ARGS_TYPE ident) = 
-    review (_Right % _TypeVar ) (ident ^. uIdentBnfcIdentGetter)
+    review (_Right % _TypeVar ) (ident ^. uIdentBnfcIdentGetter, [])
 translateBnfcTypeToType (MPL_UIDENT_ARGS_TYPE ident _ lst _) =
     review _TypeWithArgs <$> ( (ident ^. uIdentBnfcIdentGetter,(),)  <$> res ^. collectsOnlyIfNoLeftsGetter )
   where
