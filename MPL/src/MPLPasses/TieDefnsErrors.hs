@@ -18,7 +18,6 @@ data TypeClauseError =
     | OverlappingTypeVariables (NonEmpty (TypeClause () () () BnfcIdent BnfcIdent))
     | CodataInputArgStateVarOccurence (TypeClause () () () BnfcIdent BnfcIdent)
     | PhraseToMustBeStateVar (TypeClause () () () BnfcIdent BnfcIdent)
-    | TypeNotInScope BnfcIdent
   deriving Show
 
 data FunctionError = 
@@ -52,6 +51,7 @@ data TieDefnsError =
     -- so it keeps the position infromation
     -- and make this take a list of [BnfcIdent]
     | AmbiguousLookup 
+    | NotInScope BnfcIdent
   deriving Show
 
 $(concat <$> traverse makeClassyPrisms 

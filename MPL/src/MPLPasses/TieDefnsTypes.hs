@@ -13,10 +13,8 @@ import Control.Monad.State
 data TieDefnsEnv = TieDefnsEnv {
     }
 
-
 data TieDefnsState = TieDefnsState {
-        _tieDefnsUniqueTagGen :: UniqueTag
-        , _tieDefnsSymbolTable :: SymbolTable
+    _tieDefnsSymbolTable :: SymbolTable
     }
   deriving Show 
 
@@ -31,8 +29,5 @@ $(concat <$> traverse makePrisms
     ]
  )
 
-instance HasUniqueTag TieDefnsState where
-    uniqueTag = tieDefnsUniqueTagGen
-
 defaultTieDefnsState :: TieDefnsState
-defaultTieDefnsState = _TieDefnsState # (UniqueTag 0, [])
+defaultTieDefnsState = _TieDefnsState # []

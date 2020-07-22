@@ -130,6 +130,7 @@ transTypeHandleName x = case x of
 transExpr :: Expr -> Result
 transExpr x = case x of
   EXPR expr -> failure x
+  TYPED_EXPR expr mpltype -> failure x
   IF_EXPR expr1 expr2 expr3 -> failure x
   LET_EXPR letexprphrases expr -> failure x
   INFIXR0_EXPR expr1 colon expr2 -> failure x
@@ -182,6 +183,7 @@ transPattExprPhrase x = case x of
 transPattern :: Pattern -> Result
 transPattern x = case x of
   PATTERN pattern -> failure x
+  TYPED_PATTERN pattern mpltype -> failure x
   LIST_COLON_PATTERN pattern1 colon pattern2 -> failure x
   CONSTRUCTOR_PATTERN_ARGS uident lbracket patterns rbracket -> failure x
   CONSTRUCTOR_PATTERN_NO_ARGS uident -> failure x
@@ -202,6 +204,7 @@ transDestructorPatternPhrase x = case x of
   DESTRUCTOR_PATTERN_PHRASE uident pattern -> failure x
 transFunctionDefn :: FunctionDefn -> Result
 transFunctionDefn x = case x of
+  INTERNAL_TYPED_FUNCTION_DEFN pident mpltype pattexprphrases -> failure x
   TYPED_FUNCTION_DEFN pident mpltypes mpltype pattexprphrases -> failure x
   FUNCTION_DEFN pident pattexprphrases -> failure x
 transProcessDefn :: ProcessDefn -> Result

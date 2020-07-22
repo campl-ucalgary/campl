@@ -127,7 +127,8 @@ The reserved words used in MPL are the following:
 The symbols used in MPL are the following:
   | , | { | } | ;
   | | | . | -> | =>
-  | = | :: | := | |=|
+  | = | :: | : | :=
+  | |=| |  |  | 
 
 ===Comments===
 Single-line comments begin with --.Multiple-line comments are  enclosed with {- and -}.

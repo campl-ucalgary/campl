@@ -66,8 +66,8 @@ data MplType
     | MPL_BRACKETED_TYPE LBracket MplType RBracket
     | MPL_LIST_TYPE LSquareBracket MplType RSquareBracket
     | MPL_TUPLE_TYPE LBracket MplType [TupleListType] RBracket
-    | MPL_SEQ_ARROW_TYPE UPIdent [ForallVarList] [MplType] MplType
-    | MPL_CONC_ARROW_TYPE UPIdent [ForallVarList] [MplType] [MplType] [MplType]
+    | MPL_SEQ_ARROW_TYPE [ForallVarList] [MplType] MplType
+    | MPL_CONC_ARROW_TYPE [ForallVarList] [MplType] [MplType] [MplType]
   deriving (Eq, Ord, Show, Read)
 
 data TupleListType = TUPLE_LIST_TYPE MplType
@@ -106,6 +106,7 @@ data TypeHandleName = TYPE_HANDLE_NAME UIdent
 
 data Expr
     = EXPR Expr
+    | TYPED_EXPR Expr MplType
     | IF_EXPR Expr Expr Expr
     | LET_EXPR [LetExprPhrase] Expr
     | INFIXR0_EXPR Expr Colon Expr
@@ -181,7 +182,8 @@ data DestructorPatternPhrase
   deriving (Eq, Ord, Show, Read)
 
 data FunctionDefn
-    = TYPED_FUNCTION_DEFN PIdent [MplType] MplType [PattExprPhrase]
+    = INTERNAL_TYPED_FUNCTION_DEFN PIdent MplType [PattExprPhrase]
+    | TYPED_FUNCTION_DEFN PIdent [MplType] MplType [PattExprPhrase]
     | FUNCTION_DEFN PIdent [PattExprPhrase]
   deriving (Eq, Ord, Show, Read)
 

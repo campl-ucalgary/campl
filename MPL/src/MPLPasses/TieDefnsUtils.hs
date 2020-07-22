@@ -10,6 +10,7 @@ import Control.Applicative
 
 import MPLAST.MPLASTCore
 import MPLAST.MPLTypeAST
+import MPLUtil.UniqueSupply
 import MPLPasses.SymbolTable
 import MPLPasses.TieDefnsTypes
 import MPLPasses.TieDefnsErrors
@@ -58,7 +59,7 @@ lookupSeqPhrase ident ~symtable =
 
 clauseSubstitutions :: 
     ( MonadState s m 
-    , HasUniqueTag s ) =>
+    , HasUniqueSupply s ) =>
     TypeClauseG TaggedBnfcIdent ->
     m ( TypeGTypeTag
       , [TypeTag]
@@ -68,12 +69,6 @@ clauseSubstitutions ::
     -- , substition list of unique tags to corresponsing types
         -- ( this includes the state variables )
 clauseSubstitutions clauseg = do
-    -- get the sub args
-    -- THE PROBLEM: the valueof the unique ID depends 
-    -- in the future MUST EVALUATE THIS. Hence, to fix this,
-    -- we need a way to ``split" the unique number generator
-    -- so we can have 2 distinct paths of unique ids so this
-    -- can be truly lazy..
     clauseargsubs <- traverse 
         (\n -> second TypeTag . (n,) <$> freshUniqueTag) 
         (clauseg ^. typeClauseArgs) 

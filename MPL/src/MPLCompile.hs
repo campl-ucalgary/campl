@@ -20,6 +20,7 @@ import MPLAST.MPLProgI
 import MPLAST.MPLASTCore
 
 import MPLPasses.TieDefns
+import MPLPasses.GraphGenCore
 import MPLPasses.TieDefnsErrors
 
 import MPLPasses.MPLRunPasses
@@ -36,14 +37,12 @@ parseAndLex = pMplProg . resolveLayout True . myLexer
 
 unsafeTranslateParseLexGraph :: 
     String -> 
-    (Prog (DefnG TaggedBnfcIdent TypeTag))
-unsafeTranslateParseLexGraph str = 
-    case progInterfaceToGraph $ unsafeTranslateParseLex str of
-        Right graph -> graph
-        Left errs -> error $ show errs
+    IO (Either [TieDefnsError] (Prog (DefnG TaggedBnfcIdent TypeTag)))
+unsafeTranslateParseLexGraph str = do
+    st <- defaultGraphGenCoreState
+    return $ progInterfaceToGraph ([], defaultGraphGenCoreEnv, st) (unsafeTranslateParseLex str) 
 
-translateParseLexGraph str = progInterfaceToGraph $ unsafeTranslateParseLex str 
-
+{-
 progGTypes :: 
     (Prog (DefnG TaggedBnfcIdent TypeTag)) -> 
     [TypeGTypeTag]
@@ -52,8 +51,23 @@ progGTypes (Prog defsg) = concat $ map f defsg
     f (Stmt defns wdefs) = mapMaybe g (NE.toList defns) ++ progGTypes (Prog wdefs)
     g (FunctionDecDefG defn) = Just $ defn ^. funTypesFromTo
     g _ = Nothing
+    -}
 
-typeTester = intercalate "\n" . map pprint . progGTypes . unsafeTranslateParseLexGraph
+pprintFunctionTypes :: 
+    (Prog (DefnG TaggedBnfcIdent TypeTag)) -> 
+    [String]
+pprintFunctionTypes (Prog defsg) = concat $ map f defsg
+  where
+    f (Stmt defns wdefs) = mapMaybe g (NE.toList defns) ++ pprintFunctionTypes (Prog wdefs)
+    g (FunctionDecDefG defn) = Just $ pprint defn
+    g _ = Nothing
+
+-- typeTester n = fmap (intercalate "\n" . map pprint . progGTypes) <$> unsafeTranslateParseLexGraph n 
+typeTester n = do
+    proggraph <- unsafeTranslateParseLexGraph n 
+    case proggraph of
+        Right n -> putStrLn $ mconcat $ pprintFunctionTypes n
+        Left n -> putStrLn $ show n
 
 testdata = [r|
 defn
@@ -95,13 +109,18 @@ fun functiontest =
 
 testmutnat = [r|
 data 
-    ThatsSomeCool -> S =
-        ThatsSomeCool :: -> S
+    Unit -> S =
+        Unit :: -> S
 defn 
     fun functiontest =
         -- Potato -> Twos(TwosEnd, Zeros (TwosEnd))
-        Ones(Zeros(TwosEnd),b) -> Twos(TwosEnd, Zeros (TwosEnd))
-        Ones(Zeros(ThatsSomeCool),b) -> Twos(TwosEnd, Zeros (TwosEnd))
+        -- Ones(Zeros(TwosEnd),b) -> Twos(TwosEnd, Zeros (TwosEnd))
+        Ones(Zeros(TwosEnd),b) -> b
+
+        -- Ones(Zeros(TwosEnd),b) -> case b of 
+        --     Twos(TwosEnd, Zeros (TwosEnd))
+        --     incorrect
+        -- Ones(Zeros(Unit),b) -> Twos(TwosEnd, Zeros (TwosEnd))
 where
     data
         Ones(A) -> ONES =
@@ -111,6 +130,21 @@ where
         Twos(A) -> TWOS =
             Twos :: TWOS, ONES -> TWOS
             TwosEnd ::         -> TWOS
+
+|]
+
+testlet = [r|
+
+data 
+    Unit -> S =
+        Unit :: -> S
+
+fun lettest =   
+    Unit -> 
+        let
+            data Uni2 -> S =
+                Uni2 :: -> S
+        in a
 
 |]
 

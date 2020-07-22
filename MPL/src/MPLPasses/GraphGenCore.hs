@@ -28,6 +28,9 @@ import Data.Bool
 import Data.List
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
+import MPLUtil.UniqueSupply
+
+import Data.IORef
 
 newtype GraphGenCore a = GraphGenCore { 
     unGraphGenCore :: RWS GraphGenCoreEnv [TieDefnsError] GraphGenCoreState a
@@ -43,17 +46,31 @@ newtype GraphGenCore a = GraphGenCore {
 
 data GraphGenCoreEnv = GraphGenCoreEnv {}
 data GraphGenCoreState = GraphGenCoreState {
-    _graphGenCoreStateUniqueTag :: UniqueTag
+    _graphGenCoreStateUniqueSupply :: UniqueSupply
 } 
 
+splitGraphGenCore :: 
+    GraphGenCore a -> 
+    GraphGenCore (a, [TieDefnsError])
+splitGraphGenCore m = do
+    env <- ask 
+    sup <- freshUniqueSupply
+    let ~(a, st, w) = runRWS (unGraphGenCore m) env (GraphGenCoreState sup)
+    return (a, w)
+
+defaultGraphGenCoreEnv :: GraphGenCoreEnv
 defaultGraphGenCoreEnv = GraphGenCoreEnv
-defaultGraphGenCoreState = 
-    GraphGenCoreState $ UniqueTag 0
+
+defaultGraphGenCoreState :: IO GraphGenCoreState
+defaultGraphGenCoreState = do
+    ref <- newIORef (0 :: Int)
+    supply <- initUniqueSupply ref
+    return $ GraphGenCoreState supply
 
 $(concat <$> traverse makeClassy 
     [ ''GraphGenCoreState
     , ''GraphGenCoreEnv ]
  )
 
-instance HasUniqueTag GraphGenCoreState where
-    uniqueTag = graphGenCoreStateUniqueTag
+instance HasUniqueSupply GraphGenCoreState where
+    uniqueSupply = graphGenCoreStateUniqueSupply

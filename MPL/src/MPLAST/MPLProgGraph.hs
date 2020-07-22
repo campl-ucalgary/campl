@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
@@ -17,20 +18,42 @@ import MPLAST.MPLProgI
 import MPLAST.MPLTypeAST
 import MPLAST.MPLPatternAST
 import MPLAST.MPLExprAST 
+import MPLUtil.UniqueSupply
+import MPLUtil.Data.Stream
 
 import Optics
+import Optics.State.Operators
 
 import Data.Functor.Foldable
 import Data.Functor.Foldable.TH
 
 import Data.Void
+import Data.Coerce
 
 import GHC.Generics 
 
 import Control.Monad.State
+import Control.Arrow
 
 import Data.List.NonEmpty ( NonEmpty (..) )
 import qualified Data.List.NonEmpty as NE
+import Data.Tuple
+
+data TaggedBnfcIdent = TaggedBnfcIdent {
+    _taggedBnfcIdentBnfcIdent :: BnfcIdent
+    , _taggedBnfcIdentTag :: UniqueTag
+} deriving (Show, Read)
+
+-- equality of tagged bnfcidents should depend only 
+-- on equality of the unique tag
+instance Eq TaggedBnfcIdent where
+    TaggedBnfcIdent _ a == TaggedBnfcIdent _ b =  a == b
+
+newtype UniqueTag = UniqueTag { _unUniqueTag :: Unique }
+  deriving (Show, Eq, Ord, Read, Enum)
+
+$(makeClassy ''UniqueTag)
+
 
 data ClausesGraph ident = ClausesGraph {
     _clauseGraphObjectType :: ObjectType
@@ -139,23 +162,19 @@ type TypeGTypeTag =
 instance Show TypeTag where
     show (TypeTag (UniqueTag n)) = show n
 
-freshTypeTag ::
-    ( MonadState c m
-    , HasUniqueTag c ) => 
-    m TypeTag
-freshTypeTag = TypeTag <$> freshUniqueTag
-
 
 $(concat <$> traverse makeLenses 
     [ ''ClausesKnot
     , ''ClausePhraseKnot 
     , ''ClausesGraph 
+    , ''TaggedBnfcIdent
     ]
  )
 $(concat <$> traverse makePrisms 
     [ ''ClausesGraph 
     , ''TypeClauseNode
     , ''DefnG
+    , ''TaggedBnfcIdent
     ]
  )
 
@@ -172,3 +191,61 @@ clauseGObjType =
     typeClauseNeighbors 
     % clauseGraph 
     % clauseGraphObjectType 
+
+freshUniqueTag ::
+    ( MonadState c m
+    , HasUniqueSupply c ) => 
+    m UniqueTag
+freshUniqueTag = 
+    uniqueSupply %%= (first (UniqueTag . uniqueFromSupply) <<< split)
+
+freshUniqueTags :: 
+    ( MonadState c m
+    , HasUniqueSupply c ) => 
+    m (Stream UniqueTag)
+freshUniqueTags = do
+    supply <- freshUniqueSupply
+    return $ coerce $ uniquesFromSupply supply
+
+freshTypeTags :: 
+    ( MonadState c m
+    , HasUniqueSupply c ) => 
+    m (Stream TypeTag)
+freshTypeTags = coerce <$> freshUniqueTags
+
+freshUniqueSupply ::
+    ( MonadState c m
+    , HasUniqueSupply c ) => 
+    m UniqueSupply
+freshUniqueSupply =
+    uniqueSupply %%= split
+
+tagBnfcIdent ::
+    ( MonadState c m
+    , HasUniqueSupply c ) => 
+    BnfcIdent ->
+    m TaggedBnfcIdent
+tagBnfcIdent ident = do
+    review _TaggedBnfcIdent . (ident,) <$> freshUniqueTag
+
+freshTypeTag ::
+    ( MonadState c m
+    , HasUniqueSupply c ) => 
+    m TypeTag
+freshTypeTag = TypeTag <$> freshUniqueTag
+
+taggedBnfcIdentName :: Lens' TaggedBnfcIdent String
+taggedBnfcIdentName = lens get set
+  where
+    get n = n ^. taggedBnfcIdentBnfcIdent % bnfcIdentName
+    set n v = n & taggedBnfcIdentBnfcIdent % bnfcIdentName .~ v
+
+bnfcIdentName :: Lens' BnfcIdent String
+bnfcIdentName = lens get set
+  where
+    get n = n ^. stringPos % _1
+    set n v = n & stringPos % _1 .~ v
+
+instance HasUniqueTag TaggedBnfcIdent where
+    uniqueTag = taggedBnfcIdentTag 
+

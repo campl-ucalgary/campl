@@ -1,6 +1,5 @@
 module MPLUtil.Data.Either where
 
-
 import Optics.Fold
 import Optics.Getter
 import Data.Either
@@ -22,4 +21,3 @@ collectsOnlyIfNoLeftsGetter = to get
                 ([], res) -> Right res
                 ((e :| err) : errs, _) -> Left $
                     e :| err ++ (foldr (\n acc -> NE.toList n ++ acc) [] errs)
-

@@ -35,15 +35,16 @@ data SymEntry info = SymEntry {
 }  deriving Show
 
 data SymInfo = 
-    -- type clauses lookups
+    -- | type clauses lookups
     SymClause (TypeClauseG TaggedBnfcIdent)
     | SymPhrase (TypePhraseG TaggedBnfcIdent)
-    -- | useful for keeping track of which type is which
+    -- | used for keeping track of which type is which
     | SymTypeVar 
 
-    -- Function lookups
+    -- | Function lookups
     | SymFunDefn (FunctionDefG TaggedBnfcIdent TypeTag)
     | SymCallSeqPhrase (TypePhraseG TaggedBnfcIdent)
+    | SymCallMatchedDestructor (TypeG TaggedBnfcIdent) (TypePhraseG TaggedBnfcIdent)
         -- | useful for lookup up the types as a local vairable
     | SymLocalSeqVar TypeTag
         
@@ -117,7 +118,7 @@ querySymbolTableBnfcIdentName ::
 querySymbolTableBnfcIdentName ident symtab = do
     let entries = filter f symtab
     tell $ bool [] 
-        [_TypeNotInScope # ident] 
+        [_NotInScope # ident] 
         (null entries)
     return entries
   where

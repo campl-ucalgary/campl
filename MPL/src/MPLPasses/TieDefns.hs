@@ -55,17 +55,17 @@ newtype TieDefnsT m a =
     TieDefnsT { unTieDefnsT :: RWST 
             [DefnG TaggedBnfcIdent TypeTag] 
             [DefnG TaggedBnfcIdent TypeTag] 
-            TieDefnsState 
+            SymbolTable 
             m a }
   deriving 
     ( Functor
     , Applicative
     , Monad
     , MonadFix
-    , MonadState TieDefnsState
+    , MonadState SymbolTable
     , MonadReader [DefnG TaggedBnfcIdent TypeTag]
     , MonadWriter [DefnG TaggedBnfcIdent TypeTag] 
-    , MonadRWS [DefnG TaggedBnfcIdent TypeTag] [DefnG TaggedBnfcIdent TypeTag] TieDefnsState  
+    , MonadRWS [DefnG TaggedBnfcIdent TypeTag] [DefnG TaggedBnfcIdent TypeTag] SymbolTable  
     , MonadTrans 
     )
 
@@ -85,41 +85,54 @@ newtype TieFunT m a =
 instance MonadTrans TieFunT where
     lift = TieFunT . lift . lift 
 
+data ExprTypeTags = ExprTypeTags {
+    _exprTtype :: TypeTag
+    , _exprTtypeInternal :: TypeTag
+}
+
 data TieExprEnv = TieExprEnv {
-    _tieExprEnvPhraseType :: TypeTag
+    _tieExprEnvTypeTags :: ExprTypeTags
     , _tieExprEnvTagTypeMap :: TagTypeMap
 }
 
 $(makeLenses ''TieExprEnv)
 $(makePrisms ''TieExprEnv)
+$(makeClassy ''ExprTypeTags)
+$(makePrisms ''ExprTypeTags)
+
+freshExprTypeTags = ExprTypeTags <$> freshTypeTag <*> freshTypeTag
+
+instance HasExprTypeTags TieExprEnv where
+    exprTypeTags = tieExprEnvTypeTags
 
 type TieFun a = TieFunT GraphGenCore a
 
 runTieDefnsT :: 
-    TieDefnsState ->
+    SymbolTable ->
     TieDefns a -> 
-    GraphGenCore (a, TieDefnsState, [DefnG TaggedBnfcIdent TypeTag])
+    GraphGenCore (a, SymbolTable, [DefnG TaggedBnfcIdent TypeTag])
 runTieDefnsT st (TieDefnsT m) = runRWST m [] st
 
 progInterfaceToGraph :: 
+    (SymbolTable, GraphGenCoreEnv, GraphGenCoreState) ->
     Prog (DefnI BnfcIdent) ->
     Either [TieDefnsError] (Prog (DefnG TaggedBnfcIdent TypeTag))
-progInterfaceToGraph (Prog stmts) = Prog <$> res 
+progInterfaceToGraph initstate (Prog stmts) = Prog <$> res 
   where
     res :: Either [TieDefnsError] [Stmt (DefnG TaggedBnfcIdent TypeTag)]
-    res = accumEithers $ f ([], defaultGraphGenCoreState) stmts
+    res = accumEithers $ f initstate stmts
 
     f :: 
-        (SymbolTable, GraphGenCoreState) -> 
+        (SymbolTable, GraphGenCoreEnv, GraphGenCoreState) -> 
         [Stmt (DefnI BnfcIdent)] -> 
         [Either [TieDefnsError] (Stmt (DefnG TaggedBnfcIdent TypeTag))]
-    f (sym, corest) [] = []
-    f (sym, corest) (stmt:rst) = 
-         stmt' : f (sym', corest') rst
+    f (sym, env, corest) [] = []
+    f (sym, env, corest) (stmt:rst) = 
+         stmt' : f (sym', env, corest') rst
       where
         (stmtg, corest', errlg) = 
             runRWS (unGraphGenCore $ runReaderT (stmtIToGraph stmt) sym) 
-                defaultGraphGenCoreEnv
+                env
                 corest
         stmt' = bool (Left errlg) (Right stmtg) (null errlg)
         sym' = either (const []) collectSymEntries stmt' ++  sym
@@ -135,10 +148,8 @@ stmtIToGraph (Stmt defs wstmts) = do
     symtab <- ask
     tag <- freshUniqueTag
     -- compute the definitions graph
-    ((), st, defs') <- lift $ runTieDefnsT 
-            ( _TieDefnsState # (tag, wsyms++symtab) ) 
+    ((), st, defs') <- lift $ runTieDefnsT (wsyms++symtab) 
             (defnsToGraph (NE.toList defs)) 
-    uniqueTag .= st ^. uniqueTag
 
     return $ Stmt (NE.fromList defs') wstmts'
 
@@ -155,7 +166,7 @@ defnsToGraph (a:as) = case a ^. unDefnI of
             DataObj
 
         defnsToGraph as
-        symtable <- guse tieDefnsSymbolTable
+        symtable <- guse equality
         return ()
 
     CodataDefn ival -> mdo
@@ -166,7 +177,7 @@ defnsToGraph (a:as) = case a ^. unDefnI of
             CodataObj
 
         defnsToGraph as
-        symtable <- guse tieDefnsSymbolTable
+        symtable <- guse equality
         return ()
 
     ProtocolDefn n -> mdo
@@ -181,7 +192,7 @@ defnsToGraph (a:as) = case a ^. unDefnI of
         -- lift $ phraseFromVarsAreStateVarCheck n 
     FunctionDecDefn fun -> mdo
         -- put on symbol table first...
-        tieDefnsSymbolTable %= ((collectSymEntries fun')++)
+        equality %= ((collectSymEntries fun')++)
 
         ~fun' <- lift $ FunctionDecDefG <$> functionDefIToGraph symtable fun
 
@@ -189,7 +200,7 @@ defnsToGraph (a:as) = case a ^. unDefnI of
 
         defnsToGraph as
 
-        symtable <- guse tieDefnsSymbolTable
+        symtable <- guse equality
 
         return ()
 
@@ -200,7 +211,7 @@ objectDefIToGraph ival checks symtable objtype = do
     ~clauseg <- lift $ tieTypeClauseGraph symtable objtype ival
     let defn' = ObjectG clauseg :: DefnG TaggedBnfcIdent TypeTag
 
-    tieDefnsSymbolTable %= ((collectSymEntries defn')++)
+    equality %= ((collectSymEntries defn')++)
 
     tell [defn']
 
@@ -213,15 +224,18 @@ functionDefIToGraph ::
     GraphGenCore (FunctionDefG TaggedBnfcIdent TypeTag)
 functionDefIToGraph symtable ~(FunctionDefn funident funtype fundefn) = mdo
     funident' <- tagBnfcIdent funident
-    ttype <- freshTypeTag
+
+    ttypes <- freshExprTypeTags
+    let ttype = ttypes ^. exprTtype
+        ttypeinternal = ttypes ^. exprTtypeInternal
 
     ~(~(bodyg, eqns), st) <- runStateT (
             runReaderT 
             (unTieFunT $ patternsIAndExprsIToGraph $ NE.toList fundefn)
-            (_TieExprEnv # (ttype, tagmap))
+            (_TieExprEnv # (ttypes, tagmap))
             ) symtable
 
-    let tagmap = packageToTagMap pkg'
+    let tagmap = packageToTagMap pkg' 
         pkg = solveTypeEq eqns
         pkg' = fromRight (error "internal type checking error") pkg
         fun' = FunctionDefn funident' (fromJust $ Map.lookup ttype tagmap) (NE.fromList $ bodyg)
@@ -230,14 +244,13 @@ functionDefIToGraph symtable ~(FunctionDefn funident funtype fundefn) = mdo
     tell $ either pure (const []) pkg
 
     return fun' 
-    -- FunctionDecDefG 
 
 
 exprIToGraph :: 
     -- | Expression to convert to a graph
     ExprI BnfcIdent ->
     -- | result
-    TieFun ( ExprG TaggedBnfcIdent TypeTag, TypeEqns TaggedBnfcIdent TypeTag )
+    TieFun ( ExprG TaggedBnfcIdent TypeTag, [TypeEqns TaggedBnfcIdent TypeTag] )
 exprIToGraph expr = 
     f expr
   where 
@@ -270,12 +283,39 @@ exprIToGraph expr =
         error "operators not implemented in type checking yet"
         -}
 
-    f (ELet letdef expr ()) = do
+    f (ELet letdef letexpr ()) = do
         -- TODO figure this thing out..
-        error "LET is TODO"
+        symtable <- guse equality 
+        ttype <- gview exprTtype
+        ttypeinternal <- gview exprTtypeInternal
+        tagmap <- gview tieExprEnvTagTypeMap
+
+        -- compiling the let statemtens..
+        letdef' <- lift . join . fmap writer . splitGraphGenCore 
+            $ runReaderT (traverse stmtIToGraph letdef) symtable 
+        let nsyms = concatMap collectSymEntries letdef'
+
+        -- updating the symbol table
+        equality %= (nsyms++)
+
+        -- updating the expression
+        ttypesletexpr <- lift freshExprTypeTags
+        (letexprg, exprgeq) <- local (set tieExprEnvTypeTags ttypesletexpr) $ exprIToGraph letexpr
+
+        let ttypeletexpr = ttypesletexpr ^. exprTtype
+            eqns = TypeEqnsExist [ttypeletexpr] $
+                [ TypeEqnsEq ( TypeVar ttype []
+                             , TypeVar ttypeinternal []) 
+                , TypeEqnsEq ( TypeVar ttype [] 
+                             , TypeVar ttypeletexpr []) ]
+                ++ exprgeq
+
+        return 
+            ( ELet letdef' letexprg $ fromJust $ Map.lookup ttypeinternal tagmap
+            , [eqns] )
 
     f (EConstructorDestructor ident () args ()) = do
-        -- symtable <- lift $ gview tieDefnsSymbolTable
+        -- symtable <- lift $ gview equality
         symtable <- guse equality
 
         ~(_, ~(SymEntry tag ~(SymPhrase phraseg))) <- lift $ fromJust <$> 
@@ -287,10 +327,11 @@ exprIToGraph expr =
             DataObj -> ctsrunner tag phraseg
             CodataObj -> undefined
             -- CodataObj -> dtsrunner tag phraseg
-            _ -> error "internal error -- looked up a sequential phrase but got a concurrent phrase"
       where
         ctsrunner tag phraseg = do  
-            ttype <- gview tieExprEnvPhraseType 
+            ttype <- gview exprTtype 
+            internalttype <- gview exprTtypeInternal 
+
             tagmap <- gview tieExprEnvTagTypeMap 
 
             let expectedarity = length (phraseg ^. typePhraseFrom)
@@ -305,13 +346,12 @@ exprIToGraph expr =
                     lift $ clauseSubstitutions (phraseg ^. typePhraseContext % phraseParent)
             
             -- fresh type vars for the constructor args
-            ttypectsargs <- traverse (const (lift freshTypeTag)) args
+            ttypesctsargs <- traverse (const (lift freshExprTypeTags)) args
 
-            (argsexprgs, argseqns) <- unwrappedExprsIToGraph $ zip ttypectsargs args
+            (argsexprgs, argseqns) <- unwrappedExprsIToGraph $ zip ttypesctsargs args
 
-            internalttype <- lift freshTypeTag
-
-            let typeeqs = TypeEqnsExist (ttypectsargs ++ ttypeargs) $
+            let ttypectsargs = map (view exprTtype) ttypesctsargs
+                typeeqs = TypeEqnsExist (ttypectsargs ++ ttypeargs) $
                     [ TypeEqnsEq ( _TypeVar # (ttype, [])
                         , clausetype )
                     , TypeEqnsEq (TypeVar ttype [], TypeVar internalttype [])] 
@@ -329,57 +369,77 @@ exprIToGraph expr =
                     -- constructor / destructor
                     argsexprgs 
                     $ fromJust $ Map.lookup internalttype tagmap
-            return ( expr', typeeqs)
+            return ( expr', [typeeqs] )
 
         dtsrunner tag phraseg = do
             -- TODO
             undefined
 
     f (ECase caseon cases ()) = do
-        ttype <- gview tieExprEnvPhraseType
+        ttype <- gview exprTtype
+        ttypeinternal <- gview exprTtypeInternal
         tagmap <- gview tieExprEnvTagTypeMap
 
         -- converting the case on to a graph...
-        ttypecaseon <- lift freshTypeTag
-        (caseong, caseongeqns) <- local (set tieExprEnvPhraseType ttypecaseon) $ exprIToGraph caseon
+        -- ttypecaseon <- lift freshTypeTag
+        ttypeexprcaseon@(ExprTypeTags ttypecaseon _) <- lift freshExprTypeTags 
+        (caseong, caseongeqns) <- local (set tieExprEnvTypeTags ttypeexprcaseon) $ exprIToGraph caseon
 
         -- converting the case phrases to a graph..
         ttypetaggedcases <- lift $ traverse 
             (\(patt, exp) -> (,) 
-                <$> ((,patt) <$> freshTypeTag) 
-                <*> ((,exp) <$> freshTypeTag)) 
+                <$> ((,patt) <$> freshExprTypeTags) 
+                <*> ((,exp)  <$> freshExprTypeTags)) 
             cases
 
         (pattsgexprsg, eqns) <- unzip <$> traverse 
             (\((ttypepatt, patt), (ttypeexpr, expr)) -> do
                 symtable <- guse equality
 
-                (patteqns, pattsg) <- local (set tieExprEnvPhraseType ttypepatt) $ patternIToGraph patt
-                (exprg, expreqn) <- local (set tieExprEnvPhraseType ttype) $ exprIToGraph expr
+                (patteqns, pattsg) <- local (set tieExprEnvTypeTags ttypepatt) $ patternIToGraph patt
+                (exprg, expreqn) <- local (set tieExprEnvTypeTags ttypeexpr) $ exprIToGraph expr
 
                 equality .= symtable
 
-                return ((pattsg, exprg), expreqn:patteqns) )
+                -- return ((pattsg, exprg), expreqn:patteqns) )
+                return ((pattsg, exprg), expreqn ++ patteqns) )
 
                 (NE.toList ttypetaggedcases)
 
 
-        let expr' = ECase caseong (NE.fromList pattsgexprsg) $ fromJust $ Map.lookup ttype tagmap
+        let expr' = ECase caseong (NE.fromList pattsgexprsg) $ fromJust $ Map.lookup ttypeinternal tagmap
             -- patt typing info
-            ttypepatts      = NE.toList $ fmap (fst . fst) ttypetaggedcases
-            ttypeexprs      = NE.toList $ fmap (fst . snd) ttypetaggedcases
+            ttypepatts      = NE.toList $ fmap (view exprTtype . fst . fst) ttypetaggedcases
+            ttypeexprs      = NE.toList $ fmap (view exprTtype . fst . snd) ttypetaggedcases
             typeeqs = TypeEqnsExist 
                 (ttypecaseon : ttypepatts ++ ttypeexprs)
                 $ map (TypeEqnsEq . (TypeVar ttypecaseon [],) . flip TypeVar []) ttypepatts
-                    -- the type being cased on must be the same as the patterns 
+                    -- ^ the type being cased on must be the same as the patterns 
                 ++ map (TypeEqnsEq . (TypeVar ttype [],) . flip TypeVar []) ttypeexprs
-                    -- the type of the expression is the same as the result of the case
+                    -- ^ the type of the expression is the same as the result of the case
+                ++ [TypeEqnsEq (TypeVar ttype [], TypeVar ttypeinternal [])]
                 ++ concat eqns
 
-        return (expr', typeeqs)
+        return (expr', [typeeqs])
 
-    f (EVar ident () ) = do
-        undefined
+    f (EVar ident ()) = do
+        ttype <- gview exprTtype
+        ttypeinternal <- gview exprTtypeInternal
+        tagmap <- gview tieExprEnvTagTypeMap
+
+        symtable <- guse equality
+        lkup <- lift $ 
+            ambiguousLookupCheck
+            =<< filter (has (_2 % symEntryInfo % _SymLocalSeqVar)) 
+            <$> querySymbolTableBnfcIdentName ident symtable 
+        let ~(_, ~(SymEntry tag ~(SymLocalSeqVar ttypelkup))) = fromJust lkup
+            eqns = TypeEqnsExist [] 
+                [ TypeEqnsEq (TypeVar ttype [], TypeVar ttypelkup [])
+                , TypeEqnsEq (TypeVar ttype [], TypeVar ttypeinternal []) ] 
+
+        return 
+            ( EVar (TaggedBnfcIdent ident tag) $ fromJust $ Map.lookup ttypelkup tagmap
+            , bool [eqns] [] (isNothing lkup) )
 
 
 patternsIAndExprsIToGraph :: 
@@ -387,19 +447,20 @@ patternsIAndExprsIToGraph ::
     TieFun ( [([PatternG TaggedBnfcIdent TypeTag], ExprG TaggedBnfcIdent TypeTag)] 
         , TypeEqns TaggedBnfcIdent TypeTag )
 patternsIAndExprsIToGraph pattsandexps = do
-    ttype <- gview tieExprEnvPhraseType
+    ttype <- gview exprTtype
+    internalttype <- gview exprTtypeInternal
     tagmap <- gview tieExprEnvTagTypeMap
 
-    ttypepattsandexps <- traverse (\n -> (,n) <$> lift freshTypeTag ) pattsandexps
-    (pattsgexpsg, eqns) <- unzip <$> 
+    ttypepattsandexps <- traverse (\n -> (,n) <$> lift freshExprTypeTags ) pattsandexps
+    ~(pattsgexpsg, eqns) <- unzip <$> 
         traverse 
             (\(tag, pattsexp) -> 
-                local (set tieExprEnvPhraseType tag) 
+                local (set tieExprEnvTypeTags tag) 
                 $ patternIAndExprIToGraph pattsexp) 
             ttypepattsandexps
 
 
-    let ttypephrases = map fst ttypepattsandexps
+    let ttypephrases = map (view exprTtype . fst) ttypepattsandexps
         typeeqns = TypeEqnsExist ttypephrases $
             map (TypeEqnsEq . (TypeVar ttype [],) . flip TypeVar []) ttypephrases
             ++ eqns
@@ -415,73 +476,75 @@ patternIAndExprIToGraph (patts, expr) = do
     -- symtab <- gview tieExprEnvSymbolTable
     symtab <- guse equality
 
-    ttype <- gview tieExprEnvPhraseType
+    ttype <- gview exprTtype
+    internalttype <- gview exprTtypeInternal
     tagmap <- gview tieExprEnvTagTypeMap
 
-    -- tag the patterns expressions with a type..
-    (ttypepatts, (ttypeexpr, expr)) <- lift $ do
-            ttypepatts <- traverse (const freshTypeTag) patts
-            ttypeexpr <- freshTypeTag
-            return (zip ttypepatts patts, (ttypeexpr, expr))
+    -- tag the patterns expression with a type..
+    ~(ttypespatts, (ttypesexpr, expr)) <- lift $ do
+            ttypespatts <- traverse (const freshExprTypeTags) patts
+            ttypesexpr <- freshExprTypeTags
+            return (zip ttypespatts patts, (ttypesexpr, expr))
 
 
     -- equations, and graph pattern from the type patterns
     -- Note: this modifies the symbol table..
     -- (patteqns, pattsg) <- undefined
-    (patteqns, pattsg) <- unwrappedPatternsIToGraph symtab ttypepatts
+    ~(patteqns, pattsg) <- unwrappedPatternsIToGraph symtab ttypespatts
 
-
-    ttypeexpr <- lift $ freshTypeTag
-    (exprg, expreqns) <- local (set tieExprEnvPhraseType ttypeexpr) (exprIToGraph expr)
+    (exprg, expreqns) <- local (set tieExprEnvTypeTags ttypesexpr) (exprIToGraph expr)
 
     equality .= symtab
 
-    let ttypeeqn = TypeEqnsExist (ttypeexpr : map fst ttypepatts) $ 
+    let ttypepatts = map (view exprTtype . fst ) ttypespatts
+        ttypeexpr = ttypesexpr ^. exprTtype
+        ttypeeqn = TypeEqnsExist (ttypeexpr : ttypepatts) $ 
                 [ TypeEqnsEq 
                     ( _TypeVar # (ttype, [])
                     , TypeSeq $ TypeSeqArrF 
-                        (map (flip TypeVar [] . fst) ttypepatts) 
+                        (map (flip TypeVar []) ttypepatts) 
                         (TypeVar ttypeexpr []) 
                     ) ]
-                ++ patteqns ++ [expreqns]
+                ++ patteqns ++ expreqns
 
     return ((pattsg, exprg), ttypeeqn)
 
 
 exprsIToGraph :: 
     -- | Expression to convert to a graph
-    [(TypeTag, ExprI BnfcIdent)] ->
+    [(ExprTypeTags, ExprI BnfcIdent)] ->
     -- | result
-    TieFun [( ExprG TaggedBnfcIdent TypeTag, TypeEqns TaggedBnfcIdent TypeTag )]
+    TieFun [( ExprG TaggedBnfcIdent TypeTag, [TypeEqns TaggedBnfcIdent TypeTag] )]
 exprsIToGraph ttypesexprs = do
     traverse 
-        (\(tag, expr) -> local (set tieExprEnvPhraseType tag) $ exprIToGraph expr ) 
+        (\(tag, expr) -> local (set tieExprEnvTypeTags tag) $ exprIToGraph expr ) 
         ttypesexprs 
 
 unwrappedExprsIToGraph ::
     -- | Expression to convert to a graph
-    [(TypeTag, ExprI BnfcIdent)] ->
+    [(ExprTypeTags, ExprI BnfcIdent)] ->
     -- | result
     TieFun
         ( [ExprG TaggedBnfcIdent TypeTag]
         , [TypeEqns TaggedBnfcIdent TypeTag])
 unwrappedExprsIToGraph ttypesexprs =  
-    unzip <$> exprsIToGraph ttypesexprs
+    second mconcat . unzip <$> exprsIToGraph ttypesexprs
 
 --------------------------------------------------
 -- pattern compilation
 --------------------------------------------------
 patternsIToGraph :: 
     SymbolTable -> 
-    [(TypeTag, PatternI BnfcIdent)] -> 
+    [(ExprTypeTags, PatternI BnfcIdent)] -> 
     TieFun [ ( [TypeEqns TaggedBnfcIdent TypeTag] , PatternG TaggedBnfcIdent TypeTag) ]
 patternsIToGraph symtable tagspatts = traverse 
-    (\(tag, patt) -> local (set tieExprEnvPhraseType tag) (patternIToGraph patt)) 
+    (\(tag, patt) -> 
+        local (set tieExprEnvTypeTags tag) (patternIToGraph patt)) 
     tagspatts
 
 unwrappedPatternsIToGraph ::
     SymbolTable -> 
-    [(TypeTag, PatternI BnfcIdent)] -> 
+    [(ExprTypeTags, PatternI BnfcIdent)] -> 
     TieFun ( [TypeEqns TaggedBnfcIdent TypeTag] , [PatternG TaggedBnfcIdent TypeTag] )
 unwrappedPatternsIToGraph symtable patts = 
     (first mconcat <<< unzip) <$> patternsIToGraph symtable patts
@@ -492,48 +555,49 @@ patternIToGraph ::
 patternIToGraph pattern = 
     f pattern
   where
+    f :: PatternI BnfcIdent -> TieFun ([TypeEqns TaggedBnfcIdent TypeTag] , PatternG TaggedBnfcIdent TypeTag)
     f (PConstructor ident () ctsargs ()) = do
-        ~symtable <- guse equality
+        symtable <- guse equality
 
-        -- ~(_, ~(SymEntry tag ~(SymPhrase phraseg))) <- lift $ 
-        ~lkup <- lift $ 
+        lkup <- lift $ 
             ambiguousLookupCheck
             =<< querySymbolTableSequentialPhrases
             <$> querySymbolTableBnfcIdentName ident symtable
 
-        let ~(Just ~(_, ~(SymEntry tag ~(SymPhrase phraseg)))) = lkup
-        -- let ~(_, ~(SymEntry tag ~(SymPhrase phraseg))) = fromJust lkup
+        let (_, ~(SymEntry tag ~(SymPhrase phraseg))) = fromJust lkup
 
         -- check if it is a data type
         lift $ tell $ 
             bool [_ExpectedDataConstructor # ident] []
                 (isNothing lkup || has _DataObj (phraseg ^. phraseGObjType))
 
-        let ~expectedarity = length (phraseg ^. typePhraseFrom)
-            ~actualarity = length ctsargs
+        let expectedarity = length (phraseg ^. typePhraseFrom)
+            actualarity = length ctsargs
         lift $ tell $ 
             bool [_ArityMismatch # (ident, expectedarity, actualarity)] []
                 (isNothing lkup || expectedarity == actualarity)
 
         -- fresh type vars for the constructor args
-        ttypectsargs <- lift $ traverse (const freshTypeTag) ctsargs
+        ttypesctsargs <- lift $ traverse (const freshExprTypeTags) ctsargs
+        let ttypectsargs = map (view exprTtype) ttypesctsargs
 
         --  query the phrase substitutions from the graph
-        (clausetype, ttypeargs, clausesubstitutions) <- lift $ 
+        ~(clausetype, ttypeargs, clausesubstitutions) <- lift . fmap fst . splitGraphGenCore $ 
             clauseSubstitutions (phraseg ^. typePhraseContext % phraseParent)
+        -- let (clausetype, ttypeargs, clausesubstitutions) = evalState 
+                -- (clauseSubstitutions (phraseg ^. typePhraseContext % phraseParent)) supply
 
         (ctsargstypeeqs, ctsargspatts) <- 
-            unwrappedPatternsIToGraph symtable $ zip ttypectsargs ctsargs
+            unwrappedPatternsIToGraph symtable $ zip ttypesctsargs ctsargs
 
+        ttype <- gview exprTtype
+        internalttype <- gview exprTtypeInternal
         tagmap <- gview tieExprEnvTagTypeMap
-        ttype <- gview tieExprEnvPhraseType
 
-        internalttype <- lift freshTypeTag
 
         let typeeqs = TypeEqnsExist (ttypectsargs ++ ttypeargs) $
-                [ TypeEqnsEq ( _TypeVar # (ttype, [])
-                    , clausetype )
-                , TypeEqnsEq (TypeVar ttype [], TypeVar internalttype []) ] 
+                [ TypeEqnsEq ( TypeVar ttype [] , clausetype )
+                , TypeEqnsEq ( TypeVar ttype [], TypeVar internalttype []) ] 
                 ++ zipWith g ttypectsargs (phraseg ^. typePhraseFrom)
                 ++ ctsargstypeeqs
             g typetag ctsargtype = TypeEqnsEq
@@ -544,7 +608,7 @@ patternIToGraph pattern =
                 (_TaggedBnfcIdent # (ident, tag)) 
                 phraseg ctsargspatts (fromJust $ Map.lookup internalttype tagmap)
 
-        return ( [typeeqs], pat' )
+        return ( bool [typeeqs] [] (isNothing lkup), pat' )
 
         {-
     f ttype (PUnit ident ()) = do
@@ -649,12 +713,8 @@ patternIToGraph pattern =
 
 -}
     f ( PVar ident () ) = do
-        ttype <- gview tieExprEnvPhraseType
-        -- the reason why we need this internal type
-        -- is because the ttype will get existentially quanitified
-        -- and hence eliminated, so there will be no type for
-        -- this element in the map and the fromJust will then fail
-        internalttype <- lift $ freshTypeTag
+        ttype <- gview (exprTypeTags % exprTtype)
+        internalttype <- gview (exprTypeTags % exprTtypeInternal)
 
         tagmap <- gview tieExprEnvTagTypeMap
         ident' <- lift $ tagBnfcIdent ident
@@ -664,7 +724,13 @@ patternIToGraph pattern =
                 ]
             typeeqs = [TypeEqnsEq (TypeVar ttype [], TypeVar internalttype [])]
             pat' = PVar ident' $ fromJust $ Map.lookup internalttype tagmap
+
+        equality %= (
+            ( ident' ^. taggedBnfcIdentName
+            , SymEntry (ident' ^. uniqueTag) $ SymLocalSeqVar internalttype): )
+
         return ( typeeqs, pat' )
+
         {-
     f ttype (PNull ident ()) = do
         -- tags for null tags do not matter

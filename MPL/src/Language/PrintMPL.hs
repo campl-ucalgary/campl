@@ -250,6 +250,7 @@ instance Print TypeHandleName where
 instance Print Expr where
   prt i e = case e of
     EXPR expr -> prPrec i 0 (concatD [prt 0 expr])
+    TYPED_EXPR expr mpltype -> prPrec i 0 (concatD [prt 0 expr, doc (showString ":"), prt 0 mpltype])
     IF_EXPR expr1 expr2 expr3 -> prPrec i 0 (concatD [doc (showString "if"), prt 0 expr1, doc (showString "then"), prt 0 expr2, doc (showString "else"), prt 0 expr3])
     LET_EXPR letexprphrases expr -> prPrec i 0 (concatD [doc (showString "let"), doc (showString "{"), prt 0 letexprphrases, doc (showString "}"), doc (showString "in"), prt 0 expr])
     INFIXR0_EXPR expr1 colon expr2 -> prPrec i 0 (concatD [prt 1 expr1, prt 0 colon, prt 0 expr2])
@@ -321,6 +322,7 @@ instance Print PattExprPhrase where
 instance Print Pattern where
   prt i e = case e of
     PATTERN pattern -> prPrec i 0 (concatD [prt 0 pattern])
+    TYPED_PATTERN pattern mpltype -> prPrec i 0 (concatD [prt 0 pattern, doc (showString ":"), prt 0 mpltype])
     LIST_COLON_PATTERN pattern1 colon pattern2 -> prPrec i 0 (concatD [prt 1 pattern1, prt 0 colon, prt 0 pattern2])
     CONSTRUCTOR_PATTERN_ARGS uident lbracket patterns rbracket -> prPrec i 1 (concatD [prt 0 uident, prt 0 lbracket, prt 0 patterns, prt 0 rbracket])
     CONSTRUCTOR_PATTERN_NO_ARGS uident -> prPrec i 1 (concatD [prt 0 uident])
@@ -348,6 +350,7 @@ instance Print DestructorPatternPhrase where
   prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ","), prt 0 xs])
 instance Print FunctionDefn where
   prt i e = case e of
+    INTERNAL_TYPED_FUNCTION_DEFN pident mpltype pattexprphrases -> prPrec i 0 (concatD [doc (showString "fun"), prt 0 pident, doc (showString "::"), prt 0 mpltype, doc (showString "="), doc (showString "{"), prt 0 pattexprphrases, doc (showString "}")])
     TYPED_FUNCTION_DEFN pident mpltypes mpltype pattexprphrases -> prPrec i 0 (concatD [doc (showString "fun"), prt 0 pident, doc (showString "::"), prt 0 mpltypes, doc (showString "->"), prt 0 mpltype, doc (showString "="), doc (showString "{"), prt 0 pattexprphrases, doc (showString "}")])
     FUNCTION_DEFN pident pattexprphrases -> prPrec i 0 (concatD [doc (showString "fun"), prt 0 pident, doc (showString "="), doc (showString "{"), prt 0 pattexprphrases, doc (showString "}")])
 

@@ -194,8 +194,8 @@ instance Print MplType where
     MPL_BRACKETED_TYPE lbracket mpltype rbracket -> prPrec i 3 (concatD [prt 0 lbracket, prt 0 mpltype, prt 0 rbracket])
     MPL_LIST_TYPE lsquarebracket mpltype rsquarebracket -> prPrec i 3 (concatD [prt 0 lsquarebracket, prt 0 mpltype, prt 0 rsquarebracket])
     MPL_TUPLE_TYPE lbracket mpltype tuplelisttypes rbracket -> prPrec i 3 (concatD [prt 0 lbracket, prt 0 mpltype, doc (showString ","), prt 0 tuplelisttypes, prt 0 rbracket])
-    MPL_SEQ_ARROW_TYPE upident forallvarlists mpltypes mpltype -> prPrec i 3 (concatD [prt 0 upident, doc (showString "::"), doc (showString "forall"), prt 0 forallvarlists, doc (showString "."), prt 0 mpltypes, doc (showString "->"), prt 0 mpltype])
-    MPL_CONC_ARROW_TYPE upident forallvarlists mpltypes1 mpltypes2 mpltypes3 -> prPrec i 3 (concatD [prt 0 upident, doc (showString "::"), doc (showString "forall"), prt 0 forallvarlists, doc (showString "."), prt 0 mpltypes1, doc (showString "|"), prt 0 mpltypes2, doc (showString "=>"), prt 0 mpltypes3])
+    MPL_SEQ_ARROW_TYPE forallvarlists mpltypes mpltype -> prPrec i 3 (concatD [doc (showString "forall"), prt 0 forallvarlists, doc (showString "."), prt 0 mpltypes, doc (showString "->"), prt 0 mpltype])
+    MPL_CONC_ARROW_TYPE forallvarlists mpltypes1 mpltypes2 mpltypes3 -> prPrec i 3 (concatD [doc (showString "forall"), prt 0 forallvarlists, doc (showString "."), prt 0 mpltypes1, doc (showString "|"), prt 0 mpltypes2, doc (showString "=>"), prt 0 mpltypes3])
   prtList _ [] = (concatD [])
   prtList _ [x] = (concatD [prt 0 x])
   prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ","), prt 0 xs])
@@ -250,6 +250,7 @@ instance Print TypeHandleName where
 instance Print Expr where
   prt i e = case e of
     EXPR expr -> prPrec i 0 (concatD [prt 0 expr])
+    TYPED_EXPR expr mpltype -> prPrec i 0 (concatD [prt 0 expr, doc (showString ":"), prt 0 mpltype])
     IF_EXPR expr1 expr2 expr3 -> prPrec i 0 (concatD [doc (showString "if"), prt 0 expr1, doc (showString "then"), prt 0 expr2, doc (showString "else"), prt 0 expr3])
     LET_EXPR letexprphrases expr -> prPrec i 0 (concatD [doc (showString "let"), doc (showString "{"), prt 0 letexprphrases, doc (showString "}"), doc (showString "in"), prt 0 expr])
     INFIXR0_EXPR expr1 colon expr2 -> prPrec i 0 (concatD [prt 1 expr1, prt 0 colon, prt 0 expr2])
@@ -348,6 +349,7 @@ instance Print DestructorPatternPhrase where
   prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ","), prt 0 xs])
 instance Print FunctionDefn where
   prt i e = case e of
+    INTERNAL_TYPED_FUNCTION_DEFN pident mpltype pattexprphrases -> prPrec i 0 (concatD [doc (showString "fun"), prt 0 pident, doc (showString "::"), prt 0 mpltype, doc (showString "="), doc (showString "{"), prt 0 pattexprphrases, doc (showString "}")])
     TYPED_FUNCTION_DEFN pident mpltypes mpltype pattexprphrases -> prPrec i 0 (concatD [doc (showString "fun"), prt 0 pident, doc (showString "::"), prt 0 mpltypes, doc (showString "->"), prt 0 mpltype, doc (showString "="), doc (showString "{"), prt 0 pattexprphrases, doc (showString "}")])
     FUNCTION_DEFN pident pattexprphrases -> prPrec i 0 (concatD [doc (showString "fun"), prt 0 pident, doc (showString "="), doc (showString "{"), prt 0 pattexprphrases, doc (showString "}")])
 

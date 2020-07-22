@@ -106,6 +106,7 @@ data TypeHandleName = TYPE_HANDLE_NAME UIdent
 
 data Expr
     = EXPR Expr
+    | TYPED_EXPR Expr MplType
     | IF_EXPR Expr Expr Expr
     | LET_EXPR [LetExprPhrase] Expr
     | INFIXR0_EXPR Expr Colon Expr
@@ -159,6 +160,7 @@ data PattExprPhrase = PATTERN_TO_EXPR [Pattern] Expr
 
 data Pattern
     = PATTERN Pattern
+    | TYPED_PATTERN Pattern MplType
     | LIST_COLON_PATTERN Pattern Colon Pattern
     | CONSTRUCTOR_PATTERN_ARGS UIdent LBracket [Pattern] RBracket
     | CONSTRUCTOR_PATTERN_NO_ARGS UIdent
@@ -181,7 +183,8 @@ data DestructorPatternPhrase
   deriving (Eq, Ord, Show, Read)
 
 data FunctionDefn
-    = TYPED_FUNCTION_DEFN PIdent [MplType] MplType [PattExprPhrase]
+    = INTERNAL_TYPED_FUNCTION_DEFN PIdent MplType [PattExprPhrase]
+    | TYPED_FUNCTION_DEFN PIdent [MplType] MplType [PattExprPhrase]
     | FUNCTION_DEFN PIdent [PattExprPhrase]
   deriving (Eq, Ord, Show, Read)
 

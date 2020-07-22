@@ -150,7 +150,8 @@ separator nonempty TypeHandleName "," ;
 -- ====================================================================
 --  MPL Expr definition
 -- ====================================================================
-EXPR      . Expr  ::= Expr0 ;
+EXPR                        . Expr  ::= Expr0 ;
+internal TYPED_EXPR         . Expr  ::=  Expr ":" MplType  ;
 -- TODO -- not totally sure about this IF and LET precedence?
 -- ASK THE OTHER DEVELOPER ABOUT THIS
 IF_EXPR   . Expr  ::= "if" Expr "then"  Expr  "else"  Expr ;
@@ -240,7 +241,8 @@ separator Expr "," ;
 
 PATTERN_TO_EXPR . PattExprPhrase ::= [Pattern] "->" Expr ;
 
-PATTERN  . Pattern ::= Pattern0 ;
+PATTERN                 . Pattern ::= Pattern0 ;
+internal TYPED_PATTERN  . Pattern ::= Pattern ":" MplType ;
 separator Pattern "," ;
 
 LIST_COLON_PATTERN       . Pattern0 ::= Pattern1 Colon Pattern0 ;
@@ -268,6 +270,11 @@ separator nonempty DestructorPatternPhrase "," ;
 -- ====================================================================
 --  MPL Function definition
 -- ====================================================================
+
+internal INTERNAL_TYPED_FUNCTION_DEFN . FunctionDefn ::= 
+    "fun" PIdent "::" MplType
+        "=" "{" [ PattExprPhrase ]"}" ;
+
 TYPED_FUNCTION_DEFN . FunctionDefn ::= 
     "fun" PIdent "::" [MplType] "->" MplType 
         "=" "{" [ PattExprPhrase ]"}" ;
