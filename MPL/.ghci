@@ -8,6 +8,9 @@
 :set -XFlexibleInstances 
 :set -XFunctionalDependencies 
 :set -XDeriveGeneric 
+:set -XDeriveFunctor 
+:set -XDeriveFoldable 
+:set -XDeriveTraversable 
 :set -XFlexibleContexts
 :set prompt "> "
 
@@ -21,6 +24,7 @@ import Data.Bifunctor as Bifunctor
 import Control.Arrow
 import Data.List
 import qualified Data.List.NonEmpty as NE
+import GHC.Generics
 import Data.List.NonEmpty (NonEmpty (..))
 
 

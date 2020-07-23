@@ -90,7 +90,8 @@ $(concat <$> traverse (makeFieldLabelsWith (fieldLabelsRules & lensField .~ unde
  )
 
 $(concat <$> traverse makePrisms 
-    [ ''DefnI ]
+    [ ''DefnI
+    , ''BnfcIdent ]
  )
 
 $(makeLenses ''BnfcIdent)

@@ -1,4 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -fno-full-laziness #-}
 {-# OPTIONS_GHC -fno-cse #-}
 module MPLUtil.UniqueSupply where
@@ -9,6 +10,8 @@ import Control.Arrow
 
 import MPLUtil.Data.Stream (Stream (..))
 import qualified MPLUtil.Data.Stream as Stream
+
+import Debug.Trace
 
 import Optics
 
@@ -22,7 +25,7 @@ newtype Unique = Unique Int
   deriving (Show, Eq, Ord, Read, Enum)
 
 uniqueFromSupply :: UniqueSupply -> Unique 
-uniqueFromSupply (UniqueSupply a _ _) = Unique a
+uniqueFromSupply ~(UniqueSupply a _ _) = Unique a
 
 uniquesFromSupply :: 
     UniqueSupply -> 
@@ -57,8 +60,7 @@ freshInt ref = atomicModifyIORef' ref (succ&&&id)
     
 
 split :: UniqueSupply -> (UniqueSupply, UniqueSupply)
-split (UniqueSupply _ l r)= (l, r)
-
+split ~(UniqueSupply _ l r)= (l, r)
 
 
 instance Show UniqueSupply where

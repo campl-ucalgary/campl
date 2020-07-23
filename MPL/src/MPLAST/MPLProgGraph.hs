@@ -29,6 +29,7 @@ import Data.Functor.Foldable.TH
 
 import Data.Void
 import Data.Coerce
+import Data.Maybe
 
 import GHC.Generics 
 
@@ -38,6 +39,7 @@ import Control.Arrow
 import Data.List.NonEmpty ( NonEmpty (..) )
 import qualified Data.List.NonEmpty as NE
 import Data.Tuple
+
 
 data TaggedBnfcIdent = TaggedBnfcIdent {
     _taggedBnfcIdentBnfcIdent :: BnfcIdent
@@ -248,4 +250,13 @@ bnfcIdentName = lens get set
 
 instance HasUniqueTag TaggedBnfcIdent where
     uniqueTag = taggedBnfcIdentTag 
+
+progGQueryFunctions :: 
+    (Prog (DefnG TaggedBnfcIdent TypeTag)) -> 
+    [FunctionDefG TaggedBnfcIdent TypeTag]
+progGQueryFunctions (Prog defsg) = concatMap f defsg
+  where
+    f (Stmt defns wdefs) = mapMaybe g (NE.toList defns) ++ progGQueryFunctions (Prog wdefs)
+    g (FunctionDecDefG defn) = Just defn
+    g _ = Nothing
 

@@ -3,7 +3,7 @@ module MPLUtil.Data.Stream where
 infixr 5 :/
 
 data Stream a = a :/ Stream a
-    deriving (Show, Eq, Foldable, Traversable)
+    deriving (Show, Eq)
 
 instance Functor Stream where
     fmap = MPLUtil.Data.Stream.map

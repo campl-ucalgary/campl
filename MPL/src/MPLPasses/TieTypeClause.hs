@@ -80,7 +80,7 @@ tieTypeClauseKnot ::
     NonEmpty (TypeClause () () () BnfcIdent BnfcIdent) ->
     TieTypeClause ()
 tieTypeClauseKnot clauses = do
-    args' <- typeClausesArgs clauses
+    args' <- lift $ typeClausesArgs clauses
     equality %= 
         ((map (view taggedBnfcIdentName &&& review _SymEntry . (,SymTypeVar) . view uniqueTag ) 
             args')++)
@@ -112,8 +112,10 @@ tieTypeClauseKnot clauses = do
         return ()
 
     g clause (TypePhrase () ident fromtys toty) = do
-        fromtys' <- mapM substituteTyVar fromtys
-        toty' <- substituteTyVar toty
+        symtab <- guse equality  
+
+        fromtys' <- lift $ traverse (substituteTyVar symtab) fromtys
+        toty' <- lift $ substituteTyVar symtab toty
         ident' <- lift $ tagBnfcIdent ident
         return $ TypePhrase
             (ClausePhraseKnot clause)
@@ -121,116 +123,177 @@ tieTypeClauseKnot clauses = do
             fromtys'
             toty'
 
-    substituteTyVar :: Type () BnfcIdent BnfcIdent -> 
-        TieTypeClause (TypeG TaggedBnfcIdent)
-    substituteTyVar = para f 
-      where
-        f (TypeWithArgsF ident () args) = do
-            args' <- traverse snd args
-            ~(SymEntry uniquetag info) <- lookupSymTable ident
+substituteTyVar :: 
+    SymbolTable -> 
+    Type () BnfcIdent BnfcIdent -> 
+    GraphGenCore (TypeG TaggedBnfcIdent)
+substituteTyVar symtab = para f 
+  where
+    f (TypeWithArgsF ident () args) = do
+        args' <- traverse snd args
+        ~(SymEntry uniquetag info) <- lookupIdent symtab ident
 
-            return $ case info of 
-                SymTypeVar -> TypeVar 
-                    (_TaggedBnfcIdent # (ident, uniquetag)) args'
-                SymClause clauseg -> TypeWithArgs
-                    (_TaggedBnfcIdent # (ident, uniquetag))
-                    (TypeClauseNode clauseg) args'
+        return $ case info of 
+            SymTypeVar -> TypeVar 
+                (_TaggedBnfcIdent # (ident, uniquetag)) args'
+            SymClause clauseg -> TypeWithArgs
+                (_TaggedBnfcIdent # (ident, uniquetag))
+                (TypeClauseNode clauseg) args'
 
-        f (TypeVarF ident (a:as)) = error "higher kinded data not supported yet.."
-        f (TypeVarF ident []) = do
-            -- TODO literally does NOT support anything with higher kinded data!
-            -- in the future, change it so that it will substitute and check arity!
-            ~(SymEntry uniquetag info) <- lookupSymTable ident
+    f (TypeVarF ident (a:as)) = error "higher kinded data not supported yet.."
+    f (TypeVarF ident []) = do
+        -- TODO literally does NOT support anything with higher kinded data!
+        -- in the future, change it so that it will substitute and check arity!
+        ~(SymEntry uniquetag info) <- lookupIdent symtab ident
 
-            return $ case info of
-                SymTypeVar -> _TypeVar # (_TaggedBnfcIdent # (ident, uniquetag), [])
-                SymClause clauseg -> TypeWithArgs
-                    (_TaggedBnfcIdent # (ident,uniquetag))
-                    (TypeClauseNode clauseg) []
-        f (TypeSeqF n) = TypeSeq <$> case n of
-            TypeTupleF (a, b :| rst) -> do
-                (a, rst) <- (,) <$> snd a <*> ((:|) <$> snd b <*> traverse snd rst)
-                return $ TypeTupleF (a,rst)
-            TypeListF ty -> TypeListF <$> snd ty
-            -- unique id of built in types do not matter, so we just assign it a new one (so it type checks..)
-            TypeIntF ident -> review _TypeIntF 
-                . review _TaggedBnfcIdent 
-                . (ident,) <$> lift freshUniqueTag
-            TypeCharF ident -> review _TypeCharF 
-                . review _TaggedBnfcIdent 
-                . (ident,) <$> lift freshUniqueTag
-            TypeDoubleF ident -> review _TypeDoubleF 
-                . review _TaggedBnfcIdent 
-                . (ident,) <$> lift freshUniqueTag
-            TypeStringF ident -> review _TypeStringF 
-                . review _TaggedBnfcIdent 
-                . (ident,) <$> lift freshUniqueTag
-            TypeUnitF ident -> review _TypeUnitF 
-                . review _TaggedBnfcIdent 
-                . (ident,) <$> lift freshUniqueTag
-            -- TODO: implement this / give it more thought...
-            -- TypeArrF ident from to -> review _TypeArrF 
-            
-            {-
-            -- Duplicated code..
-            TypeIntF ident -> do
-                entry <- guses tieTypeClauseSymTable (lookupSymTable ident) 
-                case entry of
-                    Just (SymEntry uniquetag n) -> case n of
-                        SymTypeVar -> return $ _TypeIntF # _TaggedBnfcIdent # (ident, uniquetag)
-                    Nothing -> throwError $ _TypeNotInScope # _TypeSeq # _TypeIntF # ident
+        return $ case info of
+            SymTypeVar -> _TypeVar # (_TaggedBnfcIdent # (ident, uniquetag), [])
+            SymClause clauseg -> TypeWithArgs
+                (_TaggedBnfcIdent # (ident,uniquetag))
+                (TypeClauseNode clauseg) []
+    f (TypeSeqF n) = TypeSeq <$> case n of
+        TypeTupleF (a, b :| rst) -> do
+            (a, rst) <- (,) <$> snd a <*> ((:|) <$> snd b <*> traverse snd rst)
+            return $ TypeTupleF (a,rst)
+        TypeListF ty -> TypeListF <$> snd ty
+        -- unique id of built in types do not matter, so we just assign it a new one (so it type checks..)
+        TypeIntF ident -> review _TypeIntF 
+            . review _TaggedBnfcIdent 
+            . (ident,) <$> freshUniqueTag
+        TypeCharF ident -> review _TypeCharF 
+            . review _TaggedBnfcIdent 
+            . (ident,) <$> freshUniqueTag
+        TypeDoubleF ident -> review _TypeDoubleF 
+            . review _TaggedBnfcIdent 
+            . (ident,) <$> freshUniqueTag
+        TypeStringF ident -> review _TypeStringF 
+            . review _TaggedBnfcIdent 
+            . (ident,) <$> freshUniqueTag
+        TypeUnitF ident -> review _TypeUnitF 
+            . review _TaggedBnfcIdent 
+            . (ident,) <$> freshUniqueTag
+        -- TODO: implement this / give it more thought...
+        -- TypeArrF ident from to -> review _TypeArrF 
+        
+        {-
+        -- Duplicated code..
+        TypeIntF ident -> do
+            entry <- guses tieTypeClauseSymTable (lookupIdent ident) 
+            case entry of
+                Just (SymEntry uniquetag n) -> case n of
+                    SymTypeVar -> return $ _TypeIntF # _TaggedBnfcIdent # (ident, uniquetag)
+                Nothing -> throwError $ _TypeNotInScope # _TypeSeq # _TypeIntF # ident
 
-            TypeCharF ident -> do
-                entry <- guses tieTypeClauseSymTable (lookupSymTable ident) 
-                case entry of
-                    Just (SymEntry uniquetag n) -> case n of
-                        SymTypeVar -> return $ _TypeCharF # _TaggedBnfcIdent # (ident, uniquetag)
-                    Nothing -> throwError $ _TypeNotInScope # _TypeSeq # _TypeCharF # ident
-            TypeDoubleF ident -> do
-                entry <- guses tieTypeClauseSymTable (lookupSymTable ident) 
-                case entry of
-                    Just (SymEntry uniquetag n) -> case n of
-                        SymTypeVar -> return $ _TypeDoubleF # _TaggedBnfcIdent # (ident, uniquetag)
-                    Nothing -> throwError $ _TypeNotInScope # _TypeSeq # _TypeDoubleF # ident
-            TypeStringF ident -> do
-                ~entry <- guses tieTypeClauseSymTable (lookupSymTable ident) 
-                case entry of
-                    Just (SymEntry uniquetag n) -> case n of
-                        SymTypeVar -> return $ _TypeStringF # _TaggedBnfcIdent # (ident, uniquetag)
-                    Nothing -> throwError $ _TypeNotInScope # _TypeSeq # _TypeStringF # ident
-            TypeUnitF ident -> do
-                ~entry <- guses tieTypeClauseSymTable (lookupSymTable ident) 
-                case entry of
-                    Just (SymEntry uniquetag n) -> case n of
-                        SymTypeVar -> return $ _TypeUnitF # _TaggedBnfcIdent # (ident, uniquetag)
-                    Nothing -> throwError $ _TypeNotInScope # _TypeSeq # _TypeUnitF # ident
-            -}
+        TypeCharF ident -> do
+            entry <- guses tieTypeClauseSymTable (lookupIdent ident) 
+            case entry of
+                Just (SymEntry uniquetag n) -> case n of
+                    SymTypeVar -> return $ _TypeCharF # _TaggedBnfcIdent # (ident, uniquetag)
+                Nothing -> throwError $ _TypeNotInScope # _TypeSeq # _TypeCharF # ident
+        TypeDoubleF ident -> do
+            entry <- guses tieTypeClauseSymTable (lookupIdent ident) 
+            case entry of
+                Just (SymEntry uniquetag n) -> case n of
+                    SymTypeVar -> return $ _TypeDoubleF # _TaggedBnfcIdent # (ident, uniquetag)
+                Nothing -> throwError $ _TypeNotInScope # _TypeSeq # _TypeDoubleF # ident
+        TypeStringF ident -> do
+            ~entry <- guses tieTypeClauseSymTable (lookupIdent ident) 
+            case entry of
+                Just (SymEntry uniquetag n) -> case n of
+                    SymTypeVar -> return $ _TypeStringF # _TaggedBnfcIdent # (ident, uniquetag)
+                Nothing -> throwError $ _TypeNotInScope # _TypeSeq # _TypeStringF # ident
+        TypeUnitF ident -> do
+            ~entry <- guses tieTypeClauseSymTable (lookupIdent ident) 
+            case entry of
+                Just (SymEntry uniquetag n) -> case n of
+                    SymTypeVar -> return $ _TypeUnitF # _TaggedBnfcIdent # (ident, uniquetag)
+                Nothing -> throwError $ _TypeNotInScope # _TypeSeq # _TypeUnitF # ident
+        -}
 
 
-        f (TypeConcF n) = TypeConc <$> case n of
-            -- TODO -- either implement these cases ore generalize it so it all is a lookup!
-            TypeGetF ident a b -> review _TypeGetF <$> 
-                ((,,) <$> (review _TaggedBnfcIdent . (ident,) <$> lift freshUniqueTag) <*> snd a <*> snd b)
-            TypePutF ident a b -> review _TypePutF <$> 
-                ((,,) <$> (review _TaggedBnfcIdent . (ident,) <$> lift freshUniqueTag) <*> snd a <*> snd b)
-            TypeTensorF ident a b -> review _TypeTensorF <$> 
-                ((,,) <$> (review _TaggedBnfcIdent . (ident,) <$> lift freshUniqueTag) <*> snd a <*> snd b)
-            TypeParF ident a b -> review _TypeParF <$> 
-                ((,,) <$> (review _TaggedBnfcIdent . (ident,) <$> lift freshUniqueTag) <*> snd a <*> snd b)
-            TypeTopBotF ident -> review _TypeTopBotF <$> (review _TaggedBnfcIdent . (ident,) <$> lift freshUniqueTag)
-            TypeNegF ident t -> review _TypeNegF <$> ((,)
-                <$> (review _TaggedBnfcIdent . (ident,) <$> lift freshUniqueTag)
-                <*> snd t)
+    f (TypeConcF n) = TypeConc <$> case n of
+        -- TODO -- either implement these cases ore generalize it so it all is a lookup!
+        TypeGetF ident a b -> review _TypeGetF <$> 
+            ((,,) <$> (review _TaggedBnfcIdent . (ident,) <$> freshUniqueTag) <*> snd a <*> snd b)
+        TypePutF ident a b -> review _TypePutF <$> 
+            ((,,) <$> (review _TaggedBnfcIdent . (ident,) <$> freshUniqueTag) <*> snd a <*> snd b)
+        TypeTensorF ident a b -> review _TypeTensorF <$> 
+            ((,,) <$> (review _TaggedBnfcIdent . (ident,) <$> freshUniqueTag) <*> snd a <*> snd b)
+        TypeParF ident a b -> review _TypeParF <$> 
+            ((,,) <$> (review _TaggedBnfcIdent . (ident,) <$> freshUniqueTag) <*> snd a <*> snd b)
+        TypeTopBotF ident -> review _TypeTopBotF <$> (review _TaggedBnfcIdent . (ident,) <$> freshUniqueTag)
+        TypeNegF ident t -> review _TypeNegF <$> ((,)
+            <$> (review _TaggedBnfcIdent . (ident,) <$> freshUniqueTag)
+            <*> snd t)
 
-    lookupSymTable ident = do
-        symtab <- guse equality  
-        entries <- lift $ querySymbolTableBnfcIdentName ident symtab
-        lift $ snd . fromJust <$> ambiguousLookupCheck entries
+
+    lookupIdent ::
+        SymbolTable ->
+        BnfcIdent ->
+        GraphGenCore (SymEntry SymInfo)
+    lookupIdent symtab ident = do
+        entries <- querySymbolTableBnfcIdentName ident symtab
+        snd . fromJust <$> ambiguousLookupCheck entries
+
+-- takes an interface type and annotates it with the symbol table
+-- moreover, for free variables, it modifies the symbol table
+-- to include the free variables...
+-- REMARK: expects the symbol table to be filtered to only include type clauses.
+annotateTypeIToTypeGAndScopeFreeVars :: 
+    Type () BnfcIdent BnfcIdent -> 
+    StateT SymbolTable GraphGenCore (Maybe (TypeG TaggedBnfcIdent))
+annotateTypeIToTypeGAndScopeFreeVars = cata f
+  where
+    f :: 
+        TypeF () BnfcIdent BnfcIdent (StateT SymbolTable GraphGenCore (Maybe (TypeG TaggedBnfcIdent))) -> 
+        StateT SymbolTable GraphGenCore (Maybe (TypeG TaggedBnfcIdent))
+    f (TypeWithArgsF ident () args) = do
+        symtab <- guse equality
+
+        lkup <- lift $ 
+            ambiguousLookupCheck
+            =<< querySymbolTableBnfcIdentName ident symtab
+
+        case lkup of
+            Just n -> undefined
+            -- if not found, then add it to the symbol table
+            Nothing 
+                | null args -> do   
+                    tag <- lift freshUniqueTag
+                    ttypetag <- lift freshTypeTag
+                    equality %= undefined
+                    undefined
+                | otherwise -> do   
+                    lift $ tell [_NotInScope # ident]
+                    return Nothing
+
+        {-
+        return $ case info of 
+            SymTypeVar -> TypeVar 
+                (_TaggedBnfcIdent # (ident, uniquetag)) args'
+            SymClause clauseg -> TypeWithArgs
+                (_TaggedBnfcIdent # (ident, uniquetag))
+                (TypeClauseNode clauseg) args'
+                -}
+
+    {-
+    f (TypeVarF ident (a:as)) = error "higher kinded data not supported yet.."
+    f (TypeVarF ident []) = do
+        -- TODO literally does NOT support anything with higher kinded data!
+        -- in the future, change it so that it will substitute and check arity!
+        ~(SymEntry uniquetag info) <- lookupSymTable ident
+
+        return $ case info of
+            SymTypeVar -> _TypeVar # (_TaggedBnfcIdent # (ident, uniquetag), [])
+            SymClause clauseg -> TypeWithArgs
+                (_TaggedBnfcIdent # (ident,uniquetag))
+                (TypeClauseNode clauseg) []
+                -}
         
 
     
 typeClausesArgs ::
     NonEmpty (TypeClause () () () BnfcIdent BnfcIdent) ->
-    TieTypeClause [TaggedBnfcIdent]
-typeClausesArgs clause@(TypeClause name args stv phrases () :| rst) = mapM (\n -> lift $ tagBnfcIdent n) args
+    GraphGenCore [TaggedBnfcIdent]
+typeClausesArgs clause@(TypeClause name args stv phrases () :| rst) = traverse (\n -> tagBnfcIdent n) args
 

@@ -102,7 +102,7 @@ data Expr pattern letdef typedef calleddef ident =
     | ETuple { 
         _eTupleArgs :: (Expr pattern letdef typedef calleddef ident
         , NonEmpty (Expr pattern letdef typedef calleddef ident)), _eType :: typedef }
-    | EFun  { 
+    | ECall  { 
         _eCalledFun :: ident
         , _eFunDef :: calleddef
         , _eArgs :: [Expr pattern letdef typedef calleddef ident] 

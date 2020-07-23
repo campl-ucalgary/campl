@@ -247,7 +247,7 @@ translateBnfcExpr (B.TUPLE_EXPR _ a as _) = do
 translateBnfcExpr (B.FUN_EXPR fun _ args _) = do
     (a,b,c)<- ( (fun ^. pIdentBnfcIdentGetter,(),) 
             <$> runAccumEither (traverse (liftAEither . translateBnfcExpr) args) )
-    return $ review _EFun (a,b,c,())
+    return $ review _ECall (a,b,c,())
 translateBnfcExpr (B.RECORD_EXPR lbr exprs _) = 
     ERecord (lbr ^. lBracketBnfcIdentGetter) () . NE.fromList
         <$> runAccumEither (traverse (liftAEither . translateBnfcRecordExprPhrase) exprs)

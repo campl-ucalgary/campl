@@ -4,6 +4,7 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TupleSections #-}
 module MPLPasses.Unification where
 
 import MPLAST.MPLASTCore
@@ -13,6 +14,7 @@ import MPLAST.MPLASTCore
 import MPLPasses.UnificationErrors
 
 import Control.Monad
+import Control.Arrow
 
 import Optics
 import Data.Bool
@@ -20,6 +22,7 @@ import Data.Functor.Foldable
 import Data.Functor.Foldable.TH
 import Data.Foldable
 import Control.Monad.State
+import Text.PrettyPrint hiding ((<>))
 
 import Data.List
 import Data.Set ( Set (..) )
@@ -34,6 +37,19 @@ data TypeEqns ident typevar =
     | TypeEqnsExist [typevar] [TypeEqns ident typevar]
     | TypeEqnsForall [typevar] [TypeEqns ident typevar]
   deriving (Show, Functor, Foldable, Traversable)
+
+instance (PPrint ident, Eq typevar, PPrint typevar) => PPrint (TypeEqns ident typevar) where
+    pprint = render . f
+      where
+        f (TypeEqnsEq a) = text $ pprint a
+        f (TypeEqnsExist typevars eqns) = 
+            hcat
+            [ text "Exist " 
+            , text "" 
+            , text ("[" ++ intercalate "," (map pprint typevars) ++ "]")
+            , text " . " 
+            , nest 2 (vcat (map f eqns))
+            ]
 
 $(concat <$> traverse makeBaseFunctor 
     [ ''TypeEqns ]
@@ -88,12 +104,11 @@ $(makeLenses ''Package)
 type TagTypeMap = Map TypeTag TypeGTypeTag
 
 packageToTagMap :: 
-    Package TaggedBnfcIdent TypeTag -> 
-    TagTypeMap
+    Package TaggedBnfcIdent TypeTag -> TagTypeMap
 packageToTagMap pkg = Map.fromList (pkg ^. packageSubs)
 
-instance (Show a, Show b, PPrint a, PPrint b) => PPrint (Package a b) where
-    pprint (Package a b c d) =  
+instance (Show a, Show b, PPrint a, Eq b, PPrint b) => PPrint (Package a b) where
+    pprint pkg@(Package a b c d) =  
         "Package:\n" ++ 
         "\nUniversal\n" ++ show a ++
         "\nExistential\n" ++ show b ++
@@ -207,10 +222,35 @@ linearize ::
     AsUnificationError e => 
     [(TypeTag, TypeGTypeTag)] -> 
     Either e [(TypeTag, TypeGTypeTag)]
-linearize [] = pure []
-linearize (a:as) = (:) a <$> (coalesce a as >>= linearize)
-    -- not totally correct! does not substitute back to keep
-    -- the system consistent..
+-- linearize [] = pure []
+-- linearize (a:as) = (:) a <$> (coalesce a as >>= linearize)
+    -- this is not totally correct! for all cases! does not substitute back 
+    -- (substitute out) to keep the system consistent.
+    -- hence, the order of the type equations matters... 
+    
+    -- So, the truly correct implementaiton is as follows.
+    -- ideally, we should refactor this to ``tie the knot"
+    -- so we can get better performance and not do this needless
+    -- back substitution and the back substituntion turns into
+    -- a single pointer lookup...
+linearize subs = fst <$> f ([], subs)
+  where
+    -- | linearize driver function..
+    f (subs', []) = pure (subs', [])
+    f (subs', t:ts) = 
+        -- (t : map (second (substitute t)) subs',) 
+        (t : g (subs', h subs'),) 
+        <$> coalesce t (alignSubs (fst t) . filter (not . isTrivialSubstitution)$ ts) 
+        >>= f
+      where
+        -- | executing the back substitution until no substitutions remain...
+        g (subs'', subs') 
+            | subs'' == subs' = subs''
+            | otherwise = g (subs', h subs')
+
+        -- | a blind back substitution
+        h = map (second (substitute t))
+
 
 solveTypeEq ::
     AsUnificationError e => 
@@ -227,9 +267,8 @@ solveTypeEq = cata f
     f (TypeEqnsEqF (a, b)) = do 
         let freevars = Set.fromList $ toList a ++ toList b
         subs <- match a b
-        return $ emptyPackage 
-            & packageSubs .~ subs
-            & packageFreeVars .~ freevars
+        let pkg' = emptyPackage & packageSubs .~ subs & packageFreeVars .~ freevars
+        return $ pkg' 
 
     f (TypeEqnsExistF vs acc) = do
         acc' <- sequenceA acc
@@ -251,10 +290,11 @@ packageExistentialElim ::
     Package TaggedBnfcIdent TypeTag -> 
     Either e (Package TaggedBnfcIdent TypeTag)
 packageExistentialElim pkg = do
-    pkg' <- foldrM f 
-            (pkg & packageExisVar .~ Set.empty & packageSubs %~ filter (not . isTrivialSubstitution)) 
-            (pkg ^. packageExisVar)
-    return $ pkg' 
+    let pkg' = pkg 
+            & packageExisVar .~ Set.empty 
+            & packageSubs %~ filter (not . isTrivialSubstitution)
+    pkg'' <- foldrM f pkg' (pkg ^. packageExisVar)
+    return $ pkg''
         & packageFreeVars %~ (`Set.difference` (pkg ^. packageExisVar))
   where
     f :: AsUnificationError e => 
@@ -268,7 +308,6 @@ packageExistentialElim pkg = do
             subs'' <- linearize subs'
             return $ acc & packageSubs .~ subs''
         Nothing -> return $ acc & packageExisVar %~ (Set.singleton v `Set.union`)
-
 
 packageUniversalElim :: 
     AsUnificationError e => 

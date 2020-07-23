@@ -1,4 +1,5 @@
-{-# LANGUAGE QuasiQuotes #-} module TypeInferenceSpec ( spec ) where
+{-# LANGUAGE QuasiQuotes #-} 
+module TypeInferenceExSpec ( spec ) where
 
 import Test.Hspec
 import Test.QuickCheck
@@ -13,6 +14,7 @@ import MPLAST.MPLASTTranslate
 import MPLAST.MPLASTTranslateErrors
 import MPLAST.MPLProgI
 import MPLAST.MPLASTCore
+import MPLAST.MPLProgGraph
 import MPLCompile
 
 import Language.AbsMPL
@@ -20,11 +22,13 @@ import Language.LayoutMPL
 import Language.ParMPL
 import Language.ErrM
 
+
 spec :: Spec
 spec = do
     describe "TODO"  $ do
         it "TODO" $ do
             assertEqual "" True True
+
 
 {-
 translateParseLexGraph :: 

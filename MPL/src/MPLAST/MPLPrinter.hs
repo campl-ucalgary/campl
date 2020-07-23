@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 module MPLAST.MPLPrinter where
 
 import Optics
@@ -16,6 +18,7 @@ import Data.Foldable
 
 import qualified Data.List.NonEmpty as NE
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List
 
 import Language.PrintMPL
 import Language.AbsMPL as B
@@ -23,16 +26,16 @@ import Language.AbsMPL as B
 class PPrint a where
     pprint :: a -> String
 
-instance (PPrint ident, PPrint typevar) => PPrint (Type calldef ident typevar) where
+instance (PPrint ident, Eq typevar, PPrint typevar) => PPrint (Type calldef ident typevar) where
     pprint = printTree . translateTypeToBnfcType
 
-instance (PPrint ident, PPrint typevar) => PPrint (ExprG ident typevar) where
+instance (PPrint ident, Eq typevar, PPrint typevar) => PPrint (ExprG ident typevar) where
     pprint = printTree . translateExprGToBnfcExpr
 
-instance (PPrint ident, PPrint typevar) => PPrint (PatternG ident typevar) where
+instance (PPrint ident, Eq typevar, PPrint typevar) => PPrint (PatternG ident typevar) where
     pprint = printTree . translatePatternGtoBnfcPattern
 
-instance (PPrint ident, PPrint typevar) => PPrint (FunctionDefG ident typevar) where
+instance (PPrint ident, Eq typevar, PPrint typevar) => PPrint (FunctionDefG ident typevar) where
     pprint = printTree . translateFunctionGToBnfcFunction
 
 
@@ -55,7 +58,7 @@ instance (PPrint a, PPrint b) => PPrint (a,b) where
     pprint (a,b) = "(" ++ pprint a ++ ", " ++ pprint b ++ ")"
 
 translateTypeToBnfcType :: 
-    ( PPrint ident, PPrint typevar) =>
+    ( Eq typevar, PPrint ident, PPrint typevar) =>
     Type calldef ident typevar -> 
     MplType
 translateTypeToBnfcType n = case n of
@@ -87,7 +90,7 @@ translateTypeToBnfcType n = case n of
             MPL_LIST_TYPE bnfcLSquareBracket (translateTypeToBnfcType t) bnfcRSquareBracket
         TypeSeqArrF from to -> 
             MPL_SEQ_ARROW_TYPE 
-                (map (MPL_SEQ_FUN_TYPE_FORALL_LIST . toBnfcUIdent) 
+                (nub $ map (MPL_SEQ_FUN_TYPE_FORALL_LIST . toBnfcUIdent) 
                     (concatMap (map pprint . toList) from ++ map pprint (toList to)))
                 (map translateTypeToBnfcType from) 
                 (translateTypeToBnfcType to)
@@ -96,7 +99,7 @@ translateTypeToBnfcType n = case n of
         _  -> error "concurrent translationsnot implemented yet" 
 
 translateExprGToBnfcExpr ::
-    ( PPrint ident, PPrint typevar) =>
+    ( PPrint ident, Eq typevar, PPrint typevar) =>
     ExprG ident typevar ->
     B.Expr
 translateExprGToBnfcExpr (EConstructorDestructor ident calldef args etype) = 
@@ -125,7 +128,7 @@ translateExprGToBnfcExpr (ECase ecaseon ecases etype) =
     etype' = translateTypeToBnfcType etype
 
 translatePatternGtoBnfcPattern ::
-    ( PPrint ident, PPrint typevar) =>
+    ( PPrint ident, Eq typevar, PPrint typevar) =>
     PatternG ident typevar -> 
     B.Pattern
 translatePatternGtoBnfcPattern (PConstructor ident calldef pargs ptype) = 
@@ -144,7 +147,7 @@ translatePatternGtoBnfcPattern (PVar ident ptype) =
     ptype' =  translateTypeToBnfcType ptype
 
 translateFunctionGToBnfcFunction :: 
-    ( PPrint ident, PPrint typevar) =>
+    ( PPrint ident, Eq typevar, PPrint typevar) =>
     FunctionDefG ident typevar -> 
     B.FunctionDefn
 translateFunctionGToBnfcFunction (FunctionDefn funname funtype fundefn) = 

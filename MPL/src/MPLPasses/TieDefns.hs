@@ -5,6 +5,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE BangPatterns #-}
 module MPLPasses.TieDefns where
 
 import Optics 
@@ -25,13 +26,13 @@ import MPLPasses.TieDefnsTypes
 import MPLPasses.TieDefnsErrors 
 import MPLPasses.TieDefnsUtils
 
-
 import MPLUtil.Data.Tuple.Optics
 import MPLUtil.Data.Either.AccumEither
 
 import Data.Maybe
 import Data.List
 import Data.Bool
+import Data.Foldable
 import Data.Tuple
 import Control.Monad.RWS
 import Control.Monad.Writer
@@ -45,7 +46,6 @@ import Data.Map ( Map (..) )
 import qualified Data.Map as Map
 
 import Control.Monad.State
-import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Applicative
 
@@ -88,7 +88,7 @@ instance MonadTrans TieFunT where
 data ExprTypeTags = ExprTypeTags {
     _exprTtype :: TypeTag
     , _exprTtypeInternal :: TypeTag
-}
+}  deriving Show
 
 data TieExprEnv = TieExprEnv {
     _tieExprEnvTypeTags :: ExprTypeTags
@@ -235,15 +235,33 @@ functionDefIToGraph symtable ~(FunctionDefn funident funtype fundefn) = mdo
             (_TieExprEnv # (ttypes, tagmap))
             ) symtable
 
-    let tagmap = packageToTagMap pkg' 
-        pkg = solveTypeEq eqns
-        pkg' = fromRight (error "internal type checking error") pkg
+    eqns' <- join . fmap writer . splitGraphGenCore 
+        $ eqnhelper funtype eqns
+
+    let pkg = solveTypeEq eqns'
+        Right pkg' = pkg
+        tagmap = packageToTagMap pkg'
         fun' = FunctionDefn funident' (fromJust $ Map.lookup ttype tagmap) (NE.fromList $ bodyg)
-        -- TypeSeq (TypeSeqArrF from to) = traceShowId $ (fromJust $ Map.lookup ttype tagmap)
 
     tell $ either pure (const []) pkg
 
     return fun' 
+  where
+    eqnhelper Nothing eqns = pure eqns
+    eqnhelper (Just (fromtypes, totype)) eqns = do
+        undefined
+        {-
+        lclsyms <- traverse 
+            (\bnfc -> do 
+                tag <- freshUniqueTag
+                ttypetag <- freshTypeTag
+                return (bnfc ^. bnfcIdentName, _SymEntry # (tag , )) 
+                )
+            freevars
+        undefined
+      where
+        freevars = filter nub $ concatMap toList fromtypes ++ toList totype
+        -}
 
 
 exprIToGraph :: 
@@ -284,7 +302,6 @@ exprIToGraph expr =
         -}
 
     f (ELet letdef letexpr ()) = do
-        -- TODO figure this thing out..
         symtable <- guse equality 
         ttype <- gview exprTtype
         ttypeinternal <- gview exprTtypeInternal
@@ -325,7 +342,6 @@ exprIToGraph expr =
     
         case phraseg ^. phraseGObjType of
             DataObj -> ctsrunner tag phraseg
-            CodataObj -> undefined
             -- CodataObj -> dtsrunner tag phraseg
       where
         ctsrunner tag phraseg = do  
@@ -413,11 +429,11 @@ exprIToGraph expr =
             ttypeexprs      = NE.toList $ fmap (view exprTtype . fst . snd) ttypetaggedcases
             typeeqs = TypeEqnsExist 
                 (ttypecaseon : ttypepatts ++ ttypeexprs)
-                $ map (TypeEqnsEq . (TypeVar ttypecaseon [],) . flip TypeVar []) ttypepatts
+                $ [TypeEqnsEq (TypeVar ttype [], TypeVar ttypeinternal [])]
+                ++ map (TypeEqnsEq . (TypeVar ttypecaseon [],) . flip TypeVar []) ttypepatts
                     -- ^ the type being cased on must be the same as the patterns 
                 ++ map (TypeEqnsEq . (TypeVar ttype [],) . flip TypeVar []) ttypeexprs
                     -- ^ the type of the expression is the same as the result of the case
-                ++ [TypeEqnsEq (TypeVar ttype [], TypeVar ttypeinternal [])]
                 ++ concat eqns
 
         return (expr', [typeeqs])
@@ -433,14 +449,15 @@ exprIToGraph expr =
             =<< filter (has (_2 % symEntryInfo % _SymLocalSeqVar)) 
             <$> querySymbolTableBnfcIdentName ident symtable 
         let ~(_, ~(SymEntry tag ~(SymLocalSeqVar ttypelkup))) = fromJust lkup
-            eqns = TypeEqnsExist [] 
+            eqns = 
                 [ TypeEqnsEq (TypeVar ttype [], TypeVar ttypelkup [])
                 , TypeEqnsEq (TypeVar ttype [], TypeVar ttypeinternal []) ] 
 
         return 
-            ( EVar (TaggedBnfcIdent ident tag) $ fromJust $ Map.lookup ttypelkup tagmap
-            , bool [eqns] [] (isNothing lkup) )
+            ( EVar (TaggedBnfcIdent ident tag) $ fromJust $ Map.lookup ttypeinternal tagmap
+            , bool eqns [] (isNothing lkup) )
 
+    f (ECall ident () args ()) = undefined
 
 patternsIAndExprsIToGraph :: 
     [([PatternI BnfcIdent], ExprI BnfcIdent)] ->
@@ -451,33 +468,33 @@ patternsIAndExprsIToGraph pattsandexps = do
     internalttype <- gview exprTtypeInternal
     tagmap <- gview tieExprEnvTagTypeMap
 
-    ttypepattsandexps <- traverse (\n -> (,n) <$> lift freshExprTypeTags ) pattsandexps
+    ttypespattsandexps <- traverse (\n -> (,n) <$> lift freshExprTypeTags ) pattsandexps
     ~(pattsgexpsg, eqns) <- unzip <$> 
         traverse 
             (\(tag, pattsexp) -> 
                 local (set tieExprEnvTypeTags tag) 
-                $ patternIAndExprIToGraph pattsexp) 
-            ttypepattsandexps
+                $ patternsIAndExprIToGraph pattsexp) 
+            ttypespattsandexps
 
 
-    let ttypephrases = map (view exprTtype . fst) ttypepattsandexps
+    let ttypephrases = map (view exprTtype . fst) ttypespattsandexps
         typeeqns = TypeEqnsExist ttypephrases $
             map (TypeEqnsEq . (TypeVar ttype [],) . flip TypeVar []) ttypephrases
             ++ eqns
     return (pattsgexpsg, typeeqns)
 
-patternIAndExprIToGraph ::
+patternsIAndExprIToGraph ::
     ([PatternI BnfcIdent], ExprI BnfcIdent) ->
     TieFun ( ([PatternG TaggedBnfcIdent TypeTag], ExprG TaggedBnfcIdent TypeTag)
         , TypeEqns TaggedBnfcIdent TypeTag )
-patternIAndExprIToGraph (patts, expr) = do
+patternsIAndExprIToGraph (patts, expr) = do
     -- get the current symbol table since the symbol table
     -- needs to be reset after.
     -- symtab <- gview tieExprEnvSymbolTable
     symtab <- guse equality
 
     ttype <- gview exprTtype
-    internalttype <- gview exprTtypeInternal
+    ttypeinternal <- gview exprTtypeInternal
     tagmap <- gview tieExprEnvTagTypeMap
 
     -- tag the patterns expression with a type..
@@ -485,7 +502,6 @@ patternIAndExprIToGraph (patts, expr) = do
             ttypespatts <- traverse (const freshExprTypeTags) patts
             ttypesexpr <- freshExprTypeTags
             return (zip ttypespatts patts, (ttypesexpr, expr))
-
 
     -- equations, and graph pattern from the type patterns
     -- Note: this modifies the symbol table..
@@ -500,15 +516,17 @@ patternIAndExprIToGraph (patts, expr) = do
         ttypeexpr = ttypesexpr ^. exprTtype
         ttypeeqn = TypeEqnsExist (ttypeexpr : ttypepatts) $ 
                 [ TypeEqnsEq 
-                    ( _TypeVar # (ttype, [])
+                    ( TypeVar ttype []
                     , TypeSeq $ TypeSeqArrF 
                         (map (flip TypeVar []) ttypepatts) 
                         (TypeVar ttypeexpr []) 
-                    ) ]
+                    ) 
+                , TypeEqnsEq 
+                    ( TypeVar ttype []
+                    , TypeVar ttypeinternal []) ]
                 ++ patteqns ++ expreqns
 
     return ((pattsg, exprg), ttypeeqn)
-
 
 exprsIToGraph :: 
     -- | Expression to convert to a graph
@@ -710,8 +728,8 @@ patternIToGraph pattern =
             pat' = PTuple (tuplepatt1, NE.fromList tuplepatts) 
                 $ fromJust $ Map.lookup ttype tagmap
         return ( (syms, [typeeqs]), pat' )
-
 -}
+
     f ( PVar ident () ) = do
         ttype <- gview (exprTypeTags % exprTtype)
         internalttype <- gview (exprTypeTags % exprTtypeInternal)
@@ -739,4 +757,4 @@ patternIToGraph pattern =
         -}
 
     -- TODO
-    f n = error $ "ERROR not implemented yet:" ++ show n
+

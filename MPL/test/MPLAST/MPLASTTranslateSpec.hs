@@ -11,8 +11,8 @@ import MPLAST.MPLASTCore
 
 spec :: Spec
 spec = do
-    describe "Step concurrent examples..." $ do
-        it "TODO -- no step concurrent test cases written yet!" $ do
+    describe "Translate spec -- TODO" $ do
+        it "TODO -- No examples written up yet!" $ do
             assertEqual "" True True
 
 
