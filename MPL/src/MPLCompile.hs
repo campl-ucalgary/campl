@@ -69,17 +69,6 @@ typeTester n = do
         Right n -> putStrLn $ mconcat $ pprintFunctionTypes n
         Left n -> putStrLn $ show n
 
-testnat = [r|
-defn 
-    fun functiontest =
-        Nat(Nat(a)),Zero -> Zero
-where
-    data
-        Nat -> STATEVAR =
-            Nat :: STATEVAR -> STATEVAR
-            Zero ::         -> STATEVAR
-|]
-
 testdata = [r|
 defn
     data
@@ -93,6 +82,20 @@ defn
     data 
         DataThree(A) -> Pork =
             DataThree :: DataThree(Pork) -> Pork
+|]
+
+outOfScopeTest2 = [r|
+defn
+    fun foo = 
+        a -> Unit
+where
+    data
+        Unit -> C = 
+            Unit :: -> C
+
+fun bar =
+    Unit -> Unit
+
 |]
 
 
@@ -219,53 +222,3 @@ testingg n = do
     return $ n
 
 
--- testt :: [Either Char Int]
--- testt = traverse _ [testing]
-
--- testt =  flip runState 0  $ runExceptT testing
--- testt :: ([Either Char Int], Int)
--- testt =  flip runState 0  $ runExceptT (traverse testing2 [1,2,3])
--- testt =  _ (traverse testing2 [1,2,3])
--- testt = flip runState 0  (traverse testingg [1,2,3])
-
-testing1 :: Int -> StateT Char (Either String) Int 
-testing1 n = do
-    if n == 3 || n == 2
-        then modify succ >> throwError "potato"
-        else do
-            modify succ
-            return 3
-
--- this is how we want to sequencde ffects (something along the lines of this...)
-test1 :: (Either String [Int], Char)
-test1 =  
-    first runAccumEither
-    $ foldr f (liftAEither (Right []), 'a') 
-        [1,2,3]
-  where
-    f a (acc,st) = case runStateT (testing1 a) st of
-        Right (n, st') -> (liftAEither (Right [n]) <> acc, st')
-        Left c -> (liftAEither (Left c) <> acc, st)
-    
-{- $>
-    -- test1
-<$ -}
-
-testing2 :: Int -> ExceptT String (State Char) Int
-testing2 n = do
-    if n == 3 || n == 2
-        then modify succ >> throwError "potato"
-        else do
-            modify succ
-            return 3
-
-test2 :: (Either String [Int], Char)
-test2 =  
-    first ( runAccumEither . foldr (<>) mempty . map (fmap pure) ) 
-    $ flip runState 'a' 
-    $ traverse (fmap liftAEither . runExceptT . testing2) 
-        [1,2,3]
-
-{- $>
-    -- test2
-<$ -}

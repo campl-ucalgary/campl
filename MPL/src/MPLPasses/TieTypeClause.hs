@@ -138,7 +138,7 @@ substituteTyVar symtab = para f
                 (_TaggedBnfcIdent # (ident, uniquetag)) args'
             SymClause clauseg -> TypeWithArgs
                 (_TaggedBnfcIdent # (ident, uniquetag))
-                (TypeClauseNode clauseg) args'
+                (TypeClauseCallDefKnot clauseg) args'
 
     f (TypeVarF ident (a:as)) = error "higher kinded data not supported yet.."
     f (TypeVarF ident []) = do
@@ -150,7 +150,7 @@ substituteTyVar symtab = para f
             SymTypeVar -> _TypeVar # (_TaggedBnfcIdent # (ident, uniquetag), [])
             SymClause clauseg -> TypeWithArgs
                 (_TaggedBnfcIdent # (ident,uniquetag))
-                (TypeClauseNode clauseg) []
+                (TypeClauseCallDefKnot clauseg) []
     f (TypeSeqF n) = TypeSeq <$> case n of
         TypeTupleF (a, b :| rst) -> do
             (a, rst) <- (,) <$> snd a <*> ((:|) <$> snd b <*> traverse snd rst)

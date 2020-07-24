@@ -75,7 +75,7 @@ newtype ClausePhraseKnot neighbors ident typevar = ClausePhraseKnot {
         _phraseParent :: TypeClause 
             neighbors 
             (ClausePhraseKnot neighbors ident typevar)
-            (TypeClauseNode ident typevar)
+            (TypeClauseCallDefKnot ident typevar)
             ident
             typevar
     }  
@@ -86,36 +86,31 @@ type TypeClauseKnot ident typevar =
     TypeClause 
         (ClausesKnot ident typevar) 
         (ClausePhraseKnot (ClausesKnot ident typevar) ident typevar)
-        (TypeClauseNode ident typevar)
+        (TypeClauseCallDefKnot ident typevar)
         ident
         typevar
 
 type TypeClauseG ident = TypeClause 
     (ClausesKnot ident ident) 
     (ClausePhraseKnot (ClausesKnot ident ident) ident ident) 
-    (TypeClauseNode ident ident) ident ident
+    (TypeClauseCallDefKnot ident ident) ident ident
 
 type TypePhraseG ident = TypePhrase 
     (ClausePhraseKnot (ClausesKnot ident ident) ident ident) 
-    (TypeClauseNode ident ident) ident ident
+    (TypeClauseCallDefKnot ident ident) ident ident
 
+data TypeClauseCallDefKnot ident typevar = 
+    TypeClauseCallDefKnot (TypeClauseKnot ident typevar)
 
-data TypeClauseNode ident typevar = 
-    TypeClauseNode (TypeClauseKnot ident typevar)
-    | TypeClauseLeaf 
+instance (Eq ident, Eq typevar) => Eq (TypeClauseCallDefKnot ident typevar) where
+    TypeClauseCallDefKnot _ == TypeClauseCallDefKnot _ = True
+-- We'll just assume that this is true...
 
--- do NOT recurse...
-instance (Eq ident, Eq typevar) => Eq (TypeClauseNode ident typevar) where
-    TypeClauseNode _ == TypeClauseNode _ = True
-    TypeClauseLeaf == TypeClauseLeaf = True
-    _ == _ = False
-
-instance (Show ident, Show typevar) => Show (TypeClauseNode ident typevar) where
-    show (TypeClauseNode _) = "TypeClauseNode"
-    show (TypeClauseLeaf) = "TypeClauseLeaf"
+instance (Show ident, Show typevar) => Show (TypeClauseCallDefKnot ident typevar) where
+    show (TypeClauseCallDefKnot _) = "TypeClauseCallDefKnot"
 
 type TypeG ident = TypeGTypeVar ident ident
-type TypeGTypeVar ident typevar = Type (TypeClauseNode ident ident) ident typevar
+type TypeGTypeVar ident typevar = Type (TypeClauseCallDefKnot ident ident) ident typevar
 
 type PatternG ident typevar = 
     Pattern 
@@ -174,7 +169,7 @@ $(concat <$> traverse makeLenses
  )
 $(concat <$> traverse makePrisms 
     [ ''ClausesGraph 
-    , ''TypeClauseNode
+    , ''TypeClauseCallDefKnot
     , ''DefnG
     , ''TaggedBnfcIdent
     ]
@@ -266,5 +261,5 @@ progGQueryTypeClausesGraphs ::
 progGQueryTypeClausesGraphs (Prog defsg) = concatMap f defsg
   where
     f (Stmt defns wdefs) = mapMaybe g (NE.toList defns) ++ progGQueryTypeClausesGraphs (Prog wdefs)
-    g (FunctionDecDefG defn) = Just undefined
+    g (ObjectG defn) = Just defn
     g _ = Nothing

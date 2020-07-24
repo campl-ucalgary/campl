@@ -82,7 +82,7 @@ clauseSubstitutions clauseg = do
 
     let clausestatevartype = _TypeWithArgs # 
             ( clauseg ^.  typeClauseName
-            , TypeClauseNode clauseg
+            , TypeClauseCallDefKnot clauseg
             , map snd argsubstitions )
         clausegraphspine = NE.toList $ 
             clauseg ^. typeClauseNeighbors % clauseGraph % clauseGraphSpine
@@ -94,7 +94,7 @@ clauseSubstitutions clauseg = do
                 ( n ^. typeClauseStateVar
                 , _TypeWithArgs # 
                     ( n ^. typeClauseName
-                    , TypeClauseNode n 
+                    , TypeClauseCallDefKnot n 
                     , map snd argsubstitions )
                 )
             )
@@ -157,7 +157,7 @@ annotateTypeIToTypeGAndScopeFreeVars = cata f
             Just (_, SymEntry tag (SymClause n)) -> do
                 return $ TypeWithArgs 
                     (TaggedBnfcIdent ident tag) 
-                    (TypeClauseNode n) 
+                    (TypeClauseCallDefKnot n) 
                     args'
             Just (_, SymEntry tag SymTypeVar) -> do
                 return $ TypeVar (TaggedBnfcIdent ident tag) 

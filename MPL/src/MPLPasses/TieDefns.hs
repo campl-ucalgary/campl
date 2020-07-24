@@ -345,16 +345,18 @@ exprIToGraph expr =
         -- symtable <- lift $ gview equality
         symtable <- guse equality
 
-        ~(_, ~(SymEntry tag ~(SymPhrase phraseg))) <- lift $ fromJust <$> 
+        ~lkup <- lift
             ( ambiguousLookupCheck 
             =<< querySymbolTableSequentialPhrases 
             <$> querySymbolTableBnfcIdentName ident symtable )
+        let ~(Just (_, ~(SymEntry tag ~(SymPhrase phraseg)))) = lkup
+            lkupdoesntexist = has (_Just % _2 % symEntryInfo % _SymPhrase) lkup
     
         case phraseg ^. phraseGObjType of
-            DataObj -> ctsrunner tag phraseg
-            -- CodataObj -> dtsrunner tag phraseg
+            DataObj -> ctsrunner lkupdoesntexist tag phraseg
+            CodataObj -> error "not implemtned " -- dtsrunner tag phraseg
       where
-        ctsrunner tag phraseg = do  
+        ctsrunner lkupdoesntexist tag phraseg = do  
             ttype <- gview exprTtype 
             internalttype <- gview exprTtypeInternal 
 
@@ -365,7 +367,7 @@ exprIToGraph expr =
             lift $ tell $ bool 
                     [_ArityMismatch # (ident, expectedarity, actualarity)]
                     []
-                    (expectedarity == actualarity)
+                    (lkupdoesntexist || expectedarity == actualarity)
 
             --  query the phrase substitutions from the graph
             (clausetype, ttypeargs, clausesubstitutions) <- 
@@ -395,7 +397,7 @@ exprIToGraph expr =
                     -- constructor / destructor
                     argsexprgs 
                     $ fromJust $ Map.lookup internalttype tagmap
-            return ( expr', [typeeqs] )
+            return ( expr', bool [typeeqs] [] lkupdoesntexist )
 
         dtsrunner tag phraseg = do
             -- TODO
@@ -408,8 +410,8 @@ exprIToGraph expr =
 
         -- converting the case on to a graph...
         -- ttypecaseon <- lift freshTypeTag
-        ttypeexprcaseon@(ExprTypeTags ttypecaseon _) <- lift freshExprTypeTags 
-        (caseong, caseongeqns) <- local (set tieExprEnvTypeTags ttypeexprcaseon) $ exprIToGraph caseon
+        ttypescaseon <- lift freshExprTypeTags 
+        (caseong, caseongeqns) <- local (set tieExprEnvTypeTags ttypescaseon) $ exprIToGraph caseon
 
         -- converting the case phrases to a graph..
         ttypetaggedcases <- lift $ traverse 
@@ -435,8 +437,9 @@ exprIToGraph expr =
 
         let expr' = ECase caseong (NE.fromList pattsgexprsg) $ fromJust $ Map.lookup ttypeinternal tagmap
             -- patt typing info
-            ttypepatts      = NE.toList $ fmap (view exprTtype . fst . fst) ttypetaggedcases
-            ttypeexprs      = NE.toList $ fmap (view exprTtype . fst . snd) ttypetaggedcases
+            ttypepatts  = NE.toList $ fmap (view exprTtype . fst . fst) ttypetaggedcases
+            ttypeexprs  = NE.toList $ fmap (view exprTtype . fst . snd) ttypetaggedcases
+            ttypecaseon = ttypescaseon ^. exprTtype
             typeeqs = TypeEqnsExist 
                 (ttypecaseon : ttypepatts ++ ttypeexprs)
                 $ [TypeEqnsEq (TypeVar ttype [], TypeVar ttypeinternal [])]
@@ -444,6 +447,7 @@ exprIToGraph expr =
                     -- ^ the type being cased on must be the same as the patterns 
                 ++ map (TypeEqnsEq . (TypeVar ttype [],) . flip TypeVar []) ttypeexprs
                     -- ^ the type of the expression is the same as the result of the case
+                ++ caseongeqns
                 ++ concat eqns
 
         return (expr', [typeeqs])
