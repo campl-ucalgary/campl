@@ -69,6 +69,17 @@ typeTester n = do
         Right n -> putStrLn $ mconcat $ pprintFunctionTypes n
         Left n -> putStrLn $ show n
 
+testnat = [r|
+defn 
+    fun functiontest =
+        Nat(Nat(a)),Zero -> Zero
+where
+    data
+        Nat -> STATEVAR =
+            Nat :: STATEVAR -> STATEVAR
+            Zero ::         -> STATEVAR
+|]
+
 testdata = [r|
 defn
     data
@@ -82,19 +93,8 @@ defn
     data 
         DataThree(A) -> Pork =
             DataThree :: DataThree(Pork) -> Pork
-
 |]
 
-testnat = [r|
-defn 
-    fun functiontest =
-        Nat(Nat(a)),Zero -> Zero
-where
-    data
-        Nat -> STATEVAR =
-            Nat :: STATEVAR -> STATEVAR
-            Zero ::         -> STATEVAR
-|]
 
 testdataoutofscope = [r|
 data 
@@ -148,6 +148,15 @@ fun lettest =
 
 |]
 
+testtrivailforall = [r|
+data 
+    Unit(A,B) -> S =
+        UnitP :: A,B -> S
+        Unit :: -> S
+fun testing :: -> Unit(A,A) = 
+    -> Unit
+
+|]
 
 unsafeTranslateParseLex :: String -> ProgI BnfcIdent
 unsafeTranslateParseLex str = case parseAndLex str of

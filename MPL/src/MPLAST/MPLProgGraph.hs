@@ -260,3 +260,11 @@ progGQueryFunctions (Prog defsg) = concatMap f defsg
     g (FunctionDecDefG defn) = Just defn
     g _ = Nothing
 
+progGQueryTypeClausesGraphs :: 
+    (Prog (DefnG TaggedBnfcIdent TypeTag)) -> 
+    [ClausesGraph TaggedBnfcIdent]
+progGQueryTypeClausesGraphs (Prog defsg) = concatMap f defsg
+  where
+    f (Stmt defns wdefs) = mapMaybe g (NE.toList defns) ++ progGQueryTypeClausesGraphs (Prog wdefs)
+    g (FunctionDecDefG defn) = Just undefined
+    g _ = Nothing

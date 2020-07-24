@@ -235,61 +235,6 @@ substituteTyVar symtab = para f
         entries <- querySymbolTableBnfcIdentName ident symtab
         snd . fromJust <$> ambiguousLookupCheck entries
 
--- takes an interface type and annotates it with the symbol table
--- moreover, for free variables, it modifies the symbol table
--- to include the free variables...
--- REMARK: expects the symbol table to be filtered to only include type clauses.
-annotateTypeIToTypeGAndScopeFreeVars :: 
-    Type () BnfcIdent BnfcIdent -> 
-    StateT SymbolTable GraphGenCore (Maybe (TypeG TaggedBnfcIdent))
-annotateTypeIToTypeGAndScopeFreeVars = cata f
-  where
-    f :: 
-        TypeF () BnfcIdent BnfcIdent (StateT SymbolTable GraphGenCore (Maybe (TypeG TaggedBnfcIdent))) -> 
-        StateT SymbolTable GraphGenCore (Maybe (TypeG TaggedBnfcIdent))
-    f (TypeWithArgsF ident () args) = do
-        symtab <- guse equality
-
-        lkup <- lift $ 
-            ambiguousLookupCheck
-            =<< querySymbolTableBnfcIdentName ident symtab
-
-        case lkup of
-            Just n -> undefined
-            -- if not found, then add it to the symbol table
-            Nothing 
-                | null args -> do   
-                    tag <- lift freshUniqueTag
-                    ttypetag <- lift freshTypeTag
-                    equality %= undefined
-                    undefined
-                | otherwise -> do   
-                    lift $ tell [_NotInScope # ident]
-                    return Nothing
-
-        {-
-        return $ case info of 
-            SymTypeVar -> TypeVar 
-                (_TaggedBnfcIdent # (ident, uniquetag)) args'
-            SymClause clauseg -> TypeWithArgs
-                (_TaggedBnfcIdent # (ident, uniquetag))
-                (TypeClauseNode clauseg) args'
-                -}
-
-    {-
-    f (TypeVarF ident (a:as)) = error "higher kinded data not supported yet.."
-    f (TypeVarF ident []) = do
-        -- TODO literally does NOT support anything with higher kinded data!
-        -- in the future, change it so that it will substitute and check arity!
-        ~(SymEntry uniquetag info) <- lookupSymTable ident
-
-        return $ case info of
-            SymTypeVar -> _TypeVar # (_TaggedBnfcIdent # (ident, uniquetag), [])
-            SymClause clauseg -> TypeWithArgs
-                (_TaggedBnfcIdent # (ident,uniquetag))
-                (TypeClauseNode clauseg) []
-                -}
-        
 
     
 typeClausesArgs ::

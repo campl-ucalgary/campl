@@ -50,6 +50,14 @@ instance (PPrint ident, Eq typevar, PPrint typevar) => PPrint (TypeEqns ident ty
             , text " . " 
             , nest 2 (vcat (map f eqns))
             ]
+        f (TypeEqnsForall typevars eqns) = 
+            hcat
+            [ text "Forall  " 
+            , text "" 
+            , text ("[" ++ intercalate "," (map pprint typevars) ++ "]")
+            , text " . " 
+            , nest 2 (vcat (map f eqns))
+            ]
 
 $(concat <$> traverse makeBaseFunctor 
     [ ''TypeEqns ]
@@ -58,12 +66,6 @@ $(concat <$> traverse makePrisms
     [ ''TypeEqns 
     ]
  )
-
-substitutes ::
-     [(TypeTag, TypeGTypeTag)] -> 
-     TypeGTypeTag -> 
-     TypeGTypeTag
-substitutes subs ty = foldr substitute ty subs
 
 substitute :: 
      (TypeTag, TypeGTypeTag) -> 
@@ -81,14 +83,16 @@ substitutesTypeGToTypeGTypeTag ::
     [(TaggedBnfcIdent, TypeGTypeTag)] -> 
     TypeG TaggedBnfcIdent -> 
     Maybe (TypeGTypeTag)
-substitutesTypeGToTypeGTypeTag subs typeg = cata f typeg 
+substitutesTypeGToTypeGTypeTag subs = cata f 
   where
     f (TypeWithArgsF a call bs) = TypeWithArgs a call <$> sequenceA bs
+
     f (TypeVarF a []) = lookup a subs
-        -- TODO - fix this! We need proper error handling of data with 
-        -- the wrong kind -- for now, we completely ignore higher kinded
-        -- data...
-    f (TypeVarF a args) = trace "Warning: higher kinded data not supported yet!" (lookup a subs)
+    -- f (TypeVarF a args) = trace "Warning: higher kinded data not supported yet!" (lookup a subs)
+    f (TypeVarF a args) = case lookup a subs of
+        Just (TypeVar a []) -> TypeVar a <$> sequenceA args
+        _ -> Nothing
+
     f (TypeSeqF seq) = TypeSeq <$> sequenceA seq
     f (TypeConcF conc) = TypeConc <$> sequenceA conc
 
@@ -256,7 +260,8 @@ solveTypeEq ::
     AsUnificationError e => 
     TypeEqns TaggedBnfcIdent TypeTag ->
     Either e (Package TaggedBnfcIdent TypeTag)
-solveTypeEq = cata f
+-- solveTypeEq = cata f
+solveTypeEq eqns = cata f eqns
   where
     f :: AsUnificationError e => 
         TypeEqnsF
@@ -268,11 +273,13 @@ solveTypeEq = cata f
         let freevars = Set.fromList $ toList a ++ toList b
         subs <- match a b
         let pkg' = emptyPackage & packageSubs .~ subs & packageFreeVars .~ freevars
-        return $ pkg' 
+        return pkg' 
 
     f (TypeEqnsExistF vs acc) = do
         acc' <- sequenceA acc
-        let pkg = mconcat acc' & packageExisVar %~ (Set.fromList vs `Set.union`)
+        let pkg = mconcat acc' 
+                & packageExisVar %~ (Set.fromList vs `Set.union`)
+                -- & packageSubs %~ ((undefined)++)
         packageExistentialElim pkg
 
     f (TypeEqnsForallF vs acc) = do
@@ -321,11 +328,35 @@ packageUniversalElim pkg = do
         & packageFreeVars %~ (`Set.difference` (pkg ^. packageExisVar))
         & packageSubs %~ filter (not . isTrivialSubstitution)
   where
+    f v acc = do
+        let subs = alignSubs v $ acc ^. packageSubs
+        case lookup v subs of
+            Just lkup@(TypeVar v' args) 
+                | v' == v ->  return acc
+                | otherwise -> do
+                    packageExistentialElim (acc & packageSubs %~ ((v, lkup):))
+            Just err -> Left $ _ForallMatchFailure # (v, err)
+            Nothing -> return acc
+
+            
+        {-
+        case filter ((==v) . fst) $ subs of
+            [] -> return $ acc & packageUnivVar %~ (Set.singleton v `Set.union`)
+            as -> let nontrivsubs = (filter (not . isTrivialSubstitution) as) in 
+                if null nontrivsubs
+                    then return acc
+                    else do
+                        
+                        Left $ _ForallMatchFailure # nontrivsubs
+                    -- else Left $ _ForallMatchFailure # nontrivsubs
+                    -}
+    {-
     f v acc = let subs = alignSubs v $ acc ^. packageSubs in case filter ((==v) . fst) $ subs of
         [] -> return $ acc & packageUnivVar %~ (Set.singleton v `Set.union`)
         as -> let nontrivsubs = (filter (not . isTrivialSubstitution) as) in if null nontrivsubs
                 then return acc
                 else Left $ _ForallMatchFailure # nontrivsubs
+                -}
 
 alignSubs :: TypeTag -> [(TypeTag, TypeGTypeTag)] -> [(TypeTag, TypeGTypeTag)]
 alignSubs k = map g

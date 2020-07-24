@@ -235,34 +235,44 @@ functionDefIToGraph symtable ~(FunctionDefn funident funtype fundefn) = mdo
             (_TieExprEnv # (ttypes, tagmap))
             ) symtable
 
-    eqns' <- join . fmap writer . splitGraphGenCore 
-        $ eqnhelper funtype eqns
+    {-
+    (ttype', eqns') <- join . fmap writer . splitGraphGenCore 
+        $ eqnhelper ttype (querySymbolTableSequentialClauses symtable) funtype eqns
+        -}
+    eqns' <- join . fmap writer . splitGraphGenCore
+        $ eqnhelper ttypes (querySymbolTableSequentialClauses symtable) funtype eqns
+            -- we need 3 things: the ttype, funciton type, and equations
+            -- ttype corresponds to the type from the equations
+            -- funtype type corresponds to the user given type
+            -- and the equations are of course generated
 
     let pkg = solveTypeEq eqns'
         Right pkg' = pkg
         tagmap = packageToTagMap pkg'
-        fun' = FunctionDefn funident' (fromJust $ Map.lookup ttype tagmap) (NE.fromList $ bodyg)
+        fun' = FunctionDefn funident' (fromJust $ Map.lookup ttypeinternal tagmap) (NE.fromList $ bodyg)
 
     tell $ either pure (const []) pkg
 
     return fun' 
   where
-    eqnhelper Nothing eqns = pure eqns
-    eqnhelper (Just (fromtypes, totype)) eqns = do
-        undefined
-        {-
-        lclsyms <- traverse 
-            (\bnfc -> do 
-                tag <- freshUniqueTag
-                ttypetag <- freshTypeTag
-                return (bnfc ^. bnfcIdentName, _SymEntry # (tag , )) 
-                )
-            freevars
-        undefined
-      where
-        freevars = filter nub $ concatMap toList fromtypes ++ toList totype
-        -}
-
+    eqnhelper ttypes symtable Nothing eqns = 
+        let ttype = ttypes ^. exprTtype
+            ttypeinternal = ttypes ^. exprTtypeInternal
+        in return $ TypeEqnsExist [ttype] 
+            [TypeEqnsEq (TypeVar ttype [], TypeVar ttypeinternal []), eqns]
+    eqnhelper ttypes symtable (Just (fromtypes, totype)) eqns = do
+        let funtype = TypeSeq $ TypeSeqArrF fromtypes totype 
+            ttype = ttypes ^. exprTtype
+            ttypeinternal = ttypes ^. exprTtypeInternal
+        (freevars, freevarssubs, annotatedfuntype') <- annotateTypeIToTypeGAndGenSubs symtable funtype
+        let funtypeg = fromJust $ substitutesTypeGToTypeGTypeTag freevarssubs annotatedfuntype'
+            eqns' = TypeEqnsForall freevars 
+                [ TypeEqnsExist [ttype] $ 
+                    [ TypeEqnsEq (TypeVar ttype [], funtypeg ), eqns 
+                    , TypeEqnsEq (TypeVar ttype [], TypeVar ttypeinternal [])
+                    ]
+                ]
+        return eqns'
 
 exprIToGraph :: 
     -- | Expression to convert to a graph

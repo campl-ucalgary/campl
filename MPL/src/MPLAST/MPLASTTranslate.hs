@@ -120,7 +120,7 @@ translateBnfcDefn (B.MPL_FUNCTION_DEFN fundef) =
 translateBnfcDefn (B.MPL_PROCESS_DEFN procdef) = 
     DefnI . review (_ProcessDecDefn % _ProcessDefn) <$> translateBnfcProcessDefn procdef
 
-translateBnfcDefn B.MPL_DEFNTEST = error "eheh a little easter egg :) No writing potato ;) "
+translateBnfcDefn B.MPL_DEFNTEST = error "hehe a little easter egg from the developer -- no writing potato as they're better eaten than thought about ;) "
 
 translateBnfcFunDefToDefn :: 
     forall e.

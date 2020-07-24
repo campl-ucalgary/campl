@@ -29,22 +29,3 @@ spec = do
         it "TODO" $ do
             assertEqual "" True True
 
-
-{-
-translateParseLexGraph :: 
-    String -> 
-    Either ToGraphErrors (Prog (DefnG TaggedBnfcIdent TypeTag))
-translateParseLexGraph str = progInterfaceToGraph $ unsafeTranslateParseLex str 
-
-
-natfun = [r|
-defn 
-    fun natfun =
-        Nat(Nat(a)),Zero -> Zero
-where
-    data
-        Nat -> STATEVAR =
-            Nat :: STATEVAR -> STATEVAR
-            Zero ::         -> STATEVAR
-|]
--}
