@@ -84,29 +84,33 @@ defn
             DataThree :: DataThree(Pork) -> Pork
 |]
 
-outOfScopeTest2 = [r|
-defn
-    fun foo = 
-        a -> Unit
-where
-    data
-        Unit -> C = 
-            Unit :: -> C
 
-fun bar =
-    Unit -> Unit
+testcall = [r|
+data 
+    Unit -> C =
+        Unit :: -> C
+        UnitRec :: C -> C
 
+-- defn
+--     fun tomato = 
+--         a -> orange(a)
+
+fun orange = 
+    a -> orange(a)
 |]
 
-
-testdataoutofscope = [r|
+testinggg = [r| 
 data 
-    Unit -> S =
-        Unit :: -> S
+    Zig -> Z =
+        Zig  :: Z,X -> Z
+        Zigg ::    -> Z
+    and
+    Zag -> X =
+        Zag :: X, Z -> X
+        Zagg ::     -> X
 
-fun functiontest =
-    Potato -> Unit
-
+fun test :: Zag, Zag -> Zig =
+    a,b -> Zig(a, b)
 |]
 
 

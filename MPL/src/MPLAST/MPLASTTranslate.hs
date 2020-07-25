@@ -232,10 +232,12 @@ translateBnfcExpr (B.SWITCH_EXP switches) =
 
 translateBnfcExpr (B.DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR ident) =
     return $ review _EConstructorDestructor (ident ^. uIdentBnfcIdentGetter, (), [], ())
+    -- return $ review _ECall (ident ^. uIdentBnfcIdentGetter, (), [], ())
 
 translateBnfcExpr (B.DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR ident _ exprs _) = do
     exprs' <- runAccumEither $ traverse (liftAEither . translateBnfcExpr) exprs
     return $ review _EConstructorDestructor (ident ^. uIdentBnfcIdentGetter, (), exprs', ())
+    -- return $ review _ECall (ident ^. uIdentBnfcIdentGetter, (), exprs', ())
 
 translateBnfcExpr (B.TUPLE_EXPR _ a as _) = do
     (a,b,c) <- runAccumEither $ (,,) 

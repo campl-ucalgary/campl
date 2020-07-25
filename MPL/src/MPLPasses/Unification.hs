@@ -109,7 +109,15 @@ type TagTypeMap = Map TypeTag TypeGTypeTag
 
 packageToTagMap :: 
     Package TaggedBnfcIdent TypeTag -> TagTypeMap
-packageToTagMap pkg = Map.fromList (pkg ^. packageSubs)
+packageToTagMap pkg = Map.fromList packagesubsandfreevars
+  where
+    packagesubs' = concatMap f (pkg ^. packageSubs)
+      where
+        f (a, TypeVar b []) = [(a, TypeVar b []), (b, TypeVar a [])]
+        f n = [n]
+
+    packagesubsandfreevars = 
+        packagesubs' ++ map (id&&&flip TypeVar []) (Set.toList (pkg ^. packageFreeVars) \\ map fst packagesubs')
 
 instance (Show a, Show b, PPrint a, Eq b, PPrint b) => PPrint (Package a b) where
     pprint pkg@(Package a b c d) =  
@@ -252,7 +260,7 @@ linearize subs = fst <$> f ([], subs)
             | subs'' == subs' = subs''
             | otherwise = g (subs', h subs')
 
-        -- | a blind back substitution
+        -- | a blind back substitution (does not check for occurs check)
         h = map (second (substitute t))
 
 
@@ -291,7 +299,6 @@ isTrivialSubstitution :: (TypeTag, TypeGTypeTag) -> Bool
 isTrivialSubstitution (s, TypeVar t []) = s == t
 isTrivialSubstitution _ = False
 
--- prashant does both elimatino of both existential and forall at the same time?
 packageExistentialElim ::
     AsUnificationError e => 
     Package TaggedBnfcIdent TypeTag -> 

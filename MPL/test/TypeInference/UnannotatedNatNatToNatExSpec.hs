@@ -8,6 +8,8 @@ import Test.QuickCheck
 import Test.HUnit
 import Text.RawString.QQ
 
+import TypeInference.GraphAssertions
+
 import Data.Maybe
 import Data.List.NonEmpty ( NonEmpty (..) )
 import qualified Data.List.NonEmpty as NE
@@ -52,21 +54,6 @@ spec = do
         it "TODO" $ do
             assertEqual "" True
             -}
-
---------------------
--- Assertion helpers
---------------------
-describeValidGraph prog rst = do
-    describe ("Testing the valid program:\n " ++ prog) $ do
-        prog' <- runIO $ unsafeTranslateParseLexGraph prog
-
-        it "should be a valid program" $ do
-            case prog' of
-                Right prog' -> return ()
-                Left errs -> assertFailure (show errs)
-        let Right prog'' = prog'
-        rst prog''
-            
 
 --------------------
 -- Valid test cases...

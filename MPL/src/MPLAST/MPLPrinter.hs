@@ -127,6 +127,19 @@ translateExprGToBnfcExpr (ECase ecaseon ecases etype) =
         (translateExprGToBnfcExpr expr)
     etype' = translateTypeToBnfcType etype
 
+translateExprGToBnfcExpr (ECall ident calldef args etype) = 
+    B.TYPED_EXPR expr' etype'
+  where
+    expr' = B.FUN_EXPR 
+        (toBnfcPIdent $ pprint ident)
+        bnfcLBracket
+        (map translateExprGToBnfcExpr args)
+        bnfcRBracket
+    f (patt, expr) = PATTERN_TO_EXPR 
+        (map translatePatternGtoBnfcPattern [patt]) 
+        (translateExprGToBnfcExpr expr)
+    etype' = translateTypeToBnfcType etype
+
 translatePatternGtoBnfcPattern ::
     ( PPrint ident, Eq typevar, PPrint typevar) =>
     PatternG ident typevar -> 

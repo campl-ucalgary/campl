@@ -37,6 +37,9 @@ spec = do
     mapM_ describeOutOfScope
         [ outOfScopeTest1
         , outOfScopeTest2
+        , outOfScopeTest3
+        , outOfScopeTest4
+        , outOfScopeTest5
         ]
 
 --------------------
@@ -63,11 +66,10 @@ fun foo =
     a -> b
 |]
 
-
 outOfScopeTest2 = [r|
 defn
     fun foo = 
-        a -> Unit
+        a -> a
 where
     data
         Unit -> C = 
@@ -75,5 +77,28 @@ where
 
 fun bar =
     Unit -> Unit
+|]
 
+outOfScopeTest3 = [r|
+defn
+    fun foo = 
+        a -> case a of
+            b -> c
+|]
+
+outOfScopeTest4 = [r|
+data
+    Cabbage -> C =
+        Cabbage :: Potato -> C
+
+data Potato -> D =
+    Potato :: -> D
+|]
+
+outOfScopeTest5 = [r|
+defn
+    fun foo = 
+        a -> case a of
+            b -> b
+            c -> b
 |]

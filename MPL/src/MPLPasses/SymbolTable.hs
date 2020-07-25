@@ -43,8 +43,6 @@ data SymInfo =
 
     -- | Function lookups
     | SymFunDefn (FunctionDefG TaggedBnfcIdent TypeTag)
-    | SymCallSeqPhrase (TypePhraseG TaggedBnfcIdent)
-    | SymCallMatchedDestructor (TypeG TaggedBnfcIdent) (TypePhraseG TaggedBnfcIdent)
         -- | useful for lookup up the types as a local vairable
     | SymLocalSeqVar TypeTag
         
@@ -152,6 +150,15 @@ ambiguousLookupCheck symtable = do
     twoormoreelems = length symtable >= 2
     zeroelems = null symtable
 
+querySymbolTableSeqCallFuns ::
+    SymbolTable -> 
+    SymbolTable 
+querySymbolTableSeqCallFuns = 
+    filter (has ( 
+                _2
+                % symEntryInfo 
+                % _SymFunDefn
+                ))
 
 querySymbolTableSequentialClauses ::
     SymbolTable -> 
