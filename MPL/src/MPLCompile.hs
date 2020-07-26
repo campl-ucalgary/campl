@@ -86,17 +86,27 @@ defn
 
 
 testcall = [r|
+{-
 data 
     Unit -> C =
         Unit :: -> C
-        UnitRec :: C -> C
 
 defn
     fun tomato = 
         a -> orange(Unit)
     fun orange = 
         a -> tomato(a)
+        -}
+data 
+    List(A) -> C =
+        Nil :: -> C
+        Cons :: A,C-> C
 
+fun crazy =
+    a,b -> case a of
+        Nil -> b
+        Cons(s,t) -> s(crazy(t,b))
+        -- BROKEN (Because we need to update how the symbol table composition works)
 |]
 
 testinggg = [r| 
