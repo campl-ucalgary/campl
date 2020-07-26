@@ -49,7 +49,7 @@ lookupSeqPhrase ident ~symtable =
         res = helper candidates
     in res
   where
-    helper ((_, SymEntry tag (SymPhrase n)):rst) 
+    helper ((_, SymEntry tag pos (SymPhrase n)):rst) 
         | objtype == CodataObj || objtype == DataObj = Just (tag, n)
       where
         objtype = n ^. 
@@ -59,7 +59,7 @@ lookupSeqPhrase ident ~symtable =
             % clauseGraph 
             % clauseGraphObjectType
 
-    helper ((_, SymEntry _ _):rst) = helper rst
+    helper ((_, SymEntry _ _ _):rst) = helper rst
     helper [] = Nothing
 
     -- errormsg = liftToGraphErrors (_SeqPhraseNotInScope # ident)
@@ -104,19 +104,6 @@ clauseSubstitutions clauseg = do
             , map snd clauseargsubs
             , statevarsubstitiions ++ argsubstitions)
 
-collectTypeGFreeVarsIdents :: 
-    TypeG TaggedBnfcIdent ->
-    [TaggedBnfcIdent]
-collectTypeGFreeVarsIdents = nubBy ((==) `on` view uniqueTag) .  toList
-
-
-data AnnotateState = AnnotateState {
-    _annotateStateSymbolTable :: SymbolTable
-    , _annotateStateFreeVarsTypeTags :: [TypeTag]
-    , _annotateStateFreeVarsSubs :: [(TaggedBnfcIdent, TypeGTypeTag)]
-}
-$(makeLenses ''AnnotateState)
-
 annotateTypeIToTypeGAndGenSubs :: 
     SymbolTable -> 
     Type () BnfcIdent BnfcIdent -> 
@@ -124,29 +111,40 @@ annotateTypeIToTypeGAndGenSubs ::
         ( [TypeTag]
         , [(TaggedBnfcIdent, TypeGTypeTag)]
         , TypeG TaggedBnfcIdent)
-annotateTypeIToTypeGAndGenSubs symtab = f <=< flip runStateT st . annotateTypeIToTypeGAndScopeFreeVars 
+annotateTypeIToTypeGAndGenSubs symtab = f <=< flip evalStateT symtab . annotateTypeIToTypeGAndScopeFreeVars 
   where
-    st = AnnotateState symtab [] []
+    f typeg = do    
+        (tags, subs) <- genTypeGSubs typeg
+        return (tags, subs, typeg)
 
-    f (typeg, st') = return 
-        ( st' ^. annotateStateFreeVarsTypeTags
-        , st' ^. annotateStateFreeVarsSubs
-        , typeg )
+genTypeGSubs :: 
+    TypeG TaggedBnfcIdent -> 
+    GraphGenCore ([TypeTag], [(TaggedBnfcIdent, TypeGTypeTag)])
+genTypeGSubs typeg = do 
+    let idents = collectTypeGFreeVarsIdents typeg
+    ttypes <- traverse (const freshTypeTag) idents
+    return (ttypes, zip idents $ map (flip TypeVar []) ttypes)
+
+collectTypeGFreeVarsIdents :: 
+    TypeG TaggedBnfcIdent ->
+    [TaggedBnfcIdent]
+collectTypeGFreeVarsIdents = nubBy ((==) `on` view uniqueTag) .  toList
+
 
 -- takes an interface type and annotates it with the symbol table
 -- moreover, for free variables, it will scope them all appropriately
 annotateTypeIToTypeGAndScopeFreeVars :: 
     Type () BnfcIdent BnfcIdent -> 
-    StateT AnnotateState GraphGenCore (TypeG TaggedBnfcIdent)
+    StateT SymbolTable GraphGenCore (TypeG TaggedBnfcIdent)
 annotateTypeIToTypeGAndScopeFreeVars = cata f
   where
     f :: 
-        TypeF () BnfcIdent BnfcIdent (StateT AnnotateState GraphGenCore (TypeG TaggedBnfcIdent)) -> 
-        StateT AnnotateState GraphGenCore (TypeG TaggedBnfcIdent)
+        TypeF () BnfcIdent BnfcIdent (StateT SymbolTable GraphGenCore (TypeG TaggedBnfcIdent)) -> 
+        StateT SymbolTable GraphGenCore (TypeG TaggedBnfcIdent)
     f (TypeVarF ident args) = f $ TypeWithArgsF ident () args
     f (TypeWithArgsF ident () args) = do
         args' <- sequenceA args
-        symtab <- guse annotateStateSymbolTable
+        symtab <- guse equality
 
         lkup <- lift $ 
             ambiguousLookupCheck
@@ -154,12 +152,12 @@ annotateTypeIToTypeGAndScopeFreeVars = cata f
             -- note that this will check if it is out of scope already...
 
         case lkup of
-            Just (_, SymEntry tag (SymClause n)) -> do
+            Just (_, SymEntry tag pos (SymClause n)) -> do
                 return $ TypeWithArgs 
                     (TaggedBnfcIdent ident tag) 
                     (TypeClauseCallDefKnot n) 
                     args'
-            Just (_, SymEntry tag SymTypeVar) -> do
+            Just (_, SymEntry tag pos SymTypeVar) -> do
                 return $ TypeVar (TaggedBnfcIdent ident tag) 
                     args'
 
@@ -167,11 +165,12 @@ annotateTypeIToTypeGAndScopeFreeVars = cata f
                 taggedident <- lift $ tagBnfcIdent ident
                 ttype <- lift $ freshTypeTag
 
-                annotateStateSymbolTable %= (
+                equality %= (
                     ( taggedident ^. taggedBnfcIdentName
-                    , SymEntry (taggedident ^. uniqueTag) $ SymTypeVar):)
-                annotateStateFreeVarsTypeTags %= (ttype:)
-                annotateStateFreeVarsSubs %= ((taggedident, TypeVar ttype []):)
+                    , SymEntry (taggedident ^. uniqueTag) (taggedident ^. taggedBnfcIdentPos)
+                        $ SymTypeVar):)
+                --annotateStateFreeVarsTypeTags %= (ttype:)
+                -- annotateStateFreeVarsSubs %= ((taggedident, TypeVar ttype []):)
 
                 return $ TypeVar taggedident args'
 
@@ -192,3 +191,24 @@ tagTypeSeq ::
 tagTypeSeq (TypeTupleF n) = return (TypeTupleF n)
 tagTypeSeq (TypeIntF n) = return (TypeTupleF n)
 -}
+
+data ExprTypeTags = ExprTypeTags {
+    _exprTtype :: TypeTag
+    , _exprTtypeInternal :: TypeTag
+}  deriving Show
+
+data TieExprEnv = TieExprEnv {
+    _tieExprEnvTypeTags :: ExprTypeTags
+    , _tieExprEnvTagTypeMap :: TagTypeMap
+}
+
+$(makeLenses ''TieExprEnv)
+$(makePrisms ''TieExprEnv)
+$(makeClassy ''ExprTypeTags)
+$(makePrisms ''ExprTypeTags)
+
+freshExprTypeTags :: GraphGenCore ExprTypeTags
+freshExprTypeTags = ExprTypeTags <$> freshTypeTag <*> freshTypeTag
+
+instance HasExprTypeTags TieExprEnv where
+    exprTypeTags = tieExprEnvTypeTags

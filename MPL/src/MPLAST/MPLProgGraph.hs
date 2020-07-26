@@ -237,11 +237,23 @@ taggedBnfcIdentName = lens get set
     get n = n ^. taggedBnfcIdentBnfcIdent % bnfcIdentName
     set n v = n & taggedBnfcIdentBnfcIdent % bnfcIdentName .~ v
 
+taggedBnfcIdentPos :: Lens' TaggedBnfcIdent (Int, Int)
+taggedBnfcIdentPos =  lens get set
+  where
+    get n = n ^. taggedBnfcIdentBnfcIdent % bnfcIdentPos
+    set n v = n & taggedBnfcIdentBnfcIdent % bnfcIdentPos .~ v
+
 bnfcIdentName :: Lens' BnfcIdent String
 bnfcIdentName = lens get set
   where
     get n = n ^. stringPos % _1
     set n v = n & stringPos % _1 .~ v
+
+bnfcIdentPos :: Lens' BnfcIdent (Int, Int)
+bnfcIdentPos = lens get set
+  where
+    get n = n ^. stringPos % _2
+    set n v = n & stringPos % _2 .~ v
 
 instance HasUniqueTag TaggedBnfcIdent where
     uniqueTag = taggedBnfcIdentTag 
@@ -263,3 +275,4 @@ progGQueryTypeClausesGraphs (Prog defsg) = concatMap f defsg
     f (Stmt defns wdefs) = mapMaybe g (NE.toList defns) ++ progGQueryTypeClausesGraphs (Prog wdefs)
     g (ObjectG defn) = Just defn
     g _ = Nothing
+

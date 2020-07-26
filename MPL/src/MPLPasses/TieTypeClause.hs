@@ -82,7 +82,8 @@ tieTypeClauseKnot ::
 tieTypeClauseKnot clauses = do
     args' <- lift $ typeClausesArgs clauses
     equality %= 
-        ((map (view taggedBnfcIdentName &&& review _SymEntry . (,SymTypeVar) . view uniqueTag ) 
+        ((map ( view taggedBnfcIdentName 
+            &&& (\n -> review _SymEntry (n ^. uniqueTag, n ^. taggedBnfcIdentPos,SymTypeVar) ))
             args')++)
         -- add the variables to the scope..
     f args' (NE.toList clauses)
@@ -105,8 +106,10 @@ tieTypeClauseKnot clauses = do
                         , _SymTypeClause # (clause))):)
                         -}
             equality %= (( stv' ^. taggedBnfcIdentName
-                        , _SymEntry # (stv' ^. uniqueTag
-                        , _SymTypeVar # ())):)
+                        , _SymEntry # 
+                            ( stv' ^. uniqueTag
+                            , stv' ^. taggedBnfcIdentPos
+                            , _SymTypeVar # ())):)
             f args rst
             phrases' <- mapM (g clause) phrases
         return ()
@@ -131,7 +134,7 @@ substituteTyVar symtab = para f
   where
     f (TypeWithArgsF ident () args) = do
         args' <- traverse snd args
-        ~(SymEntry uniquetag info) <- lookupIdent symtab ident
+        ~(SymEntry uniquetag pos info) <- lookupIdent symtab ident
 
         return $ case info of 
             SymTypeVar -> TypeVar 
@@ -144,7 +147,7 @@ substituteTyVar symtab = para f
     f (TypeVarF ident []) = do
         -- TODO literally does NOT support anything with higher kinded data!
         -- in the future, change it so that it will substitute and check arity!
-        ~(SymEntry uniquetag info) <- lookupIdent symtab ident
+        ~(SymEntry uniquetag pos info) <- lookupIdent symtab ident
 
         return $ case info of
             SymTypeVar -> _TypeVar # (_TaggedBnfcIdent # (ident, uniquetag), [])

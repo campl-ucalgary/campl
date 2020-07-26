@@ -91,12 +91,12 @@ data
         Unit :: -> C
         UnitRec :: C -> C
 
--- defn
---     fun tomato = 
---         a -> orange(a)
+defn
+    fun tomato = 
+        a -> orange(Unit)
+    fun orange = 
+        a -> tomato(a)
 
-fun orange = 
-    a -> orange(a)
 |]
 
 testinggg = [r| 
@@ -109,8 +109,8 @@ data
         Zag :: X, Z -> X
         Zagg ::     -> X
 
-fun test :: Zag, Zag -> Zig =
-    a,b -> Zig(a, b)
+fun test :: Zig,Zag -> Zig =
+    a,b -> Zig(a,b)
 |]
 
 

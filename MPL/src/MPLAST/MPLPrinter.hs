@@ -15,6 +15,8 @@ import MPLAST.MPLASTTranslateType
 import MPLUtil.UniqueSupply
 
 import Data.Foldable
+import Data.Functor.Foldable
+import Data.Coerce
 
 import qualified Data.List.NonEmpty as NE
 import Data.List.NonEmpty (NonEmpty (..))
@@ -49,7 +51,7 @@ instance PPrint UniqueTag where
     pprint (UniqueTag n) = "__" ++ pprint n 
 
 instance PPrint TypeTag where
-    pprint (TypeTag (UniqueTag n)) = pprint n
+    pprint (TypeTag (UniqueTag n)) = "T" ++ pprint n
 
 instance PPrint Unique where
     pprint (Unique n) = show n
@@ -183,3 +185,24 @@ bnfcRSquareBracket = RSquareBracket ((-1,-1), "]")
 toBnfcUIdent str = UIdent ((-1,-1), str)
 toBnfcPIdent str = PIdent ((-1,-1), str)
 toBnfcUPIdent str = UPIdent ((-1,-1), str)
+
+-- | Converts a TypeGTypeTag to a TypeG TaggedBnfcIdent.
+-- The reason why this is in this module instead of say
+-- ProgGraph is because the result (the generated bnfc ident)
+-- is so closely linked to how it is printed and this module
+-- takes care of all the pretty printing
+typeGTypeTagToTypeG ::  
+    TypeGTypeTag -> 
+    TypeG TaggedBnfcIdent
+typeGTypeTagToTypeG = cata f
+  where
+    f :: TypeF 
+            (TypeClauseCallDefKnot TaggedBnfcIdent TaggedBnfcIdent) 
+            TaggedBnfcIdent TypeTag (TypeG TaggedBnfcIdent) ->
+        TypeG TaggedBnfcIdent  
+    f (TypeWithArgsF ident def args) = 
+        TypeWithArgs ident def args
+    f (TypeVarF tag args) = 
+        _TypeVar # (_TaggedBnfcIdent # (BnfcIdent (pprint tag, (-1,-1)), coerce tag), args)
+    f (TypeSeqF n) = TypeSeq n
+    f (TypeConcF n) = TypeConc n

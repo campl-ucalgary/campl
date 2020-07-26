@@ -27,10 +27,14 @@ import Data.Functor.Contravariant
 import Data.Bool
 import Data.Maybe
 import Control.Applicative
+import Data.List
+
+import Data.Functor.Foldable
 
 
 data SymEntry info = SymEntry {
     _symEntryUniqueTag :: UniqueTag
+    , _symEntryPosition :: (Int,Int)
     , _symEntryInfo :: info
 }  deriving Show
 
@@ -42,7 +46,13 @@ data SymInfo =
     | SymTypeVar 
 
     -- | Function lookups
-    | SymFunDefn (FunctionDefG TaggedBnfcIdent TypeTag)
+    -- | SymFunDefn (FunctionDefG TaggedBnfcIdent TypeTag)
+        -- | Functions in the mutually recursive case / pattern
+        -- matched destructors
+    | SymCall 
+        -- (type of the expression, free variables)
+        (TypeGTypeVar TaggedBnfcIdent TypeTag)
+        (FunctionCallValueKnot TaggedBnfcIdent TypeTag)
         -- | useful for lookup up the types as a local vairable
     | SymLocalSeqVar TypeTag
         
@@ -76,6 +86,8 @@ _SymEntryTypePhraseObjType =
     % clauseGraph 
     % clauseGraphObjectType
 
+
+
 class CollectSymEntries a where
     collectSymEntries :: a -> SymbolTable
 
@@ -88,10 +100,17 @@ instance CollectSymEntries (DefnG TaggedBnfcIdent TypeTag) where
         collectClauseGraphSymbolTable graph = f graph
           where
             f graph =
-                map (second (review _SymEntry <<< view (typeClauseName % uniqueTag) 
-                        &&& SymClause)) (collectClauseGraphClauses graph)
-                ++ map (second (review _SymEntry <<< view (typePhraseName % uniqueTag) 
-                        &&& SymPhrase)) (collectClauseGraphPhrases graph)
+                map (second 
+                        (\n ->  review _SymEntry 
+                            ( n ^. typeClauseName % uniqueTag
+                            , n ^. typeClauseName % taggedBnfcIdentPos
+                            , SymClause n ))) 
+                        (collectClauseGraphClauses graph)
+                ++ map (second (\n -> review _SymEntry 
+                            ( n ^. typePhraseName % uniqueTag
+                            , n ^. typePhraseName % taggedBnfcIdentPos
+                            , SymPhrase n)))
+                         (collectClauseGraphPhrases graph)
 
         collectClauseGraphClauses graph = map f $ NE.toList $ graph ^. clauseGraphSpine
           where
@@ -104,7 +123,11 @@ instance CollectSymEntries (DefnG TaggedBnfcIdent TypeTag) where
 
     collectSymEntries (FunctionDecDefG graph) = [
         ( graph ^. funName % taggedBnfcIdentName
-        , SymEntry (graph ^. funName % uniqueTag) $ SymFunDefn graph)
+        , SymEntry (graph ^. funName % uniqueTag) (graph ^. funName % taggedBnfcIdentPos ) $ 
+            SymCall 
+                (graph ^. funTypesFromTo)
+                (FunctionKnot graph)
+        )
         ]
 
     collectSymEntries _ = error "proceses todo"
@@ -144,7 +167,7 @@ ambiguousLookupCheck ::
     SymbolTable -> 
     GraphGenCore (Maybe (String, SymEntry SymInfo))
 ambiguousLookupCheck symtable = do
-    tell $ bool [] [AmbiguousLookup] twoormoreelems
+    tell $ bool [] [AmbiguousLookup $ map (\(str, SymEntry _ pos _) -> BnfcIdent (str,pos)) symtable ] twoormoreelems
     return $ bool (listToMaybe symtable) Nothing (twoormoreelems || zeroelems)
   where
     twoormoreelems = length symtable >= 2
@@ -157,7 +180,7 @@ querySymbolTableSeqCallFuns =
     filter (has ( 
                 _2
                 % symEntryInfo 
-                % _SymFunDefn
+                % _SymCall
                 ))
 
 querySymbolTableSequentialClauses ::

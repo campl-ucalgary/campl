@@ -127,16 +127,13 @@ instance (Show a, Show b, PPrint a, Eq b, PPrint b) => PPrint (Package a b) wher
         "\nFree\n" ++ show c ++
         "\nSubs\n" ++ intercalate "\n" (map (pprint) d) ++ "\n\n"
 
-emptyPackage :: Package ident typevar
-emptyPackage = Package Set.empty Set.empty Set.empty []
 
 instance Ord typevar => Semigroup (Package ident typevar) where
     Package univ0 exis0 free0 subs0 <> Package univ1 exis1 free1 subs1
         = Package (univ0 <> univ1) (exis0 <> exis1) (free0 <> free1) (subs0 <> subs1)
 
 instance Ord typevar => Monoid (Package ident typevar) where
-    mempty = emptyPackage
-
+    mempty = Package Set.empty Set.empty Set.empty []
 
 match ::
     AsUnificationError e =>
@@ -268,8 +265,7 @@ solveTypeEq ::
     AsUnificationError e => 
     TypeEqns TaggedBnfcIdent TypeTag ->
     Either e (Package TaggedBnfcIdent TypeTag)
--- solveTypeEq = cata f
-solveTypeEq eqns = cata f eqns
+solveTypeEq = cata f 
   where
     f :: AsUnificationError e => 
         TypeEqnsF
@@ -280,7 +276,7 @@ solveTypeEq eqns = cata f eqns
     f (TypeEqnsEqF (a, b)) = do 
         let freevars = Set.fromList $ toList a ++ toList b
         subs <- match a b
-        let pkg' = emptyPackage & packageSubs .~ subs & packageFreeVars .~ freevars
+        let pkg' = mempty & packageSubs .~ subs & packageFreeVars .~ freevars
         return pkg' 
 
     f (TypeEqnsExistF vs acc) = do
@@ -372,3 +368,4 @@ alignSubs k = map g
         | k == b = (b, TypeVar a [])
         | otherwise = (a, TypeVar b [])
     g n = n 
+
