@@ -40,4 +40,8 @@ describeValidGraph prog rst = do
                 Right prog' -> return ()
                 Left errs -> assertFailure (show errs)
         let Right prog'' = prog'
+        it "testing if the program's functions (TODO change this for the entire program) does NOT throw exceptions" $ do
+            assertBool "" 
+                ( mconcat (pprintFunctionTypes prog'') 
+                == mconcat (pprintFunctionTypes prog'') )
         rst prog''

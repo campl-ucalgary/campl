@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module MPLPasses.SymbolTable where
 
 import MPLAST.MPLProgI
@@ -32,6 +33,7 @@ import Data.List
 import Data.Functor.Foldable
 
 
+
 data SymEntry info = SymEntry {
     _symEntryUniqueTag :: UniqueTag
     , _symEntryPosition :: (Int,Int)
@@ -58,6 +60,10 @@ data SymInfo =
         
     -- process lookups
   deriving Show
+
+data CallTypeVar =
+    DummyTypeVar TypeTag
+    | ExplicitType
 
 $(concat <$> traverse makePrisms 
     [ ''SymEntry 
@@ -131,6 +137,57 @@ instance CollectSymEntries (DefnG TaggedBnfcIdent TypeTag) where
         ]
 
     collectSymEntries _ = error "proceses todo"
+
+data SymbolTableQueryState =  SymbolTableQueryState {
+    _symbolTableQueryStateSymbolTable :: SymbolTable
+    , _symbolTableQueryStateBnfcIdent :: Maybe BnfcIdent
+}
+
+$(makeLenses ''SymbolTableQueryState)
+
+newtype SymbolTableQueryT m a =
+    SymbolTableQueryT { unSymbolTableQueryT :: StateT SymbolTableQueryState m a }
+  deriving 
+    ( Functor 
+    , Applicative
+    , Monad
+    , MonadState SymbolTableQueryState
+    , MonadTrans )
+
+type SymbolTableQuery a = SymbolTableQueryT GraphGenCore a
+
+runSymbolTableQuery ::  
+    SymbolTableQuery a -> 
+    SymbolTable -> 
+    GraphGenCore a
+runSymbolTableQuery query symtab = 
+    evalStateT 
+    (unSymbolTableQueryT query) 
+    (SymbolTableQueryState symtab Nothing)
+
+queryBnfcIdentName :: 
+    BnfcIdent ->
+    SymbolTableQuery ()
+queryBnfcIdentName ident = 
+    symbolTableQueryStateSymbolTable %= filter ( (ident ^. bnfcIdentName==) . fst )
+
+queryBnfcIdentSequentialPhrases ::
+    SymbolTableQuery ()
+queryBnfcIdentSequentialPhrases = 
+    symbolTableQueryStateSymbolTable %= filter
+        ( liftA2 (||) 
+            (has ( 
+                _2
+                % _SymEntryTypePhraseObjType
+                % _DataObj ))
+            (has (
+                _2
+                % _SymEntryTypePhraseObjType
+                % _CodataObj
+                ))
+        )
+
+
 
 querySymbolTableBnfcIdentName :: 
     BnfcIdent -> 
