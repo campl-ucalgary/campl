@@ -41,7 +41,7 @@ spec = do
 -- thesis example...
 thesisEx = (thesisExSol, thesisExEq)
   where
-    thesisExSol = emptyPackage 
+    thesisExSol = mempty 
         & packageExisVar  .~ Set.fromList [x4]
         & packageFreeVars .~ Set.fromList [x0]
         & packageSubs     .~ [(x0, TypeWithArgs list callDefKnot [TypeWithArgs list callDefKnot [TypeVar x4 []]])]
