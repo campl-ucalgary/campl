@@ -84,17 +84,58 @@ defn
             DataThree :: DataThree(Pork) -> Pork
 |]
 
+testscoppe = [r|
+defn 
+    fun foo = 
+        a -> orange(a)
+
+    fun orange =
+        a -> out(a)
+
+fun bar =
+    a -> foo(a,a)
+|]
+
+test1Errrr = [r| 
+{-
+data 
+    Zig(A,B) -> Z =
+        Zig :: A,B -> Z
+
+data 
+    Kartofler -> C =
+        Kartofler :: -> C
+
+data 
+    Orange -> C =
+        Orange :: -> C
+
+fun test :: A(A,B) -> A(A,B) =
+    a,b -> Zig(a,b)
+    -}
+-- fun test :: Zig(B,C) -> Zig(C,B) =
+fun test :: B -> C =
+    a -> a
+|]
+
 
 testcall = [r|
+{-
 data 
     Unit -> C =
         Unit :: -> C
+        -}
 
+fun tomato :: A -> B = 
+    a -> a
+{-
 defn
-    fun tomato = 
-        a -> orange(b)
-    fun orange = 
-        a -> tomato(a)
+    fun tomato :: A -> B = 
+        a -> orange(a)
+    fun orange  = 
+        b -> tomato(b)
+        -}
+
 {-
 data 
     List(A) -> C =

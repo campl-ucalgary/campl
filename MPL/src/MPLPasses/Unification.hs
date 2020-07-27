@@ -36,7 +36,20 @@ data TypeEqns ident typevar =
     TypeEqnsEq (TypeGTypeVar ident typevar, TypeGTypeVar ident typevar)
     | TypeEqnsExist [typevar] [TypeEqns ident typevar]
     | TypeEqnsForall [typevar] [TypeEqns ident typevar]
+
+    -- used to recover the intermediate types..
+    | TypeEqnsStableRef (typevar, TypeGTypeVar ident typevar)
   deriving (Show, Functor, Foldable, Traversable)
+
+data Substitution typevar ttype = 
+    Sub (typevar, ttype)
+    | StableSub (typevar, ttype)
+
+$(makePrisms ''Substitution)
+
+instance (PPrint ttype, PPrint typevar) => PPrint (Substitution typevar ttype) where
+    pprint (Sub a) =  pprint a
+    pprint (StableSub a) =  "Stable[" ++ pprint a ++ "]"
 
 instance (PPrint ident, Eq typevar, PPrint typevar) => PPrint (TypeEqns ident typevar) where
     pprint = render . f
@@ -289,7 +302,7 @@ solveTypeEq = cata f
     f (TypeEqnsForallF vs acc) = do
         acc' <- sequenceA acc
         let pkg = mconcat acc' & packageUnivVar %~ (Set.fromList vs `Set.union`)
-        packageUniversalElim pkg
+        packageUniversalElim pkg -- (trace (pprint pkg) pkg)
 
 isTrivialSubstitution :: (TypeTag, TypeGTypeTag) -> Bool
 isTrivialSubstitution (s, TypeVar t []) = s == t
@@ -333,10 +346,11 @@ packageUniversalElim pkg = do
   where
     f v acc = do
         let subs = alignSubs v $ acc ^. packageSubs
+        -- case lookup (trace (pprint v++"\n") v) (trace (intercalate "," . map pprint $ subs) subs) of
         case lookup v subs of
             Just lkup@(TypeVar v' args) 
                 | v' == v ->  return acc
-                | otherwise -> do
+                | v' `elem` pkg ^. packageExisVar -> 
                     packageExistentialElim (acc & packageSubs %~ ((v, lkup):))
             Just err -> Left $ _ForallMatchFailure # (v, err)
             Nothing -> return acc

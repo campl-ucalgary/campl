@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c6e5bdcbd8df8f7d0a70c899b8a3c1cf885763a08a027687845f0b4ce12e63f6
+-- hash: e5400237b5d081e91f2c569a539b4919255ebf3dd749bab7cfc6c0eccdf42f69
 
 name:           MPL
 version:        0.1.0.0
@@ -120,6 +120,7 @@ test-suite MPL-test
       MPLPasses.UnificationSpec
       TypeInference.AnnotatedEx1Spec
       TypeInference.GraphAssertions
+      TypeInference.HigherKindMatchFailureSpec
       TypeInference.OutOfScopeErrorSpec
       TypeInference.UnannotatedNatNatToNatExSpec
       Paths_MPL

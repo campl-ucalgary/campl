@@ -1,5 +1,5 @@
 {-# LANGUAGE QuasiQuotes #-} 
-module TypeInference.AnnotatedEx1Spec ( spec ) where
+module TypeInference.HigherKindMatchFailureSpec ( spec ) where
 
 import Optics
 
@@ -36,49 +36,28 @@ import TypeInference.GraphAssertions
 
 spec :: Spec
 spec = do
-    mapM_ (`describeValidGraph` const (return ()) )
-        [ test1 
-        , test2
-        ]
-    {-
-    mapM_ describeMatchFailure
-        [ test1Err ]
-        -}
-
+    mapM_ describeForallMatchFailure
+        [ test1 ]
 
 test1 = [r| 
-data 
-    Zig -> Z =
-        Zig  :: Z,X -> Z
-        Zigg ::    -> Z
-    and
-    Zag -> X =
-        Zag :: X, Z -> X
-        Zagg ::     -> X
-
-fun test :: Zig, Zag -> Zig =
-    a,b -> Zig(a, b)
+fun test :: B -> C =
+    a -> a
 |]
+
 
 test1Err = [r| 
 data 
-    Zig -> Z =
-        Zig  :: Z,X -> Z
-        Zigg ::    -> Z
-    and
-    Zag -> X =
-        Zag :: X, Z -> X
-        Zagg ::     -> X
+    Zig(A,B) -> Z =
+        Zig :: A,B -> Z
 
-fun test :: Zig, Zig -> Zig =
+data 
+    Kartofler -> C =
+        Kartofler :: -> C
+
+data 
+    Orange -> C =
+        Orange :: -> C
+
+fun test :: Zig -> Zig =
     a,b -> Zig(a, b)
-|]
-
-
-test2 = [r| 
-defn
-    fun tomato = 
-        a -> orange(a)
-    fun orange :: A -> B = 
-        b -> tomato(b)
 |]

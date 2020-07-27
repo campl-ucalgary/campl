@@ -179,8 +179,8 @@ data
 defn 
     fun functiontest =
         a,b -> case a of
-            s -> Nat(s)
-            Zero -> b
+            Nat(Nat(Nat(s))) -> Nat(s)
+            Nat(Zero) -> b
 |]
 
 {-

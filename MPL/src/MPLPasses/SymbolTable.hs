@@ -53,7 +53,7 @@ data SymInfo =
         -- matched destructors
     | SymCall 
         -- (type of the expression, free variables)
-        (TypeGTypeVar TaggedBnfcIdent TypeTag)
+        SymCallTypeVar -- (TypeGTypeVar TaggedBnfcIdent TypeTag)
         (FunctionCallValueKnot TaggedBnfcIdent TypeTag)
         -- | useful for lookup up the types as a local vairable
     | SymLocalSeqVar TypeTag
@@ -61,9 +61,10 @@ data SymInfo =
     -- process lookups
   deriving Show
 
-data CallTypeVar =
-    DummyTypeVar TypeTag
-    | ExplicitType
+data SymCallTypeVar =
+    SymCallDummyTypeVar TypeTag
+    | SymCallExplicitType (TypeG TaggedBnfcIdent)
+  deriving Show
 
 $(concat <$> traverse makePrisms 
     [ ''SymEntry 
@@ -131,7 +132,7 @@ instance CollectSymEntries (DefnG TaggedBnfcIdent TypeTag) where
         ( graph ^. funName % taggedBnfcIdentName
         , SymEntry (graph ^. funName % uniqueTag) (graph ^. funName % taggedBnfcIdentPos ) $ 
             SymCall 
-                (graph ^. funTypesFromTo)
+                (SymCallExplicitType $ typeGTypeTagToTypeG $ graph ^. funTypesFromTo)
                 (FunctionKnot graph)
         )
         ]
@@ -140,7 +141,9 @@ instance CollectSymEntries (DefnG TaggedBnfcIdent TypeTag) where
 
 data SymbolTableQueryState =  SymbolTableQueryState {
     _symbolTableQueryStateSymbolTable :: SymbolTable
+
     , _symbolTableQueryStateBnfcIdent :: Maybe BnfcIdent
+    , _symbolTableQueryStateFailure :: Bool
 }
 
 $(makeLenses ''SymbolTableQueryState)
@@ -163,18 +166,70 @@ runSymbolTableQuery ::
 runSymbolTableQuery query symtab = 
     evalStateT 
     (unSymbolTableQueryT query) 
-    (SymbolTableQueryState symtab Nothing)
+    (SymbolTableQueryState symtab Nothing False)
+
+symbolTableQueries ::
+    SymbolTableQuery SymbolTable
+symbolTableQueries =
+    guse symbolTableQueryStateSymbolTable 
+
+symbolTableQuery ::
+    SymbolTableQuery (Maybe (SymEntry SymInfo))
+symbolTableQuery = do
+    symtab <- guse symbolTableQueryStateSymbolTable 
+    queryfail <- guse symbolTableQueryStateFailure 
+    return $ bool (snd <$> listToMaybe symtab) Nothing queryfail
+
+queryNotInScopeCheck ::
+    SymbolTableQuery ()
+queryNotInScopeCheck = do
+    ident <- guse symbolTableQueryStateBnfcIdent 
+    symtab <- guse symbolTableQueryStateSymbolTable 
+    flip (maybe (return ())) ident $ \ident -> do
+        let isnull = null symtab
+        symbolTableQueryStateFailure %= (||isnull)
+        lift $ tell $ bool [] [NotInScope ident] isnull
+
+queryAmbiguousLookupCheck :: 
+    SymbolTableQuery () 
+queryAmbiguousLookupCheck = do
+    ident <- guse symbolTableQueryStateBnfcIdent 
+    symtab <- guse symbolTableQueryStateSymbolTable 
+    flip (maybe (return ())) ident $ \ident -> do
+        let multiplelookups = length symtab >= 2
+        symbolTableQueryStateFailure %= (||multiplelookups)
+        lift 
+            $ tell 
+            $ bool [] 
+                [ AmbiguousLookup ident  
+                $ map (\(str, SymEntry _ pos _) -> BnfcIdent (str,pos)) symtab 
+                ] multiplelookups
+
+queryChecks ::
+    SymbolTableQuery ()
+queryChecks = queryNotInScopeCheck >> queryAmbiguousLookupCheck
+
+    {-
+    tell $ bool [] [AmbiguousLookup $ map (\(str, SymEntry _ pos _) -> BnfcIdent (str,pos)) symtable ] twoormoreelems
+    return $ bool (listToMaybe symtable) Nothing (twoormoreelems || zeroelems)
+  where
+    twoormoreelems = length symtable >= 2
+    zeroelems = null symtable
+    -}
+
 
 queryBnfcIdentName :: 
     BnfcIdent ->
     SymbolTableQuery ()
-queryBnfcIdentName ident = 
-    symbolTableQueryStateSymbolTable %= filter ( (ident ^. bnfcIdentName==) . fst )
+queryBnfcIdentName ident = do
+    liftPredicateQuery ( (ident ^. bnfcIdentName==) . fst )
+    symbolTableQueryStateBnfcIdent .= Just ident
 
-queryBnfcIdentSequentialPhrases ::
+
+querySequentialPhrases ::
     SymbolTableQuery ()
-queryBnfcIdentSequentialPhrases = 
-    symbolTableQueryStateSymbolTable %= filter
+querySequentialPhrases = 
+    liftPredicateQuery
         ( liftA2 (||) 
             (has ( 
                 _2
@@ -187,8 +242,44 @@ queryBnfcIdentSequentialPhrases =
                 ))
         )
 
+querySeqCallFuns ::
+    SymbolTableQuery ()
+querySeqCallFuns = 
+    liftPredicateQuery
+        ( has ( 
+                _2
+                % symEntryInfo 
+                % _SymCall
+                ))
+
+queryLocalSeqVar ::
+    SymbolTableQuery ()
+queryLocalSeqVar = liftPredicateQuery ( has (_2 % symEntryInfo % _SymLocalSeqVar) )
+
+liftPredicateQuery ::
+    ((String, SymEntry SymInfo) -> Bool) ->
+    SymbolTableQuery () 
+liftPredicateQuery p = 
+    symbolTableQueryStateSymbolTable %= filter p
 
 
+sequentialClausesPredicate :: 
+    (String, SymEntry SymInfo) -> 
+    Bool 
+sequentialClausesPredicate = 
+        ( liftA2 (||) 
+            (has ( 
+                _2
+                % _SymEntryTypeClauseObjType
+                % _DataObj ))
+            (has (
+                _2
+                % _SymEntryTypeClauseObjType
+                % _CodataObj
+                ))
+        )
+
+{-
 querySymbolTableBnfcIdentName :: 
     BnfcIdent -> 
     SymbolTable -> 
@@ -224,7 +315,8 @@ ambiguousLookupCheck ::
     SymbolTable -> 
     GraphGenCore (Maybe (String, SymEntry SymInfo))
 ambiguousLookupCheck symtable = do
-    tell $ bool [] [AmbiguousLookup $ map (\(str, SymEntry _ pos _) -> BnfcIdent (str,pos)) symtable ] twoormoreelems
+    undefined
+    -- tell $ bool [] [AmbiguousLookup $ map (\(str, SymEntry _ pos _) -> BnfcIdent (str,pos)) symtable ] twoormoreelems
     return $ bool (listToMaybe symtable) Nothing (twoormoreelems || zeroelems)
   where
     twoormoreelems = length symtable >= 2
@@ -273,3 +365,4 @@ querySymbolTableConcurrentClauses =
                 % _CoprotocolObj 
                 ))
         )
+        -}

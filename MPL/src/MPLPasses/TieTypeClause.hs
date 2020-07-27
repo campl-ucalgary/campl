@@ -235,8 +235,9 @@ substituteTyVar symtab = para f
         BnfcIdent ->
         GraphGenCore (SymEntry SymInfo)
     lookupIdent symtab ident = do
-        entries <- querySymbolTableBnfcIdentName ident symtab
-        snd . fromJust <$> ambiguousLookupCheck entries
+        fromJust <$> runSymbolTableQuery (queryBnfcIdentName ident >> queryChecks >> symbolTableQuery) symtab
+        -- entries <- querySymbolTableBnfcIdentName ident symtab
+        -- snd . fromJust <$> ambiguousLookupCheck entries
 
 
     

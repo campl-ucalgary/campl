@@ -47,10 +47,7 @@ data TieDefnsError =
     | TieDefnFunctionError FunctionError
     | TieDefnUnificationError UnificationError
 
-    -- TODO -- change the symbol table
-    -- so it keeps the position infromation
-    -- and make this take a list of [BnfcIdent]
-    | AmbiguousLookup [BnfcIdent]
+    | AmbiguousLookup BnfcIdent [BnfcIdent]
     | NotInScope BnfcIdent
   deriving Show
 

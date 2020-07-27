@@ -19,6 +19,9 @@ import MPLAST.MPLProgI
 import MPLAST.MPLASTCore
 import MPLAST.MPLProg
 import MPLAST.MPLProgGraph
+import MPLPasses.Unification
+import MPLPasses.UnificationErrors
+import MPLPasses.TieDefnsErrors
 import MPLCompile
 
 import Language.AbsMPL
@@ -45,3 +48,20 @@ describeValidGraph prog rst = do
                 ( mconcat (pprintFunctionTypes prog'') 
                 == mconcat (pprintFunctionTypes prog'') )
         rst prog''
+
+describeAllFailures pred prog = do
+    describe ("Testing for out of scope error:\n" ++ prog) $ do
+        prog' <- runIO $ unsafeTranslateParseLexGraph prog
+
+        it "Testing for out of scope error." $ do
+            case prog' of
+                Right _ -> assertFailure "Program is valid when it should not be..."
+                Left errs -> assertBool
+                    ("Expected out of scope errors but got: " ++ show errs)
+                    (allOf folded pred errs)
+
+
+describeOutOfScope = describeAllFailures (has _NotInScope)
+
+describeForallMatchFailure = describeAllFailures 
+    (has (_TieDefnUnificationError % _ForallMatchFailure))

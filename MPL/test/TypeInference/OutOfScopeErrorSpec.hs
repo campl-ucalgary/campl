@@ -32,6 +32,8 @@ import qualified Data.List.NonEmpty as NE
 import Data.Either
 import Data.Traversable
 
+import TypeInference.GraphAssertions 
+
 spec :: Spec
 spec = do
     mapM_ describeOutOfScope
@@ -40,22 +42,13 @@ spec = do
         , outOfScopeTest3
         , outOfScopeTest4
         , outOfScopeTest5
+        , outOfScopeTest6
+        , outOfScopeTest7
         ]
 
 --------------------
 -- Assertion helpers
 --------------------
-
-describeOutOfScope prog = do
-    describe ("Testing for out of scope error:\n" ++ prog) $ do
-        prog' <- runIO $ unsafeTranslateParseLexGraph prog
-
-        it "Testing for out of scope error." $ do
-            case prog' of
-                Right _ -> assertFailure "Program is valid when it should not be..."
-                Left errs -> assertBool
-                    ("Expected out of scope errors but got: " ++ show errs)
-                    (allOf folded (has _NotInScope) errs)
 
 --------------------
 -- Tests
@@ -92,7 +85,7 @@ data
         Cabbage :: Potato -> C
 
 data Potato -> D =
-    Potato :: -> D
+    Potato :: Cabbage -> D
 |]
 
 outOfScopeTest5 = [r|
@@ -102,3 +95,25 @@ defn
             b -> b
             c -> b
 |]
+
+
+outOfScopeTest6 = [r|
+fun foo = 
+    a -> orange(a)
+fun testing =
+    a -> foo(a)
+|]
+
+outOfScopeTest7 = [r|
+defn 
+    fun foo = 
+        a -> orange(a)
+
+    fun orange =
+        a -> out(a)
+
+fun bar =
+    a -> foo(a,a)
+|]
+
+

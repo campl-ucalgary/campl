@@ -146,18 +146,27 @@ annotateTypeIToTypeGAndScopeFreeVars = cata f
         args' <- sequenceA args
         symtab <- guse equality
 
-        lkup <- lift $ 
-            ambiguousLookupCheck
-            =<< censor (const []) (querySymbolTableBnfcIdentName ident symtab)
-            -- note that this will check if it is out of scope already...
+        lkup <- lift $ runSymbolTableQuery 
+            (queryBnfcIdentName ident >> queryAmbiguousLookupCheck >> symbolTableQuery) symtab
 
         case lkup of
-            Just (_, SymEntry tag pos (SymClause n)) -> do
+            -- TODO - we should be doing a kindcheck here i.e.
+            -- if we have:
+            -- data Test(A,B) -> C = Test :: A,B -> C
+            -- Then, a function sig like fun test :: -> Test =
+            -- WILL COMPILE when it shouldn't really.... Although
+            -- this will fail when unifying with anything since we 
+            -- implicitly insert the free type variables...
+           
+            Just (SymEntry tag pos (SymClause n)) -> do
                 return $ TypeWithArgs 
                     (TaggedBnfcIdent ident tag) 
                     (TypeClauseCallDefKnot n) 
                     args'
-            Just (_, SymEntry tag pos SymTypeVar) -> do
+
+            -- We need to test for infinite kind checks here..
+            -- In otherwords, we should not have stuff like A(A,B)
+            Just (SymEntry tag pos SymTypeVar) -> do
                 return $ TypeVar (TaggedBnfcIdent ident tag) 
                     args'
 

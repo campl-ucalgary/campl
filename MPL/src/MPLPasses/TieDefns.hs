@@ -152,8 +152,6 @@ progInterfaceToGraph initstate (Prog stmts) = Prog <$> res
         sym' = either (const []) collectSymEntries stmt' ++  sym
 
 
-type DummyTypeAndEqns = ([ExprTypeTags], [TypeEqns TaggedBnfcIdent TypeTag])
-
 stmtIToGraph ::
     Stmt (DefnI BnfcIdent) -> 
     ReaderT SymbolTable GraphGenCore (Stmt (DefnG TaggedBnfcIdent TypeTag))
@@ -172,8 +170,9 @@ stmtIToGraph (Stmt defs wstmts) = do
             (defnsToGraph (NE.toList defs)) 
         let seqeqnspkg = st ^. tieDefnsStateSeqTypeEqnsPkg
             seqeqns = TypeEqnsForall (seqeqnspkg ^. tieDefnsTypeForall)
-                $ [TypeEqnsExist (seqeqnspkg ^. tieDefnsTypeExist) (seqeqnspkg ^. tieDefnsTypeEqns)]
-            seqpkg = solveTypeEq seqeqns
+                [TypeEqnsExist (seqeqnspkg ^. tieDefnsTypeExist) (seqeqnspkg ^. tieDefnsTypeEqns)]
+            seqpkg = solveTypeEq (trace (pprint seqeqns) seqeqns)
+            -- seqpkg = solveTypeEq seqeqns
             Right seqpkg' = seqpkg
 
             -- concpkg = solveTypeEq (uncurry TypeEqnsExist $ first (map (view exprTtypeInternal)) concdmyeqns)
@@ -196,7 +195,7 @@ defnsToGraph (a:as) = case a ^. unDefnI of
         objectDefIToGraph 
             ival
             [ lift $ typeClauseArgsSanityCheck ival , lift $ phraseToVarsAreStateVarCheck ival ]
-            (querySymbolTableSequentialClauses symtable)
+            (filter sequentialClausesPredicate symtable)
             DataObj
 
         defnsToGraph as
@@ -207,7 +206,7 @@ defnsToGraph (a:as) = case a ^. unDefnI of
         objectDefIToGraph 
             ival
             [ lift $ typeClauseArgsSanityCheck ival, lift $ codataStateVarOccurenceCheck ival ]
-            (querySymbolTableSequentialClauses symtable)
+            (filter sequentialClausesPredicate symtable)
             CodataObj
 
         defnsToGraph as
@@ -237,7 +236,8 @@ defnsToGraph (a:as) = case a ^. unDefnI of
             Nothing -> return Nothing
             -}
         funtype' <- lift $ traverse 
-                ( flip evalStateT (querySymbolTableSequentialClauses symtab)
+                ( flip evalStateT 
+                    (filter sequentialClausesPredicate symtab)
                 . ( annotateTypeIToTypeGAndScopeFreeVars 
                    . (TypeSeq . uncurry TypeSeqArrF))
                     ) funtype
@@ -254,7 +254,12 @@ defnsToGraph (a:as) = case a ^. unDefnI of
         tieDefnsStateSymbolTable %= (
             ( funident' ^. taggedBnfcIdentName
             , SymEntry (funident' ^. uniqueTag) (funident' ^. taggedBnfcIdentPos)
-            $ SymCall (TypeVar ttype []) (FunctionKnot fun')): )
+            $ SymCall 
+                -- if we have an explicit type, just use that, otherwise
+                -- give it the dummy type... (better error messages lower down where
+                -- the issue really is..
+                (maybe (SymCallDummyTypeVar ttype) SymCallExplicitType funtype')
+                (FunctionKnot fun')): )
 
         ttypespattsandexps <- lift $ traverse (const freshExprTypeTags) funbody'
 
@@ -292,7 +297,7 @@ defnsToGraph (a:as) = case a ^. unDefnI of
 
 
         tieDefnsStateSeqTypeEqnsPkg % tieDefnsTypeForall %= ((forallvars)++)
-        tieDefnsStateSeqTypeEqnsPkg % tieDefnsTypeExist %= ((ttypephrases)++)
+        tieDefnsStateSeqTypeEqnsPkg % tieDefnsTypeExist %= ((ttype:ttypephrases)++)
         tieDefnsStateSeqTypeEqnsPkg % tieDefnsTypeEqns %= (typeeqns++)
 
         tell [FunctionDecDefG fun']
@@ -303,29 +308,6 @@ defnsToGraph (a:as) = case a ^. unDefnI of
         symtab <- guse tieDefnsStateSymbolTable
 
         return ()
-
-        
-        {-
-
-        equality %= (
-            ( funident' ^. taggedBnfcIdentName
-            , SymEntry (funident' ^. uniqueTag) 
-            $ SymCall undefined (FunctionKnot fun')): )
-            -- $ SymCall (TypeVar (ttypes ^. exprTtype) []) (FunctionKnot fun')): )
-
-        ~(funtype', fundefn') <- lift $ functionDefIToGraph symtable ttypes funtype fundefn
-
-        let fun' = FunctionDefn funident' funtype' fundefn'
-
-        tell [FunctionDecDefG fun']
-
-        res <- defnsToGraph as
-
-        ~symtable <- guse equality
-
-        undefined
-        -- return $ ((ttypes, funtype), mempty) <> res
-        -}
 
     ProcessDecDefn n -> undefined
 
@@ -406,8 +388,8 @@ patternsIAndExprIToGraph (patts, expr) = do
                         (TypeVar ttypeexpr []) 
                     ) 
                 , TypeEqnsEq 
-                    ( TypeVar ttype []
-                    , TypeVar ttypeinternal []) ]
+                    ( TypeVar ttype [] , TypeVar ttypeinternal []) 
+                    ]
                 ++ patteqns ++ expreqns
 
     return ((pattsg, exprg), ttypeeqn)
@@ -507,11 +489,12 @@ exprIToGraph expr =
     f (EConstructorDestructor ident () args ()) = do
         symtable <- guse equality
 
-        ~lkup <- lift
-            ( ambiguousLookupCheck 
-            =<< querySymbolTableSequentialPhrases 
-            <$> querySymbolTableBnfcIdentName ident symtable )
-        let ~(Just (_, ~(SymEntry tag pos ~(SymPhrase phraseg)))) = lkup
+        lkup <- lift $ 
+            runSymbolTableQuery 
+            (queryBnfcIdentName ident >> querySequentialPhrases >> queryChecks >> symbolTableQuery) 
+            symtable
+
+        let ~(Just (SymEntry tag pos ~(SymPhrase phraseg))) = lkup
 
         ttype <- gview exprTtype 
         internalttype <- gview exprTtypeInternal 
@@ -610,14 +593,17 @@ exprIToGraph expr =
         tagmap <- gview tieExprEnvTagTypeMap
 
         symtable <- guse equality
+
         lkup <- lift $ 
-            ambiguousLookupCheck
-            =<< filter (has (_2 % symEntryInfo % _SymLocalSeqVar)) 
-            <$> querySymbolTableBnfcIdentName ident symtable 
-        let ~(_, ~(SymEntry tag pos ~(SymLocalSeqVar ttypelkup))) = fromJust lkup
+            runSymbolTableQuery 
+            (queryBnfcIdentName ident >> queryLocalSeqVar >> queryChecks >> symbolTableQuery) 
+            symtable
+
+
+        let ~(SymEntry tag pos ~(SymLocalSeqVar ttypelkup)) = fromJust lkup
             eqns = 
                 [ TypeEqnsEq (TypeVar ttype [], TypeVar ttypelkup [])
-                , TypeEqnsEq (TypeVar ttype [], TypeVar ttypeinternal []) ] 
+                , TypeEqnsStableRef (ttypeinternal, TypeVar ttype []) ] 
 
         return 
             ( EVar (TaggedBnfcIdent ident tag) $ fromJust $ Map.lookup ttypeinternal tagmap
@@ -631,20 +617,18 @@ exprIToGraph expr =
         symtable <- guse equality
 
         lkup <- lift $ 
-            ambiguousLookupCheck
-            =<< querySymbolTableSeqCallFuns
-            <$> querySymbolTableBnfcIdentName ident symtable
+            runSymbolTableQuery 
+            (queryBnfcIdentName ident >> querySeqCallFuns >> queryChecks >> symbolTableQuery) 
+            symtable
 
-        let ~(Just ~(_, SymEntry tag pos (SymCall calltype calldef))) = lkup
 
-        {-
-        -- check the arity..
-        let expectedarity = length froms 
-            actualarity = length args
-        lift $ tell $ bool 
-            [_ArityMismatch # (ident, expectedarity, actualarity)] [] 
-            (isNothing lkup || expectedarity == actualarity)
-        -}
+        let ~(Just ~(SymEntry tag pos (SymCall calltype calldef))) = lkup
+
+        ~(calltype', callttypeargs) <- lift . fmap fst . splitGraphGenCore $ case calltype of
+            SymCallDummyTypeVar t -> pure $ (TypeVar t [], [])
+            SymCallExplicitType t -> do
+                (args, argssubs ) <- genTypeGSubs t
+                return (fromJust $ substitutesTypeGToTypeGTypeTag argssubs t, args)
 
         -- compile the arguments..
         ttypesargs <- lift $ traverse (const freshExprTypeTags) args
@@ -658,7 +642,7 @@ exprIToGraph expr =
                 [ TypeEqnsEq (TypeVar ttype [], TypeVar ttypeinternal [])
                 , TypeEqnsEq 
                     -- ( fromJust (substitutesTypeGToTypeGTypeTag calltypesubs calltype)
-                    ( calltype
+                    ( calltype'
                     , TypeSeq $ TypeSeqArrF (map (flip TypeVar []) ttypeargs) (TypeVar ttype []) )
                     ]
                 ++ argseqns
@@ -707,11 +691,11 @@ patternIToGraph pattern =
         symtable <- guse equality
 
         lkup <- lift $ 
-            ambiguousLookupCheck
-            =<< querySymbolTableSequentialPhrases
-            <$> querySymbolTableBnfcIdentName ident symtable
+            runSymbolTableQuery 
+            (queryBnfcIdentName ident >> querySequentialPhrases >> queryChecks >> symbolTableQuery) 
+            symtable
 
-        let (_, ~(SymEntry tag pos ~(SymPhrase phraseg))) = fromJust lkup
+        let ~(SymEntry tag pos ~(SymPhrase phraseg)) = fromJust lkup
 
         -- check if it is a data type
         lift $ tell $ 
@@ -877,7 +861,7 @@ patternIToGraph pattern =
         equality %= (
             ( ident' ^. taggedBnfcIdentName
             , SymEntry (ident' ^. uniqueTag) (ident' ^. taggedBnfcIdentPos) 
-                $ SymLocalSeqVar internalttype): )
+                $ SymLocalSeqVar ttype): )
 
         return ( typeeqs, pat' )
 
