@@ -37,7 +37,6 @@ import qualified Data.Map as Map
 import Data.Foldable
 
 import Debug.Trace
-import Control.DeepSeq
 
 data TypeEqns ident typevar =
     TypeEqnsEq (TypeGTypeVar ident typevar, TypeGTypeVar ident typevar)

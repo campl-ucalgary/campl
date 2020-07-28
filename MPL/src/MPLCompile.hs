@@ -119,11 +119,13 @@ fun test :: B -> C =
 |]
 
 testtomatoorange = [r| 
-defn
-    fun orange  =
-        b -> tomato(b)
-    fun tomato :: A -> A= 
-        a -> orange(a)
+data
+    KindTest(A,B) -> C =
+        KindTest :: A,B -> C
+fun tomato :: KindTest(B,C) -> KindTest(C,B) = 
+    KindTest(a,b) -> KindTest(b,a)
+
+
 |]
 
 
