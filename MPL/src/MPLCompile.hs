@@ -125,6 +125,11 @@ data
 fun tomato :: KindTest(B,C) -> KindTest(C,B) = 
     KindTest(a,b) -> KindTest(b,a)
 
+|]
+
+testkartofler = [r| 
+fun tomato :: A(B,C) -> A(B,C) = 
+    a -> a
 
 |]
 

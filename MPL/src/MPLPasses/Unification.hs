@@ -47,7 +47,7 @@ data TypeEqns ident typevar =
     | TypeEqnsStableRef (typevar, TypeGTypeVar ident typevar)
   deriving (Show, Functor, Foldable, Traversable, Generic)
 
-type Substitution = SubstitutionTypes (TypeTag, TypeGTypeTag)
+type Substitution typevar ident = SubstitutionTypes (typevar, ident)
 
 data SubstitutionTypes a = 
     PlainSub { _substitution :: a }
@@ -124,7 +124,7 @@ substitutesTypeGToTypeGTypeTag subs = cata f
 data Package ident typevar = Package {
      _packageUnivVar :: Set typevar
     , _packageExisVar :: Set typevar
-    , _packageSubs :: [Substitution]
+    , _packageSubs :: [Substitution typevar (TypeGTypeVar ident typevar)]
 }  deriving (Show, Eq)
 
 $(makeLenses ''Package)
@@ -246,9 +246,13 @@ mkValidSub v exp =
 coalesce :: 
     AsUnificationError e => 
     (TypeTag, TypeGTypeTag) ->
-    [Substitution] ->
-    Either e [Substitution]
+    [Substitution TypeTag TypeGTypeTag] ->
+    Either e [Substitution TypeTag TypeGTypeTag]
 coalesce _ [] = pure []
+coalesce (s, ssub) (StableSub (t, tsub):rst) = 
+    (:)
+    <$> (StableSub <$> mkValidSub t (substitute (s,ssub) tsub))
+    <*> coalesce (s, ssub) rst
 coalesce (s, ssub) (PlainSub (t, tsub):rst) 
     | s == t = mappend 
         <$> (map PlainSub <$> match ssub tsub) 
@@ -256,15 +260,11 @@ coalesce (s, ssub) (PlainSub (t, tsub):rst)
     | otherwise = (:) 
         <$> (PlainSub <$> mkValidSub t (substitute (s,ssub) tsub))
         <*> coalesce (s, ssub) rst
-coalesce (s, ssub) (StableSub (t, tsub):rst) = 
-    (:)
-    <$> (StableSub <$> mkValidSub t (substitute (s,ssub) tsub))
-    <*> coalesce (s, ssub) rst
 
 linearize :: 
     AsUnificationError e => 
-    [Substitution] -> 
-    Either e [Substitution]
+    [Substitution TypeTag TypeGTypeTag] -> 
+    Either e [Substitution TypeTag TypeGTypeTag]
 -- linearize [] = pure []
 -- linearize (a:as) = (:) a <$> (coalesce a as >>= linearize)
     -- this is not totally correct! for all cases! does not substitute back 
@@ -313,12 +313,10 @@ linearize subs = fst <$> f ([], subs)
         -- | a blind back substitution (does not check for occurs check)
         h = map (fmap (second (substitute t)))
 
-
 solveTypeEq ::
     AsUnificationError e => 
     TypeEqns TaggedBnfcIdent TypeTag ->
     Either e (Package TaggedBnfcIdent TypeTag)
--- solveTypeEq n = cata f $ trace (pprint n) n -- . floatTypeEqnsQuantifiers 
 solveTypeEq = cata f  
   where
     f :: AsUnificationError e => 
@@ -350,7 +348,7 @@ solveTypeEq = cata f
         packageUniversalElim pkg 
         -- packageUniversalElim (trace (pprint pkg) pkg)
 
-isTrivialSubstitution :: Substitution -> Bool
+isTrivialSubstitution :: Substitution TypeTag TypeGTypeTag -> Bool
 isTrivialSubstitution (PlainSub (s, TypeVar t [])) = s == t
 isTrivialSubstitution _ = False
 
@@ -362,10 +360,14 @@ packageExistentialElim pkg = do
     let pkg' = pkg 
             & packageExisVar .~ Set.empty 
             & packageSubs %~ filter (not . isTrivialSubstitution)
-    pkg'' <- foldrM f pkg' (pkg ^. packageExisVar) >>= traverseOf packageSubs linearize
+    foldrM f pkg' (pkg ^. packageExisVar) >>= traverseOf packageSubs linearize
+    -- pkg'' <- foldrM f pkg' (pkg ^. packageExisVar) 
+
     -- the package reduction (i.e. linearize) CANNOT happen while eliminating each vairalbe
     -- must occur after we eliminate each existential var...
-    return $ pkg''
+    -- pkg''' <- traverseOf packageSubs linearize $ trace (pprint pkg'') pkg''
+    -- return $ trace (pprint pkg''') pkg'''
+    --
         -- & packageFreeVars %~ (`Set.difference` (pkg ^. packageExisVar))
   where
     f :: AsUnificationError e => 
@@ -447,8 +449,8 @@ alignSubs k = map g
     g n = n 
 -}
 alignSubs :: TypeTag -> 
-    [Substitution] -> 
-    [Substitution]
+    [Substitution TypeTag TypeGTypeTag] -> 
+    [Substitution TypeTag TypeGTypeTag]
 alignSubs k = map g
   where
     g (PlainSub (a, TypeVar b []) )
@@ -458,7 +460,7 @@ alignSubs k = map g
 
 lookupSubList :: 
     TypeTag ->
-    [Substitution] ->
+    [Substitution TypeTag TypeGTypeTag] ->
     Maybe TypeGTypeTag
 lookupSubList v (PlainSub (v', sub) : rst)
     | v == v' = Just sub
@@ -470,8 +472,8 @@ lookupSubList v [] = Nothing
 
 deleteSubList :: 
     TypeTag ->
-    [Substitution] ->
-    [Substitution] 
+    [Substitution TypeTag TypeGTypeTag] ->
+    [Substitution TypeTag TypeGTypeTag] 
 deleteSubList v (PlainSub (v', sub) : rst) 
     | v == v' = rst
     | otherwise = PlainSub (v', sub) : deleteSubList v rst
