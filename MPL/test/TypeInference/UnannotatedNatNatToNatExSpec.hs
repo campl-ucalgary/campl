@@ -47,7 +47,7 @@ spec = do
         , natNatToNatTest8
         , natNatToNatTest9
         , natNatToNatTest10
-        -- , natNatToNatTest11
+        , natNatToNatTest11
         ]
     {-
     describe test1  $ do
@@ -181,6 +181,19 @@ defn
         a,b -> case a of
             Nat(Nat(Nat(s))) -> Nat(s)
             Nat(Zero) -> b
+|]
+
+natNatToNatTest11 = [r|
+data
+    Nat -> STATEVAR =
+        Nat :: STATEVAR -> STATEVAR
+        Zero ::         -> STATEVAR
+defn 
+    fun functiontest =
+        a,b -> testing(Nat(a), b)
+
+    fun testing =
+        Nat(a),Zero -> Zero
 |]
 
 {-

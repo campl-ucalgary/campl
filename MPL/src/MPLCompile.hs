@@ -67,7 +67,7 @@ typeTester n = do
     proggraph <- unsafeTranslateParseLexGraph n 
     case proggraph of
         Right n -> putStrLn $ mconcat $ pprintFunctionTypes n
-        Left n -> putStrLn $ show n
+        Left n -> mapM_ print n
 
 testdata = [r|
 defn
@@ -118,6 +118,15 @@ fun test :: B -> C =
     a -> a
 |]
 
+testtomatoorange = [r| 
+defn
+    fun orange  =
+        b -> tomato(b)
+    fun tomato :: A -> A= 
+        a -> orange(a)
+|]
+
+
 
 testcall = [r|
 {-
@@ -126,8 +135,19 @@ data
         Unit :: -> C
         -}
 
-fun tomato :: A -> B = 
+data
+    Nat -> STATEVAR =
+        Nat :: STATEVAR -> STATEVAR
+        Zero ::         -> STATEVAR
+defn 
+    fun functiontest =
+        Nat(a) -> a -- case a of
+            -- b -> b
+
+{-
+fun tomato :: A -> A = 
     a -> a
+    -}
 {-
 defn
     fun tomato :: A -> B = 

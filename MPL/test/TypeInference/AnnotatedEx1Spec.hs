@@ -39,11 +39,16 @@ spec = do
     mapM_ (`describeValidGraph` const (return ()) )
         [ test1 
         , test2
+        , test3
+        , test4
+        , test5
+        , test6
+        , test7
         ]
-    {-
-    mapM_ describeMatchFailure
-        [ test1Err ]
-        -}
+
+    mapM_ describeForallMatchFailure
+        [ testfail1
+        , testfail2 ]
 
 
 test1 = [r| 
@@ -74,11 +79,66 @@ fun test :: Zig, Zig -> Zig =
     a,b -> Zig(a, b)
 |]
 
-
 test2 = [r| 
+defn
+    fun orange :: A -> B = 
+        b -> tomato(b)
+    fun tomato = 
+        a -> orange(a)
+|]
+
+test3 = [r| 
 defn
     fun tomato = 
         a -> orange(a)
     fun orange :: A -> B = 
         b -> tomato(b)
+|]
+
+test4 = [r| 
+defn
+    fun tomato :: B -> A= 
+        a -> orange(a)
+    fun orange :: A -> B = 
+        b -> tomato(b)
+|]
+
+test5 = [r| 
+defn
+    fun tomato = 
+        a -> orange(a)
+    fun orange :: A -> A = 
+        b -> tomato(b)
+|]
+test6 = [r| 
+defn
+    fun orange :: A -> A = 
+        b -> tomato(b)
+    fun tomato = 
+        a -> orange(a)
+|]
+
+test7 = [r| 
+defn
+    fun tomato :: B -> B= 
+        a -> orange(a)
+    fun orange :: A -> A = 
+        b -> tomato(b)
+|]
+
+testfail1 = [r| 
+defn
+    fun tomato :: B -> B= 
+        a -> orange(a)
+    fun orange :: A -> B = 
+        b -> tomato(b)
+|]
+
+
+testfail2 = [r| 
+defn
+    fun orange :: A -> B = 
+        b -> tomato(b)
+    fun tomato :: B -> B= 
+        a -> orange(a)
 |]

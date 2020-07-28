@@ -3,8 +3,10 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE BangPatterns #-}
 module MPLPasses.Unification where
 
 import MPLAST.MPLASTCore
@@ -16,6 +18,8 @@ import MPLPasses.UnificationErrors
 import Control.Monad
 import Control.Arrow
 
+import GHC.Generics hiding (to)
+
 import Optics
 import Data.Bool
 import Data.Functor.Foldable
@@ -25,12 +29,15 @@ import Control.Monad.State
 import Text.PrettyPrint hiding ((<>))
 
 import Data.List
+import Data.Maybe
 import Data.Set ( Set (..) )
 import qualified Data.Set as Set 
 import Data.Map ( Map (..) )
 import qualified Data.Map as Map 
+import Data.Foldable
 
 import Debug.Trace
+import Control.DeepSeq
 
 data TypeEqns ident typevar =
     TypeEqnsEq (TypeGTypeVar ident typevar, TypeGTypeVar ident typevar)
@@ -39,22 +46,27 @@ data TypeEqns ident typevar =
 
     -- used to recover the intermediate types..
     | TypeEqnsStableRef (typevar, TypeGTypeVar ident typevar)
-  deriving (Show, Functor, Foldable, Traversable)
+  deriving (Show, Functor, Foldable, Traversable, Generic)
 
-data Substitution typevar ttype = 
-    Sub (typevar, ttype)
-    | StableSub (typevar, ttype)
+type Substitution = SubstitutionTypes (TypeTag, TypeGTypeTag)
 
-$(makePrisms ''Substitution)
+data SubstitutionTypes a = 
+    PlainSub { _substitution :: a }
+    | StableSub { _substitution :: a }
+  deriving (Show, Eq, Functor)
 
-instance (PPrint ttype, PPrint typevar) => PPrint (Substitution typevar ttype) where
-    pprint (Sub a) =  pprint a
+$(makePrisms ''SubstitutionTypes)
+$(makeLenses ''SubstitutionTypes)
+
+instance (PPrint a) => PPrint (SubstitutionTypes a) where
+    pprint (PlainSub a) =  pprint a
     pprint (StableSub a) =  "Stable[" ++ pprint a ++ "]"
 
 instance (PPrint ident, Eq typevar, PPrint typevar) => PPrint (TypeEqns ident typevar) where
     pprint = render . f
       where
         f (TypeEqnsEq a) = text $ pprint a
+        f (TypeEqnsStableRef a) = hcat [text "Stable", text $ pprint a]
         f (TypeEqnsExist typevars eqns) = 
             hcat
             [ text "Exist " 
@@ -79,6 +91,7 @@ $(concat <$> traverse makePrisms
     [ ''TypeEqns 
     ]
  )
+
 
 substitute :: 
      (TypeTag, TypeGTypeTag) -> 
@@ -112,8 +125,7 @@ substitutesTypeGToTypeGTypeTag subs = cata f
 data Package ident typevar = Package {
      _packageUnivVar :: Set typevar
     , _packageExisVar :: Set typevar
-    , _packageFreeVars :: Set typevar
-    , _packageSubs :: [(typevar, TypeGTypeVar ident typevar)]
+    , _packageSubs :: [Substitution]
 }  deriving (Show, Eq)
 
 $(makeLenses ''Package)
@@ -121,9 +133,12 @@ $(makeLenses ''Package)
 type TagTypeMap = Map TypeTag TypeGTypeTag
 
 packageToTagMap :: 
-    Package TaggedBnfcIdent TypeTag -> TagTypeMap
-packageToTagMap pkg = Map.fromList packagesubsandfreevars
+    Package TaggedBnfcIdent TypeTag -> 
+    TagTypeMap
+packageToTagMap pkg = Map.fromList packagesubs
   where
+    packagesubs = mapMaybe (^?_StableSub) (pkg ^. packageSubs)
+    {-
     packagesubs' = concatMap f (pkg ^. packageSubs)
       where
         f (a, TypeVar b []) = [(a, TypeVar b []), (b, TypeVar a [])]
@@ -131,22 +146,23 @@ packageToTagMap pkg = Map.fromList packagesubsandfreevars
 
     packagesubsandfreevars = 
         packagesubs' ++ map (id&&&flip TypeVar []) (Set.toList (pkg ^. packageFreeVars) \\ map fst packagesubs')
+        -}
 
 instance (Show a, Show b, PPrint a, Eq b, PPrint b) => PPrint (Package a b) where
-    pprint pkg@(Package a b c d) =  
+    pprint pkg@(Package a b d) =  
         "Package:\n" ++ 
         "\nUniversal\n" ++ show a ++
         "\nExistential\n" ++ show b ++
-        "\nFree\n" ++ show c ++
+        -- "\nFree\n" ++ show c ++
         "\nSubs\n" ++ intercalate "\n" (map (pprint) d) ++ "\n\n"
 
 
 instance Ord typevar => Semigroup (Package ident typevar) where
-    Package univ0 exis0 free0 subs0 <> Package univ1 exis1 free1 subs1
-        = Package (univ0 <> univ1) (exis0 <> exis1) (free0 <> free1) (subs0 <> subs1)
+    Package univ0 exis0  subs0 <> Package univ1 exis1  subs1
+        = Package (univ0 <> univ1) (exis0 <> exis1)  (subs0 <> subs1)
 
 instance Ord typevar => Monoid (Package ident typevar) where
-    mempty = Package Set.empty Set.empty Set.empty []
+    mempty = Package Set.empty  Set.empty []
 
 match ::
     AsUnificationError e =>
@@ -231,19 +247,25 @@ mkValidSub v exp =
 coalesce :: 
     AsUnificationError e => 
     (TypeTag, TypeGTypeTag) ->
-    [(TypeTag, TypeGTypeTag)] -> 
-    Either e [(TypeTag, TypeGTypeTag)]
+    [Substitution] ->
+    Either e [Substitution]
 coalesce _ [] = pure []
-coalesce (s, ssub) ((t, tsub):rst) 
-    | s == t = mappend <$> match ssub tsub <*> coalesce (s, ssub) rst
-    | otherwise = (:) 
-        <$> mkValidSub t (substitute (s,ssub) tsub)
+coalesce (s, ssub) (PlainSub (t, tsub):rst) 
+    | s == t = mappend 
+        <$> (map PlainSub <$> match ssub tsub) 
         <*> coalesce (s, ssub) rst
+    | otherwise = (:) 
+        <$> (PlainSub <$> mkValidSub t (substitute (s,ssub) tsub))
+        <*> coalesce (s, ssub) rst
+coalesce (s, ssub) (StableSub (t, tsub):rst) = 
+    (:)
+    <$> (StableSub <$> mkValidSub t (substitute (s,ssub) tsub))
+    <*> coalesce (s, ssub) rst
 
 linearize :: 
     AsUnificationError e => 
-    [(TypeTag, TypeGTypeTag)] -> 
-    Either e [(TypeTag, TypeGTypeTag)]
+    [Substitution] -> 
+    Either e [Substitution]
 -- linearize [] = pure []
 -- linearize (a:as) = (:) a <$> (coalesce a as >>= linearize)
     -- this is not totally correct! for all cases! does not substitute back 
@@ -255,6 +277,7 @@ linearize ::
     -- so we can get better performance and not do this needless
     -- back substitution and the back substituntion turns into
     -- a single pointer lookup...
+{-
 linearize subs = fst <$> f ([], subs)
   where
     -- | linearize driver function..
@@ -272,13 +295,32 @@ linearize subs = fst <$> f ([], subs)
 
         -- | a blind back substitution (does not check for occurs check)
         h = map (second (substitute t))
+-}
+linearize subs = fst <$> f ([], subs)
+  where
+    -- | linearize driver function..
+    f (subs', []) = pure (subs', [])
+    f (subs', StableSub t : ts) = f (StableSub t : subs', ts)
+    f (subs', PlainSub t : ts) = 
+        (PlainSub t : g (subs', h subs'),) 
+        <$> coalesce t (alignSubs (fst t) . filter (not . isTrivialSubstitution) $ ts) 
+        >>= f
+      where
+        -- | executing the back substitution until no substitutions remain...
+        g (subs'', subs') 
+            | subs'' == subs' = subs''
+            | otherwise = g (subs', h subs')
+
+        -- | a blind back substitution (does not check for occurs check)
+        h = map (fmap (second (substitute t)))
 
 
 solveTypeEq ::
     AsUnificationError e => 
     TypeEqns TaggedBnfcIdent TypeTag ->
     Either e (Package TaggedBnfcIdent TypeTag)
-solveTypeEq = cata f 
+-- solveTypeEq n = cata f $ trace (pprint n) n -- . floatTypeEqnsQuantifiers 
+solveTypeEq = cata f  
   where
     f :: AsUnificationError e => 
         TypeEqnsF
@@ -288,9 +330,12 @@ solveTypeEq = cata f
 
     f (TypeEqnsEqF (a, b)) = do 
         let freevars = Set.fromList $ toList a ++ toList b
-        subs <- match a b
-        let pkg' = mempty & packageSubs .~ subs & packageFreeVars .~ freevars
+        subs <- map PlainSub <$> match a b
+        let pkg' = mempty & packageSubs .~ subs -- & packageFreeVars .~ freevars
         return pkg' 
+
+    f (TypeEqnsStableRefF (a, b)) = do 
+        return (mempty & packageSubs .~ [StableSub (a,b)] )
 
     f (TypeEqnsExistF vs acc) = do
         acc' <- sequenceA acc
@@ -298,14 +343,16 @@ solveTypeEq = cata f
                 & packageExisVar %~ (Set.fromList vs `Set.union`)
                 -- & packageSubs %~ ((undefined)++)
         packageExistentialElim pkg
+        -- packageExistentialElim (trace (pprint pkg) pkg)
 
     f (TypeEqnsForallF vs acc) = do
         acc' <- sequenceA acc
         let pkg = mconcat acc' & packageUnivVar %~ (Set.fromList vs `Set.union`)
-        packageUniversalElim pkg -- (trace (pprint pkg) pkg)
+        packageUniversalElim pkg 
+        -- packageUniversalElim (trace (pprint pkg) pkg)
 
-isTrivialSubstitution :: (TypeTag, TypeGTypeTag) -> Bool
-isTrivialSubstitution (s, TypeVar t []) = s == t
+isTrivialSubstitution :: Substitution -> Bool
+isTrivialSubstitution (PlainSub (s, TypeVar t [])) = s == t
 isTrivialSubstitution _ = False
 
 packageExistentialElim ::
@@ -316,21 +363,37 @@ packageExistentialElim pkg = do
     let pkg' = pkg 
             & packageExisVar .~ Set.empty 
             & packageSubs %~ filter (not . isTrivialSubstitution)
-    pkg'' <- foldrM f pkg' (pkg ^. packageExisVar)
+    pkg'' <- foldrM f pkg' (pkg ^. packageExisVar) >>= traverseOf packageSubs linearize
+    -- the package reduction (i.e. linearize) CANNOT happen while eliminating each vairalbe
+    -- must occur after we eliminate each existential var...
     return $ pkg''
-        & packageFreeVars %~ (`Set.difference` (pkg ^. packageExisVar))
+        -- & packageFreeVars %~ (`Set.difference` (pkg ^. packageExisVar))
   where
     f :: AsUnificationError e => 
         TypeTag -> 
         Package TaggedBnfcIdent TypeTag -> 
         Either e (Package TaggedBnfcIdent TypeTag)
-    f v acc = let subs = alignSubs v $ acc ^. packageSubs in case find ((== v) . fst) subs of
+    f v acc = let subs = alignSubs v $ acc ^. packageSubs in case lookupSubList v subs of
         Just sub -> do 
-            subs' <- coalesce sub $ deleteBy (\v n -> fst v == fst n) (v, TypeVar v []) subs
-                -- some stupid stuff just to get deleteBy to type check...
-            subs'' <- linearize subs'
-            return $ acc & packageSubs .~ subs''
-        Nothing -> return $ acc & packageExisVar %~ (Set.singleton v `Set.union`)
+            let subs' = deleteSubList v subs
+                plainsubvars = concatMap 
+                    ( fromMaybe []
+                    . preview 
+                        ( _PlainSub 
+                        % to (\(a,b) -> a : toList b)
+                        )
+                    )
+                    subs'
+                subexisted = v `elem` plainsubvars
+            subs'' <- coalesce (v,sub) $ subs'
+            return $ acc 
+                & packageSubs .~ (bool (PlainSub(v, sub):) id subexisted)  subs''
+                & packageExisVar %~ bool (Set.singleton v `Set.union`) id subexisted
+
+        Nothing -> return $ 
+            acc & packageExisVar %~ (Set.singleton v `Set.union`)
+
+tracesubs str = (\n -> trace ((str++) . intercalate ",  " . map pprint $ n ) n)
 
 packageUniversalElim :: 
     AsUnificationError e => 
@@ -341,17 +404,17 @@ packageUniversalElim pkg = do
             (pkg & packageUnivVar .~ Set.empty)
             (pkg ^. packageUnivVar)
     return $ pkg' 
-        & packageFreeVars %~ (`Set.difference` (pkg ^. packageExisVar))
+        -- & packageFreeVars %~ (`Set.difference` (pkg ^. packageExisVar))
         & packageSubs %~ filter (not . isTrivialSubstitution)
   where
     f v acc = do
         let subs = alignSubs v $ acc ^. packageSubs
         -- case lookup (trace (pprint v++"\n") v) (trace (intercalate "," . map pprint $ subs) subs) of
-        case lookup v subs of
+        case lookupSubList v subs of
             Just lkup@(TypeVar v' args) 
                 | v' == v ->  return acc
                 | v' `elem` pkg ^. packageExisVar -> 
-                    packageExistentialElim (acc & packageSubs %~ ((v, lkup):))
+                    packageExistentialElim (acc & packageSubs %~ (PlainSub (v, lkup):))
             Just err -> Left $ _ForallMatchFailure # (v, err)
             Nothing -> return acc
 
@@ -375,6 +438,7 @@ packageUniversalElim pkg = do
                 else Left $ _ForallMatchFailure # nontrivsubs
                 -}
 
+{-
 alignSubs :: TypeTag -> [(TypeTag, TypeGTypeTag)] -> [(TypeTag, TypeGTypeTag)]
 alignSubs k = map g
   where
@@ -382,4 +446,54 @@ alignSubs k = map g
         | k == b = (b, TypeVar a [])
         | otherwise = (a, TypeVar b [])
     g n = n 
+-}
+alignSubs :: TypeTag -> 
+    [Substitution] -> 
+    [Substitution]
+alignSubs k = map g
+  where
+    g (PlainSub (a, TypeVar b []) )
+        | k == b = PlainSub (b, TypeVar a [])
+        | otherwise = PlainSub (a, TypeVar b [])
+    g n = n 
+
+lookupSubList :: 
+    TypeTag ->
+    [Substitution] ->
+    Maybe TypeGTypeTag
+lookupSubList v (PlainSub (v', sub) : rst)
+    | v == v' = Just sub
+    | otherwise = lookupSubList v rst
+lookupSubList v (StableSub _ : rst) =
+    lookupSubList v rst
+lookupSubList v [] = Nothing
+
+
+deleteSubList :: 
+    TypeTag ->
+    [Substitution] ->
+    [Substitution] 
+deleteSubList v (PlainSub (v', sub) : rst) 
+    | v == v' = rst
+    | otherwise = PlainSub (v', sub) : deleteSubList v rst
+deleteSubList v (StableSub n : rst) =
+    StableSub n : deleteSubList v rst
+deleteSubList v [] = []
+
+floatTypeEqnsQuantifiers :: 
+    TypeEqns TaggedBnfcIdent TypeTag ->
+    TypeEqns TaggedBnfcIdent TypeTag 
+floatTypeEqnsQuantifiers typeeqn = 
+    TypeEqnsForall (typeeqn' ^. _1 % to reverse) 
+    [TypeEqnsExist (typeeqn' ^. _2 % to reverse) (typeeqn' ^. _3)]
+    -- reverse for better error messages
+  where
+    typeeqn' = cata f typeeqn
+
+    f (TypeEqnsEqF (a, b)) = ([], [], [TypeEqnsEq (a,b)])
+    f (TypeEqnsStableRefF (a, b)) = ([], [], [TypeEqnsStableRef (a,b)])
+    f (TypeEqnsExistF vs acc) = 
+        mconcat acc & _2 %~ (vs++)
+    f (TypeEqnsForallF vs acc) = 
+        mconcat acc & _1 %~ (vs++)
 
