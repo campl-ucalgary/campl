@@ -626,8 +626,7 @@ exprIToGraph expr =
         lkup <- lift $ 
             runSymbolTableQuery 
             (queryBnfcIdentName ident >> querySeqCallFuns >> queryChecks >> symbolTableQuery) 
-            symtable
-
+            symtable 
 
         let Just ~(SymEntry tag pos (SymCall calltype calldef)) = lkup
 
@@ -667,7 +666,10 @@ exprIToGraph expr =
                 $ fromJust $ Map.lookup ttypeinternal tagmap
             , bool [eqns] [] (isNothing lkup) )
 
+    f (ERecord ident () phrases ()) = undefined
+
     f n = error $ show n
+
 --------------------------------------------------
 -- pattern compilation
 --------------------------------------------------
@@ -759,20 +761,38 @@ patternIToGraph pattern =
         -}
 
     f (PRecord recordphrases ()) = do
+        symtable <- guse equality
+
+        -- lookup each of the record phrases
+        -- i.e., given (Destructor1 := n1, .., Destructorp := np), it will
+        -- look up the destructors Destructor1 .. Destructorp
+        ~lkups <- lift $ sequenceA <$>
+            traverse 
+                (\(recordphraseident, _) -> 
+                    runSymbolTableQuery 
+                        ( queryBnfcIdentName recordphraseident
+                        >> querySequentialPhrases 
+                        >> queryChecks 
+                        >> symbolTableQuery ) 
+                    symtable
+                )
+                recordphrases
+        let phrasesg@(focusedphraseg :| rstphraseg) = fromJust lkups
+            -- focusedclauseg = focusedphraseg ^. typePhraseContext % phraseParent
+
+        {-
+        -- error checking...
+        let nondestructors = NE.filter (not . has (phraseGObjType % _CodataObj)) phrasesg
+        lift $ tell $ 
+            bool [_ExpectedCodataDestructor # (fmap (view typePhraseName) . NE.fromList $ nondestructors)] []
+               (isNothing lkups || null nondestructors) 
+               -}
+
         undefined
         {-
-        symtable <- gview toGraphEnvSymbolTable
-        (phrasestags, phrasesg@(focusedphraseg :| rstphraseg)) <- NE.unzip <$> 
-            traverse (liftEither . flip lookupSeqPhrase symtable . fst) recordphrases
-
-        -- the focused clause (should be the same of all the 
-        -- phrases ideally....) we check this immediately after
-        let focusedclauseg = focusedphraseg ^. typePhraseContext % phraseParent
-
-        -- check if all destructors
-        unless (all (CodataObj==) $ fmap (view phraseGObjType) phrasesg)
-            undefined
-            -- (throwError $ liftTieDefnsError (_ExpectedCodataDestructor # fmap fst recordphrases))
+        lift $ tell $ 
+            bool [_ExpectedDataConstructor # ident] []
+                (isNothing lkup || has _DataObj (phraseg ^. phraseGObjType))
 
         -- check if all from the same codata clause
         unless (all (focusedclauseg ^. typeClauseName ==) $
