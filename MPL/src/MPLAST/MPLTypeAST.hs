@@ -154,3 +154,9 @@ $(concat <$> traverse makePrisms
  )
 
 $(makeBaseFunctor ''Type)
+
+simplifyArrow :: 
+    Type calldef ident typevar ->
+    Type calldef ident typevar 
+simplifyArrow (TypeSeq (TypeSeqArrF [] n)) = n 
+simplifyArrow n = n 

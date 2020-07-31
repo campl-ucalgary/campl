@@ -40,30 +40,6 @@ import Data.List
 import Control.Arrow
 import Debug.Trace
 
-lookupSeqPhrase :: 
-    BnfcIdent -> 
-    SymbolTable -> 
-    Maybe (UniqueTag, TypePhraseG TaggedBnfcIdent)
-lookupSeqPhrase ident ~symtable =  
-    let candidates = filter ((ident ^. bnfcIdentName==) . fst) symtable
-        res = helper candidates
-    in res
-  where
-    helper ((_, SymEntry tag pos (SymPhrase n)):rst) 
-        | objtype == CodataObj || objtype == DataObj = Just (tag, n)
-      where
-        objtype = n ^. 
-            typePhraseContext 
-            % phraseParent 
-            % typeClauseNeighbors 
-            % clauseGraph 
-            % clauseGraphObjectType
-
-    helper ((_, SymEntry _ _ _):rst) = helper rst
-    helper [] = Nothing
-
-    -- errormsg = liftToGraphErrors (_SeqPhraseNotInScope # ident)
-
 clauseSubstitutions :: 
     ( MonadState s m 
     , HasUniqueSupply s ) =>
@@ -105,7 +81,7 @@ clauseSubstitutions clauseg = do
             , statevarsubstitiions ++ argsubstitions)
 
 annotateTypeIToTypeGAndGenSubs :: 
-    SymbolTable -> 
+    [(String, SymEntry SymSeqConcTypeInfo)] -> 
     Type () BnfcIdent BnfcIdent -> 
     GraphGenCore 
         ( [TypeTag]
@@ -135,21 +111,18 @@ collectTypeGFreeVarsIdents = nubBy ((==) `on` view uniqueTag) .  toList
 -- moreover, for free variables, it will scope them all appropriately
 annotateTypeIToTypeGAndScopeFreeVars :: 
     Type () BnfcIdent BnfcIdent -> 
-    StateT SymbolTable GraphGenCore (TypeG TaggedBnfcIdent)
+    StateT [(String, SymEntry SymSeqConcTypeInfo)] GraphGenCore (TypeG TaggedBnfcIdent)
 annotateTypeIToTypeGAndScopeFreeVars = cata f
   where
     f :: 
-        TypeF () BnfcIdent BnfcIdent (StateT SymbolTable GraphGenCore (TypeG TaggedBnfcIdent)) -> 
-        StateT SymbolTable GraphGenCore (TypeG TaggedBnfcIdent)
+        TypeF () BnfcIdent BnfcIdent (StateT [(String, SymEntry SymSeqConcTypeInfo)] GraphGenCore (TypeG TaggedBnfcIdent)) -> 
+        StateT [(String, SymEntry SymSeqConcTypeInfo)] GraphGenCore (TypeG TaggedBnfcIdent)
     f (TypeVarF ident args) = f $ TypeWithArgsF ident () args
     f (TypeWithArgsF ident () args) = do
         args' <- sequenceA args
         symtab <- guse equality
 
-        lkup <- lift $ runSymbolTableQuery 
-            (queryBnfcIdentName ident >> queryAmbiguousLookupCheck >> symbolTableQuery) symtab
-
-        case lkup of
+        case lookupBnfcIdent ident symtab of
             -- TODO - we should be doing a kindcheck here i.e.
             -- if we have:
             -- data Test(A,B) -> C = Test :: A,B -> C
@@ -157,7 +130,20 @@ annotateTypeIToTypeGAndScopeFreeVars = cata f
             -- WILL COMPILE when it shouldn't really.... Although
             -- this will fail when unifying with anything since we 
             -- implicitly insert the free type variables...
-           
+            Just (SymEntry tag pos entry) -> case entry ^? _SymSeqClause <|> entry ^? _SymConcClause of
+                Just clauseg -> return $  
+                    _TypeWithArgs #
+                    ( _TaggedBnfcIdent # (ident, tag)
+                    , TypeClauseCallDefKnot clauseg
+                    , args'
+                    )
+                Nothing -> return $ 
+                    TypeVar 
+                        (TaggedBnfcIdent ident tag) 
+                        args'
+
+
+            {- don this one need the next one
             Just (SymEntry tag pos (SymClause n)) -> do
                 return $ TypeWithArgs 
                     (TaggedBnfcIdent ident tag) 
@@ -169,6 +155,7 @@ annotateTypeIToTypeGAndScopeFreeVars = cata f
             Just (SymEntry tag pos SymTypeVar) -> do
                 return $ TypeVar (TaggedBnfcIdent ident tag) 
                     args'
+                    -}
 
             Nothing -> do
                 taggedident <- lift $ tagBnfcIdent ident
@@ -176,8 +163,12 @@ annotateTypeIToTypeGAndScopeFreeVars = cata f
 
                 equality %= (
                     ( taggedident ^. taggedBnfcIdentName
-                    , SymEntry (taggedident ^. uniqueTag) (taggedident ^. taggedBnfcIdentPos)
-                        $ SymTypeVar):)
+                    , _SymEntry # 
+                        ( taggedident ^. uniqueTag
+                        , taggedident ^. taggedBnfcIdentPos
+                        ,  _SymTypeVar # ()
+                        )
+                    ):)
                 --annotateStateFreeVarsTypeTags %= (ttype:)
                 -- annotateStateFreeVarsSubs %= ((taggedident, TypeVar ttype []):)
 

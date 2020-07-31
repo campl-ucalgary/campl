@@ -16,13 +16,14 @@ module MPLAST.MPLPatternAST where
 import MPLUtil.Data.List.NonEmpty
 
 import Optics
-import MPLUtil.Optics.TH
 import Data.Functor.Foldable.TH
+import Data.Functor.Foldable hiding (fold)
 
 import Data.Function
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List
 import Data.Maybe
+import Data.Foldable 
 import qualified Data.List.NonEmpty as NE 
 
 import GHC.Generics
@@ -53,14 +54,16 @@ data Pattern typedef calldef ident =
   deriving ( Read, Show, Generic, Out, Data, Eq )
 
 
-$(concat <$> traverse mplMakeFieldLabels
-    [ ''Pattern
-    ]
- )
-$(concat <$> traverse makePrisms 
-    [ ''Pattern
-    ]
- )
+$(makeLenses ''Pattern)
+$(makePrisms ''Pattern)
 
 $(makeBaseFunctor ''Pattern)
+
+collectPVarIdents ::
+    Pattern typedef calldef ident ->
+    [ident]
+collectPVarIdents = cata f
+  where
+    f (PVarF ident _) = [ident]
+    f n = fold n
     

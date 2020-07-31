@@ -21,15 +21,19 @@ data TypeClauseError =
   deriving Show
 
 data FunctionError = 
-    SeqPhraseNotInScope BnfcIdent
-    -- pattern errors
-    | ExpectedDataConstructor BnfcIdent
-    | ExpectedCodataDestructor (NonEmpty BnfcIdent)
-    | ExpectedDestructorsFromSameClause (NonEmpty BnfcIdent)
-    | IllegalRecordPhrases (NonEmpty (BnfcIdent , ((), Pattern () () BnfcIdent)))
-    -- pattern errors
+    ExpectedDataConstructor BnfcIdent
+
+    | ExpectedCodataDestructor BnfcIdent
+    -- | Type clause name, type phrase..
+    | ExpectedDestructorsFromSameClause (NonEmpty (BnfcIdent, BnfcIdent))
+    -- | Record pattern matches require an exhaustive match of all
+    -- the codata phrases. [BnfcIdent] is a list of missing phrases
+    | NonExhaustiveRecordPhrases [BnfcIdent]
+    -- not needed for type checking...
+    -- | ExpectedPatternVar (Pattern () () BnfcIdent)
+
+    -- | expected n, but got m
     | ArityMismatch BnfcIdent Int Int
-        -- expected n, but got m
         
     | ExpectedCaseDataConstructors (ExprI BnfcIdent)
     | ExpectedCaseSameConstructors (ExprI BnfcIdent)
@@ -47,8 +51,8 @@ data TieDefnsError =
     | TieDefnFunctionError FunctionError
     | TieDefnUnificationError UnificationError
 
-    | AmbiguousLookup BnfcIdent [BnfcIdent]
     | NotInScope BnfcIdent
+    | DuplicatedDeclarations [BnfcIdent]
   deriving Show
 
 $(concat <$> traverse makeClassyPrisms 

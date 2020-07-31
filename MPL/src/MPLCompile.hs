@@ -128,9 +128,18 @@ fun tomato :: KindTest(B,C) -> KindTest(C,B) =
 |]
 
 testkartofler = [r| 
-fun tomato :: A(B,C) -> A(B,C) = 
-    a -> a
+codata 
+    S -> Tuple(A,B,C) =
+        P1 :: S -> A
+        P2 :: S -> B
+        P3 :: S -> C
+data 
+    Unit -> C =
+        Unit :: -> C
+    
 
+fun tomato = 
+    (P1 := a, P2 := b, P3 := c) -> c
 |]
 
 

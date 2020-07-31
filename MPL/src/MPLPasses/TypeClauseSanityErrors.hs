@@ -32,8 +32,8 @@ import MPLUtil.Data.Either.AccumEither
 
 import Debug.Trace
 
--- recall that a statevar MUST occur in the input args of
--- codata
+-- recall that a statevar MUST occur as the last argument for
+-- each codata phrase...
 codataStateVarOccurenceCheck :: 
     forall m e.
     ( AsTypeClauseError e
@@ -47,6 +47,16 @@ codataStateVarOccurenceCheck clauses = traverse_ f clauses
     f clause = bool (tell [_CodataInputArgStateVarOccurence # clause]) (return ()) check
       where
         check = all
+            (maybe False 
+                (maybe False (\(ident, args) -> 
+                        ident ^. bnfcIdentName == clause ^. typeClauseStateVar % bnfcIdentName 
+                        && null args) 
+                    . preview _TypeVar ) 
+                . lastOf folded 
+                . view typePhraseFrom )
+            ( clause ^. typeClausePhrases )
+        {- previously, we just checked for if it occured...
+        check = all
             ( any ( maybe False 
                     (\(ident, args) -> 
                             bool False 
@@ -55,6 +65,7 @@ codataStateVarOccurenceCheck clauses = traverse_ f clauses
                      ) ) . map (preview _TypeVar)
                 . view typePhraseFrom ) 
             ( clause ^. typeClausePhrases)
+            -}
 
 -- used for data, protocol, 
 phraseToVarsAreStateVarCheck ::

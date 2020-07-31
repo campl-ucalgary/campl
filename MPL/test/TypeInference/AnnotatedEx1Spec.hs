@@ -44,6 +44,7 @@ spec = do
         , test5
         , test6
         , test7
+        , test8
         ]
 
     mapM_ describeForallMatchFailure
@@ -141,4 +142,16 @@ defn
         b -> tomato(b)
     fun tomato :: B -> B= 
         a -> orange(a)
+|]
+
+test8 = [r| 
+data
+    List(A) -> C =
+        Cons :: A,C -> C
+        Nil  :: -> C
+
+fun append :: List(A), List(A) -> List(A) =
+    Nil,list2 -> list2
+    Cons(list1head,list1rest),list2 -> 
+        Cons(list1head, append(list1rest,list2))
 |]

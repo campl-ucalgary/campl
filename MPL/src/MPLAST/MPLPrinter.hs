@@ -155,6 +155,23 @@ translatePatternGtoBnfcPattern (PConstructor ident calldef pargs ptype) =
         (map translatePatternGtoBnfcPattern pargs)
         bnfcRBracket
     ptype' = translateTypeToBnfcType ptype
+translatePatternGtoBnfcPattern (PRecord (parg :| pargs) ptype) = 
+    B.TYPED_PATTERN patt' ptype'
+  where
+    patt' = B.RECORD_PATTERN
+        bnfcLBracket
+        (toDestructorPatternPhrase parg)
+        (map toDestructorPatternPhrase pargs)
+        bnfcRBracket
+    ptype' = translateTypeToBnfcType ptype
+
+    toDestructorPatternPhrase (ident, (calldef, patt)) =  
+            (B.DESTRUCTOR_PATTERN_PHRASE 
+                (toBnfcUIdent $ pprint ident) 
+                (translatePatternGtoBnfcPattern patt)
+                )
+
+
 translatePatternGtoBnfcPattern (PVar ident ptype) = 
     B.TYPED_PATTERN patt' ptype'
   where

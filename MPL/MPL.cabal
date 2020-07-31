@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e5400237b5d081e91f2c569a539b4919255ebf3dd749bab7cfc6c0eccdf42f69
+-- hash: 070100868359bbfaba34c1b1c1711517c82671c000a66c39985694b1f91ee2bf
 
 name:           MPL
 version:        0.1.0.0
@@ -73,7 +73,6 @@ library
       MPLUtil.Data.List.NonEmpty
       MPLUtil.Data.Stream
       MPLUtil.Data.Tuple.Optics
-      MPLUtil.Optics.TH
       MPLUtil.UniqueSupply
   other-modules:
       Paths_MPL

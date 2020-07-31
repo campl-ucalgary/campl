@@ -128,6 +128,7 @@ type ExprG ident typevar =
 data FunctionCallValueKnot ident typevar = 
     FunctionKnot (FunctionDefG ident typevar)
     | ConstructorDestructorKnot (TypePhraseG ident)
+    | LocalVar 
   deriving Show
 
 type StmtG ident typevar = Stmt (DefnG ident typevar)

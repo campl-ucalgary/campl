@@ -6,6 +6,7 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE PartialTypeSignatures #-}
 module MPLPasses.TieDefns where
 
 import Optics 
@@ -41,9 +42,12 @@ import qualified Data.List.NonEmpty as NE
 import qualified Data.Bifunctor as Bifunctor
 import Control.Arrow
 import Data.Either
+import Data.Function
 
 import Data.Map ( Map (..) )
 import qualified Data.Map as Map
+import Data.Set ( Set (..) )
+import qualified Data.Set as Set
 
 import Control.Monad.State
 import Control.Monad.Reader
@@ -145,11 +149,9 @@ progInterfaceToGraph initstate (Prog stmts) = Prog <$> res
          stmt' : f (sym', env, corest') rst
       where
         (stmtg, corest', errlg) = 
-            runRWS (unGraphGenCore $ runReaderT (stmtIToGraph stmt) sym) 
-                env
-                corest
+            runRWS (unGraphGenCore $ runReaderT (stmtIToGraph stmt) sym) env corest
         stmt' = bool (Left errlg) (Right stmtg) (null errlg)
-        sym' = either (const []) collectSymEntries stmt' ++  sym
+        sym' = either (const []) collectSymEntries stmt' ++ sym
 
 
 stmtIToGraph ::
@@ -188,7 +190,7 @@ stmtIToGraph (Stmt defs wstmts) = do
     -- tell $ error $ pprint seqeqns
     
     -- tell $ either pure (const []) concpkg
-
+    
     return $ Stmt (NE.fromList defs') wstmts'
 
 defnsToGraph :: 
@@ -198,26 +200,55 @@ defnsToGraph ::
 defnsToGraph [] = return mempty
 defnsToGraph (a:as) = case a ^. unDefnI of 
     DataDefn ival -> mdo
-        objectDefIToGraph 
-            ival
-            [ lift $ typeClauseArgsSanityCheck ival , lift $ phraseToVarsAreStateVarCheck ival ]
-            (filter sequentialClausesPredicate symtable)
-            DataObj
+        lift $ typeClauseArgsSanityCheck ival
+        lift $ phraseToVarsAreStateVarCheck ival
+
+        clauseg <- lift $ 
+            tieTypeClauseGraph 
+                ( mapMaybe 
+                    ( traverseOf (_2 % symEntryInfo ) 
+                        ( fmap (review _SymSeqClause) 
+                        . preview _SymSeqClause)
+                    ) 
+                    symtable)
+                DataObj ival
+        let defn' = ObjectG clauseg :: DefnG TaggedBnfcIdent TypeTag
+
+        tieDefnsStateSymbolTable %= ((collectSymEntries defn')++)
+
+        tell [defn']
+
+        defnsToGraph as
+        (symtable :: SymbolTable) <- guse tieDefnsStateSymbolTable
+
+        return () 
+
+    -- mostly duplicated code...
+    CodataDefn ival -> mdo  
+        lift $ typeClauseArgsSanityCheck ival
+        -- codata has a different check
+        lift $ codataStateVarOccurenceCheck ival
+
+        clauseg <- lift $ 
+            tieTypeClauseGraph 
+                ( mapMaybe 
+                    ( traverseOf (_2 % symEntryInfo ) 
+                        ( fmap (review _SymSeqClause) 
+                        . preview ( _SymSeqClause))
+                    ) 
+                    symtable)
+                CodataObj ival
+        let defn' = ObjectG clauseg :: DefnG TaggedBnfcIdent TypeTag
+
+        tieDefnsStateSymbolTable %= ((collectSymEntries defn')++)
+
+        tell [defn']
 
         defnsToGraph as
         symtable <- guse tieDefnsStateSymbolTable
-        return ()
 
-    CodataDefn ival -> mdo
-        objectDefIToGraph 
-            ival
-            [ lift $ typeClauseArgsSanityCheck ival, lift $ codataStateVarOccurenceCheck ival ]
-            (filter sequentialClausesPredicate symtable)
-            CodataObj
+        return () 
 
-        defnsToGraph as
-        symtable <- guse tieDefnsStateSymbolTable
-        return ()
 
     ProtocolDefn n -> mdo
         undefined
@@ -243,10 +274,16 @@ defnsToGraph (a:as) = case a ^. unDefnI of
             -}
         funtype' <- lift $ traverse 
                 ( flip evalStateT 
-                    (filter sequentialClausesPredicate symtab)
+                    ( mapMaybe 
+                        ( traverseOf (_2 % symEntryInfo)
+                            ( fmap (review _SymSeqClause)
+                            . preview (_SymSeqClause))
+                        )
+                     symtab
+                    )
                 . ( annotateTypeIToTypeGAndScopeFreeVars 
-                   . (TypeSeq . uncurry TypeSeqArrF))
-                    ) funtype
+                   . (TypeSeq . uncurry TypeSeqArrF)))
+                   funtype
 
         -- splitting is not needed here...
         (forallvars, forallsubs) <- lift . join . fmap writer . splitGraphGenCore $ do
@@ -260,13 +297,17 @@ defnsToGraph (a:as) = case a ^. unDefnI of
 
         tieDefnsStateSymbolTable %= (
             ( funident' ^. taggedBnfcIdentName
-            , SymEntry (funident' ^. uniqueTag) (funident' ^. taggedBnfcIdentPos)
-            $ SymCall 
+            , _SymEntry # 
+                ( funident' ^. uniqueTag
+                , funident' ^. taggedBnfcIdentPos
+                , _SymSeqCall # _SymCall # 
                 -- if we have an explicit type, just use that, otherwise
                 -- give it the dummy type... (better error messages lower down where
                 -- the issue really is..
-                (maybe (SymCallDummyTypeVar ttype) SymCallExplicitType funtype')
-                (FunctionKnot fun')): )
+                    ( maybe (SymCallDummyTypeVar ttype) SymCallExplicitType funtype'
+                    , FunctionKnot fun')
+                )
+            ):)
 
         ttypespattsandexps <- lift $ traverse (const freshExprTypeTags) funbody'
 
@@ -304,8 +345,8 @@ defnsToGraph (a:as) = case a ^. unDefnI of
 
 
         tieDefnsStateSeqTypeEqnsPkg % tieDefnsTypeForall %= (++forallvars)
-        tieDefnsStateSeqTypeEqnsPkg % tieDefnsTypeExist %= (++(ttypephrases))
-        tieDefnsStateSeqTypeEqnsPkg % tieDefnsTypeEqns %= (++typeeqns)
+        tieDefnsStateSeqTypeEqnsPkg % tieDefnsTypeExist  %= (++ttypephrases)
+        tieDefnsStateSeqTypeEqnsPkg % tieDefnsTypeEqns   %= (++typeeqns)
 
         tell [FunctionDecDefG fun']
 
@@ -320,9 +361,13 @@ defnsToGraph (a:as) = case a ^. unDefnI of
 
 -- function defn to graph....
 
+{-
 objectDefIToGraph ival checks symtable objtype = do
     sequenceA checks
-    clauseg <- lift $ tieTypeClauseGraph symtable objtype ival
+    clauseg <- lift 
+            $ tieTypeClauseGraph 
+            (mapMaybe (\n -> (n ^. _1,) <$> preview (_2 % symEntryInfo % _SymSeqClause) n ) symtable) 
+            objtype ival
     let defn' = ObjectG clauseg :: DefnG TaggedBnfcIdent TypeTag
 
     tieDefnsStateSymbolTable %= ((collectSymEntries defn')++)
@@ -330,6 +375,7 @@ objectDefIToGraph ival checks symtable objtype = do
     tell [defn']
 
     return () 
+    -}
 
 
 patternsIAndExprsIToGraph :: 
@@ -379,7 +425,6 @@ patternsIAndExprIToGraph (patts, expr) = do
 
     -- equations, and graph pattern from the type patterns
     -- Note: this modifies the symbol table..
-    -- (patteqns, pattsg) <- undefined
     (patteqns, pattsg) <- unwrappedPatternsIToGraph symtab ttypespatts
 
     (exprg, expreqns) <- local (set tieExprEnvTypeTags ttypesexpr) (exprIToGraph expr)
@@ -425,8 +470,6 @@ unwrappedExprsIToGraph ttypesexprs =
 ------------------------
 -- compiling expressions...
 ------------------------
-
-
 exprIToGraph :: 
     -- | Expression to convert to a graph
     ExprI BnfcIdent ->
@@ -494,20 +537,24 @@ exprIToGraph expr =
             , [eqns] )
 
     f (EConstructorDestructor ident () args ()) = do
-        symtable <- guse equality
+        symtab <- guse equality
 
-        lkup <- lift $ 
-            runSymbolTableQuery 
-            (queryBnfcIdentName ident >> querySequentialPhrases >> queryChecks >> symbolTableQuery) 
-            symtable
+        let lkup = lookupBnfcIdent ident 
+                $ mapMaybe 
+                    ( traverseOf (_2 % symEntryInfo)
+                        (preview (_SymSeqCall % _SymPhrase))) 
+                symtab
 
-        let Just (SymEntry tag pos ~(SymPhrase phraseg)) = lkup
+            SymEntry tag pos phraseg = fromJust lkup
 
         ttype <- gview exprTtype 
         ttypeinternal <- gview exprTtypeInternal 
 
         tagmap <- gview tieExprEnvTagTypeMap 
 
+        lift $ tell $ bool [] [_NotInScope # ident] (isNothing lkup)
+
+        -- arity check
         let expectedarity = length (phraseg ^. typePhraseFrom)
             actualarity   = length args
         lift $ tell $ bool 
@@ -594,7 +641,12 @@ exprIToGraph expr =
 
         return (expr', [typeeqs])
 
-    f (EVar ident ()) = do
+    f (EVar ident ()) = f (ECall ident () [] ())
+        -- remark:
+        -- Indeed, a variable could really be referring to a destructor
+        -- call from pattern matching against a codata type.. Hence, 
+        -- we let the ECall case resolve this issue...
+        {-
         ttype <- gview exprTtype
         ttypeinternal <- gview exprTtypeInternal
         tagmap <- gview tieExprEnvTagTypeMap
@@ -605,30 +657,36 @@ exprIToGraph expr =
             runSymbolTableQuery 
             (queryBnfcIdentName ident >> queryLocalSeqVar >> queryChecks >> symbolTableQuery) 
             symtable
-
-
-        let SymEntry tag pos ~(SymLocalSeqVar ttypelkup) = fromJust lkup
+        let lkup = findOf ((ident ^. bnfcIdentName==) . fst) 
+                $ mapMaybe (preview _SymSeqCal) symtable
+            ~(SymEntry tag pos ~(SymSeqConcType ttypelkup)) = fromJust lkup 
             eqns = 
                 [ TypeEqnsEq (TypeVar ttype [], TypeVar ttypelkup [])
                 , TypeEqnsStableRef (ttypeinternal, TypeVar ttype []) ] 
+        lift tell $ bool [] [_NotInScope # ident] (isNothing lkup)
 
         return 
             ( EVar (TaggedBnfcIdent ident tag) $ fromJust $ Map.lookup ttypeinternal tagmap
             , bool eqns [] (isNothing lkup) )
+            -}
 
     f (ECall ident () args ()) = do
         ttype <- gview exprTtype
         ttypeinternal <- gview exprTtypeInternal
         tagmap <- gview tieExprEnvTagTypeMap
 
-        symtable <- guse equality
+        symtab <- guse equality
 
-        lkup <- lift $ 
-            runSymbolTableQuery 
-            (queryBnfcIdentName ident >> querySeqCallFuns >> queryChecks >> symbolTableQuery) 
-            symtable 
+        let lkup = lookupBnfcIdent ident 
+                $ mapMaybe
+                    ( traverseOf (_2 % symEntryInfo)
+                        ( preview (_SymSeqCall % _SymCall) )
+                    )
+                symtab
+            SymEntry tag pos (calltype, calldef) = fromJust lkup
 
-        let Just ~(SymEntry tag pos (SymCall calltype calldef)) = lkup
+        -- check if in scope
+        lift $ tell $ bool [] [_NotInScope # ident ] $ isNothing lkup
 
         ~(calltype', callttypeargs) <- lift . fmap fst . splitGraphGenCore $ case calltype of
             SymCallDummyTypeVar t -> pure $ (TypeVar t [], [])
@@ -642,13 +700,14 @@ exprIToGraph expr =
 
         -- (calltypevars, calltypesubs) <- lift . fmap fst . splitGraphGenCore $ genTypeGSubs (traceShowId calltype)
 
-        -- todo 
         let ttypeargs = map (view exprTtype) ttypesargs
             eqns = TypeEqnsExist (ttypeargs ++ callttypeargs) $
                 [ TypeEqnsEq 
                     -- ( fromJust (substitutesTypeGToTypeGTypeTag calltypesubs calltype)
                     ( calltype'
-                    , TypeSeq $ TypeSeqArrF (map (flip TypeVar []) ttypeargs) (TypeVar ttype []) )
+                    , simplifyArrow 
+                        $ TypeSeq 
+                        $ TypeSeqArrF (map (flip TypeVar []) ttypeargs) (TypeVar ttype []) )
                 , TypeEqnsStableRef ( ttypeinternal, TypeVar ttype [] )
                     ]
                 ++ argseqns
@@ -697,14 +756,16 @@ patternIToGraph pattern =
   where
     f :: PatternI BnfcIdent -> TieFun ([TypeEqns TaggedBnfcIdent TypeTag] , PatternG TaggedBnfcIdent TypeTag)
     f (PConstructor ident () ctsargs ()) = do
-        symtable <- guse equality
+        symtab <- guse equality
 
-        lkup <- lift $ 
-            runSymbolTableQuery 
-            (queryBnfcIdentName ident >> querySequentialPhrases >> queryChecks >> symbolTableQuery) 
-            symtable
+        let lkup = lookupBnfcIdent ident 
+                $ mapMaybe 
+                    ( traverseOf (_2 % symEntryInfo)
+                        (preview (_SymSeqCall % _SymPhrase))) 
+                $ symtab
+            SymEntry tag pos phraseg = fromJust lkup
 
-        let SymEntry tag pos ~(SymPhrase phraseg) = fromJust lkup
+        lift $ tell $ bool [] [_NotInScope # ident] (isNothing lkup)
 
         -- check if it is a data type
         lift $ tell $ 
@@ -724,11 +785,9 @@ patternIToGraph pattern =
         --  query the phrase substitutions from the graph
         ~(clausetype, ttypeargs, clausesubstitutions) <- lift . fmap fst . splitGraphGenCore $ 
             clauseSubstitutions (phraseg ^. typePhraseContext % phraseParent)
-        -- let (clausetype, ttypeargs, clausesubstitutions) = evalState 
-                -- (clauseSubstitutions (phraseg ^. typePhraseContext % phraseParent)) supply
 
         (ctsargstypeeqs, ctsargspatts) <- 
-            unwrappedPatternsIToGraph symtable $ zip ttypesctsargs ctsargs
+            unwrappedPatternsIToGraph symtab $ zip ttypesctsargs ctsargs
 
         ttype <- gview exprTtype
         ttypeinternal <- gview exprTtypeInternal
@@ -761,95 +820,122 @@ patternIToGraph pattern =
         -}
 
     f (PRecord recordphrases ()) = do
-        symtable <- guse equality
+        ttype <- gview exprTtype
+        ttypeinternal <- gview exprTtypeInternal
+        tagmap <- gview tieExprEnvTagTypeMap
+
+        symtab <- guse equality
 
         -- lookup each of the record phrases
         -- i.e., given (Destructor1 := n1, .., Destructorp := np), it will
         -- look up the destructors Destructor1 .. Destructorp
-        ~lkups <- lift $ sequenceA <$>
-            traverse 
-                (\(recordphraseident, _) -> 
-                    runSymbolTableQuery 
-                        ( queryBnfcIdentName recordphraseident
-                        >> querySequentialPhrases 
-                        >> queryChecks 
-                        >> symbolTableQuery ) 
-                    symtable
-                )
-                recordphrases
-        let phrasesg@(focusedphraseg :| rstphraseg) = fromJust lkups
-            -- focusedclauseg = focusedphraseg ^. typePhraseContext % phraseParent
-
-        {-
-        -- error checking...
-        let nondestructors = NE.filter (not . has (phraseGObjType % _CodataObj)) phrasesg
-        lift $ tell $ 
-            bool [_ExpectedCodataDestructor # (fmap (view typePhraseName) . NE.fromList $ nondestructors)] []
-               (isNothing lkups || null nondestructors) 
-               -}
-
-        undefined
-        {-
-        lift $ tell $ 
-            bool [_ExpectedDataConstructor # ident] []
-                (isNothing lkup || has _DataObj (phraseg ^. phraseGObjType))
-
-        -- check if all from the same codata clause
-        unless (all (focusedclauseg ^. typeClauseName ==) $
-            map (view $ typePhraseContext % phraseParent % typeClauseName) rstphraseg)
-            undefined
-            -- (throwError $ liftTieDefnsError (_ExpectedDestructorsFromSameClause # fmap fst recordphrases))
-
-        -- check if the records (phrases) match the declaration in the 
-        -- codata clause..
-        unless (and $ 
-                zipWith (\a b -> a ^. typePhraseName % taggedBnfcIdentName 
-                                == b ^. _1 % bnfcIdentName)
-                    (focusedclauseg ^. typeClausePhrases) 
-                    (NE.toList recordphrases))
-            undefined
-            -- (throwError $ liftTieDefnsError (_IllegalRecordPhrases # recordphrases)) 
-
-        -- get the required substitutions from a codata
-        (clausetype, ttypeargs, clausesubstitutions) <- 
-                clauseSubstitutions focusedclauseg
-        -- fresh type variables for the phrases...
-        ttypedtsargs <- traverse (const freshTypeTag) $ NE.toList phrasesg 
-
-        ((dtsargsym, dtsargstypeeqs), dtsargspatts) <- unwrappedPatternsIToGraph tagmap 
-            $ zip ttypedtsargs 
-            $ map (snd . snd) 
-            $ NE.toList recordphrases
-
-        let syms = dtsargsym
-            typeeqs = TypeEqnsExist (ttypedtsargs ++ ttypeargs) $
-                [ _TypeEqnsEq # (_TypeVar # (ttype, []), clausetype ) ]
-                ++ zipWith g ttypedtsargs (NE.toList phrasesg)
-                ++ dtsargstypeeqs
-            g ttypedts phraseg = _TypeEqnsEq # 
-                ( _TypeVar # (ttypedts, [])
-                , _TypeSeq # _TypeSeqArrF # 
-                    (  fromJust $ traverse (substitutesTypeGToTypeGTypeTag 
-                        clausesubstitutions) (phraseg ^. typePhraseFrom)
-                    , fromJust $ substitutesTypeGToTypeGTypeTag 
-                        clausesubstitutions (phraseg ^. typePhraseTo)
+        let recordphraseidents = fmap fst recordphrases
+            lkups = fmap 
+                    (\recordphraseident -> 
+                        fmap (view symEntryInfo)
+                        $ lookupBnfcIdent recordphraseident 
+                            $ mapMaybe
+                                ( traverseOf (_2 % symEntryInfo)
+                                    ( preview (_SymSeqCall % _SymPhrase) ))
+                            symtab
                     )
-                )
+                    recordphraseidents 
+            lkups' = sequenceA lkups
+            phrasesg = fromJust lkups'
+            recordphrasestophrasegs = zip (NE.toList recordphrases) (NE.toList phrasesg)
+            -- get the type clause corresponding to the first phrase (which
+            -- should be the same as the rest of the other phrases.....
+            clausesg@(focusedclauseg :| _) = fmap (view (typePhraseContext % phraseParent)) phrasesg
 
-            pat' = PRecord 
-                ( NE.fromList $ getZipList $ 
-                    (\ident tag phraseg destpat -> 
-                        ( _TaggedBnfcIdent # (ident, tag)
-                        , (phraseg, destpat)))
-                    <$> ZipList (map fst $ NE.toList recordphrases)
-                    <*> ZipList (NE.toList phrasestags)
-                    <*> ZipList (NE.toList phrasesg)
-                    <*> ZipList dtsargspatts
-                )
-                $ fromJust $ Map.lookup ttype tagmap
+        -- not in scope checks...
+        lift $ tell $ fold $ NE.zipWith (\(ident, _) -> maybe [ _NotInScope # ident] (const [])) 
+                recordphrases lkups
 
-        return ( (syms, [typeeqs] ) , pat' )
-        -}
+        -- checking if all the phrases are codata...
+        lift $ tell $
+            bool []
+                ( foldMap 
+                    (\phraseg -> bool 
+                        [_ExpectedCodataDestructor # (phraseg ^. typePhraseName % taggedBnfcIdentBnfcIdent)] 
+                        []
+                        $ has _CodataObj (phraseg ^. phraseGObjType) ) 
+                    phrasesg )
+                (isJust lkups')
+
+        -- checking if all phrases are from the same clause i.e., we should have exactly 
+        -- one equivalence class
+        let clauseeqclasses = NE.groupBy1 ((==) `on` view typeClauseName . fst) 
+                $ NE.zip clausesg phrasesg
+        lift $ tell $ bool [] 
+                ( foldMap 
+                    ( pure 
+                    . review _ExpectedDestructorsFromSameClause 
+                    . fmap ( view (typeClauseName % taggedBnfcIdentBnfcIdent) 
+                                        *** view (typePhraseName % taggedBnfcIdentBnfcIdent)) 
+                                ) 
+                        clauseeqclasses ) 
+                    (isJust lkups' && length clauseeqclasses > 1)  
+
+        -- check for duplicated declarations in each record phrase...
+        let duplicateddecseqclasses = NE.group1 recordphraseidents
+            duplicateddecs = NE.filter ((>1) . length) duplicateddecseqclasses
+        lift $ tell $ bool [] 
+            (map (review _DuplicatedDeclarations . NE.toList) duplicateddecs)
+            (isJust lkups' && not (null duplicateddecs))
+
+        -- check if all the record phrases are present in the pattern match
+        -- i.e., this is an exhaustive record
+        let nonexhaustivephrases = exhaustivephrases \\ usedphrases
+            exhaustivephrases = map (view typePhraseName) $ focusedclauseg ^. typeClausePhrases
+            usedphrases       = map (view typePhraseName) $ NE.toList phrasesg 
+        lift $ tell $ bool []
+            [_NonExhaustiveRecordPhrases # (map (view taggedBnfcIdentBnfcIdent) nonexhaustivephrases)]
+            (isJust lkups' && not (null nonexhaustivephrases))
+            
+        --  query the phrase substitutions from the graph
+        ~(clausetype, ttypeclauseargs, clausesubstitutions) <- lift . fmap fst . splitGraphGenCore $ 
+            clauseSubstitutions focusedclauseg
+
+
+        -- could use unwrappedPatternsIToGraph here...
+        (recordphrases', (ttypespatts, destypes, pattseqns)) <- second unzip3 . unzip <$> traverse 
+            (\((ident, ((), patt)), phrasegdef) -> do
+                    ttypespatt <- lift freshExprTypeTags
+                    (typeeqns, patt') <- local 
+                        (set tieExprEnvTypeTags ttypespatt) 
+                        (patternIToGraph patt)
+                
+                    return 
+                        ( ( TaggedBnfcIdent ident $ phrasegdef ^. typePhraseName % uniqueTag
+                          , (phrasegdef, patt') )
+                        , ( ttypespatt
+                          , fromJust 
+                                $ substitutesTypeGToTypeGTypeTag clausesubstitutions 
+                                $ simplifyArrow 
+                                $ TypeSeq 
+                                $ TypeSeqArrF 
+                                    (init $ phrasegdef ^. typePhraseFrom) 
+                                    -- init is needed to remove the last type variable
+                                    (phrasegdef ^. typePhraseTo)
+                          , typeeqns ) 
+                        )  
+                    )
+            recordphrasestophrasegs
+
+        let ttypepatts = map (view exprTtype) ttypespatts
+            eqns = TypeEqnsExist (ttypepatts ++ ttypeclauseargs) $
+                    [ TypeEqnsEq (TypeVar ttype [], clausetype)
+                    , TypeEqnsStableRef (ttypeinternal, TypeVar ttype [])]
+                    ++ zipWith 
+                        (\ttypepat -> TypeEqnsEq . (TypeVar ttypepat [],)) 
+                        ttypepatts 
+                        destypes
+                    -- accumlate all the previously accumlated equations..
+                    ++ concat pattseqns
+                
+            patt' = PRecord (NE.fromList recordphrases') $ fromJust $ Map.lookup ttypeinternal tagmap
+
+        return ( bool [eqns] [] (isNothing lkups') , patt' )
 
     {-
     f ttype ( PTuple tuple@(tuple1, tuple2 :| tuples) () ) = do
@@ -889,7 +975,7 @@ patternIToGraph pattern =
         equality %= (
             ( ident' ^. taggedBnfcIdentName
             , SymEntry (ident' ^. uniqueTag) (ident' ^. taggedBnfcIdentPos) 
-                $ SymLocalSeqVar ttype): )
+                $ _SymSeqCall # _SymCall # (SymCallDummyTypeVar ttype, LocalVar) ): )
 
         return ( typeeqs, pat' )
 

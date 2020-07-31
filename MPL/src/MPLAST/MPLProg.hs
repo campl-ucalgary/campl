@@ -109,6 +109,11 @@ data ProcessDefn patterns letdef typedef calldef ident typevar = ProcessDefn {
             , ProcessCommands patterns letdef typedef calldef ident) 
 } deriving (Show, Eq, Read, Data)
 
+data Polarity = 
+    Input
+    | Output
+
+
 $(concat <$> traverse makeLenses 
     [ ''Prog
     , ''Stmt
@@ -134,6 +139,7 @@ $(concat <$> traverse makePrisms
     , ''TypeClause
     , ''TypePhrase
     , ''ObjectType
+    , ''Polarity
     ]
  )
 

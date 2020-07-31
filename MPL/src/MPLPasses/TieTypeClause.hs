@@ -27,6 +27,7 @@ import Control.Monad.Writer
 import qualified Data.Bifunctor as Bifunctor
 import Control.Arrow
 
+import Control.Applicative
 import Data.Maybe
 import Data.Bool
 import Data.List
@@ -37,7 +38,7 @@ import Debug.Trace
 
 
 tieTypeClauseGraph :: 
-    SymbolTable -> 
+    [(String, SymEntry SymSeqConcTypeInfo)] -> 
     ObjectType -> 
     NonEmpty (TypeClause () () () BnfcIdent BnfcIdent) -> 
     GraphGenCore (ClausesGraph TaggedBnfcIdent)
@@ -57,21 +58,21 @@ newtype TieTypeClauseT m a =
         (ClausesGraph TaggedBnfcIdent)
         -- | writer monads require a monoid, but ClauseGraphSpine is just a semigroup.
         (Maybe (ClauseGraphSpine TaggedBnfcIdent))
-        SymbolTable
+        [(String, SymEntry SymSeqConcTypeInfo)]
         m a )
         }
   deriving 
     ( Functor
     , Applicative
     , Monad
-    , MonadState SymbolTable
+    , MonadState [(String, SymEntry SymSeqConcTypeInfo)]
     , MonadReader (ClausesGraph TaggedBnfcIdent)
     , MonadWriter (Maybe (ClauseGraphSpine TaggedBnfcIdent))
     , MonadFix 
     , MonadRWS 
         (ClausesGraph TaggedBnfcIdent) 
         (Maybe (ClauseGraphSpine TaggedBnfcIdent)) 
-        SymbolTable
+        [(String, SymEntry SymSeqConcTypeInfo)]
     , MonadTrans 
     )
 
@@ -127,7 +128,7 @@ tieTypeClauseKnot clauses = do
             toty'
 
 substituteTyVar :: 
-    SymbolTable -> 
+    [(String, SymEntry SymSeqConcTypeInfo)] ->
     Type () BnfcIdent BnfcIdent -> 
     GraphGenCore (TypeG TaggedBnfcIdent)
 substituteTyVar symtab = para f 
@@ -136,12 +137,16 @@ substituteTyVar symtab = para f
         args' <- traverse snd args
         ~(SymEntry uniquetag pos info) <- lookupIdent symtab ident
 
-        return $ case info of 
-            SymTypeVar -> TypeVar 
-                (_TaggedBnfcIdent # (ident, uniquetag)) args'
-            SymClause clauseg -> TypeWithArgs
-                (_TaggedBnfcIdent # (ident, uniquetag))
-                (TypeClauseCallDefKnot clauseg) args'
+        return $ case info ^? _SymSeqClause <|> info ^? _SymConcClause of 
+            Just clauseg -> _TypeWithArgs #
+                ( _TaggedBnfcIdent # (ident, uniquetag)
+                , _TypeClauseCallDefKnot # clauseg
+                , args'
+                )
+            Nothing -> _TypeVar #
+                ( _TaggedBnfcIdent # (ident, uniquetag)
+                , args'
+                )
 
     f (TypeVarF ident (a:as)) = error "higher kinded data not supported yet.."
     f (TypeVarF ident []) = do
@@ -149,11 +154,13 @@ substituteTyVar symtab = para f
         -- in the future, change it so that it will substitute and check arity!
         ~(SymEntry uniquetag pos info) <- lookupIdent symtab ident
 
-        return $ case info of
-            SymTypeVar -> _TypeVar # (_TaggedBnfcIdent # (ident, uniquetag), [])
-            SymClause clauseg -> TypeWithArgs
-                (_TaggedBnfcIdent # (ident,uniquetag))
-                (TypeClauseCallDefKnot clauseg) []
+        return $ case info ^? _SymSeqClause <|> info ^? _SymConcClause of
+            Just clauseg -> _TypeWithArgs #
+                ( _TaggedBnfcIdent # (ident, uniquetag)
+                , _TypeClauseCallDefKnot # clauseg 
+                , []
+                )
+            Nothing -> _TypeVar # (_TaggedBnfcIdent # (ident, uniquetag), [])
     f (TypeSeqF n) = TypeSeq <$> case n of
         TypeTupleF (a, b :| rst) -> do
             (a, rst) <- (,) <$> snd a <*> ((:|) <$> snd b <*> traverse snd rst)
@@ -231,14 +238,13 @@ substituteTyVar symtab = para f
 
 
     lookupIdent ::
-        SymbolTable ->
+        [(String, SymEntry SymSeqConcTypeInfo)] ->
         BnfcIdent ->
-        GraphGenCore (SymEntry SymInfo)
+        GraphGenCore (SymEntry SymSeqConcTypeInfo)
     lookupIdent symtab ident = do
-        fromJust <$> runSymbolTableQuery (queryBnfcIdentName ident >> queryChecks >> symbolTableQuery) symtab
-        -- entries <- querySymbolTableBnfcIdentName ident symtab
-        -- snd . fromJust <$> ambiguousLookupCheck entries
-
+        let lkup = lookupBnfcIdent ident symtab
+        tell $ maybe [_NotInScope # ident] (const []) lkup
+        return $ fromJust lkup
 
     
 typeClausesArgs ::
