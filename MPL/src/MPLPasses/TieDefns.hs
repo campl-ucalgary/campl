@@ -343,17 +343,15 @@ defnsToGraph (a:as) = case a ^. unDefnI of
                 -- collected equations context 
                 ++ eqns
 
-
         tieDefnsStateSeqTypeEqnsPkg % tieDefnsTypeForall %= (++forallvars)
         tieDefnsStateSeqTypeEqnsPkg % tieDefnsTypeExist  %= (++ttypephrases)
         tieDefnsStateSeqTypeEqnsPkg % tieDefnsTypeEqns   %= (++typeeqns)
 
         tell [FunctionDecDefG fun']
 
-
         defnsToGraph as
 
-        symtab <- guse tieDefnsStateSymbolTable
+        symtab <- guse tieDefnsStateSymbolTable 
 
         return ()
 
@@ -425,7 +423,7 @@ patternsIAndExprIToGraph (patts, expr) = do
 
     -- equations, and graph pattern from the type patterns
     -- Note: this modifies the symbol table..
-    (patteqns, pattsg) <- unwrappedPatternsIToGraph symtab ttypespatts
+    (patteqns, pattsg) <- unwrappedPatternsIToGraph ttypespatts
 
     (exprg, expreqns) <- local (set tieExprEnvTypeTags ttypesexpr) (exprIToGraph expr)
 
@@ -733,24 +731,24 @@ exprIToGraph expr =
 -- pattern compilation
 --------------------------------------------------
 patternsIToGraph :: 
-    SymbolTable -> 
     [(ExprTypeTags, PatternI BnfcIdent)] -> 
     TieFun [ ( [TypeEqns TaggedBnfcIdent TypeTag] , PatternG TaggedBnfcIdent TypeTag) ]
-patternsIToGraph symtable tagspatts = traverse 
+patternsIToGraph tagspatts = traverse 
     (\(tag, patt) -> 
         local (set tieExprEnvTypeTags tag) (patternIToGraph patt)) 
     tagspatts
 
 unwrappedPatternsIToGraph ::
-    SymbolTable -> 
     [(ExprTypeTags, PatternI BnfcIdent)] -> 
     TieFun ( [TypeEqns TaggedBnfcIdent TypeTag] , [PatternG TaggedBnfcIdent TypeTag] )
-unwrappedPatternsIToGraph symtable patts = 
-    (first mconcat <<< unzip) <$> patternsIToGraph symtable patts
+unwrappedPatternsIToGraph patts = 
+    (first mconcat <<< unzip) <$> patternsIToGraph patts
 
 patternIToGraph :: 
     PatternI BnfcIdent -> 
-    TieFun ([TypeEqns TaggedBnfcIdent TypeTag] , PatternG TaggedBnfcIdent TypeTag)
+    TieFun 
+        ( [TypeEqns TaggedBnfcIdent TypeTag]
+        , PatternG TaggedBnfcIdent TypeTag )
 patternIToGraph pattern = 
     f pattern
   where
@@ -787,7 +785,7 @@ patternIToGraph pattern =
             clauseSubstitutions (phraseg ^. typePhraseContext % phraseParent)
 
         (ctsargstypeeqs, ctsargspatts) <- 
-            unwrappedPatternsIToGraph symtab $ zip ttypesctsargs ctsargs
+            unwrappedPatternsIToGraph $ zip ttypesctsargs ctsargs
 
         ttype <- gview exprTtype
         ttypeinternal <- gview exprTtypeInternal
@@ -842,7 +840,6 @@ patternIToGraph pattern =
                     recordphraseidents 
             lkups' = sequenceA lkups
             phrasesg = fromJust lkups'
-            recordphrasestophrasegs = zip (NE.toList recordphrases) (NE.toList phrasesg)
             -- get the type clause corresponding to the first phrase (which
             -- should be the same as the rest of the other phrases.....
             clausesg@(focusedclauseg :| _) = fmap (view (typePhraseContext % phraseParent)) phrasesg
@@ -896,31 +893,33 @@ patternIToGraph pattern =
         ~(clausetype, ttypeclauseargs, clausesubstitutions) <- lift . fmap fst . splitGraphGenCore $ 
             clauseSubstitutions focusedclauseg
 
-
         -- could use unwrappedPatternsIToGraph here...
-        (recordphrases', (ttypespatts, destypes, pattseqns)) <- second unzip3 . unzip <$> traverse 
+        (recordphrases', (ttypespatts, destypes, pattseqns)) <- second unzip3 . unzip . catMaybes <$> traverse 
             (\((ident, ((), patt)), phrasegdef) -> do
                     ttypespatt <- lift freshExprTypeTags
+                    -- this is problematic.. this needs to be delayed..
                     (typeeqns, patt') <- local 
                         (set tieExprEnvTypeTags ttypespatt) 
                         (patternIToGraph patt)
                 
-                    return 
-                        ( ( TaggedBnfcIdent ident $ phrasegdef ^. typePhraseName % uniqueTag
-                          , (phrasegdef, patt') )
-                        , ( ttypespatt
-                          , fromJust 
-                                $ substitutesTypeGToTypeGTypeTag clausesubstitutions 
-                                $ simplifyArrow 
-                                $ TypeSeq 
-                                $ TypeSeqArrF 
-                                    (init $ phrasegdef ^. typePhraseFrom) 
-                                    -- init is needed to remove the last type variable
-                                    (phrasegdef ^. typePhraseTo)
-                          , typeeqns ) 
-                        )  
+                    return $ case phrasegdef of
+                        Just phrasegdef -> Just 
+                            ( ( TaggedBnfcIdent ident $ phrasegdef ^. typePhraseName % uniqueTag
+                              , (phrasegdef, patt') )
+                            , ( ttypespatt
+                              , fromJust 
+                                    $ substitutesTypeGToTypeGTypeTag clausesubstitutions 
+                                    $ simplifyArrow 
+                                    $ TypeSeq 
+                                    $ TypeSeqArrF 
+                                        (init $ phrasegdef ^. typePhraseFrom) 
+                                        -- init is needed to remove the last type variable
+                                        (phrasegdef ^. typePhraseTo)
+                              , typeeqns ) 
+                            )  
+                        Nothing -> Nothing
                     )
-            recordphrasestophrasegs
+            (zip (NE.toList recordphrases) (NE.toList lkups) )
 
         let ttypepatts = map (view exprTtype) ttypespatts
             eqns = TypeEqnsExist (ttypepatts ++ ttypeclauseargs) $
@@ -932,7 +931,6 @@ patternIToGraph pattern =
                         destypes
                     -- accumlate all the previously accumlated equations..
                     ++ concat pattseqns
-                
             patt' = PRecord (NE.fromList recordphrases') $ fromJust $ Map.lookup ttypeinternal tagmap
 
         return ( bool [eqns] [] (isNothing lkups') , patt' )

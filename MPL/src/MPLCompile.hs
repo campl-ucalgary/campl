@@ -130,7 +130,7 @@ fun tomato :: KindTest(B,C) -> KindTest(C,B) =
 testkartofler = [r| 
 codata 
     S -> Tuple(A,B,C) =
-        P1 :: S -> A
+        P1 :: B,S -> A
         P2 :: S -> B
         P3 :: S -> C
 data 
@@ -139,7 +139,7 @@ data
     
 
 fun tomato = 
-    (P1 := a, P2 := b, P3 := c) -> c
+    (P1 := a, P2 := b, Pot := c),g -> a
 |]
 
 
