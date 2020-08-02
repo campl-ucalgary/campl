@@ -144,6 +144,8 @@ $(concat <$> traverse (makeFieldLabelsWith (fieldLabelsRules & lensField .~ unde
  -}
 $(concat <$> traverse makeLenses
     [ ''Type
+    , ''SeqTypeF
+    , ''ConcTypeF
     ]
  )
 $(concat <$> traverse makePrisms 

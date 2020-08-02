@@ -162,16 +162,36 @@ translateExprGToBnfcExpr (EFold foldon phrases etype) =
     B.TYPED_EXPR expr' etype'
   where
     expr' = B.FOLD_EXPR (translateExprGToBnfcExpr foldon) $ 
-        map f $ NE.toList phrases
+        map foldTranslate $ NE.toList phrases
       where
-        f (FoldPhraseF ident _ args t) = 
+        foldTranslate (FoldPhraseF ident _ args t) = 
             B.FOLD_EXPR_PHRASE 
                 (toBnfcUIdent $ pprint ident)
                 bnfcColon
                 (map translatePatternGtoBnfcPattern args)
                 (translateExprGToBnfcExpr t)
 
-            
+    etype' = translateTypeToBnfcType etype
+
+translateExprGToBnfcExpr (EUnfold foldon phrases etype) = 
+    B.TYPED_EXPR expr' etype'
+  where
+    expr' = B.UNFOLD_EXPR (translateExprGToBnfcExpr foldon) $ 
+        map f $ NE.toList phrases
+      where
+        f (UnfoldPhraseF patt foldphrases) = 
+            B.UNFOLD_EXPR_PHRASE 
+                (translatePatternGtoBnfcPattern patt)
+                $ map foldTranslate $ NE.toList foldphrases
+
+        -- duplicated code...
+        foldTranslate (FoldPhraseF ident _ args t) = 
+            B.FOLD_EXPR_PHRASE 
+                (toBnfcUIdent $ pprint ident)
+                bnfcColon
+                (map translatePatternGtoBnfcPattern args)
+                (translateExprGToBnfcExpr t)
+
     etype' = translateTypeToBnfcType etype
 
 translatePatternGtoBnfcPattern ::

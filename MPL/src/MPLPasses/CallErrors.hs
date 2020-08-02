@@ -26,6 +26,7 @@ import Data.List
 import Data.Bool
 import Data.Foldable
 import Data.Tuple
+import Data.Semigroup
 import Data.List.NonEmpty (NonEmpty (..))
 import Optics 
 import Optics.State
@@ -173,7 +174,8 @@ nonExhaustiveFoldPhrase ::
     [TieDefnsError]
 nonExhaustiveFoldPhrase phrasesg@(phraseg :| _) = 
     bool []
-        [_NonExhaustiveFold # map (view taggedBnfcIdentBnfcIdent) missedphrases]
+        [_NonExhaustiveFold # 
+            (missedphrases ^.. folded % taggedBnfcIdentBnfcIdent)]
         (not $ null missedphrases)
   where
     clausegraph = phraseg ^. phraseGClausesGraph
@@ -184,6 +186,53 @@ nonExhaustiveFoldPhrase phrasesg@(phraseg :| _) =
     phrasesgidents = map (view typePhraseName) $ NE.toList phrasesg 
 
     missedphrases = exhaustivephrasesidents \\ phrasesgidents
+
+
+nonExhaustiveUnfoldClauses ::
+    NonEmpty (TypeClauseG TaggedBnfcIdent) ->
+    [TieDefnsError]
+nonExhaustiveUnfoldClauses clausesg@(clauseg :| _) = 
+    bool []
+        [ _NonExhaustiveUnfoldClauses # 
+       (missedclauses ^.. folded % taggedBnfcIdentBnfcIdent)]
+        (not $ null missedclauses)
+  where
+    exhaustiveclauses = clauseg ^..
+        typeClauseNeighbors 
+        % clauseGraph 
+        % clauseGraphSpine 
+        % folded 
+        % typeClauseName 
+
+    clausegidents = clausesg ^.. 
+        folded 
+        % typeClauseName 
+
+    missedclauses = exhaustiveclauses \\ clausegidents
+
+validUnfoldTypePhrasesCheck ::
+    NonEmpty (NonEmpty (TypePhraseG TaggedBnfcIdent)) ->
+    [TieDefnsError]
+validUnfoldTypePhrasesCheck phrasesg = samegraph ++ duplicatedphrases ++ nonexhaustiveclauses ++ recordchecks 
+  where
+    phrasesg' = NE.toList $ sconcat phrasesg
+
+    samegraph =  
+        foldUnfoldPhrasesFromDifferentGraphsCheck 
+            phrasesg'
+    
+    nonexhaustiveclauses = nonExhaustiveUnfoldClauses
+        $ phrasesg & mapped %~ view (to NE.head % typePhraseContext % phraseParent)
+
+    -- just check if all the phraes are duplciated..
+    -- With this, in combination with exhaustiveclauses,
+    -- we know that this will include all clauses
+    -- and phrases... TODO, shoudl really just check for duplciated clauses here... 
+    duplicatedphrases = duplicatedDeclarationsCheck
+        $ phrasesg' & mapped %~ view (typePhraseName % taggedBnfcIdentBnfcIdent)
+
+    recordchecks = sconcat $ phrasesg & mapped %~ validRecordPhrasesCheck 
+
 
 
 validFoldTypePhrasesCheck ::

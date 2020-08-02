@@ -76,23 +76,10 @@ clauseSubstitutions clauseg = do
             )
             clausegraphspine
 
-    return ( clausestatevartype
-            , map snd clauseargsubs
-            , statevarsubstitiions ++ argsubstitions)
-
-clauseGraphSubstitutions :: 
-    ( MonadState s m 
-    , HasUniqueSupply s ) =>
-    ClausesGraph TaggedBnfcIdent ->
-    m ( [TypeTag]
-      , [(TaggedBnfcIdent, TypeGTypeTag)] )
-    -- ( type tags of the arguments 
-    -- , substitituions for the state variables)
-clauseGraphSubstitutions graph = do
-    (_, ttypeargs, subs) <- clauseSubstitutions 
-        (NE.head (graph ^. clauseGraphSpine))
-    return (ttypeargs, subs)
-
+    return 
+        ( clausestatevartype
+        , map snd clauseargsubs
+        , statevarsubstitiions ++ argsubstitions)
 
 -- | Gives us the fresh substititions for each of the type varaibles
 -- and state variables for a clause graph

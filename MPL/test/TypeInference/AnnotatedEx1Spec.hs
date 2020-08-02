@@ -60,6 +60,9 @@ spec = do
         , test21
         , test22
         , test23
+        , test24
+        , test25
+        , test26
         ]
 
 
@@ -356,4 +359,71 @@ fun scottsbottom =
 |]
 
 test23 = [r| 
+codata
+    S -> Triple(A,B,C) =
+        P1 :: S -> A
+        P2 :: S -> B
+        P3 :: S -> C
+
+fun myTriple :: S -> Triple(S,S,S)= 
+    a -> unfold a of
+        b of
+            P1 : -> b
+            P2 : -> b
+            P3 : -> b
+|]
+
+test24 = [r| 
+codata
+    S -> Stream(A) =
+        Head :: S -> A
+        Tail :: S -> S
+data  
+    Nat -> S =
+        Succ :: S -> S
+        Zero ::   -> S
+
+fun myInfList :: -> Stream(Nat) = 
+    -> unfold Zero of
+        n of
+            Head : -> n
+            Tail : -> Succ(n)
+|]
+
+test25 = [r| 
+codata
+    S -> Zig(A,B) =
+        HeadA :: S -> A
+        TailA :: S -> T
+    and
+    T -> Zag(A,B) =
+        HeadB :: T -> B
+        TailB :: T -> S
+
+codata 
+    S -> Tuple(A,B) =
+        P1 :: S -> A
+        P2 :: S -> B
+
+data  
+    Nat -> S =
+        Succ :: S -> S
+        Zero ::   -> S
+
+data  
+    NegativeNat -> S =
+        Pred :: S -> S
+        NZero ::   -> S
+
+fun myInfZigZag :: -> Zig(Nat, NegativeNat) = 
+    -> unfold (P1 := -> Zero, P2 := -> NZero) of
+        (P1 := p, P2 := n) of
+            HeadA : -> p
+            TailA : -> (P1 := -> n, P2 := -> Succ(p))
+        (P1 := n, P2 := p) of
+            HeadB : -> n
+            TailB : -> (P1 := -> p, P2 := -> Pred(n))
+|]
+
+test26 = [r|
 |]

@@ -44,6 +44,7 @@ import qualified Data.Bifunctor as Bifunctor
 import Control.Arrow
 import Data.Either
 import Data.Function
+import Data.Semigroup
 
 import Data.Map ( Map (..) )
 import qualified Data.Map as Map
@@ -188,7 +189,6 @@ stmtIToGraph (Stmt defs wstmts) = do
             tagmap = packageToTagMap seqpkg' -- <> concpkg'
 
     tell $ either pure (const []) seqpkg
-    -- tell $ error $ pprint seqeqns
     
     -- tell $ either pure (const []) concpkg
     
@@ -864,7 +864,10 @@ exprIToGraph expr =
         let foldphrases       = fmap (view unfoldPhraseFolds) unfoldphrases
             foldphrasesidents = fmap (fmap (view foldPhraseIdentF)) foldphrases 
             foldphraseslkups  = fmap (`lookupsSeqPhrases` symtab) foldphrasesidents 
-            foldphraseslkups' = fromJust $ sequenceA $ fmap sequenceA foldphraseslkups  
+            foldphraseslkups' = sequenceA $ fmap sequenceA foldphraseslkups  
+            foldphraseslkups''@((focusedphraseg :| _) :| _) = fromJust $ foldphraseslkups'
+            focusedclauseg = focusedphraseg ^. typePhraseContext % phraseParent
+                -- the type of the unfold expression clause type of the first phrase
 
         -- not in scope check..
         lift $ traverse (\(phraseidents, lkups) -> tell $ fold $ 
@@ -872,27 +875,31 @@ exprIToGraph expr =
                 (NE.toList phraseidents) (NE.toList lkups))
             $ zip (NE.toList foldphrasesidents) (NE.toList foldphraseslkups)
 
-        -- lift . fmap fst . splitGraphGenCore $ clauseGraphFreshSubstitutions
+        -- error checking..
+        lift $ tell $ bool []
+            (validUnfoldTypePhrasesCheck foldphraseslkups'')
+                (isJust foldphraseslkups')
 
-        (ttypespatts, ttypesfoldphrases, phrasetypes, phraseseqns, unfoldphrases') <- fmap unzip5 $ traverse   
-            (\(UnfoldPhraseF patt foldphrases) -> do
+        (ttypegraph, subs)<- lift . fmap fst . splitGraphGenCore 
+            $ clauseGraphFreshSubstitutions (focusedphraseg ^. phraseGClausesGraph)
+        let focusedclausetype = fromJust 
+                $ substitutesTypeGToTypeGTypeTag subs
+                $ TypeWithArgs 
+                    (focusedclauseg ^. typeClauseName)
+                    (TypeClauseCallDefKnot focusedclauseg)
+                    (focusedclauseg ^.. typeClauseArgs % traversed % to (review _TypeVar . (,[])) )
+            ttypefocusedstatevar = fromJust $ lookup (focusedclauseg ^. typeClauseStateVar) subs
+
+        (ttypespatts, ttypeclausestatevars, patteqns, ttypesfoldphrases, phrasetypes, phraseseqns, unfoldphrases') <- fmap unzip7 $ traverse   
+            (\(UnfoldPhraseF patt foldphrases, lkups) -> do
                 symtab <- guse equality
 
                 ttypespatt <- lift freshExprTypeTags
                 (patteqns, patt') <- local (set tieExprEnvTypeTags ttypespatt) $ patternIToGraph patt
 
-                let phraseidents = fmap (view foldPhraseIdentF) foldphrases
-                    lkups = lookupsSeqPhrases phraseidents symtab
-                    lkups' = sequenceA lkups
+                let lkups' = sequenceA lkups
                     phrasesg@(focusedphrase :| _) = fromJust lkups'
                     graph = focusedphrase ^. phraseGClausesGraph
-
-                -- not in scope check..
-                lift $ tell $ fold $ zipWith (\ident -> maybe [ _NotInScope # ident] (const [])) 
-                        (NE.toList phraseidents) (NE.toList lkups)
-
-                -- need to check if the record phrases are all valid
-                lift $ tell $ bool [] (validRecordPhrasesCheck phrasesg) (isJust lkups')
 
                 (ttypesfoldphrases, phrasetypes, phraseseqns, foldphrases') <- 
                         foldPhrasesWithTypePhrasesToGraph (NE.toList foldphrases) (NE.toList lkups)
@@ -901,15 +908,51 @@ exprIToGraph expr =
 
                 return 
                     ( ttypespatt 
+                    , fromJust $ 
+                        lookup (focusedphrase ^. typePhraseContext % phraseParent % typeClauseStateVar) 
+                            subs
+                    , patteqns
                     , ttypesfoldphrases
-                    , phrasetypes
+                    -- recall that we need eliminate the last state variable in the input args
+                    -- since we are building up the records...
+                    , phrasetypes & traversed % _TypeSeq % _TypeSeqArrF % _1 %~ init
                     , phraseseqns
                     , UnfoldPhraseF patt' (NE.fromList foldphrases')
                     )
                 )
-            (NE.toList unfoldphrases)
+            $ zip (NE.toList unfoldphrases) (NE.toList foldphraseslkups)
 
-        undefined
+        let ttypepatts = ttypespatts & mapped %~ view exprTtype
+            ttypefoldphrases = ttypesfoldphrases & mapped % mapped %~ view exprTtype
+            eqns = TypeEqnsExist (ttypeunfoldon : ttypegraph ++ ttypepatts ++ mconcat ttypefoldphrases) $
+                [ TypeEqnsEq (TypeVar ttype [], focusedclausetype) 
+                , TypeEqnsStableRef (ttypeinternal, TypeVar ttype []) 
+                -- from prashant, we know that the type of this phrase should be the 
+                -- type of the first clause 
+                , TypeEqnsEq (TypeVar ttypeunfoldon [], ttypefocusedstatevar)] 
+
+                -- the types of the patterns should match the state variables for the clauses which
+                -- they focus on..
+                ++ zipWith (\ttypepatt -> TypeEqnsEq . (TypeVar ttypepatt [],)) 
+                        ttypepatts ttypeclausestatevars
+                
+                -- set the foldphrases to be equal to the the type phrase type...
+                ++ concat (zipWith (zipWith 
+                    (\ttypefoldphrase -> 
+                        TypeEqnsEq 
+                        . (TypeVar ttypefoldphrase [],)
+                        . fromJust 
+                        . substitutesTypeGToTypeGTypeTag subs)
+                        ) ttypefoldphrases phrasetypes)
+                -- accumlate the unfoldon equations
+                ++ ttypeunfoldeqns
+                -- accumlate the patterns from the unfold
+                ++ concat patteqns
+                -- accumlate equations from the phrases...
+                ++ concat phraseseqns
+            expr = EUnfold unfoldon' (NE.fromList unfoldphrases') $ fromJust $ Map.lookup ttypeinternal tagmap
+
+        return (expr, bool [] [eqns] (isJust foldphraseslkups'))
 
     f n = error $ show n
 

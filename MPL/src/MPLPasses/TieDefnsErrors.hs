@@ -42,6 +42,7 @@ data FunctionError =
     -- we have [[BnfcIdent]] the list of phrases for which are from different
     -- graphs, but which graphs do they come from?
     | FoldUnfoldPhraseFromDifferentGraphs [[BnfcIdent]]
+    | NonExhaustiveUnfoldClauses [BnfcIdent]
     | NonExhaustiveFold [BnfcIdent]
 
     -- | unfold errors

@@ -128,15 +128,38 @@ fun tomato :: KindTest(B,C) -> KindTest(C,B) =
 |]
 
 testkartofler = [r| 
-data 
+codata
+    S -> Zig(A,B) =
+        HeadA :: S -> A
+        TailA :: S -> T
+    and
+    T -> Zag(A,B) =
+        HeadB :: T -> B
+        TailB :: T -> S
+
+codata 
+    S -> Tuple(A,B) =
+        P1 :: S -> A
+        P2 :: S -> B
+
+data  
     Nat -> S =
         Succ :: S -> S
         Zero ::   -> S
 
-fun double  = 
-    a,b -> fold a of
-        AA : a -> Succ(Succ(a))
-        ZFF : -> b
+data  
+    NegativeNat -> S =
+        Pred :: S -> S
+        NZero ::   -> S
+
+fun myInfZigZag :: -> Zig(Nat, NegativeNat) = 
+    -> unfold (P1 := -> Zero, P2 := -> NZero) of
+        (P1 := p, P2 := n) of
+            HeadA : -> p
+            TailA : -> (P1 := -> n, P2 := -> Succ(p))
+        (P1 := n, P2 := p) of
+            HeadB : -> n
+            TailB : -> (P1 := -> p, P2 := -> Pred(n))
 |]
 
 

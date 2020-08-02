@@ -385,11 +385,7 @@ packageExistentialElim pkg = do
             let subs' = deleteSubList v subs
                 plainsubvars = concatMap 
                     ( fromMaybe []
-                    . preview 
-                        ( _PlainSub 
-                        % to (\(a,b) -> a : toList b)
-                        )
-                    )
+                    . preview ( _PlainSub % to (\(a,b) -> a : toList b)))
                     subs'
                 subexisted = v `elem` plainsubvars
             subs'' <- coalesce (v,sub) $ subs'
