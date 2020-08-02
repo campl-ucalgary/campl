@@ -174,6 +174,7 @@ match = f
         | ident0 == ident1 && length args0 == length args1 = 
             concat <$> traverse (uncurry f) (zip args0 args1)
         | otherwise = Left $ _MatchFailure # (t0, t1)
+
     -- one is a type varaible (need symmetry as well)
     f (TypeVar a []) b = pure <$> mkValidSub a b
     f a (TypeVar b []) = pure <$> mkValidSub b a
@@ -189,6 +190,7 @@ match = f
         | otherwise = 
             (:) <$> mkValidSub a (TypeWithArgs b cxt []) 
             <*> (concat <$> traverse (uncurry f) (zip args brgs))
+
     -- perhaps in the future, we need to add more cases for
     -- passing built in types in a higher order fashion...
     -- Although, it will be strange because of the changing sequential types
@@ -210,6 +212,7 @@ match = f
                     <*> f to0 to1
             | otherwise -> Left $ _MatchFailure # (TypeSeq a, TypeSeq b)
         _ -> Left $ _MatchFailure # (TypeSeq a, TypeSeq b)
+
 
     f (TypeConc a) (TypeConc b) = case (a,b) of
         (TypeGetF _ l0 r0, TypeGetF _ l1 r1 ) -> 
@@ -338,13 +341,16 @@ solveTypeEq = cata f
         acc' <- sequenceA acc
         let pkg = mconcat acc' 
                 & packageExisVar %~ (Set.fromList vs `Set.union`)
+                & packageSubs %~ map (fmap (second simplifyArrow))
                 -- & packageSubs %~ ((undefined)++)
         packageExistentialElim pkg
         -- packageExistentialElim (trace (pprint pkg) pkg)
 
     f (TypeEqnsForallF vs acc) = do
         acc' <- sequenceA acc
-        let pkg = mconcat acc' & packageUnivVar %~ (Set.fromList vs `Set.union`)
+        let pkg = mconcat acc' 
+                & packageUnivVar %~ (Set.fromList vs `Set.union`)
+                & packageSubs %~ map (fmap (second simplifyArrow))
         packageUniversalElim pkg 
         -- packageUniversalElim (trace (pprint pkg) pkg)
 

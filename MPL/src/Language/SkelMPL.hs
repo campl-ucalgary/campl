@@ -174,6 +174,7 @@ transTupleExprList x = case x of
 transRecordExprPhrase :: RecordExprPhrase -> Result
 transRecordExprPhrase x = case x of
   RECORD_EXPR_PHRASE uident expr -> failure x
+  RECORD_EXPR_HIGHER_ORDER_PHRASE uident pattexprphrase -> failure x
 transSwitchExprPhrase :: SwitchExprPhrase -> Result
 transSwitchExprPhrase x = case x of
   SWITCH_EXPR_PHRASE expr1 expr2 -> failure x
@@ -188,7 +189,7 @@ transPattern x = case x of
   CONSTRUCTOR_PATTERN_ARGS uident lbracket patterns rbracket -> failure x
   CONSTRUCTOR_PATTERN_NO_ARGS uident -> failure x
   UNIT_PATTERN lbracket rbracket -> failure x
-  RECORD_PATTERN lbracket destructorpatternphrase destructorpatternphrases rbracket -> failure x
+  RECORD_PATTERN lbracket destructorpatternphrases rbracket -> failure x
   LIST_PATTERN lsquarebracket patterns rsquarebracket -> failure x
   TUPLE_PATTERN lbracket pattern tuplelistpatterns rbracket -> failure x
   VAR_PATTERN pident -> failure x

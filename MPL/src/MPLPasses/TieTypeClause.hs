@@ -43,8 +43,9 @@ tieTypeClauseGraph ::
     NonEmpty (TypeClause () () () BnfcIdent BnfcIdent) -> 
     GraphGenCore (ClausesGraph TaggedBnfcIdent)
 tieTypeClauseGraph symtab obj clause = do
+    clausegraphtag <- freshUniqueTag
     rec let cxt = symtab
-            clausegraph = _ClausesGraph # (obj, fromJust res)
+            clausegraph = _ClausesGraph # (obj, fromJust res, clausegraphtag)
         ((), st, res) <- (runRWST (unTieTypeClauseT $ tieTypeClauseKnot clause) clausegraph cxt)
     return $ clausegraph
 

@@ -26,6 +26,7 @@ import MPLPasses.SymbolTable
 import MPLPasses.TieDefnsTypes
 import MPLPasses.TieDefnsErrors 
 import MPLPasses.TieDefnsUtils
+import MPLPasses.CallErrors
 
 import MPLUtil.Data.Tuple.Optics
 import MPLUtil.Data.Either.AccumEither
@@ -571,8 +572,11 @@ exprIToGraph expr =
 
         let ttypectsargs = map (view exprTtype) ttypesctsargs
             typeeqs = TypeEqnsExist (ttypectsargs ++ ttypeargs) $
-                [ TypeEqnsEq ( _TypeVar # (ttype, [])
-                    , clausetype )
+                [ TypeEqnsEq ( _TypeVar # (ttype, []) 
+                    , fromJust 
+                        $ substitutesTypeGToTypeGTypeTag clausesubstitutions 
+                        $ phraseg ^. typePhraseTo
+                    )
                 , TypeEqnsStableRef (ttypeinternal, TypeVar ttype [])] 
                 ++ zipWith g ttypectsargs (phraseg ^. typePhraseFrom)
                 ++ argseqns
@@ -701,7 +705,6 @@ exprIToGraph expr =
         let ttypeargs = map (view exprTtype) ttypesargs
             eqns = TypeEqnsExist (ttypeargs ++ callttypeargs) $
                 [ TypeEqnsEq 
-                    -- ( fromJust (substitutesTypeGToTypeGTypeTag calltypesubs calltype)
                     ( calltype'
                     , simplifyArrow 
                         $ TypeSeq 
@@ -709,13 +712,6 @@ exprIToGraph expr =
                 , TypeEqnsStableRef ( ttypeinternal, TypeVar ttype [] )
                     ]
                 ++ argseqns
-                {-
-                ++ zipWith (\ttype -> TypeEqnsEq . (TypeVar ttype [],)) 
-                    ttypeargs 
-                    (map (fromJust . substitutesTypeGToTypeGTypeTag calltypesubs) froms)
-                ++ argseqns
-                -}
-
         return 
             ( ECall 
                 (TaggedBnfcIdent ident tag) 
@@ -723,9 +719,227 @@ exprIToGraph expr =
                 $ fromJust $ Map.lookup ttypeinternal tagmap
             , bool [eqns] [] (isNothing lkup) )
 
-    f (ERecord ident () phrases ()) = undefined
+    f (ERecord recordphrases ()) = do
+        ttype <- gview exprTtype
+        ttypeinternal <- gview exprTtypeInternal
+        tagmap <- gview tieExprEnvTagTypeMap
+
+        symtab <- guse equality
+
+        -- mostly duplicated code from record patterns
+        let recordphraseidents = fmap fst recordphrases
+            lkups = lookupsSeqPhrases recordphraseidents symtab
+            lkups' = sequenceA lkups
+            phrasesg = fromJust lkups'
+            ~(focusedclauseg :| _) = fmap (view (typePhraseContext % phraseParent)) phrasesg
+
+        -- not in scope checks...
+        lift $ tell $ fold $ NE.zipWith (\(ident, _) -> maybe [ _NotInScope # ident] (const [])) 
+                recordphrases lkups
+
+        -- sanity checks for valid record phrases
+        lift $ tell $ maybe [] (const (validRecordPhrasesCheck phrasesg)) lkups'
+
+        --  query the phrase substitutions from the graph
+        ~(clausetype, ttypeclauseargs, clausesubstitutions) <- lift . fmap fst . splitGraphGenCore $ 
+            clauseSubstitutions focusedclauseg
+
+        (recordphrases', (ttypesexprs, destypes, exprseqns)) <- second unzip3 . unzip . catMaybes <$> traverse 
+            (\((ident, ((), pattsexp)), phrasegdef) -> do
+                    ttypesexpr <- lift freshExprTypeTags
+                    (pattsexp', typeeqns) <- local 
+                        (set tieExprEnvTypeTags ttypesexpr) 
+                            $ patternsIAndExprIToGraph pattsexp
+                
+                    return $ case phrasegdef of
+                        Just phrasegdef -> Just 
+                            ( ( TaggedBnfcIdent ident $ phrasegdef ^. typePhraseName % uniqueTag
+                              , (ConstructorDestructorKnot phrasegdef, pattsexp') )
+                            , ( ttypesexpr
+                              , fromJust 
+                                    $ substitutesTypeGToTypeGTypeTag clausesubstitutions 
+                                    -- note that we do not simplify the arrow here!
+                                    -- indeed, we just match this against the destructor...
+                                    -- $ simplifyArrow 
+                                    $ TypeSeq 
+                                    $ TypeSeqArrF 
+                                        (init $ phrasegdef ^. typePhraseFrom) 
+                                        -- init is needed to remove the last type variable
+                                        (phrasegdef ^. typePhraseTo)
+                              , typeeqns ) 
+                            )  
+                        Nothing -> Nothing
+                    )
+            (zip (NE.toList recordphrases) (NE.toList lkups) )
+
+        let ttypeexprs = map (view exprTtype) ttypesexprs
+            eqns = TypeEqnsExist (ttypeclauseargs ++ ttypeexprs) $
+                [ TypeEqnsEq (TypeVar ttype [], clausetype) 
+                , TypeEqnsStableRef (ttypeinternal, TypeVar ttype []) ]
+                ++ zipWith (\ttypeexpr -> TypeEqnsEq . (TypeVar ttypeexpr [],)) 
+                    ttypeexprs destypes
+                -- retain the accumlated type equations
+                ++ exprseqns
+            expr = ERecord 
+                (NE.fromList recordphrases')
+                $ fromJust $ Map.lookup ttypeinternal tagmap
+
+        return (expr, bool [eqns] [] (isNothing lkups'))
+
+    f (EFold foldon phrases ()) = do
+        ttype <- gview exprTtype
+        ttypeinternal <- gview exprTtypeInternal
+        tagmap <- gview tieExprEnvTagTypeMap
+
+        symtab <- guse equality
+
+        -- compile the expression to be folded on first..
+        ttypesfoldon <- lift freshExprTypeTags
+        let ttypefoldon = ttypesfoldon ^. exprTtype
+        (foldon', ttypefoldoneqns) <- local (set tieExprEnvTypeTags ttypesfoldon) (exprIToGraph foldon)
+
+        -- compiling the phrases
+        let phraseidents = fmap (view foldPhraseIdentF) phrases
+            lkups = lookupsSeqPhrases phraseidents symtab
+            lkups' = sequenceA lkups
+            phrasesg@(focusedphrase :| _) = fromJust lkups'
+            graph = focusedphrase ^. phraseGClausesGraph
+
+        -- not in scope check..
+        lift $ tell $ fold $ zipWith (\ident -> maybe [ _NotInScope # ident] (const [])) 
+                (NE.toList phraseidents) (NE.toList lkups)
+
+        -- not in scope check..
+        lift $ tell $ bool [] (validFoldTypePhrasesCheck phrasesg) (isJust lkups')
+                
+        -- compute the type variables and the appropriate substitutions
+        ~(ttypegraphs, substitutions) <- lift . fmap fst . splitGraphGenCore $  
+                clauseGraphFreshSubstitutions graph
+
+        (ttypesfoldphrases, phrasetypes, phraseseqns, foldphrases') <- 
+                foldPhrasesWithTypePhrasesToGraph (NE.toList phrases) (NE.toList lkups)
+
+        let ttypefoldon = ttypesfoldon ^. exprTtype
+            ttypefoldphrases = map (view exprTtype) ttypesfoldphrases
+
+            -- from Prashant, we know that the type of the expression being folded on
+            -- foldon is the type clause of the first phrase...
+            focusedclauseg = focusedphrase ^. typePhraseContext % phraseParent
+            focusedclausegtype = _TypeWithArgs # 
+                ( focusedclauseg ^. typeClauseName
+                , TypeClauseCallDefKnot focusedclauseg 
+                , map (review _TypeVar . (,[])) $ focusedclauseg ^. typeClauseArgs )
+            focusedclausegtype' = fromJust $ substitutesTypeGToTypeGTypeTag substitutions focusedclausegtype 
+            ttypefocusedclause = fromJust $ lookup (focusedclauseg ^. typeClauseStateVar) substitutions
+
+            eqns = TypeEqnsExist (ttypefoldon : ttypegraphs ++ ttypefoldphrases) $ 
+                [ TypeEqnsEq (TypeVar ttypefoldon [], focusedclausegtype')
+                , TypeEqnsEq (TypeVar ttype [],  ttypefocusedclause)
+                , TypeEqnsStableRef (ttypeinternal, TypeVar ttype []) ]
+                ++ zipWith (\foldphrasettypes -> TypeEqnsEq 
+                        . (TypeVar (foldphrasettypes ^. exprTtype) [],)
+                        . fromJust
+                        . substitutesTypeGToTypeGTypeTag substitutions
+                    )
+                    ttypesfoldphrases phrasetypes 
+                ++ ttypefoldoneqns
+                ++ phraseseqns
+                
+            expr = EFold foldon' (NE.fromList foldphrases') $ fromJust $ Map.lookup ttypeinternal tagmap
+        return (expr, bool [] [eqns] (isJust lkups'))
+
+    f (EUnfold unfoldon unfoldphrases ()) = do
+        ttype <- gview exprTtype
+        ttypeinternal <- gview exprTtypeInternal
+        tagmap <- gview tieExprEnvTagTypeMap
+
+        symtab <- guse equality
+
+        -- compile the expression to be folded on first..
+        ttypesunfoldon <- lift freshExprTypeTags
+        let ttypeunfoldon = ttypesunfoldon ^. exprTtype
+
+        (unfoldon', ttypeunfoldeqns) <- local (set tieExprEnvTypeTags ttypesunfoldon) (exprIToGraph unfoldon)
+
+        let foldphrases       = fmap (view unfoldPhraseFolds) unfoldphrases
+            foldphrasesidents = fmap (fmap (view foldPhraseIdentF)) foldphrases 
+            foldphraseslkups  = fmap (`lookupsSeqPhrases` symtab) foldphrasesidents 
+            foldphraseslkups' = fromJust $ sequenceA $ fmap sequenceA foldphraseslkups  
+
+        -- not in scope check..
+        lift $ traverse (\(phraseidents, lkups) -> tell $ fold $ 
+            zipWith (\ident -> maybe [ _NotInScope # ident] (const [])) 
+                (NE.toList phraseidents) (NE.toList lkups))
+            $ zip (NE.toList foldphrasesidents) (NE.toList foldphraseslkups)
+
+        -- lift . fmap fst . splitGraphGenCore $ clauseGraphFreshSubstitutions
+
+        (ttypespatts, ttypesfoldphrases, phrasetypes, phraseseqns, unfoldphrases') <- fmap unzip5 $ traverse   
+            (\(UnfoldPhraseF patt foldphrases) -> do
+                symtab <- guse equality
+
+                ttypespatt <- lift freshExprTypeTags
+                (patteqns, patt') <- local (set tieExprEnvTypeTags ttypespatt) $ patternIToGraph patt
+
+                let phraseidents = fmap (view foldPhraseIdentF) foldphrases
+                    lkups = lookupsSeqPhrases phraseidents symtab
+                    lkups' = sequenceA lkups
+                    phrasesg@(focusedphrase :| _) = fromJust lkups'
+                    graph = focusedphrase ^. phraseGClausesGraph
+
+                -- not in scope check..
+                lift $ tell $ fold $ zipWith (\ident -> maybe [ _NotInScope # ident] (const [])) 
+                        (NE.toList phraseidents) (NE.toList lkups)
+
+                -- need to check if the record phrases are all valid
+                lift $ tell $ bool [] (validRecordPhrasesCheck phrasesg) (isJust lkups')
+
+                (ttypesfoldphrases, phrasetypes, phraseseqns, foldphrases') <- 
+                        foldPhrasesWithTypePhrasesToGraph (NE.toList foldphrases) (NE.toList lkups)
+                
+                equality .= symtab
+
+                return 
+                    ( ttypespatt 
+                    , ttypesfoldphrases
+                    , phrasetypes
+                    , phraseseqns
+                    , UnfoldPhraseF patt' (NE.fromList foldphrases')
+                    )
+                )
+            (NE.toList unfoldphrases)
+
+        undefined
 
     f n = error $ show n
+
+-- Takes an foldphrase and the corresponding Maybe TypePhrase (if it exists)
+-- and computes the: ttype, graph type of the typephrase, type equations, and graph
+-- foldphrase 
+foldPhrasesWithTypePhrasesToGraph foldphrases typephrases = fmap (unzip4 . catMaybes) 
+    $ traverse f 
+    $ zip foldphrases typephrases
+  where
+    f (FoldPhraseF ident () pattargs fexpr, lkup) = do
+        ttypesfoldphrase <- lift freshExprTypeTags
+
+        ((pattargs', fexpr'), eqns) <- local 
+                (set tieExprEnvTypeTags ttypesfoldphrase) 
+                $ patternsIAndExprIToGraph (pattargs, fexpr)
+
+        return $ case lkup of
+            Just phraseg -> Just
+                ( ttypesfoldphrase
+                , TypeSeq $ TypeSeqArrF (phraseg ^. typePhraseFrom) (phraseg ^. typePhraseTo)
+                , eqns 
+                , FoldPhraseF 
+                    (TaggedBnfcIdent ident (phraseg ^. typePhraseName % uniqueTag))
+                    (ConstructorDestructorKnot phraseg) 
+                    pattargs' 
+                    fexpr' )
+            Nothing -> Nothing
+                
+    
 
 --------------------------------------------------
 -- pattern compilation
@@ -828,66 +1042,18 @@ patternIToGraph pattern =
         -- i.e., given (Destructor1 := n1, .., Destructorp := np), it will
         -- look up the destructors Destructor1 .. Destructorp
         let recordphraseidents = fmap fst recordphrases
-            lkups = fmap 
-                    (\recordphraseident -> 
-                        fmap (view symEntryInfo)
-                        $ lookupBnfcIdent recordphraseident 
-                            $ mapMaybe
-                                ( traverseOf (_2 % symEntryInfo)
-                                    ( preview (_SymSeqCall % _SymPhrase) ))
-                            symtab
-                    )
-                    recordphraseidents 
+            lkups = lookupsSeqPhrases recordphraseidents symtab
             lkups' = sequenceA lkups
             phrasesg = fromJust lkups'
             -- get the type clause corresponding to the first phrase (which
             -- should be the same as the rest of the other phrases.....
-            clausesg@(focusedclauseg :| _) = fmap (view (typePhraseContext % phraseParent)) phrasesg
+            ~(focusedclauseg :| _) = fmap (view (typePhraseContext % phraseParent)) phrasesg
 
         -- not in scope checks...
         lift $ tell $ fold $ NE.zipWith (\(ident, _) -> maybe [ _NotInScope # ident] (const [])) 
                 recordphrases lkups
 
-        -- checking if all the phrases are codata...
-        lift $ tell $
-            bool []
-                ( foldMap 
-                    (\phraseg -> bool 
-                        [_ExpectedCodataDestructor # (phraseg ^. typePhraseName % taggedBnfcIdentBnfcIdent)] 
-                        []
-                        $ has _CodataObj (phraseg ^. phraseGObjType) ) 
-                    phrasesg )
-                (isJust lkups')
-
-        -- checking if all phrases are from the same clause i.e., we should have exactly 
-        -- one equivalence class
-        let clauseeqclasses = NE.groupBy1 ((==) `on` view typeClauseName . fst) 
-                $ NE.zip clausesg phrasesg
-        lift $ tell $ bool [] 
-                ( foldMap 
-                    ( pure 
-                    . review _ExpectedDestructorsFromSameClause 
-                    . fmap ( view (typeClauseName % taggedBnfcIdentBnfcIdent) 
-                                        *** view (typePhraseName % taggedBnfcIdentBnfcIdent)) 
-                                ) 
-                        clauseeqclasses ) 
-                    (isJust lkups' && length clauseeqclasses > 1)  
-
-        -- check for duplicated declarations in each record phrase...
-        let duplicateddecseqclasses = NE.group1 recordphraseidents
-            duplicateddecs = NE.filter ((>1) . length) duplicateddecseqclasses
-        lift $ tell $ bool [] 
-            (map (review _DuplicatedDeclarations . NE.toList) duplicateddecs)
-            (isJust lkups' && not (null duplicateddecs))
-
-        -- check if all the record phrases are present in the pattern match
-        -- i.e., this is an exhaustive record
-        let nonexhaustivephrases = exhaustivephrases \\ usedphrases
-            exhaustivephrases = map (view typePhraseName) $ focusedclauseg ^. typeClausePhrases
-            usedphrases       = map (view typePhraseName) $ NE.toList phrasesg 
-        lift $ tell $ bool []
-            [_NonExhaustiveRecordPhrases # (map (view taggedBnfcIdentBnfcIdent) nonexhaustivephrases)]
-            (isJust lkups' && not (null nonexhaustivephrases))
+        lift $ tell $ bool [] (validRecordPhrasesCheck phrasesg) (isJust lkups')
             
         --  query the phrase substitutions from the graph
         ~(clausetype, ttypeclauseargs, clausesubstitutions) <- lift . fmap fst . splitGraphGenCore $ 
@@ -897,7 +1063,6 @@ patternIToGraph pattern =
         (recordphrases', (ttypespatts, destypes, pattseqns)) <- second unzip3 . unzip . catMaybes <$> traverse 
             (\((ident, ((), patt)), phrasegdef) -> do
                     ttypespatt <- lift freshExprTypeTags
-                    -- this is problematic.. this needs to be delayed..
                     (typeeqns, patt') <- local 
                         (set tieExprEnvTypeTags ttypespatt) 
                         (patternIToGraph patt)
@@ -919,7 +1084,7 @@ patternIToGraph pattern =
                             )  
                         Nothing -> Nothing
                     )
-            (zip (NE.toList recordphrases) (NE.toList lkups) )
+            (zip (NE.toList recordphrases) (NE.toList lkups))
 
         let ttypepatts = map (view exprTtype) ttypespatts
             eqns = TypeEqnsExist (ttypepatts ++ ttypeclauseargs) $
@@ -963,8 +1128,8 @@ patternIToGraph pattern =
     f ( PVar ident () ) = do
         ttype <- gview (exprTypeTags % exprTtype)
         ttypeinternal <- gview (exprTypeTags % exprTtypeInternal)
-
         tagmap <- gview tieExprEnvTagTypeMap
+
         ident' <- lift $ tagBnfcIdent ident
         let typeeqs = 
                 [ TypeEqnsStableRef (ttypeinternal , TypeVar ttype []) ]
@@ -977,12 +1142,16 @@ patternIToGraph pattern =
 
         return ( typeeqs, pat' )
 
-        {-
-    f ttype (PNull ident ()) = do
+    f (PNull ident ()) = do
         -- tags for null tags do not matter
-        ident' <- tagBnfcIdent ident
-        return ((mempty,[]), PNull ident' $ fromJust $ Map.lookup ttype tagmap)
-        -}
+        ttype <- gview (exprTypeTags % exprTtype)
+        ttypeinternal <- gview (exprTypeTags % exprTtypeInternal)
+        tagmap <- gview tieExprEnvTagTypeMap
+
+        ident' <- lift $ tagBnfcIdent ident
+        return 
+            ( [TypeEqnsStableRef (ttypeinternal, TypeVar ttype [])]
+            , PNull ident' $ fromJust $ Map.lookup ttypeinternal tagmap)
 
     -- TODO
 

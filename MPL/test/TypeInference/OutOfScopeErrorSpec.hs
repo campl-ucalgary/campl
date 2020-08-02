@@ -44,6 +44,9 @@ spec = do
         , outOfScopeTest5
         , outOfScopeTest6
         , outOfScopeTest7
+        , outOfScopeTest8
+        , outOfScopeTest9
+        , outOfScopeTest10
         ]
 
 --------------------
@@ -116,4 +119,30 @@ fun bar =
     a -> foo(a,a)
 |]
 
+outOfScopeTest8 = [r| 
+fun tomato = 
+    (Haha := no, CoData := inst) -> inst
+|]
 
+outOfScopeTest9 = [r| 
+codata 
+    S -> Tuple(A,B,C) =
+        P1 :: S -> A
+        P2 :: S -> B
+        P3 :: S -> C
+
+fun tomato = 
+    (P1 := (HahaOutOfSCope := a, P2 := b, P3 := c), P2 := _, P3 := _) -> a
+|]
+
+outOfScopeTest10 = [r| 
+data 
+    Nat -> S =
+        Succ :: S -> S
+        Zero ::   -> S
+
+fun double  = 
+    a,b -> fold a of
+        AA : a -> Succ(Succ(a))
+        ZFF : -> b
+|]

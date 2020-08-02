@@ -16,53 +16,52 @@ import Language.ErrM
   ',' { PT _ (TS _ 1) }
   '->' { PT _ (TS _ 2) }
   '.' { PT _ (TS _ 3) }
-  ':' { PT _ (TS _ 4) }
-  '::' { PT _ (TS _ 5) }
-  ':=' { PT _ (TS _ 6) }
-  ';' { PT _ (TS _ 7) }
-  '=' { PT _ (TS _ 8) }
-  '=>' { PT _ (TS _ 9) }
-  'and' { PT _ (TS _ 10) }
-  'as' { PT _ (TS _ 11) }
-  'case' { PT _ (TS _ 12) }
-  'close' { PT _ (TS _ 13) }
-  'codata' { PT _ (TS _ 14) }
-  'coprotocol' { PT _ (TS _ 15) }
-  'data' { PT _ (TS _ 16) }
-  'defn' { PT _ (TS _ 17) }
-  'do' { PT _ (TS _ 18) }
-  'else' { PT _ (TS _ 19) }
-  'fold' { PT _ (TS _ 20) }
-  'forall' { PT _ (TS _ 21) }
-  'fork' { PT _ (TS _ 22) }
-  'fun' { PT _ (TS _ 23) }
-  'get' { PT _ (TS _ 24) }
-  'halt' { PT _ (TS _ 25) }
-  'hcase' { PT _ (TS _ 26) }
-  'hput' { PT _ (TS _ 27) }
-  'if' { PT _ (TS _ 28) }
-  'in' { PT _ (TS _ 29) }
-  'into' { PT _ (TS _ 30) }
-  'let' { PT _ (TS _ 31) }
-  'neg' { PT _ (TS _ 32) }
-  'of' { PT _ (TS _ 33) }
-  'on' { PT _ (TS _ 34) }
-  'plug' { PT _ (TS _ 35) }
-  'potato' { PT _ (TS _ 36) }
-  'proc' { PT _ (TS _ 37) }
-  'protocol' { PT _ (TS _ 38) }
-  'put' { PT _ (TS _ 39) }
-  'race' { PT _ (TS _ 40) }
-  'split' { PT _ (TS _ 41) }
-  'switch' { PT _ (TS _ 42) }
-  'then' { PT _ (TS _ 43) }
-  'unfold' { PT _ (TS _ 44) }
-  'where' { PT _ (TS _ 45) }
-  'with' { PT _ (TS _ 46) }
-  '{' { PT _ (TS _ 47) }
-  '|' { PT _ (TS _ 48) }
-  '|=|' { PT _ (TS _ 49) }
-  '}' { PT _ (TS _ 50) }
+  '::' { PT _ (TS _ 4) }
+  ':=' { PT _ (TS _ 5) }
+  ';' { PT _ (TS _ 6) }
+  '=' { PT _ (TS _ 7) }
+  '=>' { PT _ (TS _ 8) }
+  'and' { PT _ (TS _ 9) }
+  'as' { PT _ (TS _ 10) }
+  'case' { PT _ (TS _ 11) }
+  'close' { PT _ (TS _ 12) }
+  'codata' { PT _ (TS _ 13) }
+  'coprotocol' { PT _ (TS _ 14) }
+  'data' { PT _ (TS _ 15) }
+  'defn' { PT _ (TS _ 16) }
+  'do' { PT _ (TS _ 17) }
+  'else' { PT _ (TS _ 18) }
+  'fold' { PT _ (TS _ 19) }
+  'forall' { PT _ (TS _ 20) }
+  'fork' { PT _ (TS _ 21) }
+  'fun' { PT _ (TS _ 22) }
+  'get' { PT _ (TS _ 23) }
+  'halt' { PT _ (TS _ 24) }
+  'hcase' { PT _ (TS _ 25) }
+  'hput' { PT _ (TS _ 26) }
+  'if' { PT _ (TS _ 27) }
+  'in' { PT _ (TS _ 28) }
+  'into' { PT _ (TS _ 29) }
+  'let' { PT _ (TS _ 30) }
+  'neg' { PT _ (TS _ 31) }
+  'of' { PT _ (TS _ 32) }
+  'on' { PT _ (TS _ 33) }
+  'plug' { PT _ (TS _ 34) }
+  'potato' { PT _ (TS _ 35) }
+  'proc' { PT _ (TS _ 36) }
+  'protocol' { PT _ (TS _ 37) }
+  'put' { PT _ (TS _ 38) }
+  'race' { PT _ (TS _ 39) }
+  'split' { PT _ (TS _ 40) }
+  'switch' { PT _ (TS _ 41) }
+  'then' { PT _ (TS _ 42) }
+  'unfold' { PT _ (TS _ 43) }
+  'where' { PT _ (TS _ 44) }
+  'with' { PT _ (TS _ 45) }
+  '{' { PT _ (TS _ 46) }
+  '|' { PT _ (TS _ 47) }
+  '|=|' { PT _ (TS _ 48) }
+  '}' { PT _ (TS _ 49) }
 
 L_quoted { PT _ (TL $$) }
 L_charac { PT _ (TC $$) }
@@ -255,14 +254,12 @@ Expr10 : LSquareBracket ListExpr RSquareBracket { Language.AbsMPL.LIST_EXPR $1 $
 UnfoldExprPhrase :: { UnfoldExprPhrase }
 UnfoldExprPhrase : Pattern 'of' '{' ListFoldExprPhrase '}' { Language.AbsMPL.UNFOLD_EXPR_PHRASE $1 $4 }
 ListUnfoldExprPhrase :: { [UnfoldExprPhrase] }
-ListUnfoldExprPhrase : {- empty -} { [] }
-                     | UnfoldExprPhrase { (:[]) $1 }
+ListUnfoldExprPhrase : UnfoldExprPhrase { (:[]) $1 }
                      | UnfoldExprPhrase ';' ListUnfoldExprPhrase { (:) $1 $3 }
 FoldExprPhrase :: { FoldExprPhrase }
 FoldExprPhrase : UIdent Colon ListPattern '->' Expr { Language.AbsMPL.FOLD_EXPR_PHRASE $1 $2 $3 $5 }
 ListFoldExprPhrase :: { [FoldExprPhrase] }
-ListFoldExprPhrase : {- empty -} { [] }
-                   | FoldExprPhrase { (:[]) $1 }
+ListFoldExprPhrase : FoldExprPhrase { (:[]) $1 }
                    | FoldExprPhrase ';' ListFoldExprPhrase { (:) $1 $3 }
 LetExprPhrase :: { LetExprPhrase }
 LetExprPhrase : MplStmt { Language.AbsMPL.LET_EXPR_PHRASE $1 }
@@ -275,7 +272,7 @@ ListTupleExprList :: { [TupleExprList] }
 ListTupleExprList : TupleExprList { (:[]) $1 }
                   | TupleExprList ',' ListTupleExprList { (:) $1 $3 }
 RecordExprPhrase :: { RecordExprPhrase }
-RecordExprPhrase : UIdent ':=' Expr { Language.AbsMPL.RECORD_EXPR_PHRASE $1 $3 }
+RecordExprPhrase : UIdent ':=' PattExprPhrase { Language.AbsMPL.RECORD_EXPR_HIGHER_ORDER_PHRASE $1 $3 }
 ListRecordExprPhrase :: { [RecordExprPhrase] }
 ListRecordExprPhrase : RecordExprPhrase { (:[]) $1 }
                      | RecordExprPhrase ',' ListRecordExprPhrase { (:) $1 $3 }
@@ -303,7 +300,7 @@ Pattern1 :: { Pattern }
 Pattern1 : UIdent LBracket ListPattern RBracket { Language.AbsMPL.CONSTRUCTOR_PATTERN_ARGS $1 $2 $3 $4 }
          | UIdent { Language.AbsMPL.CONSTRUCTOR_PATTERN_NO_ARGS $1 }
          | LBracket RBracket { Language.AbsMPL.UNIT_PATTERN $1 $2 }
-         | LBracket DestructorPatternPhrase ',' ListDestructorPatternPhrase RBracket { Language.AbsMPL.RECORD_PATTERN $1 $2 $4 $5 }
+         | LBracket ListDestructorPatternPhrase RBracket { Language.AbsMPL.RECORD_PATTERN $1 $2 $3 }
          | LSquareBracket ListPattern RSquareBracket { Language.AbsMPL.LIST_PATTERN $1 $2 $3 }
          | LBracket Pattern ',' ListTupleListPattern RBracket { Language.AbsMPL.TUPLE_PATTERN $1 $2 $4 $5 }
          | PIdent { Language.AbsMPL.VAR_PATTERN $1 }

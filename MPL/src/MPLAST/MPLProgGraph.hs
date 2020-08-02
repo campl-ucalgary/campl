@@ -40,7 +40,6 @@ import Data.List.NonEmpty ( NonEmpty (..) )
 import qualified Data.List.NonEmpty as NE
 import Data.Tuple
 
-
 data TaggedBnfcIdent = TaggedBnfcIdent {
     _taggedBnfcIdentBnfcIdent :: BnfcIdent
     , _taggedBnfcIdentTag :: UniqueTag
@@ -51,16 +50,20 @@ data TaggedBnfcIdent = TaggedBnfcIdent {
 instance Eq TaggedBnfcIdent where
     TaggedBnfcIdent _ a == TaggedBnfcIdent _ b =  a == b
 
+instance Ord TaggedBnfcIdent where
+    TaggedBnfcIdent _ a <= TaggedBnfcIdent _ b =  a <= b
+
 newtype UniqueTag = UniqueTag { _unUniqueTag :: Unique }
   deriving (Show, Eq, Ord, Read, Enum)
 
 $(makeClassy ''UniqueTag)
 
-
 data ClausesGraph ident = ClausesGraph {
     _clauseGraphObjectType :: ObjectType
     , _clauseGraphSpine :: ClauseGraphSpine ident 
+    , _clauseGraphUniqueTag :: UniqueTag
 }  deriving Show
+
 
 type ClauseGraphSpine ident = NonEmpty ( TypeClauseG ident )
 
@@ -176,6 +179,11 @@ $(concat <$> traverse makePrisms
     ]
  )
 
+phraseGClausesGraph = typePhraseContext 
+    % phraseParent 
+    % typeClauseNeighbors
+    % clauseGraph
+
 phraseGObjType = typePhraseContext 
     % phraseParent 
     % clauseGObjType
@@ -259,6 +267,12 @@ bnfcIdentPos = lens get set
 instance HasUniqueTag TaggedBnfcIdent where
     uniqueTag = taggedBnfcIdentTag 
 
+instance HasUniqueTag (ClausesGraph ident) where
+    uniqueTag = clauseGraphUniqueTag 
+
+instance Eq (ClausesGraph ident) where
+    a == b = a ^. uniqueTag == b ^. uniqueTag
+
 progGQueryFunctions :: 
     (Prog (DefnG TaggedBnfcIdent TypeTag)) -> 
     [FunctionDefG TaggedBnfcIdent TypeTag]
@@ -277,3 +291,35 @@ progGQueryTypeClausesGraphs (Prog defsg) = concatMap f defsg
     g (ObjectG defn) = Just defn
     g _ = Nothing
 
+-- | Gets the statevars mapping to a type clause..
+clauseGraphStateVarsToClause :: 
+    ClausesGraph ident ->
+    NonEmpty (ident, TypeClauseG ident)
+clauseGraphStateVarsToClause = 
+    fmap (view typeClauseStateVar &&& id) . view clauseGraphSpine
+
+clauseGraphStateVars :: 
+    ClausesGraph ident ->
+    NonEmpty ident
+clauseGraphStateVars = fmap fst . clauseGraphStateVarsToClause
+
+clauseGraphTypeArgs :: 
+    ClausesGraph ident ->
+    [ident]
+clauseGraphTypeArgs clausegraph = focusedclauseg ^. typeClauseArgs
+  where
+    -- recall that each type clause in a clause graph
+    -- should have the same type variables
+    (focusedclauseg :| _) = clausegraph ^. clauseGraphSpine
+
+-- | get all the clause graph phrases
+clauseGraphPhrases ::
+    ClausesGraph ident ->
+    NonEmpty (TypePhraseG ident)
+clauseGraphPhrases clausegraph = 
+    NE.fromList 
+    $ concatMap f
+    $ NE.toList 
+    $ clausegraph ^. clauseGraphSpine 
+  where
+    f clauseg = clauseg ^. typeClausePhrases

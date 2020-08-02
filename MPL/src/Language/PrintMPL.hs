@@ -250,7 +250,7 @@ instance Print TypeHandleName where
 instance Print Expr where
   prt i e = case e of
     EXPR expr -> prPrec i 0 (concatD [prt 0 expr])
-    TYPED_EXPR expr mpltype -> prPrec i 0 (concatD [prt 0 expr, doc (showString ":"), prt 0 mpltype])
+    TYPED_EXPR expr mpltype -> prPrec i 0 (concatD [prt 0 expr, doc (showString "::"), prt 0 mpltype])
     IF_EXPR expr1 expr2 expr3 -> prPrec i 0 (concatD [doc (showString "if"), prt 0 expr1, doc (showString "then"), prt 0 expr2, doc (showString "else"), prt 0 expr3])
     LET_EXPR letexprphrases expr -> prPrec i 0 (concatD [doc (showString "let"), doc (showString "{"), prt 0 letexprphrases, doc (showString "}"), doc (showString "in"), prt 0 expr])
     INFIXR0_EXPR expr1 colon expr2 -> prPrec i 0 (concatD [prt 1 expr1, prt 0 colon, prt 0 expr2])
@@ -285,13 +285,11 @@ instance Print Expr where
 instance Print UnfoldExprPhrase where
   prt i e = case e of
     UNFOLD_EXPR_PHRASE pattern foldexprphrases -> prPrec i 0 (concatD [prt 0 pattern, doc (showString "of"), doc (showString "{"), prt 0 foldexprphrases, doc (showString "}")])
-  prtList _ [] = (concatD [])
   prtList _ [x] = (concatD [prt 0 x])
   prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ";"), prt 0 xs])
 instance Print FoldExprPhrase where
   prt i e = case e of
     FOLD_EXPR_PHRASE uident colon patterns expr -> prPrec i 0 (concatD [prt 0 uident, prt 0 colon, prt 0 patterns, doc (showString "->"), prt 0 expr])
-  prtList _ [] = (concatD [])
   prtList _ [x] = (concatD [prt 0 x])
   prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ";"), prt 0 xs])
 instance Print LetExprPhrase where
@@ -307,6 +305,7 @@ instance Print TupleExprList where
 instance Print RecordExprPhrase where
   prt i e = case e of
     RECORD_EXPR_PHRASE uident expr -> prPrec i 0 (concatD [prt 0 uident, doc (showString ":="), prt 0 expr])
+    RECORD_EXPR_HIGHER_ORDER_PHRASE uident pattexprphrase -> prPrec i 0 (concatD [prt 0 uident, doc (showString ":="), prt 0 pattexprphrase])
   prtList _ [x] = (concatD [prt 0 x])
   prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ","), prt 0 xs])
 instance Print SwitchExprPhrase where
@@ -322,12 +321,12 @@ instance Print PattExprPhrase where
 instance Print Pattern where
   prt i e = case e of
     PATTERN pattern -> prPrec i 0 (concatD [prt 0 pattern])
-    TYPED_PATTERN pattern mpltype -> prPrec i 0 (concatD [prt 0 pattern, doc (showString ":"), prt 0 mpltype])
+    TYPED_PATTERN pattern mpltype -> prPrec i 0 (concatD [prt 0 pattern, doc (showString "::"), prt 0 mpltype])
     LIST_COLON_PATTERN pattern1 colon pattern2 -> prPrec i 0 (concatD [prt 1 pattern1, prt 0 colon, prt 0 pattern2])
     CONSTRUCTOR_PATTERN_ARGS uident lbracket patterns rbracket -> prPrec i 1 (concatD [prt 0 uident, prt 0 lbracket, prt 0 patterns, prt 0 rbracket])
     CONSTRUCTOR_PATTERN_NO_ARGS uident -> prPrec i 1 (concatD [prt 0 uident])
     UNIT_PATTERN lbracket rbracket -> prPrec i 1 (concatD [prt 0 lbracket, prt 0 rbracket])
-    RECORD_PATTERN lbracket destructorpatternphrase destructorpatternphrases rbracket -> prPrec i 1 (concatD [prt 0 lbracket, prt 0 destructorpatternphrase, doc (showString ","), prt 0 destructorpatternphrases, prt 0 rbracket])
+    RECORD_PATTERN lbracket destructorpatternphrases rbracket -> prPrec i 1 (concatD [prt 0 lbracket, prt 0 destructorpatternphrases, prt 0 rbracket])
     LIST_PATTERN lsquarebracket patterns rsquarebracket -> prPrec i 1 (concatD [prt 0 lsquarebracket, prt 0 patterns, prt 0 rsquarebracket])
     TUPLE_PATTERN lbracket pattern tuplelistpatterns rbracket -> prPrec i 1 (concatD [prt 0 lbracket, prt 0 pattern, doc (showString ","), prt 0 tuplelistpatterns, prt 0 rbracket])
     VAR_PATTERN pident -> prPrec i 1 (concatD [prt 0 pident])

@@ -21,7 +21,7 @@ $i = [$l $d _ ']          -- identifier character
 $u = [\0-\255]          -- universal: any character
 
 @rsyms =    -- symbols and non-identifier-like reserved words
-   \, | \{ | \} | \; | \| | \. | \- \> | \= \> | \= | \: \: | \: | \: \= | \| \= \|
+   \, | \{ | \} | \; | \| | \. | \- \> | \= \> | \= | \: \: | \: \= | \| \= \|
 
 :-
 "--" [.]* ; -- Toss single line comments
@@ -158,7 +158,7 @@ eitherResIdent tv s = treeFind resWords
                               | s == a = t
 
 resWords :: BTree
-resWords = b "hcase" 26 (b "close" 13 (b ";" 7 (b ":" 4 (b "->" 2 (b "," 1 N N) (b "." 3 N N)) (b ":=" 6 (b "::" 5 N N) N)) (b "and" 10 (b "=>" 9 (b "=" 8 N N) N) (b "case" 12 (b "as" 11 N N) N))) (b "fold" 20 (b "defn" 17 (b "coprotocol" 15 (b "codata" 14 N N) (b "data" 16 N N)) (b "else" 19 (b "do" 18 N N) N)) (b "fun" 23 (b "fork" 22 (b "forall" 21 N N) N) (b "halt" 25 (b "get" 24 N N) N)))) (b "put" 39 (b "of" 33 (b "into" 30 (b "if" 28 (b "hput" 27 N N) (b "in" 29 N N)) (b "neg" 32 (b "let" 31 N N) N)) (b "potato" 36 (b "plug" 35 (b "on" 34 N N) N) (b "protocol" 38 (b "proc" 37 N N) N))) (b "where" 45 (b "switch" 42 (b "split" 41 (b "race" 40 N N) N) (b "unfold" 44 (b "then" 43 N N) N)) (b "|" 48 (b "{" 47 (b "with" 46 N N) N) (b "}" 50 (b "|=|" 49 N N) N))))
+resWords = b "hcase" 25 (b "codata" 13 (b "=" 7 (b "::" 4 (b "->" 2 (b "," 1 N N) (b "." 3 N N)) (b ";" 6 (b ":=" 5 N N) N)) (b "as" 10 (b "and" 9 (b "=>" 8 N N) N) (b "close" 12 (b "case" 11 N N) N))) (b "fold" 19 (b "defn" 16 (b "data" 15 (b "coprotocol" 14 N N) N) (b "else" 18 (b "do" 17 N N) N)) (b "fun" 22 (b "fork" 21 (b "forall" 20 N N) N) (b "halt" 24 (b "get" 23 N N) N)))) (b "put" 38 (b "of" 32 (b "into" 29 (b "if" 27 (b "hput" 26 N N) (b "in" 28 N N)) (b "neg" 31 (b "let" 30 N N) N)) (b "potato" 35 (b "plug" 34 (b "on" 33 N N) N) (b "protocol" 37 (b "proc" 36 N N) N))) (b "where" 44 (b "switch" 41 (b "split" 40 (b "race" 39 N N) N) (b "unfold" 43 (b "then" 42 N N) N)) (b "|" 47 (b "{" 46 (b "with" 45 N N) N) (b "}" 49 (b "|=|" 48 N N) N))))
    where b s n = let bs = id s
                   in B bs (TS bs n)
 

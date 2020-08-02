@@ -81,11 +81,12 @@ data Expr pattern letdef typedef calleddef ident =
         , _eType :: typedef }
     | EFold { 
         _eFold :: Expr pattern letdef typedef calleddef ident
-        , _eFoldPhrases :: [FoldPhraseF pattern calleddef ident (Expr pattern letdef typedef calleddef ident)]
+        , _eFoldPhrases :: NonEmpty (FoldPhraseF pattern calleddef ident (Expr pattern letdef typedef calleddef ident))
         , _eType :: typedef }
     | EUnfold { 
         _eUnfold :: Expr pattern letdef typedef calleddef ident
-        , _eUnfoldPhrases :: [UnfoldPhraseF pattern calleddef ident (Expr pattern letdef typedef calleddef ident)] 
+        , _eUnfoldPhrases :: NonEmpty 
+            (UnfoldPhraseF pattern calleddef ident (Expr pattern letdef typedef calleddef ident))
         , _eType :: typedef }
     | ECase { 
          _eCaseOn :: Expr pattern letdef typedef calleddef ident
@@ -108,14 +109,13 @@ data Expr pattern letdef typedef calleddef ident =
         , _eArgs :: [Expr pattern letdef typedef calleddef ident] 
         , _eType :: typedef }
     | ERecord { 
-        _eRecord :: ident
-        , _eRecordDef :: calleddef
-        , _eRecordPhrases :: NonEmpty (ident, Expr pattern letdef typedef calleddef ident) 
+        _eRecordPhrases :: NonEmpty 
+            (ident, (calleddef, ([pattern], Expr pattern letdef typedef calleddef ident)))
         , _eType :: typedef }
   deriving ( Read, Show, Generic, Out, Data, Eq )
 
 data FoldPhraseF pattern calleddef ident t = FoldPhraseF {
-    _foldPhraseFieldF :: ident
+    _foldPhraseIdentF :: ident
     , _foldPhraseFieldDefF :: calleddef
     , _foldPhraseArgsF :: [pattern]
     , _foldPhraseExprF :: t
@@ -124,7 +124,7 @@ data FoldPhraseF pattern calleddef ident t = FoldPhraseF {
 data UnfoldPhraseF pattern calleddef ident t = UnfoldPhraseF {
     _unfoldPhraseStateF :: pattern
         -- TODO this should be a pattern
-    , _unfoldPhraseFolds :: [FoldPhraseF pattern calleddef ident t]
+    , _unfoldPhraseFolds :: NonEmpty (FoldPhraseF pattern calleddef ident t)
 } deriving ( Read, Show, Generic, Out, Data, Functor, Typeable, Foldable, Traversable, Eq )
 
 
@@ -180,13 +180,16 @@ data InternalOperators =
 
   deriving MPL_TYPE_AST_PLAIN_DATA_DERIVING_CLAUSE 
 
-$(concat <$> traverse (makeFieldLabelsWith (fieldLabelsRules & lensField .~ underscoreNoPrefixNamer))
+$(concat <$> traverse makeLenses
     [ ''Expr
+    , ''FoldPhraseF 
+    , ''UnfoldPhraseF 
     ]
  )
 $(concat <$> traverse makePrisms 
     [ ''Expr
     , ''InternalOperators
+    , ''FoldPhraseF 
     ]
  )
 

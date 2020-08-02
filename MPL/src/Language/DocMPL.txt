@@ -127,8 +127,7 @@ The reserved words used in MPL are the following:
 The symbols used in MPL are the following:
   | , | { | } | ;
   | | | . | -> | =>
-  | = | :: | : | :=
-  | |=| |  |  | 
+  | = | :: | := | |=|
 
 ===Comments===
 Single-line comments begin with --.Multiple-line comments are  enclosed with {- and -}.
@@ -238,12 +237,10 @@ All other symbols are terminals.
   |  |  **|**  | //LBracket// //[RecordExprPhrase]// //RBracket// 
   |  |  **|**  | //LBracket// //Expr// //RBracket// 
   | //UnfoldExprPhrase// | -> | //Pattern// ``of`` ``{`` //[FoldExprPhrase]// ``}`` 
-  | //[UnfoldExprPhrase]// | -> | **eps**
-  |  |  **|**  | //UnfoldExprPhrase// 
+  | //[UnfoldExprPhrase]// | -> | //UnfoldExprPhrase// 
   |  |  **|**  | //UnfoldExprPhrase// ``;`` //[UnfoldExprPhrase]// 
   | //FoldExprPhrase// | -> | //UIdent// //Colon// //[Pattern]// ``->`` //Expr// 
-  | //[FoldExprPhrase]// | -> | **eps**
-  |  |  **|**  | //FoldExprPhrase// 
+  | //[FoldExprPhrase]// | -> | //FoldExprPhrase// 
   |  |  **|**  | //FoldExprPhrase// ``;`` //[FoldExprPhrase]// 
   | //LetExprPhrase// | -> | //MplStmt// 
   | //[LetExprPhrase]// | -> | //LetExprPhrase// 
@@ -251,7 +248,7 @@ All other symbols are terminals.
   | //TupleExprList// | -> | //Expr// 
   | //[TupleExprList]// | -> | //TupleExprList// 
   |  |  **|**  | //TupleExprList// ``,`` //[TupleExprList]// 
-  | //RecordExprPhrase// | -> | //UIdent// ``:=`` //Expr// 
+  | //RecordExprPhrase// | -> | //UIdent// ``:=`` //PattExprPhrase// 
   | //[RecordExprPhrase]// | -> | //RecordExprPhrase// 
   |  |  **|**  | //RecordExprPhrase// ``,`` //[RecordExprPhrase]// 
   | //SwitchExprPhrase// | -> | //Expr// ``->`` //Expr// 
@@ -270,7 +267,7 @@ All other symbols are terminals.
   | //Pattern1// | -> | //UIdent// //LBracket// //[Pattern]// //RBracket// 
   |  |  **|**  | //UIdent// 
   |  |  **|**  | //LBracket// //RBracket// 
-  |  |  **|**  | //LBracket// //DestructorPatternPhrase// ``,`` //[DestructorPatternPhrase]// //RBracket// 
+  |  |  **|**  | //LBracket// //[DestructorPatternPhrase]// //RBracket// 
   |  |  **|**  | //LSquareBracket// //[Pattern]// //RSquareBracket// 
   |  |  **|**  | //LBracket// //Pattern// ``,`` //[TupleListPattern]// //RBracket// 
   |  |  **|**  | //PIdent// 

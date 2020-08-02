@@ -141,6 +141,38 @@ translateExprGToBnfcExpr (ECall ident calldef args etype) =
         (map translatePatternGtoBnfcPattern [patt]) 
         (translateExprGToBnfcExpr expr)
     etype' = translateTypeToBnfcType etype
+translateExprGToBnfcExpr (ERecord recordphrases etype) = 
+    B.TYPED_EXPR expr' etype'
+  where
+    expr' = B.RECORD_EXPR bnfcLBracket recordphrases' bnfcRBracket
+    recordphrases' = NE.toList $ fmap f recordphrases
+      where
+        f (ident, (calldef, ([],expr))) = 
+            B.RECORD_EXPR_PHRASE (toBnfcUIdent $ pprint ident) (translateExprGToBnfcExpr expr)
+        f (ident, (calldef, (patts,expr))) = 
+            B.RECORD_EXPR_HIGHER_ORDER_PHRASE 
+                (toBnfcUIdent $ pprint ident) 
+                $ B.PATTERN_TO_EXPR
+                    (map translatePatternGtoBnfcPattern patts)
+                    (translateExprGToBnfcExpr expr)
+        -- f (ident, (calldef, (_,expr))) = undefined
+    etype' = translateTypeToBnfcType etype
+
+translateExprGToBnfcExpr (EFold foldon phrases etype) = 
+    B.TYPED_EXPR expr' etype'
+  where
+    expr' = B.FOLD_EXPR (translateExprGToBnfcExpr foldon) $ 
+        map f $ NE.toList phrases
+      where
+        f (FoldPhraseF ident _ args t) = 
+            B.FOLD_EXPR_PHRASE 
+                (toBnfcUIdent $ pprint ident)
+                bnfcColon
+                (map translatePatternGtoBnfcPattern args)
+                (translateExprGToBnfcExpr t)
+
+            
+    etype' = translateTypeToBnfcType etype
 
 translatePatternGtoBnfcPattern ::
     ( PPrint ident, Eq typevar, PPrint typevar) =>
@@ -155,13 +187,12 @@ translatePatternGtoBnfcPattern (PConstructor ident calldef pargs ptype) =
         (map translatePatternGtoBnfcPattern pargs)
         bnfcRBracket
     ptype' = translateTypeToBnfcType ptype
-translatePatternGtoBnfcPattern (PRecord (parg :| pargs) ptype) = 
+translatePatternGtoBnfcPattern (PRecord pargs ptype) = 
     B.TYPED_PATTERN patt' ptype'
   where
     patt' = B.RECORD_PATTERN
         bnfcLBracket
-        (toDestructorPatternPhrase parg)
-        (map toDestructorPatternPhrase pargs)
+        (NE.toList $ fmap toDestructorPatternPhrase pargs)
         bnfcRBracket
     ptype' = translateTypeToBnfcType ptype
 
@@ -170,12 +201,16 @@ translatePatternGtoBnfcPattern (PRecord (parg :| pargs) ptype) =
                 (toBnfcUIdent $ pprint ident) 
                 (translatePatternGtoBnfcPattern patt)
                 )
-
-
 translatePatternGtoBnfcPattern (PVar ident ptype) = 
     B.TYPED_PATTERN patt' ptype'
   where
     patt' = VAR_PATTERN $ toBnfcPIdent $ pprint ident
+    ptype' =  translateTypeToBnfcType ptype
+
+translatePatternGtoBnfcPattern (PNull ident ptype) = 
+    B.TYPED_PATTERN patt' ptype'
+  where
+    patt' = NULL_PATTERN $ NullPattern $ ((-1,-1), pprint ident)
     ptype' =  translateTypeToBnfcType ptype
 
 translateFunctionGToBnfcFunction :: 
@@ -193,11 +228,14 @@ translateFunctionGToBnfcFunction (FunctionDefn funname funtype fundefn) =
         (translateExprGToBnfcExpr expr)
 
 
+
 bnfcLBracket = LBracket ((-1,-1), "(")
 bnfcRBracket = RBracket ((-1,-1), ")")
 
 bnfcLSquareBracket = LSquareBracket ((-1,-1), "[")
 bnfcRSquareBracket = RSquareBracket ((-1,-1), "]")
+
+bnfcColon = Colon ((-1,-1), ":")
 
 toBnfcUIdent str = UIdent ((-1,-1), str)
 toBnfcPIdent str = PIdent ((-1,-1), str)

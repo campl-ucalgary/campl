@@ -53,8 +53,8 @@ translateBnfcPattern (B.CONSTRUCTOR_PATTERN_NO_ARGS ident) =
 
 translateBnfcPattern (B.UNIT_PATTERN lbr rbr) = error "Unit pattern not implemented yet"
 
-translateBnfcPattern (B.RECORD_PATTERN _ a as _) = do
-    review _PRecord (f a :| map f as, ())
+translateBnfcPattern (B.RECORD_PATTERN _ as _) = do
+    review _PRecord (NE.fromList $  map f as, ())
   where
     f (B.DESTRUCTOR_PATTERN_PHRASE ident patt) = (ident ^. uIdentBnfcIdentGetter, ((), translateBnfcPattern patt))
         

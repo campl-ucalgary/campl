@@ -149,7 +149,9 @@ data LetExprPhrase = LET_EXPR_PHRASE MplStmt
 data TupleExprList = TUPLE_EXPR_LIST Expr
   deriving (Eq, Ord, Show, Read)
 
-data RecordExprPhrase = RECORD_EXPR_PHRASE UIdent Expr
+data RecordExprPhrase
+    = RECORD_EXPR_PHRASE UIdent Expr
+    | RECORD_EXPR_HIGHER_ORDER_PHRASE UIdent PattExprPhrase
   deriving (Eq, Ord, Show, Read)
 
 data SwitchExprPhrase = SWITCH_EXPR_PHRASE Expr Expr
@@ -165,7 +167,7 @@ data Pattern
     | CONSTRUCTOR_PATTERN_ARGS UIdent LBracket [Pattern] RBracket
     | CONSTRUCTOR_PATTERN_NO_ARGS UIdent
     | UNIT_PATTERN LBracket RBracket
-    | RECORD_PATTERN LBracket DestructorPatternPhrase [DestructorPatternPhrase] RBracket
+    | RECORD_PATTERN LBracket [DestructorPatternPhrase] RBracket
     | LIST_PATTERN LSquareBracket [Pattern] RSquareBracket
     | TUPLE_PATTERN LBracket Pattern [TupleListPattern] RBracket
     | VAR_PATTERN PIdent

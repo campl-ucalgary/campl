@@ -203,13 +203,13 @@ translateBnfcExpr (B.UNIT_EXPR lbr rbr) = return $ review _EUnit (lbr ^. lBracke
 translateBnfcExpr (B.FOLD_EXPR expr phrases) = do
     n <- runAccumEither $ (,,)
         <$> liftAEither (translateBnfcExpr expr)
-        <*> traverse translateBnfcFoldPhrase phrases
+        <*> (NE.fromList <$> traverse translateBnfcFoldPhrase phrases)
         <*> pure ()
     return $ review _EFold n
 translateBnfcExpr (B.UNFOLD_EXPR expr phrases) = do
     n <- runAccumEither $ (,,)
         <$> liftAEither (translateBnfcExpr expr)
-        <*> traverse translateBnfcUnfoldPhrase phrases
+        <*> (NE.fromList <$> traverse translateBnfcUnfoldPhrase phrases)
         <*> pure ()
     return $ review _EUnfold n
 
@@ -251,7 +251,7 @@ translateBnfcExpr (B.FUN_EXPR fun _ args _) = do
             <$> runAccumEither (traverse (liftAEither . translateBnfcExpr) args) )
     return $ review _ECall (a,b,c,())
 translateBnfcExpr (B.RECORD_EXPR lbr exprs _) = 
-    ERecord (lbr ^. lBracketBnfcIdentGetter) () . NE.fromList
+    ERecord . NE.fromList
         <$> runAccumEither (traverse (liftAEither . translateBnfcRecordExprPhrase) exprs)
         <*> pure ()
 
@@ -266,7 +266,7 @@ translateBnfcFoldPhrase (B.FOLD_EXPR_PHRASE ident _ patts expr) =
         <*> liftAEither (translateBnfcExpr expr)
 
 translateBnfcUnfoldPhrase (B.UNFOLD_EXPR_PHRASE exp foldphrases) = UnfoldPhraseF (translateBnfcPattern exp) 
-    <$> traverse translateBnfcFoldPhrase foldphrases
+    . NE.fromList <$> traverse translateBnfcFoldPhrase foldphrases
 
 translateBnfcSwitchExprPhrase (B.SWITCH_EXPR_PHRASE a b) = 
     (,) <$> translateBnfcExpr a <*> translateBnfcExpr b
@@ -274,7 +274,14 @@ translateBnfcSwitchExprPhrase (B.SWITCH_EXPR_PHRASE a b) =
 translateBnfcTupleExprList (B.TUPLE_EXPR_LIST e) = translateBnfcExpr e
 
 translateBnfcRecordExprPhrase (B.RECORD_EXPR_PHRASE ident expr) =
-    (ident ^. uIdentBnfcIdentGetter,) <$> translateBnfcExpr expr
+    translateBnfcRecordExprPhrase (B.RECORD_EXPR_HIGHER_ORDER_PHRASE ident (B.PATTERN_TO_EXPR [] expr))
+translateBnfcRecordExprPhrase (B.RECORD_EXPR_HIGHER_ORDER_PHRASE ident (B.PATTERN_TO_EXPR patts expr)) = do
+    let patts' = map translateBnfcPattern patts
+    expr' <- translateBnfcExpr expr
+    return (ident ^. uIdentBnfcIdentGetter, ((), (patts',expr')))
+    
+    
+
 ----------
     
 -- Process trnaslation

@@ -80,6 +80,40 @@ clauseSubstitutions clauseg = do
             , map snd clauseargsubs
             , statevarsubstitiions ++ argsubstitions)
 
+clauseGraphSubstitutions :: 
+    ( MonadState s m 
+    , HasUniqueSupply s ) =>
+    ClausesGraph TaggedBnfcIdent ->
+    m ( [TypeTag]
+      , [(TaggedBnfcIdent, TypeGTypeTag)] )
+    -- ( type tags of the arguments 
+    -- , substitituions for the state variables)
+clauseGraphSubstitutions graph = do
+    (_, ttypeargs, subs) <- clauseSubstitutions 
+        (NE.head (graph ^. clauseGraphSpine))
+    return (ttypeargs, subs)
+
+
+-- | Gives us the fresh substititions for each of the type varaibles
+-- and state variables for a clause graph
+clauseGraphFreshSubstitutions ::
+    ( MonadState s m 
+    , HasUniqueSupply s ) =>
+    ClausesGraph TaggedBnfcIdent -> 
+    m ( [TypeTag]
+    , [(TaggedBnfcIdent, TypeGTypeTag)])
+    -- ( fresh type tags
+    -- , substitutions)
+    -- Note that the substitutions include the state variables and arguments
+clauseGraphFreshSubstitutions clausegraph = do
+    freshargs <- traverse (const freshTypeTag) argidents
+    return (freshargs, zip argidents (map (flip TypeVar []) freshargs) )
+  where
+    argidents = statevars ++ typeargs
+    statevars = NE.toList $ clauseGraphStateVars clausegraph
+    typeargs = clauseGraphTypeArgs clausegraph
+
+
 annotateTypeIToTypeGAndGenSubs :: 
     [(String, SymEntry SymSeqConcTypeInfo)] -> 
     Type () BnfcIdent BnfcIdent -> 

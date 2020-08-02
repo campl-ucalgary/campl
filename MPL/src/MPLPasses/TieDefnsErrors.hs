@@ -38,6 +38,13 @@ data FunctionError =
     | ExpectedCaseDataConstructors (ExprI BnfcIdent)
     | ExpectedCaseSameConstructors (ExprI BnfcIdent)
 
+    -- | TODO this needs to be a better error message i.e.
+    -- we have [[BnfcIdent]] the list of phrases for which are from different
+    -- graphs, but which graphs do they come from?
+    | FoldUnfoldPhraseFromDifferentGraphs [[BnfcIdent]]
+    | NonExhaustiveFold [BnfcIdent]
+
+    -- | unfold errors
   deriving Show
 
 $(concat <$> traverse makeClassyPrisms 
@@ -68,3 +75,4 @@ instance AsTypeClauseError TieDefnsError where
 instance AsUnificationError TieDefnsError where
     _UnificationError = _TieDefnUnificationError
     
+
