@@ -163,21 +163,10 @@ annotateTypeIToTypeGAndScopeFreeVars = cata f
                         (TaggedBnfcIdent ident tag) 
                         args'
 
-
-            {- don this one need the next one
-            Just (SymEntry tag pos (SymClause n)) -> do
-                return $ TypeWithArgs 
-                    (TaggedBnfcIdent ident tag) 
-                    (TypeClauseCallDefKnot n) 
-                    args'
-
+            {- 
             -- We need to test for infinite kind checks here..
             -- In otherwords, we should not have stuff like A(A,B)
-            Just (SymEntry tag pos SymTypeVar) -> do
-                return $ TypeVar (TaggedBnfcIdent ident tag) 
-                    args'
                     -}
-
             Nothing -> do
                 taggedident <- lift $ tagBnfcIdent ident
                 ttype <- lift $ freshTypeTag
@@ -204,8 +193,7 @@ annotateTypeIToTypeGAndScopeFreeVars = cata f
         -- fmap TypeSeq <$> sequenceA seq
     f (TypeConcF conc) = do
         conc' <- sequenceA conc
-        case conc' of
-            TypeConcArrF seqs ins outs -> undefined
+        TypeConc <$> lift (tagConcTypeF conc')
     
 
 {-

@@ -7,6 +7,7 @@ module MPLUtil.UniqueSupply where
 import System.IO.Unsafe
 import Data.IORef
 import Control.Arrow
+import Data.Word
 
 import MPLUtil.Data.Stream (Stream (..))
 import qualified MPLUtil.Data.Stream as Stream
@@ -18,10 +19,10 @@ import Optics
 {- Lazy tree of unique values... -}
 
 data UniqueSupply = 
-    UniqueSupply !Int UniqueSupply UniqueSupply
+    UniqueSupply !Word UniqueSupply UniqueSupply
 $(makeClassy ''UniqueSupply)
 
-newtype Unique = Unique Int
+newtype Unique = Unique Word
   deriving (Show, Eq, Ord, Read, Enum)
 
 uniqueFromSupply :: UniqueSupply -> Unique 
@@ -36,9 +37,9 @@ uniquesFromSupply supply =
   where
     ~(_,r) = split supply
 
-initUniqueSupply :: IORef Int -> IO UniqueSupply
+initUniqueSupply :: IORef Word -> IO UniqueSupply
 initUniqueSupply ref = unsafeInterleaveIO $ do
-    n <- freshInt ref
+    n <- freshWord ref
     l <- initUniqueSupply ref
     r <- initUniqueSupply ref
     return (UniqueSupply n l r)
@@ -49,8 +50,8 @@ uniqueIntRef :: IORef Int
 uniqueIntRef = unsafePerformIO $ newIORef 0
 -}
 
-freshInt :: IORef Int -> IO Int
-freshInt ref = atomicModifyIORef' ref (succ&&&id) 
+freshWord :: IORef Word -> IO Word
+freshWord ref = atomicModifyIORef' ref (succ&&&id) 
     {-
     do
     n <- readIORef uniqueIntRef

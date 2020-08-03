@@ -39,8 +39,8 @@ unsafeTranslateParseLexGraph ::
     String -> 
     IO (Either [TieDefnsError] (Prog (DefnG TaggedBnfcIdent TypeTag TaggedChIdent)))
 unsafeTranslateParseLexGraph str = do
-    st <- defaultGraphGenCoreState
-    return $ progInterfaceToGraph ([], defaultGraphGenCoreEnv, st) (unsafeTranslateParseLex str) 
+    (env, st) <- defaultGraphGenCore
+    return $ progInterfaceToGraph ([], env, st) (unsafeTranslateParseLex str) 
 
 {-
 progGTypes :: 

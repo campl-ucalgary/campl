@@ -190,10 +190,14 @@ $(concat <$> traverse makeLenses
     [ ''ClausesKnot
     , ''ClausePhraseKnot 
     , ''ClausesGraph 
-    , ''TaggedBnfcIdent
+    ]
+ )
+$(concat <$> traverse makeClassy
+    [ ''TaggedBnfcIdent
     , ''TaggedChIdent 
     ]
  )
+
 $(concat <$> traverse makePrisms 
     [ ''ClausesGraph 
     , ''TypeClauseCallDefKnot
@@ -291,6 +295,9 @@ instance HasUniqueTag TaggedChIdent where
 
 instance HasBnfcIdent TaggedBnfcIdent where
     bnfcIdent = taggedBnfcIdentBnfcIdent 
+
+instance HasTaggedBnfcIdent  TaggedChIdent where
+    taggedBnfcIdent = taggedChIdentTaggedBnfcIdent 
 
 instance HasBnfcIdent TaggedChIdent where
     bnfcIdent = taggedChIdentTaggedBnfcIdent % taggedBnfcIdentBnfcIdent

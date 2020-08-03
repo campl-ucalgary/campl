@@ -27,12 +27,12 @@ import System.IO.Unsafe
 
 -- helper functions for running the graph maker..
 {-# NOINLINE testGraphGenCoreState #-}
-testGraphGenCoreState = unsafePerformIO defaultGraphGenCoreState
+(testGraphGenCoreEnv, testGraphGenCoreState) = unsafePerformIO defaultGraphGenCore
 
 runMakeTypeClauseGraph :: NonEmpty (TypeClause () () () BnfcIdent BnfcIdent) -> Either [TieDefnsError] (ClausesGraph TaggedBnfcIdent) 
 runMakeTypeClauseGraph a = 
     case runRWS (unGraphGenCore (tieTypeClauseGraph [] DataObj a))
-        defaultGraphGenCoreEnv testGraphGenCoreState of
+        testGraphGenCoreEnv testGraphGenCoreState of
         (res,_, []) -> Right res
         (_ ,_,errs) -> Left errs
 
