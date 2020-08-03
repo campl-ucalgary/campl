@@ -63,6 +63,9 @@ spec = do
         , test24
         , test25
         , test26
+        , test27
+        , test28
+        , test29
         ]
 
 
@@ -435,4 +438,53 @@ fun myInfZigZag2 :: -> Zag(Nat, NegativeNat) =
 |]
 
 test26 = [r|
+data
+    HigherOrder(A,B) -> C =
+        Higher :: A,B -> C
+
+fun genericHigherOrder :: A(B,C) -> A(B,C) =
+    a -> a
+
+fun callHigher :: HigherOrder(A,B) -> HigherOrder(B,A) =
+    Higher(a,b) -> genericHigherOrder(Higher(b,a))
+|]
+
+test27 = [r|
+data
+    Fix(F) -> C =
+        Fix :: F(C) -> C
+
+fun test :: Fix(A) -> A(Fix(A)) =
+    Fix(a) -> a
+|]
+
+test28 = [r| 
+defn 
+    data
+        Fix(F) -> S =
+            Fix :: F(S) -> S
+
+    data 
+        ListF(F) -> S =
+            ConsF  :: Nat,F -> S
+            NilF   ::    -> S
+        
+    data Nat -> S =
+            Succ :: S -> S
+            Zero ::   -> S
+
+    data Unit -> S =
+        Unit :: -> S
+
+fun add :: Nat,Nat -> Nat =
+    a,b -> fold a of
+        Succ : a -> Succ(a)
+        Zero : -> b
+
+fun test :: Fix(ListF) -> Nat =
+    Fix(NilF) -> Zero
+    Fix(ConsF(a,b)) -> add(a, test(b))
+|]
+
+test29 = [r| 
 |]

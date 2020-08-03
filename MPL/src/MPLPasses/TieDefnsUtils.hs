@@ -149,7 +149,7 @@ annotateTypeIToTypeGAndScopeFreeVars = cata f
             -- data Test(A,B) -> C = Test :: A,B -> C
             -- Then, a function sig like fun test :: -> Test =
             -- WILL COMPILE when it shouldn't really.... Although
-            -- this will fail when unifying with anything since we 
+            -- this will most likely fail when unifying with anything since we 
             -- implicitly insert the free type variables...
             Just (SymEntry tag pos entry) -> case entry ^? _SymSeqClause <|> entry ^? _SymConcClause of
                 Just clauseg -> return $  

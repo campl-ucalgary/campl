@@ -118,23 +118,44 @@ fun test :: B -> C =
     a -> a
 |]
 
-testtomatoorange = [r| 
-data
-    KindTest(A,B) -> C =
-        KindTest :: A,B -> C
-fun tomato :: KindTest(B,C) -> KindTest(C,B) = 
-    KindTest(a,b) -> KindTest(b,a)
-
-|]
-
 testkartofler = [r| 
-data
-    Nat -> S =
-        Succ :: S -> S
-        Zero ::   -> S
 
-fun scottsNat =
-    -> Succ(scottsNat)
+defn 
+    data
+        Fix(F) -> S =
+            Fix :: F(S) -> S
+    codata
+        S -> Mendler(F,A,B)  =
+            Mendler :: Fun(A,B),F(A),S -> B
+
+    codata
+        S -> Fun(A,B) =
+            Apply :: A,S -> B
+
+    data 
+        ListF(F) -> S =
+            ConsF  :: Nat,F -> S
+            NilF   ::    -> S
+        
+    data Nat -> S =
+            Succ :: S -> S
+            Zero ::   -> S
+
+    data Unit -> S =
+        Unit :: -> S
+
+
+fun add :: Nat,Nat -> Nat =
+    a,b -> fold a of
+        Succ : a -> Succ(a)
+        Zero : -> b
+
+fun test :: Fix(ListF) -> Nat =
+    Fix(NilF) -> Zero
+    Fix(ConsF(a,b)) -> add(a, test(b))
+    -- Fix(NilF) -> NilF
+    -- a -> Fix(Identity(a))
+
 |]
 
 

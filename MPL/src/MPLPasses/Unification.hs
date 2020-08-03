@@ -98,9 +98,9 @@ substitute ::
      TypeGTypeTag
 substitute (v, sub) = cata f
   where
-    f (TypeVarF ident args) 
+    f (TypeVarF ident []) 
         | v == ident = sub
-        | otherwise = TypeVar ident args
+        | otherwise = TypeVar ident []
     f n = embed n
 
 -- converts the graph type to the tagged type
@@ -168,7 +168,7 @@ match ::
     TypeGTypeTag -> 
     TypeGTypeTag -> 
     Either e [(TypeTag, TypeGTypeTag)]
-match = f
+match = f 
   where
     f t0@(TypeWithArgs ident0 _ args0) t1@(TypeWithArgs ident1 _ args1)
         | ident0 == ident1 && length args0 == length args1 = 
@@ -180,23 +180,30 @@ match = f
     f a (TypeVar b []) = pure <$> mkValidSub b a
 
     -- cases for higher kinded data
+    -- We can match higher order data against higher order data...
     f t0@(TypeVar a args) t1@(TypeVar b brgs) 
         | length args /= length brgs = Left $ _MatchFailure # (t0, t1)
         | otherwise = 
             (:) <$> mkValidSub a (TypeVar b []) 
             <*> (concat <$> traverse (uncurry f) (zip args brgs))
+    -- We can match higher order types against actual types with arguments
     f t0@(TypeVar a args) t1@(TypeWithArgs b cxt brgs) 
         | length args /= length brgs = Left $ _MatchFailure # (t0, t1)
         | otherwise = 
             (:) <$> mkValidSub a (TypeWithArgs b cxt []) 
             <*> (concat <$> traverse (uncurry f) (zip args brgs))
+    f t0@(TypeWithArgs a cxt args) t1@(TypeVar b brgs) 
+        | length args /= length brgs = Left $ _MatchFailure # (t0, t1)
+        | otherwise = 
+            (:) <$> mkValidSub b (TypeWithArgs a cxt []) 
+            <*> (concat <$> traverse (uncurry f) (zip args brgs)) 
 
     -- perhaps in the future, we need to add more cases for
     -- passing built in types in a higher order fashion...
     -- Although, it will be strange because of the changing sequential types
     -- and the fact that it literally can't parse passing a tensor / par in 
-    -- a higher kinded way. This would require some serious changing of
-    -- how this system handles operators..
+    -- a higher kinded way. This would require many changes of how this system handles 
+    -- operators..
 
     f (TypeSeq a) (TypeSeq b) = case (a,b) of
         (TypeIntF _, TypeIntF _) -> pure []
@@ -344,7 +351,6 @@ solveTypeEq = cata f
                 & packageSubs %~ map (fmap (second simplifyArrow))
                 -- & packageSubs %~ ((undefined)++)
         packageExistentialElim pkg
-        -- packageExistentialElim (trace (pprint pkg) pkg)
 
     f (TypeEqnsForallF vs acc) = do
         acc' <- sequenceA acc

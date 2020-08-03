@@ -59,8 +59,7 @@ import Debug.Trace
 
 data TieDefnsTState = TieDefnsTState {
     _tieDefnsStateSymbolTable :: SymbolTable
-    , _tieDefnsStateSeqTypeEqnsPkg :: TieDefnsTypeEqnsPkg
-    , _tieDefnsStateConcTypeEqnsPkg :: TieDefnsTypeEqnsPkg
+    , _tieDefnsTypeEqnsPkg :: TieDefnsTypeEqnsPkg
 }
 
 data TieDefnsTypeEqnsPkg = TieDefnsTypeEqnsPkg  {
@@ -171,27 +170,24 @@ stmtIToGraph (Stmt defs wstmts) = do
     rec ((), st, defs') <- lift $ 
             runTieDefnsT 
             tagmap
-            (TieDefnsTState (wsyms++symtab) mempty mempty)
+            (TieDefnsTState (wsyms++symtab) mempty)
             (defnsToGraph (NE.toList defs)) 
-        let seqeqnspkg = st ^. tieDefnsStateSeqTypeEqnsPkg
-            seqeqns = TypeEqnsForall 
-                (seqeqnspkg ^. tieDefnsTypeForall)
+        let eqnspkg = st ^. tieDefnsTypeEqnsPkg
+            eqns = TypeEqnsForall 
+                (eqnspkg ^. tieDefnsTypeForall)
                 [ TypeEqnsExist 
-                    (seqeqnspkg ^. tieDefnsTypeExist) 
-                    (seqeqnspkg ^. tieDefnsTypeEqns)
-                    ]
+                    (eqnspkg ^. tieDefnsTypeExist) 
+                    (eqnspkg ^. tieDefnsTypeEqns) ]
             -- seqpkg = solveTypeEq (trace (pprint seqeqns) seqeqns)
-            seqpkg = solveTypeEq seqeqns
-            Right seqpkg' = seqpkg
+            pkg = solveTypeEq eqns
+            Right pkg' = pkg
 
             -- concpkg = solveTypeEq (uncurry TypeEqnsExist $ first (map (view exprTtypeInternal)) concdmyeqns)
             -- Right concpkg' = concpkg
 
-            tagmap = packageToTagMap seqpkg' -- <> concpkg'
+            tagmap = packageToTagMap pkg' -- <> concpkg'
 
-    tell $ either pure (const []) seqpkg
-    
-    -- tell $ either pure (const []) concpkg
+    tell $ either pure (const []) pkg
     
     return $ Stmt (NE.fromList defs') wstmts'
 
@@ -337,9 +333,9 @@ defnsToGraph (a:as) = case a ^. unDefnI of
                 -- collected equations context 
                 ++ eqns
 
-        tieDefnsStateSeqTypeEqnsPkg % tieDefnsTypeForall %= (++forallvars)
-        tieDefnsStateSeqTypeEqnsPkg % tieDefnsTypeExist  %= (++ttypephrases)
-        tieDefnsStateSeqTypeEqnsPkg % tieDefnsTypeEqns   %= (++typeeqns)
+        tieDefnsTypeEqnsPkg % tieDefnsTypeForall %= (++forallvars)
+        tieDefnsTypeEqnsPkg % tieDefnsTypeExist  %= (++ttypephrases)
+        tieDefnsTypeEqnsPkg % tieDefnsTypeEqns   %= (++typeeqns)
 
         tell [FunctionDecDefG fun']
 
@@ -371,9 +367,9 @@ defnsToGraph (a:as) = case a ^. unDefnI of
             ttypephrases = undefined
             typeeqns = undefined
         
-        tieDefnsStateConcTypeEqnsPkg % tieDefnsTypeForall %= (++forallvars)
-        tieDefnsStateConcTypeEqnsPkg % tieDefnsTypeExist  %= (++ttypephrases)
-        tieDefnsStateConcTypeEqnsPkg % tieDefnsTypeEqns   %= (++typeeqns)
+        -- tieDefnsStateConcTypeEqnsPkg % tieDefnsTypeForall %= (++forallvars)
+        -- tieDefnsStateConcTypeEqnsPkg % tieDefnsTypeExist  %= (++ttypephrases)
+        -- tieDefnsStateConcTypeEqnsPkg % tieDefnsTypeEqns   %= (++typeeqns)
 
         tell [ ProcessDecDefG proc']
 

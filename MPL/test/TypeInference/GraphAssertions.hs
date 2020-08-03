@@ -65,3 +65,6 @@ describeOutOfScope = describeAllFailures (has _NotInScope)
 
 describeForallMatchFailure = describeAllFailures 
     (has (_TieDefnUnificationError % _ForallMatchFailure))
+
+describeMatchFailure = describeAllFailures 
+    (has (_TieDefnUnificationError % _MatchFailure))
