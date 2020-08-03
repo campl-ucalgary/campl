@@ -345,8 +345,9 @@ defnsToGraph (a:as) = case a ^. unDefnI of
 
         return ()
 
+    -- more or less duplciated code from a function as well..
     ProcessDecDefn (ProcessDefn ident proctype procbody) -> mdo
-        ident' <- lift $ tagBnfcIdent ident
+        procident' <- lift $ tagBnfcIdent ident
         ttypes <- lift freshExprTypeTags
 
         let procbody' = NE.toList procbody
@@ -354,7 +355,7 @@ defnsToGraph (a:as) = case a ^. unDefnI of
         proctype' <- lift $ case proctype of
             Just proctype -> Just 
                 <$> evalStateT (annotateTypeIToTypeGAndScopeFreeVars 
-                $ TypeConc $ review _TypeConcArrF $ proctype) (querySeqClauses symtab)
+                $ TypeConc $ _TypeConcArrF # proctype) (querySeqClauses symtab)
             Nothing -> return Nothing
 
         -- splitting is not needed here...
@@ -362,14 +363,32 @@ defnsToGraph (a:as) = case a ^. unDefnI of
                 mfuntypefreevarsandsubs <- traverse genTypeGSubs proctype'
                 return $ fromMaybe ([],[]) mfuntypefreevarsandsubs 
 
+        let ttype = ttypes ^. exprTtype
+            ttypeinternal = ttypes ^. exprTtypeInternal
+
+        tagmap <- gview equality 
+
+        tieDefnsStateSymbolTable %= (
+            ( procident' ^. taggedBnfcIdentName
+            , _SymEntry # 
+                ( procident' ^. uniqueTag
+                , procident' ^. taggedBnfcIdentPos
+                , _SymConcCall # _SymCall # 
+                -- if we have an explicit type, just use that, otherwise
+                -- give it the dummy type... (better error messages lower down where
+                -- the issue really is..
+                    ( maybe (SymCallDummyTypeVar ttype) SymCallExplicitType proctype'
+                    , undefined proc')
+                )
+            ):)
 
         let proc' = undefined
             ttypephrases = undefined
             typeeqns = undefined
         
-        -- tieDefnsStateConcTypeEqnsPkg % tieDefnsTypeForall %= (++forallvars)
-        -- tieDefnsStateConcTypeEqnsPkg % tieDefnsTypeExist  %= (++ttypephrases)
-        -- tieDefnsStateConcTypeEqnsPkg % tieDefnsTypeEqns   %= (++typeeqns)
+        tieDefnsTypeEqnsPkg % tieDefnsTypeForall %= (++forallvars)
+        tieDefnsTypeEqnsPkg % tieDefnsTypeExist  %= (++ttypephrases)
+        tieDefnsTypeEqnsPkg % tieDefnsTypeEqns   %= (++typeeqns)
 
         tell [ ProcessDecDefG proc']
 

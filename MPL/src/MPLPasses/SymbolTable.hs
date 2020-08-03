@@ -46,21 +46,17 @@ data SymSeqConcTypeInfo =
     | SymTypeVar 
   deriving Show 
 
-data SymCallInfo = 
+data SymCallInfo knot = 
     SymPhrase (TypePhraseG TaggedBnfcIdent)
     | SymCall 
         -- (type of the expression, free variables)
         SymCallTypeVar 
-        (FunctionCallValueKnot 
-            TaggedBnfcIdent 
-            TypeTag
-            TaggedChIdent
-            )
+        knot 
   deriving Show
 
 data SymInfo = 
-    SymSeqCall SymCallInfo
-    | SymConcCall SymCallInfo
+    SymSeqCall (SymCallInfo (FunctionCallValueKnot TaggedBnfcIdent TypeTag TaggedChIdent))
+    | SymConcCall (SymCallInfo (ProcessCallValueKnot TaggedBnfcIdent TypeTag TaggedChIdent))
     | SymConcLocalCh TypeTag
 
     | SymSeqConcType SymSeqConcTypeInfo

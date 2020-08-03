@@ -142,7 +142,7 @@ data FunctionCallValueKnot ident typevar chident =
 data ProcessCallValueKnot ident typevar chident =
     ProcessKnot (ProcessDefG ident typevar chident)
     | ProtocolCoprotocolKnot (TypePhraseG ident)
-    | LocalChannel
+    | LocalChannel Polarity
   deriving Show
 
 type StmtG ident typevar chident = Stmt (DefnG ident typevar chident)

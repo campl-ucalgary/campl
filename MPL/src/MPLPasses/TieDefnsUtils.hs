@@ -146,10 +146,12 @@ annotateTypeIToTypeGAndScopeFreeVars = cata f
         case lookupBnfcIdent ident symtab of
             -- TODO - we should be doing a kindcheck here i.e.
             -- if we have:
-            -- data Test(A,B) -> C = Test :: A,B -> C
-            -- Then, a function sig like fun test :: -> Test =
+            -- data Test(A,B) -> C = 
+            --      Test :: A,B -> C
+            -- Then, a function signature like:
+            --      fun test :: -> Test =
             -- WILL COMPILE when it shouldn't really.... Although
-            -- this will most likely fail when unifying with anything since we 
+            -- this will most /likely/ fail when unifying with anything since we 
             -- implicitly insert the free type variables...
             Just (SymEntry tag pos entry) -> case entry ^? _SymSeqClause <|> entry ^? _SymConcClause of
                 Just clauseg -> return $  
@@ -166,6 +168,7 @@ annotateTypeIToTypeGAndScopeFreeVars = cata f
             {- 
             -- We need to test for infinite kind checks here..
             -- In otherwords, we should not have stuff like A(A,B)
+            -- HOWEVER, currently the system does indeed permit this..
                     -}
             Nothing -> do
                 taggedident <- lift $ tagBnfcIdent ident
