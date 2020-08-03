@@ -31,18 +31,23 @@ class PPrint a where
 instance (PPrint ident, Eq typevar, PPrint typevar) => PPrint (Type calldef ident typevar) where
     pprint = printTree . translateTypeToBnfcType
 
-instance (PPrint ident, Eq typevar, PPrint typevar) => PPrint (ExprG ident typevar) where
+instance (PPrint ident, Eq typevar, PPrint typevar, PPrint chident) => PPrint (ExprG ident typevar chident) where
     pprint = printTree . translateExprGToBnfcExpr
 
 instance (PPrint ident, Eq typevar, PPrint typevar) => PPrint (PatternG ident typevar) where
     pprint = printTree . translatePatternGtoBnfcPattern
 
-instance (PPrint ident, Eq typevar, PPrint typevar) => PPrint (FunctionDefG ident typevar) where
+instance (PPrint ident, Eq typevar, PPrint typevar, PPrint chident) => PPrint (FunctionDefG ident typevar chident) where
     pprint = printTree . translateFunctionGToBnfcFunction
 
 
 instance PPrint BnfcIdent where
     pprint n = n ^. bnfcIdentName
+
+instance PPrint TaggedChIdent where
+    pprint n = n ^. bnfcIdentName   
+        ++ "__" 
+        ++ n ^. taggedChIdentPolarity % to show
 
 instance PPrint TaggedBnfcIdent where
     pprint n = n ^. taggedBnfcIdentName ++ pprint (n ^. uniqueTag)
@@ -101,8 +106,8 @@ translateTypeToBnfcType n = case n of
         _  -> error "concurrent translationsnot implemented yet" 
 
 translateExprGToBnfcExpr ::
-    ( PPrint ident, Eq typevar, PPrint typevar) =>
-    ExprG ident typevar ->
+    ( PPrint ident, Eq typevar, PPrint typevar, PPrint chident) =>
+    ExprG ident typevar chident ->
     B.Expr
 translateExprGToBnfcExpr (EConstructorDestructor ident calldef args etype) = 
     B.TYPED_EXPR expr' etype'
@@ -234,8 +239,8 @@ translatePatternGtoBnfcPattern (PNull ident ptype) =
     ptype' =  translateTypeToBnfcType ptype
 
 translateFunctionGToBnfcFunction :: 
-    ( PPrint ident, Eq typevar, PPrint typevar) =>
-    FunctionDefG ident typevar -> 
+    ( PPrint ident, Eq typevar, PPrint typevar, PPrint chident) =>
+    FunctionDefG ident typevar chident -> 
     B.FunctionDefn
 translateFunctionGToBnfcFunction (FunctionDefn funname funtype fundefn) = 
     INTERNAL_TYPED_FUNCTION_DEFN 

@@ -79,6 +79,7 @@ data ConcTypeF ident t =
     | TypeTopBotF { _concTypeIdent :: ident }
 
     | TypeNegF { _concTypeIdent :: ident , _concTypeArg :: t  }
+    | TypeConcArrF { _concSeqArgs :: [t], _concInputArgs :: [t], _concOutputArgs :: [t] }
   deriving ( Read, Show, Generic, Out, Data, Functor, Typeable, Foldable, Traversable, Eq )
 
 typeCallDefTraversal :: Traversal (Type a ident typevar) (Type a' ident typevar) a a'

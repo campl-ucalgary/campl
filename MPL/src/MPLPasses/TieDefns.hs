@@ -60,6 +60,7 @@ import Debug.Trace
 data TieDefnsTState = TieDefnsTState {
     _tieDefnsStateSymbolTable :: SymbolTable
     , _tieDefnsStateSeqTypeEqnsPkg :: TieDefnsTypeEqnsPkg
+    , _tieDefnsStateConcTypeEqnsPkg :: TieDefnsTypeEqnsPkg
 }
 
 data TieDefnsTypeEqnsPkg = TieDefnsTypeEqnsPkg  {
@@ -84,7 +85,7 @@ $(makeLenses ''TieDefnsTypeEqnsPkg)
 newtype TieDefnsT m a = 
     TieDefnsT { unTieDefnsT :: RWST 
             TagTypeMap 
-            [DefnG TaggedBnfcIdent TypeTag] 
+            [DefnG TaggedBnfcIdent TypeTag TaggedChIdent] 
             TieDefnsTState 
             m a }
   deriving 
@@ -94,8 +95,8 @@ newtype TieDefnsT m a =
     , MonadFix
     , MonadState TieDefnsTState
     , MonadReader TagTypeMap 
-    , MonadWriter [DefnG TaggedBnfcIdent TypeTag] 
-    , MonadRWS TagTypeMap [DefnG TaggedBnfcIdent TypeTag] TieDefnsTState  
+    , MonadWriter [DefnG TaggedBnfcIdent TypeTag TaggedChIdent] 
+    , MonadRWS TagTypeMap [DefnG TaggedBnfcIdent TypeTag TaggedChIdent] TieDefnsTState  
     , MonadTrans 
     )
 
@@ -121,7 +122,7 @@ runTieDefnsT ::
     TagTypeMap ->
     TieDefnsTState ->
     TieDefns a -> 
-    GraphGenCore (a, TieDefnsTState, [DefnG TaggedBnfcIdent TypeTag])
+    GraphGenCore (a, TieDefnsTState, [DefnG TaggedBnfcIdent TypeTag TaggedChIdent])
 runTieDefnsT tagmap st (TieDefnsT m) = runRWST m tagmap st
 
 runTieFunT ::
@@ -136,16 +137,16 @@ runTieFunT env sym = flip runStateT sym
 progInterfaceToGraph :: 
     (SymbolTable, GraphGenCoreEnv, GraphGenCoreState) ->
     Prog (DefnI BnfcIdent) ->
-    Either [TieDefnsError] (Prog (DefnG TaggedBnfcIdent TypeTag))
+    Either [TieDefnsError] (Prog (DefnG TaggedBnfcIdent TypeTag TaggedChIdent))
 progInterfaceToGraph initstate (Prog stmts) = Prog <$> res 
   where
-    res :: Either [TieDefnsError] [Stmt (DefnG TaggedBnfcIdent TypeTag)]
+    res :: Either [TieDefnsError] [Stmt (DefnG TaggedBnfcIdent TypeTag TaggedChIdent)]
     res = accumEithers $ f initstate stmts
 
     f :: 
         (SymbolTable, GraphGenCoreEnv, GraphGenCoreState) -> 
         [Stmt (DefnI BnfcIdent)] -> 
-        [Either [TieDefnsError] (Stmt (DefnG TaggedBnfcIdent TypeTag))]
+        [Either [TieDefnsError] (Stmt (DefnG TaggedBnfcIdent TypeTag TaggedChIdent))]
     f (sym, env, corest) [] = []
     f (sym, env, corest) (stmt:rst) = 
          stmt' : f (sym', env, corest') rst
@@ -158,7 +159,7 @@ progInterfaceToGraph initstate (Prog stmts) = Prog <$> res
 
 stmtIToGraph ::
     Stmt (DefnI BnfcIdent) -> 
-    ReaderT SymbolTable GraphGenCore (Stmt (DefnG TaggedBnfcIdent TypeTag))
+    ReaderT SymbolTable GraphGenCore (Stmt (DefnG TaggedBnfcIdent TypeTag TaggedChIdent))
 stmtIToGraph (Stmt defs wstmts) = do
     -- compute new where bindings first ..
     wstmts' <- traverse stmtIToGraph wstmts
@@ -170,7 +171,7 @@ stmtIToGraph (Stmt defs wstmts) = do
     rec ((), st, defs') <- lift $ 
             runTieDefnsT 
             tagmap
-            (TieDefnsTState (wsyms++symtab) mempty)
+            (TieDefnsTState (wsyms++symtab) mempty mempty)
             (defnsToGraph (NE.toList defs)) 
         let seqeqnspkg = st ^. tieDefnsStateSeqTypeEqnsPkg
             seqeqns = TypeEqnsForall 
@@ -204,23 +205,15 @@ defnsToGraph (a:as) = case a ^. unDefnI of
         lift $ typeClauseArgsSanityCheck ival
         lift $ phraseToVarsAreStateVarCheck ival
 
-        clauseg <- lift $ 
-            tieTypeClauseGraph 
-                ( mapMaybe 
-                    ( traverseOf (_2 % symEntryInfo ) 
-                        ( fmap (review _SymSeqClause) 
-                        . preview _SymSeqClause)
-                    ) 
-                    symtable)
-                DataObj ival
-        let defn' = ObjectG clauseg :: DefnG TaggedBnfcIdent TypeTag
+        clauseg <- lift $ tieTypeClauseGraph (querySeqClauses symtab) DataObj ival
+        let defn' = ObjectG clauseg :: DefnG TaggedBnfcIdent TypeTag TaggedChIdent
 
         tieDefnsStateSymbolTable %= ((collectSymEntries defn')++)
 
         tell [defn']
 
         defnsToGraph as
-        (symtable :: SymbolTable) <- guse tieDefnsStateSymbolTable
+        symtab <- guse tieDefnsStateSymbolTable
 
         return () 
 
@@ -230,61 +223,66 @@ defnsToGraph (a:as) = case a ^. unDefnI of
         -- codata has a different check
         lift $ codataStateVarOccurenceCheck ival
 
-        clauseg <- lift $ 
-            tieTypeClauseGraph 
-                ( mapMaybe 
-                    ( traverseOf (_2 % symEntryInfo ) 
-                        ( fmap (review _SymSeqClause) 
-                        . preview ( _SymSeqClause))
-                    ) 
-                    symtable)
-                CodataObj ival
-        let defn' = ObjectG clauseg :: DefnG TaggedBnfcIdent TypeTag
+        clauseg <- lift $ tieTypeClauseGraph (querySeqClauses symtab) CodataObj ival
+        let defn' = ObjectG clauseg :: DefnG TaggedBnfcIdent TypeTag TaggedChIdent
 
         tieDefnsStateSymbolTable %= ((collectSymEntries defn')++)
 
         tell [defn']
 
         defnsToGraph as
-        symtable <- guse tieDefnsStateSymbolTable
+        symtab <- guse tieDefnsStateSymbolTable
 
         return () 
 
+    -- mostly duplciated code...
+    ProtocolDefn ival -> mdo
+        lift $ typeClauseArgsSanityCheck ival
+        -- protocols has a different check
+        lift $ phraseToVarsAreStateVarCheck ival
+        lift $ exactlyOnePhraseFromVarsCheck ival
 
-    ProtocolDefn n -> mdo
-        undefined
-        -- lift $ typeClauseArgsSanityCheck n 
-        -- lift $ phraseToVarsAreStateVarCheck n
+        clauseg <- lift $ tieTypeClauseGraph (queryClauses symtab) ProtocolObj ival
+        let defn' = ObjectG clauseg :: DefnG TaggedBnfcIdent TypeTag TaggedChIdent
 
-    CoprotocolDefn n -> mdo
-        undefined
-        -- lift $ typeClauseArgsSanityCheck n 
-        -- lift $ phraseFromVarsAreStateVarCheck n 
- 
+        tieDefnsStateSymbolTable %= ((collectSymEntries defn')++)
+
+        tell [defn']
+
+        defnsToGraph as
+        symtab <- guse tieDefnsStateSymbolTable
+        return ()
+
+    -- mostly duplciated code...
+    CoprotocolDefn ival -> mdo
+        lift $ typeClauseArgsSanityCheck ival
+        -- coprotocls have a different check
+        lift $ phraseFromVarsAreStateVarCheck ival
+
+        clauseg <- lift $ 
+            tieTypeClauseGraph (queryClauses symtab) CoprotocolObj ival
+        let defn' = ObjectG clauseg :: DefnG TaggedBnfcIdent TypeTag TaggedChIdent
+
+        tieDefnsStateSymbolTable %= ((collectSymEntries defn')++)
+
+        tell [defn']
+
+        defnsToGraph as
+        symtab <- guse tieDefnsStateSymbolTable
+
+        return ()
+
     FunctionDecDefn (FunctionDefn funident funtype funbody) -> mdo  
         funident' <- lift $ tagBnfcIdent funident
         let funbody' = NE.toList funbody
         ttypes <- lift freshExprTypeTags
 
-        {-
         funtype' <- lift $ case funtype of
             Just funtype -> Just 
                 <$> evalStateT (annotateTypeIToTypeGAndScopeFreeVars 
-                $ (TypeSeq . uncurry TypeSeqArrF) funtype) symtab 
+                $ (TypeSeq . uncurry TypeSeqArrF) funtype) (querySeqClauses symtab)
             Nothing -> return Nothing
-            -}
-        funtype' <- lift $ traverse 
-                ( flip evalStateT 
-                    ( mapMaybe 
-                        ( traverseOf (_2 % symEntryInfo)
-                            ( fmap (review _SymSeqClause)
-                            . preview (_SymSeqClause))
-                        )
-                     symtab
-                    )
-                . ( annotateTypeIToTypeGAndScopeFreeVars 
-                   . (TypeSeq . uncurry TypeSeqArrF)))
-                   funtype
+
 
         -- splitting is not needed here...
         (forallvars, forallsubs) <- lift . join . fmap writer . splitGraphGenCore $ do
@@ -317,8 +315,7 @@ defnsToGraph (a:as) = case a ^. unDefnI of
             $ fmap unzip <$> 
                 traverse 
                     (\(tag, pattsexp) -> 
-                        local (set tieExprEnvTypeTags tag) 
-                        $ patternsIAndExprIToGraph pattsexp) 
+                        local (set tieExprEnvTypeTags tag) $ patternsIAndExprIToGraph pattsexp) 
                     $ zip ttypespattsandexps funbody'
 
         let fun' = FunctionDefn 
@@ -327,10 +324,6 @@ defnsToGraph (a:as) = case a ^. unDefnI of
                 (NE.fromList pattsgexpsg)
 
             ttypephrases = map (view exprTtype) ttypespattsandexps
-            {-
-            typeeqns = TypeEqnsExist ttypephrases $
-                map (TypeEqnsEq . (TypeVar ttype [],) . flip TypeVar []) ttypephrases ++ eqns
-                -}
             typeeqns = 
                 TypeEqnsStableRef (ttypeinternal, TypeVar ttype []):
                 -- if there is for all quantification, we need to include the equality to the
@@ -356,30 +349,43 @@ defnsToGraph (a:as) = case a ^. unDefnI of
 
         return ()
 
-    ProcessDecDefn n -> undefined
+    ProcessDecDefn (ProcessDefn ident proctype procbody) -> mdo
+        ident' <- lift $ tagBnfcIdent ident
+        ttypes <- lift freshExprTypeTags
 
--- function defn to graph....
+        let procbody' = NE.toList procbody
 
-{-
-objectDefIToGraph ival checks symtable objtype = do
-    sequenceA checks
-    clauseg <- lift 
-            $ tieTypeClauseGraph 
-            (mapMaybe (\n -> (n ^. _1,) <$> preview (_2 % symEntryInfo % _SymSeqClause) n ) symtable) 
-            objtype ival
-    let defn' = ObjectG clauseg :: DefnG TaggedBnfcIdent TypeTag
+        proctype' <- lift $ case proctype of
+            Just proctype -> Just 
+                <$> evalStateT (annotateTypeIToTypeGAndScopeFreeVars 
+                $ TypeConc $ review _TypeConcArrF $ proctype) (querySeqClauses symtab)
+            Nothing -> return Nothing
 
-    tieDefnsStateSymbolTable %= ((collectSymEntries defn')++)
+        -- splitting is not needed here...
+        (forallvars, forallsubs) <- lift . join . fmap writer . splitGraphGenCore $ do
+                mfuntypefreevarsandsubs <- traverse genTypeGSubs proctype'
+                return $ fromMaybe ([],[]) mfuntypefreevarsandsubs 
 
-    tell [defn']
 
-    return () 
-    -}
+        let proc' = undefined
+            ttypephrases = undefined
+            typeeqns = undefined
+        
+        tieDefnsStateConcTypeEqnsPkg % tieDefnsTypeForall %= (++forallvars)
+        tieDefnsStateConcTypeEqnsPkg % tieDefnsTypeExist  %= (++ttypephrases)
+        tieDefnsStateConcTypeEqnsPkg % tieDefnsTypeEqns   %= (++typeeqns)
 
+        tell [ ProcessDecDefG proc']
+
+        defnsToGraph as
+
+        symtab <- guse tieDefnsStateSymbolTable
+        
+        return ()
 
 patternsIAndExprsIToGraph :: 
     [([PatternI BnfcIdent], ExprI BnfcIdent)] ->
-    TieFun ( [([PatternG TaggedBnfcIdent TypeTag], ExprG TaggedBnfcIdent TypeTag)] 
+    TieFun ( [([PatternG TaggedBnfcIdent TypeTag], ExprG TaggedBnfcIdent TypeTag TaggedChIdent)] 
         , TypeEqns TaggedBnfcIdent TypeTag )
 patternsIAndExprsIToGraph pattsandexps = do
     ttype <- gview exprTtype
@@ -404,7 +410,7 @@ patternsIAndExprsIToGraph pattsandexps = do
 
 patternsIAndExprIToGraph ::
     ([PatternI BnfcIdent], ExprI BnfcIdent) ->
-    TieFun ( ([PatternG TaggedBnfcIdent TypeTag], ExprG TaggedBnfcIdent TypeTag)
+    TieFun ( ([PatternG TaggedBnfcIdent TypeTag], ExprG TaggedBnfcIdent TypeTag TaggedChIdent)
         , TypeEqns TaggedBnfcIdent TypeTag )
 patternsIAndExprIToGraph (patts, expr) = do
     -- get the current symbol table since the symbol table
@@ -450,7 +456,7 @@ exprsIToGraph ::
     -- | Expression to convert to a graph
     [(ExprTypeTags, ExprI BnfcIdent)] ->
     -- | result
-    TieFun [( ExprG TaggedBnfcIdent TypeTag, [TypeEqns TaggedBnfcIdent TypeTag] )]
+    TieFun [( ExprG TaggedBnfcIdent TypeTag TaggedChIdent, [TypeEqns TaggedBnfcIdent TypeTag] )]
 exprsIToGraph ttypesexprs = do
     traverse 
         (\(tag, expr) -> local (set tieExprEnvTypeTags tag) $ exprIToGraph expr ) 
@@ -461,7 +467,7 @@ unwrappedExprsIToGraph ::
     [(ExprTypeTags, ExprI BnfcIdent)] ->
     -- | result
     TieFun
-        ( [ExprG TaggedBnfcIdent TypeTag]
+        ( [ExprG TaggedBnfcIdent TypeTag TaggedChIdent]
         , [TypeEqns TaggedBnfcIdent TypeTag])
 unwrappedExprsIToGraph ttypesexprs =  
     second mconcat . unzip <$> exprsIToGraph ttypesexprs
@@ -473,7 +479,7 @@ exprIToGraph ::
     -- | Expression to convert to a graph
     ExprI BnfcIdent ->
     -- | result
-    TieFun ( ExprG TaggedBnfcIdent TypeTag, [TypeEqns TaggedBnfcIdent TypeTag] )
+    TieFun ( ExprG TaggedBnfcIdent TypeTag TaggedChIdent, [TypeEqns TaggedBnfcIdent TypeTag] )
 exprIToGraph expr = 
     f expr
   where 
@@ -880,7 +886,7 @@ exprIToGraph expr =
             (validUnfoldTypePhrasesCheck foldphraseslkups'')
                 (isJust foldphraseslkups')
 
-        (ttypegraph, subs)<- lift . fmap fst . splitGraphGenCore 
+        ~(ttypegraph, subs) <- lift . fmap fst . splitGraphGenCore 
             $ clauseGraphFreshSubstitutions (focusedphraseg ^. phraseGClausesGraph)
         let focusedclausetype = fromJust 
                 $ substitutesTypeGToTypeGTypeTag subs
@@ -913,8 +919,10 @@ exprIToGraph expr =
                             subs
                     , patteqns
                     , ttypesfoldphrases
-                    -- recall that we need eliminate the last state variable in the input args
-                    -- since we are building up the records...
+                    -- we need eliminate the last state variable in the input args
+                    -- since we are building up the records with an unfold -- we do this
+                    -- with init which is safe since we build all codata with at least
+                    -- one element and check to see if the last element is a state variable
                     , phrasetypes & traversed % _TypeSeq % _TypeSeqArrF % _1 %~ init
                     , phraseseqns
                     , UnfoldPhraseF patt' (NE.fromList foldphrases')
@@ -927,9 +935,10 @@ exprIToGraph expr =
             eqns = TypeEqnsExist (ttypeunfoldon : ttypegraph ++ ttypepatts ++ mconcat ttypefoldphrases) $
                 [ TypeEqnsEq (TypeVar ttype [], focusedclausetype) 
                 , TypeEqnsStableRef (ttypeinternal, TypeVar ttype []) 
-                -- from prashant, we know that the type of this phrase should be the 
-                -- type of the first clause 
-                , TypeEqnsEq (TypeVar ttypeunfoldon [], ttypefocusedstatevar)] 
+                -- similar to what Prashant did for the fold, we say that
+                -- the type of the seed should be the same as the focused first
+                -- clause...
+                , TypeEqnsEq (TypeVar ttypeunfoldon [], ttypefocusedstatevar) ]
 
                 -- the types of the patterns should match the state variables for the clauses which
                 -- they focus on..
@@ -981,8 +990,6 @@ foldPhrasesWithTypePhrasesToGraph foldphrases typephrases = fmap (unzip4 . catMa
                     pattargs' 
                     fexpr' )
             Nothing -> Nothing
-                
-    
 
 --------------------------------------------------
 -- pattern compilation
@@ -1195,6 +1202,4 @@ patternIToGraph pattern =
         return 
             ( [TypeEqnsStableRef (ttypeinternal, TypeVar ttype [])]
             , PNull ident' $ fromJust $ Map.lookup ttypeinternal tagmap)
-
-    -- TODO
 

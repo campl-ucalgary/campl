@@ -101,17 +101,18 @@ data FunctionDefn pattern letdef typedef typesig calldef ident = FunctionDefn {
     , _funDefn :: NonEmpty ([pattern], Expr pattern letdef typedef calldef ident) 
 } deriving (Show, Eq, Read, Data)
 
-data ProcessDefn patterns letdef typedef calldef ident typevar = ProcessDefn { 
+data ProcessDefn patterns letdef typedef typesig seqcalleddef conccalleddef ident chident = ProcessDefn { 
     _procName :: ident
-    , _procSeqInChsOutChsTypes :: Maybe ([Type calldef ident typevar], [Type calldef ident typevar], [Type calldef ident typevar])
+    , _procSeqInChsOutChsTypes :: typesig
     , _procDefn :: NonEmpty 
-            ( ([Pattern typedef calldef ident], [ident], [ident])
-            , ProcessCommands patterns letdef typedef calldef ident) 
+            ( ([patterns], [chident], [chident])
+            , ProcessCommands patterns letdef typedef seqcalleddef conccalleddef ident chident) 
 } deriving (Show, Eq, Read, Data)
 
 data Polarity = 
     Input
     | Output
+  deriving Show
 
 
 $(concat <$> traverse makeLenses 

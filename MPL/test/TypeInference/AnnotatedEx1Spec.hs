@@ -415,7 +415,7 @@ data
         Pred :: S -> S
         NZero ::   -> S
 
-fun myInfZigZag :: -> Zig(Nat, NegativeNat) = 
+fun myInfZigZag1 :: -> Zig(Nat, NegativeNat) = 
     -> unfold (P1 := -> Zero, P2 := -> NZero) of
         (P1 := p, P2 := n) of
             HeadA : -> p
@@ -423,6 +423,15 @@ fun myInfZigZag :: -> Zig(Nat, NegativeNat) =
         (P1 := n, P2 := p) of
             HeadB : -> n
             TailB : -> (P1 := -> p, P2 := -> Pred(n))
+
+fun myInfZigZag2 :: -> Zag(Nat, NegativeNat) = 
+    -> unfold (P1 := -> NZero, P2 := -> Zero) of
+        (P1 := n, P2 := p) of
+            HeadB : -> n
+            TailB : -> (P1 := -> p, P2 := -> Pred(n))
+        (P1 := p, P2 := n) of
+            HeadA : -> p
+            TailA : -> (P1 := -> n, P2 := -> Succ(p))
 |]
 
 test26 = [r|

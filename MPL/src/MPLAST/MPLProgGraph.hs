@@ -45,6 +45,11 @@ data TaggedBnfcIdent = TaggedBnfcIdent {
     , _taggedBnfcIdentTag :: UniqueTag
 } deriving (Show, Read)
 
+data TaggedChIdent = TaggedChIdent {
+    _taggedChIdentTaggedBnfcIdent :: TaggedBnfcIdent
+    , _taggedChIdentPolarity :: Polarity
+} deriving Show
+
 -- equality of tagged bnfcidents should depend only 
 -- on equality of the unique tag
 instance Eq TaggedBnfcIdent where
@@ -121,37 +126,54 @@ type PatternG ident typevar =
         (TypePhraseG ident)
         ident
 
-type ExprG ident typevar = 
+type ExprG ident typevar chident = 
     Expr 
         (PatternG ident typevar)
-        (Stmt (DefnG ident typevar)) 
+        (Stmt (DefnG ident typevar chident)) 
         (TypeGTypeVar ident typevar) 
-        (FunctionCallValueKnot ident typevar) ident
+        (FunctionCallValueKnot ident typevar chident) ident
 
-data FunctionCallValueKnot ident typevar = 
-    FunctionKnot (FunctionDefG ident typevar)
+data FunctionCallValueKnot ident typevar chident = 
+    FunctionKnot (FunctionDefG ident typevar chident)
     | ConstructorDestructorKnot (TypePhraseG ident)
     | LocalVar 
   deriving Show
 
-type StmtG ident typevar = Stmt (DefnG ident typevar)
+data ProcessCallValueKnot ident typevar chident =
+    ProcessKnot (ProcessDefG ident typevar chident)
+    | ProtocolCoprotocolKnot (TypePhraseG ident)
+    | LocalChannel
+  deriving Show
+
+type StmtG ident typevar chident = Stmt (DefnG ident typevar chident)
 
 type FunctionDefSigG ident typevar = ([TypeGTypeVar ident typevar], TypeGTypeVar ident typevar)
 
-type FunctionDefG ident typevar = 
+type FunctionDefG ident typevar chident= 
     FunctionDefn
         (PatternG ident typevar)
-        (StmtG ident typevar)
+        (StmtG ident typevar chident)
         (TypeGTypeVar ident typevar)
         (TypeGTypeVar ident typevar) -- (FunctionDefSigG ident typevar)
-        (FunctionCallValueKnot ident typevar)
+        (FunctionCallValueKnot ident typevar chident)
         ident
 
+type ProcessDefG ident typevar chident = 
+    ProcessDefn 
+        (PatternG ident typevar)
+        (StmtG ident typevar chident)
+        (TypeGTypeVar ident typevar)
+        (TypeGTypeVar ident typevar) 
+        (FunctionCallValueKnot ident typevar chident)
+        (ProcessCallValueKnot ident typevar chident)
+        ident 
+        chident
+    
 
-data DefnG ident typevar = 
+data DefnG ident typevar chident = 
     ObjectG (ClausesGraph ident)
-    | FunctionDecDefG (FunctionDefG ident typevar)
-    | ProcessDecDefG
+    | FunctionDecDefG (FunctionDefG ident typevar chident)
+    | ProcessDecDefG (ProcessDefG ident typevar chident)
   deriving Show
 
 newtype TypeTag = TypeTag UniqueTag
@@ -169,6 +191,7 @@ $(concat <$> traverse makeLenses
     , ''ClausePhraseKnot 
     , ''ClausesGraph 
     , ''TaggedBnfcIdent
+    , ''TaggedChIdent 
     ]
  )
 $(concat <$> traverse makePrisms 
@@ -176,6 +199,7 @@ $(concat <$> traverse makePrisms
     , ''TypeClauseCallDefKnot
     , ''DefnG
     , ''TaggedBnfcIdent
+    , ''TaggedChIdent 
     ]
  )
 
@@ -252,20 +276,6 @@ taggedBnfcIdentPos =  lens get set
     get n = n ^. taggedBnfcIdentBnfcIdent % bnfcIdentPos
     set n v = n & taggedBnfcIdentBnfcIdent % bnfcIdentPos .~ v
 
-bnfcIdentName :: Lens' BnfcIdent String
-bnfcIdentName = lens get set
-  where
-    get n = n ^. stringPos % _1
-    set n v = n & stringPos % _1 .~ v
-
-bnfcIdentPos :: Lens' BnfcIdent (Int, Int)
-bnfcIdentPos = lens get set
-  where
-    get n = n ^. stringPos % _2
-    set n v = n & stringPos % _2 .~ v
-
-instance HasUniqueTag TaggedBnfcIdent where
-    uniqueTag = taggedBnfcIdentTag 
 
 instance HasUniqueTag (ClausesGraph ident) where
     uniqueTag = clauseGraphUniqueTag 
@@ -273,9 +283,22 @@ instance HasUniqueTag (ClausesGraph ident) where
 instance Eq (ClausesGraph ident) where
     a == b = a ^. uniqueTag == b ^. uniqueTag
 
+instance HasUniqueTag TaggedBnfcIdent where
+    uniqueTag = taggedBnfcIdentTag 
+
+instance HasUniqueTag TaggedChIdent where
+    uniqueTag = taggedChIdentTaggedBnfcIdent % taggedBnfcIdentTag 
+
+instance HasBnfcIdent TaggedBnfcIdent where
+    bnfcIdent = taggedBnfcIdentBnfcIdent 
+
+instance HasBnfcIdent TaggedChIdent where
+    bnfcIdent = taggedChIdentTaggedBnfcIdent % taggedBnfcIdentBnfcIdent
+
+
 progGQueryFunctions :: 
-    (Prog (DefnG TaggedBnfcIdent TypeTag)) -> 
-    [FunctionDefG TaggedBnfcIdent TypeTag]
+    (Prog (DefnG TaggedBnfcIdent TypeTag TaggedChIdent)) -> 
+    [FunctionDefG TaggedBnfcIdent TypeTag TaggedChIdent]
 progGQueryFunctions (Prog defsg) = concatMap f defsg
   where
     f (Stmt defns wdefs) = mapMaybe g (NE.toList defns) ++ progGQueryFunctions (Prog wdefs)
@@ -283,7 +306,7 @@ progGQueryFunctions (Prog defsg) = concatMap f defsg
     g _ = Nothing
 
 progGQueryTypeClausesGraphs :: 
-    (Prog (DefnG TaggedBnfcIdent TypeTag)) -> 
+    (Prog (DefnG TaggedBnfcIdent TypeTag TaggedChIdent)) -> 
     [ClausesGraph TaggedBnfcIdent]
 progGQueryTypeClausesGraphs (Prog defsg) = concatMap f defsg
   where

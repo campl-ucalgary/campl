@@ -17,7 +17,9 @@ data TypeClauseError =
     InvalidMutuallyRecursiveTypeArgDec (NonEmpty (TypeClause () () () BnfcIdent BnfcIdent))
     | OverlappingTypeVariables (NonEmpty (TypeClause () () () BnfcIdent BnfcIdent))
     | CodataInputArgStateVarOccurence (TypeClause () () () BnfcIdent BnfcIdent)
+
     | PhraseToMustBeStateVar (TypeClause () () () BnfcIdent BnfcIdent)
+    | ExpectedExactlyOneFromVar (TypeClause () () () BnfcIdent BnfcIdent)
   deriving Show
 
 data FunctionError = 

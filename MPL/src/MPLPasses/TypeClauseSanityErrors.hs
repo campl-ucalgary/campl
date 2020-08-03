@@ -103,6 +103,20 @@ phraseFromVarsAreStateVarCheck clauses = traverse_ f clauses
         g [TypeVar tpvar []] = stvname ==  view bnfcIdentName tpvar
         g _ = False
 
+exactlyOnePhraseFromVarsCheck ::
+    forall m e.
+    ( AsTypeClauseError e
+    , MonadWriter [e] m ) =>
+    NonEmpty (TypeClause () () () BnfcIdent BnfcIdent) ->
+    m ()
+exactlyOnePhraseFromVarsCheck = traverse_ f
+  where
+    f clause = bool (tell [_ExpectedExactlyOneFromVar # clause]) (return ()) check
+      where
+        check = all (g . view typePhraseFrom) (clause ^. typeClausePhrases)
+        g [_] = True
+        g _ = False
+
 typeClauseArgsSanityCheck ::
     forall m e.
     ( AsTypeClauseError e

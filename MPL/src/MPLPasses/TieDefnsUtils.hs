@@ -202,7 +202,10 @@ annotateTypeIToTypeGAndScopeFreeVars = cata f
             _ -> error "not impletmendyet "
         -- return $ TypeSeq <$> sequenceA seq'
         -- fmap TypeSeq <$> sequenceA seq
-    -- f (TypeConcF conc) = fmap TypeConc <$> fmap sequenceA (sequenceA conc)
+    f (TypeConcF conc) = do
+        conc' <- sequenceA conc
+        case conc' of
+            TypeConcArrF seqs ins outs -> undefined
     
 
 {-

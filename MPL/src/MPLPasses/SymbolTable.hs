@@ -53,7 +53,9 @@ data SymCallInfo =
         SymCallTypeVar 
         (FunctionCallValueKnot 
             TaggedBnfcIdent 
-            TypeTag)
+            TypeTag
+            TaggedChIdent
+            )
   deriving Show
 
 data SymInfo = 
@@ -85,33 +87,7 @@ $(concat <$> traverse makeLenses
 instance AsSymSeqConcTypeInfo SymInfo where
     _SymSeqConcTypeInfo = _SymSeqConcType % _SymSeqConcTypeInfo 
 
-
 type SymbolTable = [(String, SymEntry SymInfo)]
-
-querySequentialPhrases = undefined
-querySeqCallFuns = undefined
-sequentialClausesPredicate = undefined
-queryLocalSeqVar = undefined
-queryChecks = undefined
-symbolTableQuery = undefined
-
-{-
-_SymEntryTypeClauseObjType = 
-    symEntryInfo 
-    % _SymClause 
-    % typeClauseNeighbors 
-    % clauseGraph 
-    % clauseGraphObjectType
-
-_SymEntryTypePhraseObjType = 
-    symEntryInfo 
-    % _SymPhrase 
-    % typePhraseContext
-    % phraseParent 
-    % typeClauseNeighbors 
-    % clauseGraph 
-    % clauseGraphObjectType
-    -} 
 
 class CollectSymEntries a where
     collectSymEntries :: a -> SymbolTable
@@ -119,7 +95,7 @@ class CollectSymEntries a where
 instance CollectSymEntries def => CollectSymEntries (Stmt def) where
     collectSymEntries (Stmt defs _) = concatMap collectSymEntries defs
 
-instance CollectSymEntries (DefnG TaggedBnfcIdent TypeTag) where
+instance CollectSymEntries (DefnG TaggedBnfcIdent TypeTag TaggedChIdent) where
     collectSymEntries (ObjectG graph) = collectClauseGraphSymbolTable graph
       where
         collectClauseGraphSymbolTable graph = f graph
@@ -171,68 +147,7 @@ instance CollectSymEntries (DefnG TaggedBnfcIdent TypeTag) where
 
     collectSymEntries _ = error "proceses todo"
 
-data SymbolTableQueryState =  SymbolTableQueryState {
-    _symbolTableQueryStateBnfcIdent :: Maybe BnfcIdent
-    , _symbolTableQueryStateFailure :: Bool
-}
 
-$(makeLenses ''SymbolTableQueryState)
-
-newtype SymbolTableQueryStateT m a =
-    SymbolTableQueryStateT { unSymbolTableQueryT :: StateT SymbolTableQueryState m a }
-  deriving 
-    ( Functor 
-    , Applicative
-    , Monad
-    , MonadState SymbolTableQueryState
-    , MonadTrans )
-
-type SymbolTableQuery symtab a = symtab -> SymbolTableQueryStateT GraphGenCore a
-
-runSymbolTableQuery ::  
-    SymbolTableQuery SymbolTable a -> 
-    SymbolTable -> 
-    GraphGenCore a
-runSymbolTableQuery query symtab = 
-    evalStateT 
-    (unSymbolTableQueryT (query symtab)) 
-    (SymbolTableQueryState Nothing False)
-
-{-
-symbolTableQuery ::
-    SymbolTableQuery [(String, SymEntry a)] (Maybe (SymEntry a))
-symbolTableQuery symtab = do
-    queryfail <- guse symbolTableQueryStateFailure 
-    return $ bool (snd <$> listToMaybe symtab) Nothing queryfail
--}
-
-queryNotInScopeCheck ::
-    SymbolTableQuery [a] [a]
-queryNotInScopeCheck symtab = do
-    ident <- guse symbolTableQueryStateBnfcIdent 
-    flip (maybe (return symtab)) ident $ \ident -> do
-        let isnull = null symtab
-        symbolTableQueryStateFailure %= (||isnull)
-        lift $ tell $ bool [] [NotInScope ident] isnull
-        return symtab
-
-{-
-queryAmbiguousLookupCheck :: 
-    SymbolTableQuery [(String, SymEntry a)] [(String, SymEntry a)]
-queryAmbiguousLookupCheck symtab = do
-    ident <- guse symbolTableQueryStateBnfcIdent 
-    flip (maybe (return symtab)) ident $ \ident -> do
-        let multiplelookups = length symtab >= 2
-        symbolTableQueryStateFailure %= (||multiplelookups)
-        lift 
-            $ tell 
-            $ bool [] 
-                [ AmbiguousLookup ident  
-                $ map (\(str, SymEntry _ pos _) -> BnfcIdent (str,pos)) symtab 
-                ] multiplelookups
-        return symtab
- 
- -}
 queryBnfcIdentName ::
     BnfcIdent -> 
     [(String, SymEntry info)] -> 
@@ -259,7 +174,6 @@ lookupBnfcIdent ::
     Maybe a
 lookupBnfcIdent ident = fmap snd . find ((ident ^. bnfcIdentName  ==) . fst) 
 
-
 lookupsSeqPhrases ::    
     Functor f => 
     f BnfcIdent ->
@@ -271,3 +185,24 @@ lookupsSeqPhrases idents symtab = fmap f idents
                 $ lookupBnfcIdent ident 
                 $ mapMaybe ( traverseOf (_2 % symEntryInfo)
                                     ( preview (_SymSeqCall % _SymPhrase) )) symtab
+
+querySeqClauses ::
+    AsSymSeqConcTypeInfo a =>
+    SymbolTable -> 
+    [(String, SymEntry a)]
+querySeqClauses = mapMaybe 
+    ( traverseOf (_2 % symEntryInfo ) ( fmap (review _SymSeqClause) . preview ( _SymSeqClause)))
+
+queryClauses ::
+    AsSymSeqConcTypeInfo a =>
+    SymbolTable -> 
+    [(String, SymEntry a)]
+queryClauses = mapMaybe 
+    ( traverseOf (_2 % symEntryInfo ) 
+        (\n -> case n ^? _SymSeqClause of 
+            Just n -> Just $ _SymSeqClause # n
+            Nothing -> case n ^? _SymConcClause of
+                Just n -> Just $ _SymConcClause # n
+                Nothing -> Nothing
+            )
+        )

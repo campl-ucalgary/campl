@@ -47,6 +47,7 @@ spec = do
         , outOfScopeTest8
         , outOfScopeTest9
         , outOfScopeTest10
+        , outOfScopeTest11
         ]
 
 --------------------
@@ -145,4 +146,11 @@ fun double  =
     a,b -> fold a of
         AA : a -> Succ(Succ(a))
         ZFF : -> b
+|]
+
+outOfScopeTest11 = [r|
+fun myInfZigZag2 = 
+    n -> unfold n of
+        n of
+            HahaOutOfScope : -> n
 |]

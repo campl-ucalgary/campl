@@ -53,8 +53,8 @@ type DataTypePhraseI ident = TypePhrase () () ident ident
 type CodataTypePhraseI ident = TypePhrase () () ident ident
 type ProtocolTypePhraseI ident = TypePhrase () () ident ident
 type CoprotocolTypePhraseI ident = TypePhrase () () ident ident
-type ProcessCommandsI ident = ProcessCommands (PatternI ident) (StmtI ident) () () ident 
-type ProcessCommandI ident = ProcessCommand (PatternI ident) (StmtI ident) () () ident 
+type ProcessCommandsI ident = ProcessCommands (PatternI ident) (StmtI ident) () () () ident ident 
+type ProcessCommandI ident = ProcessCommand (PatternI ident) (StmtI ident) () () () ident ident 
 type ExprI ident = Expr 
     (PatternI ident)
     (StmtI ident)
@@ -73,8 +73,21 @@ type DataDefnI ident = ObjectDefnI ident
 type CodataDefnI ident = ObjectDefnI ident
 type ProtocolDefnI ident = ObjectDefnI ident
 type CoprotocolDefnI ident = ObjectDefnI ident
-type ProcessDefnI ident = ProcessDefn (PatternI ident) (Stmt (DefnI ident)) () () ident ident
-type FunctionDefnI ident = FunctionDefn (PatternI ident) (Stmt (DefnI ident)) () (FunctionDefSigI ident) () ident
+type ProcessDefnI ident = ProcessDefn 
+    (PatternI ident) 
+    (Stmt (DefnI ident)) 
+    () 
+    (Maybe ([Type () ident ident], [Type () ident ident], [Type () ident ident]))
+    () 
+    () 
+    ident 
+    ident
+
+type FunctionDefnI ident = FunctionDefn 
+    (PatternI ident) 
+    (Stmt (DefnI ident)) 
+    () 
+    (FunctionDefSigI ident) () ident
 
 type FunctionDefSigI ident = Maybe ([Type () ident ident], Type () ident ident)
 
@@ -82,19 +95,26 @@ newtype DefnI ident = DefnI {
     _unDefnI :: Defn (DataDefnI ident) (CodataDefnI ident) (ProtocolDefnI ident) (CoprotocolDefnI ident) (FunctionDefnI ident) (ProcessDefnI ident)
     }
   deriving (Show, Eq, Read, Data)
-$(makeLenses ''DefnI)
 
-
-$(concat <$> traverse (makeFieldLabelsWith (fieldLabelsRules & lensField .~ underscoreNoPrefixNamer))
-    [ ''DefnI ]
- )
-
+$(makeLenses ''DefnI) 
+$(makeClassy ''BnfcIdent)
 $(concat <$> traverse makePrisms 
     [ ''DefnI
     , ''BnfcIdent ]
  )
 
-$(makeLenses ''BnfcIdent)
+
+bnfcIdentName :: HasBnfcIdent a => Lens' a String
+bnfcIdentName = lens get set
+  where
+    get n = n ^. stringPos % _1
+    set n v = n & stringPos % _1 .~ v
+
+bnfcIdentPos :: HasBnfcIdent a => Lens' a (Int, Int)
+bnfcIdentPos = lens get set
+  where
+    get n = n ^. stringPos % _2
+    set n v = n & stringPos % _2 .~ v
 
 type DefnIBnfc = DefnI BnfcIdent
 type ProgIBnfc = ProgI BnfcIdent
