@@ -62,6 +62,7 @@ $(makeClassy ''UniqueTag)
 $(makeClassy ''BnfcIdent)
 $(makeClassy ''TaggedChIdent)
 $(makePrisms ''TaggedBnfcIdent)
+$(makePrisms ''BnfcIdent)
 $(makePrisms ''TaggedChIdent)
 
 bnfcIdentName :: HasBnfcIdent a => Lens' a String
