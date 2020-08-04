@@ -24,7 +24,12 @@ import Data.Bifunctor as Bifunctor
 import Control.Arrow
 import Data.List
 import qualified Data.List.NonEmpty as NE
-import GHC.Generics
+import GHC.Generics hiding ( to )
 import Data.List.NonEmpty (NonEmpty (..))
+
+import qualified Data.Map as Map
+import Data.Map (Map (..))
+import qualified Data.Set as Set
+import Data.Set (Set (..))
 
 

@@ -3,6 +3,9 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 module MPLAST.MPLASTIdent where
 
 import Optics
@@ -17,9 +20,15 @@ import Data.Coerce
 import Control.Monad.State
 import Control.Arrow
 
-type family Pos a where
-    Pos BnfcIdent = (Int,Int)
-    Pos BnfcIdent = (Int,Int)
+import GHC.TypeLits
+
+type family IdentPos a where
+    IdentPos BnfcIdent = (Int,Int)
+    IdentPos BnfcIdent = (Int,Int)
+    IdentPos a = TypeError 
+        ( Text "The ident type " 
+        :<>: ShowType a 
+        :<>: Text " does not have a position.")
 
 newtype BnfcIdent = BnfcIdent { _stringPos :: (String, (Int, Int)) }
   deriving (Show, Read, Data)
