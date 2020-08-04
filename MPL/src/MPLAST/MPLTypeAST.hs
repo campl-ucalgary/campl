@@ -82,6 +82,7 @@ data ConcTypeF ident t =
     | TypeConcArrF { _concSeqArgs :: [t], _concInputArgs :: [t], _concOutputArgs :: [t] }
   deriving ( Read, Show, Generic, Out, Data, Functor, Typeable, Foldable, Traversable, Eq )
 
+
 typeCallDefTraversal :: Traversal (Type a ident typevar) (Type a' ident typevar) a a'
 typeCallDefTraversal = traversalVL trv 
   where

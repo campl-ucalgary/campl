@@ -47,18 +47,25 @@ data FunctionError =
     | NonExhaustiveUnfoldClauses [BnfcIdent]
     | NonExhaustiveFold [BnfcIdent]
 
-    -- | unfold errors
   deriving Show
+
+data ProcessError =
+    UnclosedChannels [BnfcIdent]
+  deriving Show
+    
 
 $(concat <$> traverse makeClassyPrisms 
     [ ''TypeClauseError
-    , ''FunctionError ]
+    , ''FunctionError 
+    , ''ProcessError ]
  )
 
 
 data TieDefnsError = 
     TieDefnTypeClauseError TypeClauseError
     | TieDefnFunctionError FunctionError
+    | TieDefnProcessError ProcessError
+
     | TieDefnUnificationError UnificationError
 
     | NotInScope BnfcIdent
@@ -77,5 +84,7 @@ instance AsTypeClauseError TieDefnsError where
 
 instance AsUnificationError TieDefnsError where
     _UnificationError = _TieDefnUnificationError
-    
+
+instance AsProcessError TieDefnsError where
+    _ProcessError= _TieDefnProcessError 
 

@@ -19,7 +19,6 @@ import Text.RawString.QQ
 import Control.Monad.State
 import qualified Data.List.NonEmpty as NE
 
-import MPLCompile
 
 import Data.Maybe
 import Data.Data
@@ -27,7 +26,7 @@ import Data.Data
 -- note: # is a special prefix for built in types.
 -- the user cannot write # in front of any of their
 -- code (otherwise parse error) TODO add this check in
-
+{-
 mplList = setBnfcPositionToNull $ unsafeTranslateParseLex [r|
 data 
     #List(A) -> C =
@@ -208,4 +207,5 @@ mplBool =
     neighbors = ClausesKnot <$> 
         ( ClausesGraph DataObj 
         <$> (sequenceA $ NE.fromList [mplBool]))
+        -}
         -}

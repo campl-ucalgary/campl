@@ -27,6 +27,7 @@ import MPLAST.MPLPatternAST
 import MPLAST.MPLExprAST
 import MPLAST.MPLProcessCommandsAST
 import MPLAST.MPLProg
+import MPLAST.MPLASTIdent
 
 import Data.Functor.Foldable
 
@@ -62,11 +63,6 @@ type ExprI ident = Expr
     ()
     BnfcIdent
 
-newtype BnfcIdent = BnfcIdent { _stringPos :: (String, (Int, Int)) }
-  deriving (Show, Read, Data)
-
-instance Eq BnfcIdent where
-    BnfcIdent (str0, _) == BnfcIdent (str1, _) = str0 == str1 
 
 type ObjectDefnI ident = NonEmpty (TypeClause () () () ident ident)
 type DataDefnI ident = ObjectDefnI ident
@@ -97,24 +93,12 @@ newtype DefnI ident = DefnI {
   deriving (Show, Eq, Read, Data)
 
 $(makeLenses ''DefnI) 
-$(makeClassy ''BnfcIdent)
 $(concat <$> traverse makePrisms 
     [ ''DefnI
     , ''BnfcIdent ]
  )
 
 
-bnfcIdentName :: HasBnfcIdent a => Lens' a String
-bnfcIdentName = lens get set
-  where
-    get n = n ^. stringPos % _1
-    set n v = n & stringPos % _1 .~ v
-
-bnfcIdentPos :: HasBnfcIdent a => Lens' a (Int, Int)
-bnfcIdentPos = lens get set
-  where
-    get n = n ^. stringPos % _2
-    set n v = n & stringPos % _2 .~ v
 
 type DefnIBnfc = DefnI BnfcIdent
 type ProgIBnfc = ProgI BnfcIdent

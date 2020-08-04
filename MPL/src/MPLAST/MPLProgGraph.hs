@@ -15,10 +15,11 @@ module MPLAST.MPLProgGraph where
 
 import MPLAST.MPLProg
 import MPLAST.MPLProgI
+import MPLAST.MPLASTIdent 
 import MPLAST.MPLTypeAST
 import MPLAST.MPLPatternAST
 import MPLAST.MPLExprAST 
-import MPLUtil.UniqueSupply
+import MPLAST.MPLProcessCommandsAST 
 import MPLUtil.Data.Stream
 
 import Optics
@@ -40,28 +41,6 @@ import Data.List.NonEmpty ( NonEmpty (..) )
 import qualified Data.List.NonEmpty as NE
 import Data.Tuple
 
-data TaggedBnfcIdent = TaggedBnfcIdent {
-    _taggedBnfcIdentBnfcIdent :: BnfcIdent
-    , _taggedBnfcIdentTag :: UniqueTag
-} deriving (Show, Read)
-
-data TaggedChIdent = TaggedChIdent {
-    _taggedChIdentTaggedBnfcIdent :: TaggedBnfcIdent
-    , _taggedChIdentPolarity :: Polarity
-} deriving Show
-
--- equality of tagged bnfcidents should depend only 
--- on equality of the unique tag
-instance Eq TaggedBnfcIdent where
-    TaggedBnfcIdent _ a == TaggedBnfcIdent _ b =  a == b
-
-instance Ord TaggedBnfcIdent where
-    TaggedBnfcIdent _ a <= TaggedBnfcIdent _ b =  a <= b
-
-newtype UniqueTag = UniqueTag { _unUniqueTag :: Unique }
-  deriving (Show, Eq, Ord, Read, Enum)
-
-$(makeClassy ''UniqueTag)
 
 data ClausesGraph ident = ClausesGraph {
     _clauseGraphObjectType :: ObjectType
@@ -69,6 +48,8 @@ data ClausesGraph ident = ClausesGraph {
     , _clauseGraphUniqueTag :: UniqueTag
 }  deriving Show
 
+type TypeGTypeTag = 
+    TypeGTypeVar TaggedBnfcIdent TypeTag
 
 type ClauseGraphSpine ident = NonEmpty ( TypeClauseG ident )
 
@@ -142,7 +123,6 @@ data FunctionCallValueKnot ident typevar chident =
 data ProcessCallValueKnot ident typevar chident =
     ProcessKnot (ProcessDefG ident typevar chident)
     | ProtocolCoprotocolKnot (TypePhraseG ident)
-    | LocalChannel Polarity
   deriving Show
 
 type StmtG ident typevar chident = Stmt (DefnG ident typevar chident)
@@ -168,6 +148,16 @@ type ProcessDefG ident typevar chident =
         (ProcessCallValueKnot ident typevar chident)
         ident 
         chident
+
+type ProcessCommandG ident typevar chident = 
+    ProcessCommand
+        (PatternG ident typevar)
+        (StmtG ident typevar chident)
+        (TypeGTypeVar ident typevar)
+        (TypeGTypeVar ident typevar)
+        (TypeGTypeVar ident typevar) 
+        ident chident
+
     
 
 data DefnG ident typevar chident = 
@@ -176,14 +166,6 @@ data DefnG ident typevar chident =
     | ProcessDecDefG (ProcessDefG ident typevar chident)
   deriving Show
 
-newtype TypeTag = TypeTag UniqueTag
-  deriving (Eq, Ord)
-
-type TypeGTypeTag = 
-    TypeGTypeVar TaggedBnfcIdent TypeTag
-
-instance Show TypeTag where
-    show (TypeTag (UniqueTag n)) = show n
 
 
 $(concat <$> traverse makeLenses 
@@ -192,18 +174,11 @@ $(concat <$> traverse makeLenses
     , ''ClausesGraph 
     ]
  )
-$(concat <$> traverse makeClassy
-    [ ''TaggedBnfcIdent
-    , ''TaggedChIdent 
-    ]
- )
 
 $(concat <$> traverse makePrisms 
     [ ''ClausesGraph 
     , ''TypeClauseCallDefKnot
     , ''DefnG
-    , ''TaggedBnfcIdent
-    , ''TaggedChIdent 
     ]
  )
 
@@ -226,81 +201,12 @@ clauseGObjType =
     % clauseGraph 
     % clauseGraphObjectType 
 
-freshUniqueTag ::
-    ( MonadState c m
-    , HasUniqueSupply c ) => 
-    m UniqueTag
-freshUniqueTag = 
-    uniqueSupply %%= (first (UniqueTag . uniqueFromSupply) <<< split)
-
-freshUniqueTags :: 
-    ( MonadState c m
-    , HasUniqueSupply c ) => 
-    m (Stream UniqueTag)
-freshUniqueTags = do
-    supply <- freshUniqueSupply
-    return $ coerce $ uniquesFromSupply supply
-
-freshTypeTags :: 
-    ( MonadState c m
-    , HasUniqueSupply c ) => 
-    m (Stream TypeTag)
-freshTypeTags = coerce <$> freshUniqueTags
-
-freshUniqueSupply ::
-    ( MonadState c m
-    , HasUniqueSupply c ) => 
-    m UniqueSupply
-freshUniqueSupply =
-    uniqueSupply %%= split
-
-tagBnfcIdent ::
-    ( MonadState c m
-    , HasUniqueSupply c ) => 
-    BnfcIdent ->
-    m TaggedBnfcIdent
-tagBnfcIdent ident = do
-    review _TaggedBnfcIdent . (ident,) <$> freshUniqueTag
-
-freshTypeTag ::
-    ( MonadState c m
-    , HasUniqueSupply c ) => 
-    m TypeTag
-freshTypeTag = TypeTag <$> freshUniqueTag
-
-taggedBnfcIdentName :: Lens' TaggedBnfcIdent String
-taggedBnfcIdentName = lens get set
-  where
-    get n = n ^. taggedBnfcIdentBnfcIdent % bnfcIdentName
-    set n v = n & taggedBnfcIdentBnfcIdent % bnfcIdentName .~ v
-
-taggedBnfcIdentPos :: Lens' TaggedBnfcIdent (Int, Int)
-taggedBnfcIdentPos =  lens get set
-  where
-    get n = n ^. taggedBnfcIdentBnfcIdent % bnfcIdentPos
-    set n v = n & taggedBnfcIdentBnfcIdent % bnfcIdentPos .~ v
-
 
 instance HasUniqueTag (ClausesGraph ident) where
     uniqueTag = clauseGraphUniqueTag 
 
 instance Eq (ClausesGraph ident) where
     a == b = a ^. uniqueTag == b ^. uniqueTag
-
-instance HasUniqueTag TaggedBnfcIdent where
-    uniqueTag = taggedBnfcIdentTag 
-
-instance HasUniqueTag TaggedChIdent where
-    uniqueTag = taggedChIdentTaggedBnfcIdent % taggedBnfcIdentTag 
-
-instance HasBnfcIdent TaggedBnfcIdent where
-    bnfcIdent = taggedBnfcIdentBnfcIdent 
-
-instance HasTaggedBnfcIdent  TaggedChIdent where
-    taggedBnfcIdent = taggedChIdentTaggedBnfcIdent 
-
-instance HasBnfcIdent TaggedChIdent where
-    bnfcIdent = taggedChIdentTaggedBnfcIdent % taggedBnfcIdentBnfcIdent
 
 
 progGQueryFunctions :: 

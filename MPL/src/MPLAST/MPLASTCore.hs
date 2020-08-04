@@ -7,7 +7,10 @@ module MPLAST.MPLASTCore (
     , module MPLAST.MPLProgTraversals
     , module MPLAST.MPLProgGraph
     , module MPLAST.MPLTypeAST
+    , module MPLAST.MPLTypeASTInternal
     , module MPLAST.MPLPrinter
+    , module MPLAST.MPLBuiltIn
+    , module MPLAST.MPLASTIdent 
     ) where
 
 import MPLAST.MPLExprAST
@@ -20,3 +23,6 @@ import MPLAST.MPLProgGraph
 import MPLAST.MPLProgI
 import MPLAST.MPLTypeAST 
 import MPLAST.MPLPrinter
+import MPLAST.MPLBuiltIn
+import MPLAST.MPLTypeASTInternal
+import MPLAST.MPLASTIdent 

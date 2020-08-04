@@ -1,6 +1,8 @@
-{-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module MPLPasses.TieDefnsUtils where
 
 import Optics 
@@ -28,6 +30,8 @@ import qualified Data.Map as Map
 import Control.Monad.State
 import Control.Monad.Except
 import Control.Monad.Writer
+import Control.Monad.Reader
+import Control.Monad.RWS
 
 import Data.Function
 import Control.Applicative
@@ -39,6 +43,132 @@ import Data.List
 
 import Control.Arrow
 import Debug.Trace
+
+data TieDefnsTState = TieDefnsTState {
+    _tieDefnsStateSymbolTable :: SymbolTable
+    , _tieDefnsTypeEqnsPkg :: TieDefnsTypeEqnsPkg
+}
+
+data TieDefnsTypeEqnsPkg = TieDefnsTypeEqnsPkg  {
+    _tieDefnsTypeForall :: [TypeTag]
+    , _tieDefnsTypeExist :: [TypeTag]
+    , _tieDefnsTypeEqns :: [TypeEqns TaggedBnfcIdent TypeTag]
+}  
+
+instance Semigroup TieDefnsTypeEqnsPkg where
+    TieDefnsTypeEqnsPkg a0 b0 c0 <> TieDefnsTypeEqnsPkg a1 b1 c1 =
+        TieDefnsTypeEqnsPkg (a0 <> a1) (b0 <> b1) (c0 <> c1)
+
+instance Monoid TieDefnsTypeEqnsPkg where
+    mempty = TieDefnsTypeEqnsPkg [] [] []
+    
+
+data ExprTypeTags = ExprTypeTags {
+    _exprTtype :: TypeTag
+    , _exprTtypeInternal :: TypeTag
+}  deriving Show
+
+data TieExprEnv = TieExprEnv {
+    _tieExprEnvTypeTags :: ExprTypeTags
+    , _tieExprEnvTagTypeMap :: TagTypeMap
+}
+
+
+$(concat <$> traverse makeLenses 
+    [ ''TieExprEnv ] 
+ )
+$(makePrisms ''TieExprEnv)
+$(makeClassy ''ExprTypeTags)
+$(makePrisms ''ExprTypeTags)
+
+$(makeLenses ''TieDefnsTState)
+$(makeLenses ''TieDefnsTypeEqnsPkg)
+
+newtype TieDefnsT m a = 
+    TieDefnsT { unTieDefnsT :: RWST 
+            TagTypeMap 
+            [DefnG TaggedBnfcIdent TypeTag TaggedChIdent] 
+            TieDefnsTState 
+            m a }
+  deriving 
+    ( Functor
+    , Applicative
+    , Monad
+    , MonadFix
+    , MonadState TieDefnsTState
+    , MonadReader TagTypeMap 
+    , MonadWriter [DefnG TaggedBnfcIdent TypeTag TaggedChIdent] 
+    , MonadRWS TagTypeMap [DefnG TaggedBnfcIdent TypeTag TaggedChIdent] TieDefnsTState  
+    , MonadTrans 
+    )
+
+type TieDefns a = TieDefnsT GraphGenCore a
+
+runTieDefnsT :: 
+    TagTypeMap ->
+    TieDefnsTState ->
+    TieDefns a -> 
+    GraphGenCore (a, TieDefnsTState, [DefnG TaggedBnfcIdent TypeTag TaggedChIdent])
+runTieDefnsT tagmap st (TieDefnsT m) = runRWST m tagmap st
+
+newtype TieFunT m a =
+    TieFunT { 
+        unTieFunT :: ReaderT TieExprEnv (StateT SymbolTable m) a
+    }
+  deriving 
+    ( Functor
+    , Applicative
+    , Monad
+    , MonadFix
+    , MonadState SymbolTable
+    , MonadReader TieExprEnv)
+instance MonadTrans TieFunT where
+    lift = TieFunT . lift . lift 
+
+type TieFun a = TieFunT GraphGenCore a
+
+runTieFun ::
+    TieExprEnv ->
+    SymbolTable ->
+    TieFun a ->
+    GraphGenCore (a, SymbolTable)
+runTieFun env sym = flip runStateT sym 
+    . flip runReaderT env 
+    . unTieFunT
+
+type ChCxt = [(String, SymEntry SymChInfo)]
+
+data TieProcSt = TieProcSt {
+    _tieProcSymTab :: SymbolTable
+    , _tieProcChCxt :: ChCxt
+}
+$(makeLenses ''TieProcSt)
+
+newtype TieProcT m a =
+    TieProcT {
+        unTieProcT :: ReaderT TagTypeMap (StateT TieProcSt m) a
+    }
+  deriving 
+    ( Functor
+    , Applicative
+    , Monad
+    , MonadFix
+    , MonadState TieProcSt
+    , MonadReader TagTypeMap )
+
+instance MonadTrans TieProcT where
+    lift = TieProcT . lift . lift
+
+type TieProc a = TieProcT GraphGenCore a 
+
+runTieProc ::
+    TagTypeMap ->
+    TieProcSt ->
+    TieProc a ->
+    GraphGenCore (a, TieProcSt)
+runTieProc tagmap st = flip runStateT st 
+    . flip runReaderT tagmap 
+    . unTieProcT 
 
 clauseSubstitutions :: 
     ( MonadState s m 
@@ -199,28 +329,6 @@ annotateTypeIToTypeGAndScopeFreeVars = cata f
         TypeConc <$> lift (tagConcTypeF conc')
     
 
-{-
-tagTypeSeq :: 
-    SeqTypeF BnfcIdent t ->
-    GraphGenCore (SeqTypeF TaggedBnfcIdent t)
-tagTypeSeq (TypeTupleF n) = return (TypeTupleF n)
-tagTypeSeq (TypeIntF n) = return (TypeTupleF n)
--}
-
-data ExprTypeTags = ExprTypeTags {
-    _exprTtype :: TypeTag
-    , _exprTtypeInternal :: TypeTag
-}  deriving Show
-
-data TieExprEnv = TieExprEnv {
-    _tieExprEnvTypeTags :: ExprTypeTags
-    , _tieExprEnvTagTypeMap :: TagTypeMap
-}
-
-$(makeLenses ''TieExprEnv)
-$(makePrisms ''TieExprEnv)
-$(makeClassy ''ExprTypeTags)
-$(makePrisms ''ExprTypeTags)
 
 freshExprTypeTags :: GraphGenCore ExprTypeTags
 freshExprTypeTags = ExprTypeTags <$> freshTypeTag <*> freshTypeTag

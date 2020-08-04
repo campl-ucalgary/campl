@@ -2,9 +2,7 @@
 module MPLAST.MPLProgTraversals where
 
 import MPLAST.MPLProg
-import Optics
-
-
+import Optics 
 
 {-
 objectTypeDeclaredStateVars :: Traversal' (TypeClause phrase decdef a) a

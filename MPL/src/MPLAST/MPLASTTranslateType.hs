@@ -22,6 +22,7 @@ import Data.Maybe
 import Data.Coerce
 
 import MPLAST.MPLTypeAST
+import MPLAST.MPLASTIdent 
 import MPLAST.MPLPatternAST
 import MPLAST.MPLExprAST
 import MPLAST.MPLProcessCommandsAST

@@ -31,6 +31,7 @@ import MPLAST.MPLProgI
 import MPLAST.MPLASTTranslateType
 import MPLAST.MPLASTTranslatePatterns
 import MPLAST.MPLASTTranslateErrors
+import MPLAST.MPLASTIdent 
 
 import MPLUtil.Data.Either
 import MPLUtil.Data.Either.AccumEither

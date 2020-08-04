@@ -10,6 +10,7 @@ import MPLAST.MPLPatternAST
 import MPLAST.MPLProg
 import MPLAST.MPLProgI
 import MPLAST.MPLProgGraph
+import MPLAST.MPLASTIdent 
 
 import MPLAST.MPLASTTranslateType
 import MPLUtil.UniqueSupply

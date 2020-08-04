@@ -27,6 +27,7 @@ import MPLPasses.TieDefnsTypes
 import MPLPasses.TieDefnsErrors 
 import MPLPasses.TieDefnsUtils
 import MPLPasses.CallErrors
+import MPLPasses.ProcessErrors
 
 import MPLUtil.Data.Tuple.Optics
 import MPLUtil.Data.Either.AccumEither
@@ -57,81 +58,7 @@ import Control.Applicative
 
 import Debug.Trace 
 
-data TieDefnsTState = TieDefnsTState {
-    _tieDefnsStateSymbolTable :: SymbolTable
-    , _tieDefnsTypeEqnsPkg :: TieDefnsTypeEqnsPkg
-}
 
-data TieDefnsTypeEqnsPkg = TieDefnsTypeEqnsPkg  {
-    _tieDefnsTypeForall :: [TypeTag]
-    , _tieDefnsTypeExist :: [TypeTag]
-    , _tieDefnsTypeEqns :: [TypeEqns TaggedBnfcIdent TypeTag]
-}  
-
-instance Semigroup TieDefnsTypeEqnsPkg where
-    TieDefnsTypeEqnsPkg a0 b0 c0 <> TieDefnsTypeEqnsPkg a1 b1 c1 =
-        TieDefnsTypeEqnsPkg (a0 <> a1) (b0 <> b1) (c0 <> c1)
-
-instance Monoid TieDefnsTypeEqnsPkg where
-    mempty = TieDefnsTypeEqnsPkg [] [] []
-    
-
-
-$(makeLenses ''TieDefnsTState)
-$(makeLenses ''TieDefnsTypeEqnsPkg)
-
-
-newtype TieDefnsT m a = 
-    TieDefnsT { unTieDefnsT :: RWST 
-            TagTypeMap 
-            [DefnG TaggedBnfcIdent TypeTag TaggedChIdent] 
-            TieDefnsTState 
-            m a }
-  deriving 
-    ( Functor
-    , Applicative
-    , Monad
-    , MonadFix
-    , MonadState TieDefnsTState
-    , MonadReader TagTypeMap 
-    , MonadWriter [DefnG TaggedBnfcIdent TypeTag TaggedChIdent] 
-    , MonadRWS TagTypeMap [DefnG TaggedBnfcIdent TypeTag TaggedChIdent] TieDefnsTState  
-    , MonadTrans 
-    )
-
-type TieDefns a = TieDefnsT GraphGenCore a
-
-newtype TieFunT m a =
-    TieFunT { 
-        unTieFunT :: ReaderT TieExprEnv (StateT SymbolTable m) a
-    }
-  deriving 
-    ( Functor
-    , Applicative
-    , Monad
-    , MonadFix
-    , MonadState SymbolTable
-    , MonadReader TieExprEnv)
-instance MonadTrans TieFunT where
-    lift = TieFunT . lift . lift 
-
-type TieFun a = TieFunT GraphGenCore a
-
-runTieDefnsT :: 
-    TagTypeMap ->
-    TieDefnsTState ->
-    TieDefns a -> 
-    GraphGenCore (a, TieDefnsTState, [DefnG TaggedBnfcIdent TypeTag TaggedChIdent])
-runTieDefnsT tagmap st (TieDefnsT m) = runRWST m tagmap st
-
-runTieFunT ::
-    TieExprEnv ->
-    SymbolTable ->
-    TieFun a ->
-    GraphGenCore (a, SymbolTable)
-runTieFunT env sym = flip runStateT sym 
-    . flip runReaderT env 
-    . unTieFunT
 
 progInterfaceToGraph :: 
     (SymbolTable, GraphGenCoreEnv, GraphGenCoreState) ->
@@ -194,7 +121,6 @@ stmtIToGraph (Stmt defs wstmts) = do
 defnsToGraph :: 
     [DefnI BnfcIdent] ->
     TieDefns ()
-        -- Sequential and concurrent..
 defnsToGraph [] = return mempty
 defnsToGraph (a:as) = case a ^. unDefnI of 
     DataDefn ival -> mdo
@@ -307,7 +233,7 @@ defnsToGraph (a:as) = case a ^. unDefnI of
         ttypespattsandexps <- lift $ traverse (const freshExprTypeTags) funbody'
 
         ~((pattsgexpsg, eqns), _) <- lift 
-            $ runTieFunT (TieExprEnv ttypes tagmap) symtab 
+            $ runTieFun (TieExprEnv ttypes tagmap) symtab 
             $ fmap unzip <$> 
                 traverse 
                     (\(tag, pattsexp) -> 
@@ -378,9 +304,17 @@ defnsToGraph (a:as) = case a ^. unDefnI of
                 -- give it the dummy type... (better error messages lower down where
                 -- the issue really is..
                     ( maybe (SymCallDummyTypeVar ttype) SymCallExplicitType proctype'
-                    , undefined proc')
+                    , ProcessKnot proc')
                 )
             ):)
+
+        ttypespattschscmds <- lift $ traverse (const freshExprTypeTags) procbody'
+
+        ~((pattsgchscmdsg, eqns), _) <- lift
+            $ runTieProc tagmap (TieProcSt symtab mempty)
+            $ fmap unzip 
+            $ traverse (\(tag, pattschscmds) -> patternsChsCmdIToGraph tag pattschscmds)
+            $ zip ttypespattschscmds procbody'
 
         let proc' = undefined
             ttypephrases = undefined
@@ -398,39 +332,116 @@ defnsToGraph (a:as) = case a ^. unDefnI of
         
         return ()
 
-patternsIAndExprsIToGraph :: 
-    [([PatternI BnfcIdent], ExprI BnfcIdent)] ->
-    TieFun ( [([PatternG TaggedBnfcIdent TypeTag], ExprG TaggedBnfcIdent TypeTag TaggedChIdent)] 
+----------------------------
+-- Processes
+----------------------------
+patternsChsCmdIToGraph ::
+    ExprTypeTags ->
+    (([PatternI BnfcIdent], [BnfcIdent], [BnfcIdent]), ProcessCommandsI BnfcIdent) ->
+    TieProc ( ( ([PatternG TaggedBnfcIdent TypeTag], [TaggedChIdent], [TaggedChIdent])
+          , NonEmpty (ProcessCommandG TaggedBnfcIdent TypeTag TaggedChIdent))
         , TypeEqns TaggedBnfcIdent TypeTag )
-patternsIAndExprsIToGraph pattsandexps = do
-    ttype <- gview exprTtype
-    ttypeinternal <- gview exprTtypeInternal
-    tagmap <- gview tieExprEnvTagTypeMap
+patternsChsCmdIToGraph ttypes ((patts, inchs, outchs), cmds) = do
+    let ttype = ttypes ^. exprTtype
+        ttypeinternal = ttypes ^. exprTtypeInternal
 
-    ttypespattsandexps <- traverse (\n -> (,n) <$> lift freshExprTypeTags ) pattsandexps
-    (pattsgexpsg, eqns) <- unzip <$> 
-        traverse 
-            (\(tag, pattsexp) -> 
-                local (set tieExprEnvTypeTags tag) 
-                $ patternsIAndExprIToGraph pattsexp) 
-            ttypespattsandexps
+    tagmap <- gview equality
+    symtab <- guse tieProcSymTab 
 
+    -- get the pattern tags..
+    ttypespatts <- lift $ traverse (const freshExprTypeTags) patts
 
-    let ttypephrases = map (view exprTtype . fst) ttypespattsandexps
-        typeeqns = TypeEqnsExist ttypephrases $
-            [TypeEqnsStableRef (ttypeinternal, TypeVar ttype [])]
-            ++ map (TypeEqnsEq . (TypeVar ttype [],) . flip TypeVar []) ttypephrases
-            ++ eqns
-    return (pattsgexpsg, typeeqns)
+    -- tag the local channels // add them to the map..
+    inchs' <- lift $ traverse (fmap (review _TaggedChIdent . (,Input)) . tagBnfcIdent) inchs
+    ttypesinchs <- lift $ traverse (const freshExprTypeTags) inchs'
+    outchs' <- lift $ traverse (fmap (review _TaggedChIdent . (,Output)) . tagBnfcIdent) outchs
+    ttypesoutchs <- lift $ traverse (const freshExprTypeTags) outchs'
 
+    let inchssyms = zipWith chssymgen inchs' ttypesinchs
+        outchssyms = zipWith chssymgen outchs' ttypesoutchs
+        chssymgen n ttypes = 
+            ( n ^. bnfcIdentName
+            , _SymEntry # 
+                    ( n ^. uniqueTag
+                    , n ^. bnfcIdentPos
+                    , SymChInfo (ttypes ^. exprTtype) (n ^. taggedChIdentPolarity))
+            )
+            
+
+    -- TODO need to do overlapping declarations check..
+    tieProcChCxt %= (inchssyms<>)
+    tieProcChCxt %= (outchssyms<>)
+
+    -- compile the patterns
+    ((pattseqns, pattsg), symtab') <- lift $ runTieFun 
+        (_TieExprEnv # (ttypes, tagmap))
+        symtab
+        $ unwrappedPatternsIToGraph $ zip ttypespatts patts
+
+    tieProcSymTab .= symtab'
+
+    -- compilation of the cmds
+    (cmds', cmdeqns) <- cmdsIToGraph cmds
+
+    tieProcSymTab .= symtab
+
+    let ttypepatts = ttypespatts & mapped %~ view exprTtype
+        ttypeeqn = TypeEqnsExist ttypepatts $
+            [ TypeEqnsEq
+                ( TypeVar ttype []
+                , TypeConc $ TypeConcArrF
+                    (map (flip TypeVar []) ttypepatts) 
+                    (map (flip TypeVar [] . view exprTtype) ttypesinchs)
+                    (map (flip TypeVar [] . view exprTtype) ttypesoutchs)
+                )
+            , TypeEqnsStableRef
+                (ttypeinternal, TypeVar ttype[])
+            ]
+            ++ map (review _TypeEqnsStableRef <<< view exprTtypeInternal &&& flip TypeVar [] . view exprTtype)
+                ttypesinchs
+            ++ map (review _TypeEqnsStableRef <<< view exprTtypeInternal &&& flip TypeVar [] . view exprTtype)
+                ttypesoutchs
+            ++ pattseqns
+            ++ cmdeqns
+
+    -- return (((pattsg, inchs', outchs'), NE.fromList cmds'), ttypeeqn)
+    return (((pattsg, inchs', outchs'), cmds'), ttypeeqn)
+
+cmdsIToGraph ::
+    NonEmpty (ProcessCommandI BnfcIdent) -> 
+    TieProc
+        ( NonEmpty (ProcessCommandG TaggedBnfcIdent TypeTag TaggedChIdent)
+        , [TypeEqns TaggedBnfcIdent TypeTag] )
+cmdsIToGraph (cmd :| []) = case cmd of
+    CHalt ch -> do
+        chcxt <- guse tieProcChCxt 
+        let mch' = lookup (ch ^. bnfcIdentName) chcxt
+            ch'  = fromJust mch'
+            chcxt' = filter (view $ _1 % to (not . (==ch^.bnfcIdentName))) chcxt
+
+        -- check scope
+        lift $ tell $ bool [] [_NotInScope # ch] $ isNothing mch'
+        lift $ tell $ unclosedChannelsCheck chcxt'
+
+        -- <- tagConcTypeF (TypeConc $ TypeTopBotF topBotIdent)
+        let eqn = TypeEqnsEq 
+                ( _TypeVar # (ch' ^. symEntryInfo % symChTypeTag, [])
+                , TypeConc $ undefined )
+
+        return (undefined, [eqn])
+cmdsIToGraph (cmd :| rst) = case cmd of
+    CGet patt ch -> do
+        undefined
+            
+
+----------------------------
+-- Functions
+----------------------------
 patternsIAndExprIToGraph ::
     ([PatternI BnfcIdent], ExprI BnfcIdent) ->
     TieFun ( ([PatternG TaggedBnfcIdent TypeTag], ExprG TaggedBnfcIdent TypeTag TaggedChIdent)
         , TypeEqns TaggedBnfcIdent TypeTag )
 patternsIAndExprIToGraph (patts, expr) = do
-    -- get the current symbol table since the symbol table
-    -- needs to be reset after.
-    -- symtab <- gview tieExprEnvSymbolTable
     symtab <- guse equality
 
     ttype <- gview exprTtype
@@ -1217,4 +1228,3 @@ patternIToGraph pattern =
         return 
             ( [TypeEqnsStableRef (ttypeinternal, TypeVar ttype [])]
             , PNull ident' $ fromJust $ Map.lookup ttypeinternal tagmap)
-

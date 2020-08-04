@@ -10,6 +10,7 @@ import Data.Tuple
 import MPLAST.MPLProg
 import MPLAST.MPLProgI
 import MPLAST.MPLTypeAST
+import MPLAST.MPLASTIdent 
 
 import Data.List.NonEmpty
 

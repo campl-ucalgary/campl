@@ -1,6 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
 module MPLPasses.SymbolTable where
 
 import MPLAST.MPLProgI
@@ -38,6 +40,14 @@ data SymEntry info = SymEntry {
     , _symEntryInfo :: info
 }  deriving Show
 
+instance HasBnfcIdent (String, SymEntry info) where
+    bnfcIdent = lens getter setter
+      where
+        getter (str, SymEntry _ pos _) = BnfcIdent (str, pos)
+        setter (str, SymEntry tag _ info) ident = 
+            ( ident ^. bnfcIdentName
+            , SymEntry tag (ident ^. bnfcIdentPos) info )
+
 data SymSeqConcTypeInfo = 
     SymSeqClause 
         (TypeClauseG TaggedBnfcIdent)
@@ -57,7 +67,6 @@ data SymCallInfo knot =
 data SymInfo = 
     SymSeqCall (SymCallInfo (FunctionCallValueKnot TaggedBnfcIdent TypeTag TaggedChIdent))
     | SymConcCall (SymCallInfo (ProcessCallValueKnot TaggedBnfcIdent TypeTag TaggedChIdent))
-    | SymConcLocalCh TypeTag
 
     | SymSeqConcType SymSeqConcTypeInfo
   deriving Show
@@ -66,6 +75,11 @@ data SymCallTypeVar =
     SymCallDummyTypeVar TypeTag
     | SymCallExplicitType (TypeG TaggedBnfcIdent)
   deriving Show
+
+data SymChInfo = SymChInfo {
+    _symChTypeTag :: TypeTag
+    , _symChPolarity :: Polarity
+}
 
 $(makePrisms ''SymEntry)
 $(concat <$> traverse makeClassyPrisms 
@@ -77,7 +91,8 @@ $(concat <$> traverse makeClassyPrisms
  )
 $(concat <$> traverse makeLenses 
     [ ''SymEntry 
-    , ''SymInfo ]
+    , ''SymInfo 
+    , ''SymChInfo ]
  )
 
 instance AsSymSeqConcTypeInfo SymInfo where
