@@ -93,10 +93,7 @@ newtype DefnI ident = DefnI {
   deriving (Show, Eq, Read, Data)
 
 $(makeLenses ''DefnI) 
-$(concat <$> traverse makePrisms 
-    [ ''DefnI
-    , ''BnfcIdent ]
- )
+$(makePrisms ''DefnI)
 
 
 

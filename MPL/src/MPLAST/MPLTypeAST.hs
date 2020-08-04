@@ -30,11 +30,6 @@ import Data.Typeable
 
 import Text.PrettyPrint.GenericPretty
 
--- TODO: for obvious reasons, this is not ideal. Perhaps look into
--- autmoatically genrating the required parts with Template haskell.
--- #define MplAstDerivingClause ( Read, Show, Generic, Out, Functor, Foldable, Traversable, Data, Typeable )
-#define MPL_TYPE_AST_PLAIN_DATA_DERIVING_CLAUSE ( Eq, Ord, Read, Show, Generic, Out, Data, Typeable )
-
 data Type calldef ident typevar =
     TypeWithArgs { 
         _typeIdent :: ident
@@ -98,7 +93,7 @@ data InternalSeqType =
     | InternalString 
     | InternalDouble 
     | InternalUnit 
-  deriving MPL_TYPE_AST_PLAIN_DATA_DERIVING_CLAUSE 
+  deriving ( Eq, Ord, Read, Show, Generic, Out, Data, Typeable )
 
 _InternalSeqTypeParser :: Prism' String InternalSeqType
 _InternalSeqTypeParser = prism' embed match
@@ -136,7 +131,7 @@ data InternalConcTypes =
     | InternalTopBot
     | InternalTensor
     | InternalPar
-  deriving MPL_TYPE_AST_PLAIN_DATA_DERIVING_CLAUSE 
+  deriving ( Eq, Ord, Read, Show, Generic, Out, Data, Typeable )
 
 {-
 $(concat <$> traverse (makeFieldLabelsWith (fieldLabelsRules & lensField .~ underscoreNoPrefixNamer))

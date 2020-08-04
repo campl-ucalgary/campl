@@ -20,16 +20,6 @@ import Data.Coerce
 import Control.Monad.State
 import Control.Arrow
 
-import GHC.TypeLits
-
-type family IdentPos a where
-    IdentPos BnfcIdent = (Int,Int)
-    IdentPos BnfcIdent = (Int,Int)
-    IdentPos a = TypeError 
-        ( Text "The ident type " 
-        :<>: ShowType a 
-        :<>: Text " does not have a position.")
-
 newtype BnfcIdent = BnfcIdent { _stringPos :: (String, (Int, Int)) }
   deriving (Show, Read, Data)
 
