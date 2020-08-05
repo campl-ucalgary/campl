@@ -114,6 +114,10 @@ data Polarity =
     | Output
   deriving Show
 
+polarity :: Polarity -> a -> a -> a
+polarity Input a _ = a
+polarity Output _ b = b
+
 
 $(concat <$> traverse makeLenses 
     [ ''Prog

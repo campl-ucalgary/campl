@@ -39,7 +39,9 @@ spec = do
     mapM_ describeForallMatchFailure
         [ testfail1
         , testfail2 
-        , testfail3 ]
+        , testfail3 
+        , testfail4 
+        ]
 
 testfail1 = [r| 
 defn
@@ -66,4 +68,20 @@ codata
 
 fun tomato :: A -> Triple(A,B,A) = 
     a -> (P1 := -> a, P2 := -> a, P3 := -> a)
+|]
+
+testfail4 = [r| 
+proc testing :: A | => Put(B | TopBot) =
+    a | => out -> do  
+        put a on out
+        halt out
+|]
+
+testfail5 = [r|
+proc testfail5 :: A | => Put(A | Get(B | Put(A | TopBot))) =
+    a | => out -> do  
+        put a on out
+        get b on out
+        put b on out
+        halt out
 |]

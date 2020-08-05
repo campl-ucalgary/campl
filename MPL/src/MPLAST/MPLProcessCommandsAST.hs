@@ -42,7 +42,11 @@ import Text.PrettyPrint.GenericPretty
 
 type ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident = NonEmpty (ProcessCommand pattern letdef typedef seqcalleddef conccalleddef ident chident)
 
-data ProcessCommand pattern letdef typedef seqcalleddef conccalleddef ident chident =
+data ProcessCommand pattern letdef typedef 
+    seqcalleddef 
+    conccalleddef 
+    ident 
+    chident =
     CRun { _cCalledProcess :: ident
         , _cSeqArgs :: [Expr pattern letdef typedef seqcalleddef ident]
         , _cInChsArgs :: [ident]

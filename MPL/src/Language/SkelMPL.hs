@@ -211,6 +211,7 @@ transFunctionDefn x = case x of
 transProcessDefn :: ProcessDefn -> Result
 transProcessDefn x = case x of
   TYPED_PROCESS_DEFN pident mpltypes1 mpltypes2 mpltypes3 processphrases -> failure x
+  INTERNAL_TYPED_PROCESS_DEFN pident mpltype processphrases -> failure x
   PROCESS_DEFN pident processphrases -> failure x
 transProcessPhrase :: ProcessPhrase -> Result
 transProcessPhrase x = case x of

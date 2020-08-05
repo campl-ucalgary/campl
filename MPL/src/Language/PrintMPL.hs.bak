@@ -321,7 +321,7 @@ instance Print PattExprPhrase where
 instance Print Pattern where
   prt i e = case e of
     PATTERN pattern -> prPrec i 0 (concatD [prt 0 pattern])
-    TYPED_PATTERN pattern mpltype -> prPrec i 0 (concatD [prt 0 pattern, doc (showString ":"), prt 0 mpltype])
+    TYPED_PATTERN pattern mpltype -> prPrec i 0 (concatD [prt 0 pattern, doc (showString "::"), prt 0 mpltype])
     LIST_COLON_PATTERN pattern1 colon pattern2 -> prPrec i 0 (concatD [prt 1 pattern1, prt 0 colon, prt 0 pattern2])
     CONSTRUCTOR_PATTERN_ARGS uident lbracket patterns rbracket -> prPrec i 1 (concatD [prt 0 uident, prt 0 lbracket, prt 0 patterns, prt 0 rbracket])
     CONSTRUCTOR_PATTERN_NO_ARGS uident -> prPrec i 1 (concatD [prt 0 uident])
@@ -356,6 +356,7 @@ instance Print FunctionDefn where
 instance Print ProcessDefn where
   prt i e = case e of
     TYPED_PROCESS_DEFN pident mpltypes1 mpltypes2 mpltypes3 processphrases -> prPrec i 0 (concatD [doc (showString "proc"), prt 0 pident, doc (showString "::"), prt 0 mpltypes1, doc (showString "|"), prt 0 mpltypes2, doc (showString "=>"), prt 0 mpltypes3, doc (showString "="), doc (showString "{"), prt 0 processphrases, doc (showString "}")])
+    INTERNAL_TYPED_PROCESS_DEFN pident mpltypes1 mpltypes2 mpltypes3 processphrases -> prPrec i 0 (concatD [doc (showString "proc"), prt 0 pident, doc (showString "::"), prt 0 mpltypes1, doc (showString "|"), prt 0 mpltypes2, doc (showString "=>"), prt 0 mpltypes3, doc (showString "="), doc (showString "{"), prt 0 processphrases, doc (showString "}")])
     PROCESS_DEFN pident processphrases -> prPrec i 0 (concatD [doc (showString "proc"), prt 0 pident, doc (showString "="), doc (showString "{"), prt 0 processphrases, doc (showString "}")])
 
 instance Print ProcessPhrase where

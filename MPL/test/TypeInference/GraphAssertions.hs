@@ -61,7 +61,8 @@ describeAllFailures pred prog = do
                     (allOf folded pred errs)
 
 
-describeOutOfScope = describeAllFailures (has _NotInScope)
+describeOutOfScope = describeAllFailures 
+    (has _NotInScope)
 
 describeForallMatchFailure = describeAllFailures 
     (has (_TieDefnUnificationError % _ForallMatchFailure))

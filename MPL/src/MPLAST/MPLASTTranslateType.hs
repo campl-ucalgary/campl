@@ -225,8 +225,10 @@ translateBnfcTypeToType (GETPUT_TYPE getput _ a b _) = maybe
     concarg = translateBnfcTypeToType b
 
 -- WE TRANSLATE THE TYPES TO THE INTERNAL VARIANTS HERE...
-translateBnfcTypeToType (MPL_UIDENT_NO_ARGS_TYPE ident) = 
-    review (_Right % _TypeVar ) (ident ^. uIdentBnfcIdentGetter, [])
+translateBnfcTypeToType (MPL_UIDENT_NO_ARGS_TYPE ident@(UIdent (_, str))) 
+    | Just InternalTopBot <- str ^? _InternalConcTypeParser =
+        _Right % _TypeConc % _TypeTopBotF # (ident ^. uIdentBnfcIdentGetter)
+    | otherwise = review (_Right % _TypeVar ) (ident ^. uIdentBnfcIdentGetter, [])
 translateBnfcTypeToType (MPL_UIDENT_ARGS_TYPE ident _ lst _) =
     review _TypeWithArgs <$> ( (ident ^. uIdentBnfcIdentGetter,(),)  <$> res ^. collectsOnlyIfNoLeftsGetter )
   where

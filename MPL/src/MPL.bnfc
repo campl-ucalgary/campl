@@ -307,6 +307,10 @@ TYPED_PROCESS_DEFN . ProcessDefn ::=
     "proc" PIdent "::" [MplType]  "|" [MplType] "=>" [MplType]
                    "=" "{" [ProcessPhrase] "}" ;
 
+internal INTERNAL_TYPED_PROCESS_DEFN . ProcessDefn ::= 
+    "proc" PIdent "::" MplType
+                   "=" "{" [ProcessPhrase] "}" ;
+
 PROCESS_DEFN . ProcessDefn ::= 
     "proc" PIdent "=" "{" [ProcessPhrase] "}" ;
 

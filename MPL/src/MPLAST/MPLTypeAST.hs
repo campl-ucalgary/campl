@@ -149,6 +149,7 @@ $(concat <$> traverse makePrisms
     [ ''Type
     , ''SeqTypeF
     , ''ConcTypeF
+    , ''InternalConcTypes
     ]
  )
 

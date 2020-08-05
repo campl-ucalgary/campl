@@ -66,6 +66,16 @@ spec = do
         , test27
         , test28
         , test29
+        , test30
+        , test31
+        , test32
+        , test33
+        , test34
+        , test35
+        , test36
+        , test37
+        , test38
+        , test39
         ]
 
 
@@ -485,4 +495,92 @@ fun sum :: Fix(ListF) -> Nat =
 |]
 
 test29 = [r| 
+proc testing :: | => Get(A | TopBot) =
+    | => out -> do  
+        get n on out
+        halt out
+|]
+
+test30 = [r| 
+proc testing :: | => TopBot =
+    | => out -> do  
+        halt out
+|]
+
+test31 = [r| 
+data 
+    Unit -> S =
+        Unit :: -> S
+
+proc testing :: | => Get (A | Get (B | Get (Unit | TopBot ))) = 
+    | => out -> do  
+        get a on out
+        get b on out
+        get Unit on out
+        halt out
+|]
+
+test32 = [r| 
+proc testing :: | Put(A | TopBot) => =
+    | inch => -> do  
+        get n on inch
+        halt inch
+|]
+
+test33 = [r| 
+proc testing :: | TopBot => =
+    | inch => -> do  
+        halt inch
+|]
+
+test34 = [r| 
+data 
+    Unit -> S =
+        Unit :: -> S
+
+proc testing :: | Put (A | Put (B | Put (Unit | TopBot ))) => = 
+    | inch => -> do  
+        get a on inch
+        get b on inch
+        get Unit on inch
+        halt inch
+|]
+
+test35 = [r| 
+proc test35 :: A |  => Put (A | TopBot) = 
+    a | => outch  -> do  
+        put a on outch
+        halt outch
+|]
+
+test36 = [r|
+data 
+    Wrapper(A)-> S =
+        Wrapper :: A -> S
+
+proc test36 :: Wrapper(A) | => Put(A|TopBot) =
+    Wrapper(a) | => out -> do  
+        put a on out
+        halt out
+|]
+
+test37 = [r|
+proc test37 :: A | => Put(A | Get(B | Put(B | TopBot))) =
+    a | => out -> do  
+        put a on out
+        get b on out
+        put b on out
+        halt out
+|]
+
+test38 = [r|
+proc test38 :: A | Get(A | Put(B | Get(B | TopBot))) =>  =
+    a | inch => -> do  
+        put a on inch
+        get b on inch
+        put b on inch
+        halt inch
+|]
+
+test39 = [r|
 |]

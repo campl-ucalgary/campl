@@ -173,7 +173,8 @@ transTupleExprList x = case x of
   TUPLE_EXPR_LIST expr -> failure x
 transRecordExprPhrase :: RecordExprPhrase -> Result
 transRecordExprPhrase x = case x of
-  RECORD_EXPR_HIGHER_ORDER_PHRASE uident patterns expr -> failure x
+  RECORD_EXPR_PHRASE uident expr -> failure x
+  RECORD_EXPR_HIGHER_ORDER_PHRASE uident pattexprphrase -> failure x
 transSwitchExprPhrase :: SwitchExprPhrase -> Result
 transSwitchExprPhrase x = case x of
   SWITCH_EXPR_PHRASE expr1 expr2 -> failure x
@@ -210,6 +211,7 @@ transFunctionDefn x = case x of
 transProcessDefn :: ProcessDefn -> Result
 transProcessDefn x = case x of
   TYPED_PROCESS_DEFN pident mpltypes1 mpltypes2 mpltypes3 processphrases -> failure x
+  INTERNAL_TYPED_PROCESS_DEFN pident mpltypes1 mpltypes2 mpltypes3 processphrases -> failure x
   PROCESS_DEFN pident processphrases -> failure x
 transProcessPhrase :: ProcessPhrase -> Result
 transProcessPhrase x = case x of

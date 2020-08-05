@@ -3,6 +3,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 module MPLPasses.SymbolTable where
 
 import MPLAST.MPLProgI
@@ -40,13 +42,6 @@ data SymEntry info = SymEntry {
     , _symEntryInfo :: info
 }  deriving Show
 
-instance HasBnfcIdent (String, SymEntry info) where
-    bnfcIdent = lens getter setter
-      where
-        getter (str, SymEntry _ pos _) = BnfcIdent (str, pos)
-        setter (str, SymEntry tag _ info) ident = 
-            ( ident ^. bnfcIdentName
-            , SymEntry tag (ident ^. bnfcIdentPos) info )
 
 data SymSeqConcTypeInfo = 
     SymSeqClause 
@@ -217,3 +212,39 @@ queryClauses = mapMaybe
                 Nothing -> Nothing
             )
         )
+
+instance HasBnfcIdent (String, SymEntry info) where
+    bnfcIdent = lens getter setter
+      where
+        getter (str, SymEntry _ pos _) = BnfcIdent (str, pos)
+        setter (str, SymEntry tag _ info) ident = 
+            ( ident ^. bnfcIdentName
+            , SymEntry tag (ident ^. bnfcIdentPos) info )
+
+instance HasTaggedBnfcIdent (String, SymEntry info) where
+    taggedBnfcIdent = lens getter setter
+      where
+        getter n@(str, SymEntry tag _ _) = _TaggedBnfcIdent # (n ^. bnfcIdent, tag)
+        setter n@(_, SymEntry _ _ info) (TaggedBnfcIdent bnfc tag') = 
+            n & bnfcIdent .~ bnfc
+              & _2 % symEntryUniqueTag .~ tag'
+
+instance HasTaggedChIdent (String, SymEntry SymChInfo) where
+    taggedChIdent = lens getter setter
+      where
+        getter n@(str, SymEntry tag _ (SymChInfo ttype pol)) = _TaggedChIdent # (n ^. taggedBnfcIdent, pol)
+        setter n (TaggedChIdent bnfc pol) = 
+            n & taggedBnfcIdent .~ bnfc
+              & _2 % symEntryInfo % symChPolarity .~ pol
+
+
+deleteSymTab :: 
+    String ->
+    [(String, a)] -> 
+    [(String, a)]
+deleteSymTab str ((str', a) : rst)
+    | str == str' = rst
+    | otherwise = (str', a) : deleteSymTab str rst
+deleteSymTab _ [] = []
+
+

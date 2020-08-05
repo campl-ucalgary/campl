@@ -223,16 +223,26 @@ match = f
 
     f (TypeConc a) (TypeConc b) = case (a,b) of
         (TypeGetF _ l0 r0, TypeGetF _ l1 r1 ) -> 
-            mappend <$> f l0 r0 <*> f l1 r1
+            mappend <$> f l0 l1 <*> f r0 r1
         (TypePutF _ l0 r0, TypePutF _ l1 r1 ) -> 
-            mappend <$> f l0 r0 <*> f l1 r1
+            mappend <$> f l0 l1 <*> f r0 r1
         (TypeTensorF _ l0 r0, TypeTensorF _ l1 r1 ) -> 
-            mappend <$> f l0 r0 <*> f l1 r1
+            mappend <$> f l0 l1 <*> f r0 r1
         (TypeParF _ l0 r0, TypeParF _ l1 r1 ) -> 
-            mappend <$> f l0 r0 <*> f l1 r1
+            mappend <$> f l0 l1 <*> f r0 r1
         (TypeTopBotF _, TypeTopBotF _) -> pure []
         (TypeNegF _ s, TypeNegF _ t) -> f s t
-        _ -> Left $ _MatchFailure # (TypeConc a, TypeConc b)
+        (TypeConcArrF seqs0 ins0 outs0, TypeConcArrF seqs1 ins1 outs1) 
+            | length seqs0 == length seqs1
+                && length ins0 == length ins1
+                && length outs0 == length outs1 ->
+                fmap concat $ sequenceA $  concat 
+                    [ zipWith f seqs0 seqs1
+                    , zipWith f ins0 ins1
+                    , zipWith f outs0 outs1
+                    ]
+            | otherwise -> _Left % _MatchFailure # (TypeConc a, TypeConc b)
+        _ -> _Left % _MatchFailure # (TypeConc a, TypeConc b)
 
     f a b = Left $ _MatchFailure # (a, b)
 

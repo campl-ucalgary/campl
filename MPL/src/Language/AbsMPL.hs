@@ -192,6 +192,7 @@ data FunctionDefn
 
 data ProcessDefn
     = TYPED_PROCESS_DEFN PIdent [MplType] [MplType] [MplType] [ProcessPhrase]
+    | INTERNAL_TYPED_PROCESS_DEFN PIdent MplType [ProcessPhrase]
     | PROCESS_DEFN PIdent [ProcessPhrase]
   deriving (Eq, Ord, Show, Read)
 

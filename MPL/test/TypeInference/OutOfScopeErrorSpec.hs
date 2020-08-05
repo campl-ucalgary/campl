@@ -48,6 +48,7 @@ spec = do
         , outOfScopeTest9
         , outOfScopeTest10
         , outOfScopeTest11
+        , outOfScopeTest12
         ]
 
 --------------------
@@ -153,4 +154,10 @@ fun myInfZigZag2 =
     n -> unfold n of
         n of
             HahaOutOfScope : -> n
+|]
+
+outOfScopeTest12 = [r| 
+proc outofscope :: | => =
+    | => -> do  
+        halt hahaha
 |]

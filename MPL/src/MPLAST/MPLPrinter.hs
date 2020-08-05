@@ -11,6 +11,7 @@ import MPLAST.MPLProg
 import MPLAST.MPLProgI
 import MPLAST.MPLProgGraph
 import MPLAST.MPLASTIdent 
+import MPLAST.MPLProcessCommandsAST
 
 import MPLAST.MPLASTTranslateType
 import MPLUtil.UniqueSupply
@@ -41,12 +42,15 @@ instance (PPrint ident, Eq typevar, PPrint typevar) => PPrint (PatternG ident ty
 instance (PPrint ident, Eq typevar, PPrint typevar, PPrint chident) => PPrint (FunctionDefG ident typevar chident) where
     pprint = printTree . translateFunctionGToBnfcFunction
 
+instance (PPrint ident, Eq typevar, PPrint typevar, PPrint chident) => PPrint (ProcessDefG ident typevar chident) where
+    pprint = printTree . translateProcessGToBnfcProcess
+
 
 instance PPrint BnfcIdent where
     pprint n = n ^. bnfcIdentName
 
 instance PPrint TaggedChIdent where
-    pprint n = n ^. bnfcIdentName   
+    pprint n = n ^. taggedBnfcIdent % to pprint 
         ++ "__" 
         ++ n ^. taggedChIdentPolarity % to show
 
@@ -103,7 +107,29 @@ translateTypeToBnfcType n = case n of
                 (map translateTypeToBnfcType from) 
                 (translateTypeToBnfcType to)
     TypeConc n -> case n of
-        TypeGetF ident larg rarg  -> error "concurrent translationsnot implemented yet"
+        TypeGetF ident larg rarg  -> 
+            B.GETPUT_TYPE     
+                (toBnfcUIdent $ pprint ident)
+                bnfcLBracket
+                (translateTypeToBnfcType larg)
+                (translateTypeToBnfcType rarg)
+                bnfcRBracket
+        TypePutF ident larg rarg  -> 
+            B.GETPUT_TYPE     
+                (toBnfcUIdent $ pprint ident)
+                bnfcLBracket
+                (translateTypeToBnfcType larg)
+                (translateTypeToBnfcType rarg)
+                bnfcRBracket
+        TypeTopBotF ident -> MPL_UIDENT_NO_ARGS_TYPE (toBnfcUIdent $ pprint ident)
+        TypeConcArrF seqs ins outs -> 
+            B.MPL_CONC_ARROW_TYPE 
+                (nub $ map (MPL_SEQ_FUN_TYPE_FORALL_LIST . toBnfcUIdent) 
+                    (concatMap (map pprint . toList) (seqs ++ ins ++ outs))
+                    )
+                (map translateTypeToBnfcType seqs)
+                (map translateTypeToBnfcType ins)
+                (map translateTypeToBnfcType outs)
         _  -> error "concurrent translationsnot implemented yet" 
 
 translateExprGToBnfcExpr ::
@@ -253,6 +279,36 @@ translateFunctionGToBnfcFunction (FunctionDefn funname funtype fundefn) =
         (map translatePatternGtoBnfcPattern patts)
         (translateExprGToBnfcExpr expr)
 
+translateProcessGToBnfcProcess ::
+    (PPrint ident, Eq typevar, PPrint typevar, PPrint chident) =>
+    ProcessDefG ident typevar chident -> 
+    B.ProcessDefn
+translateProcessGToBnfcProcess (ProcessDefn ident sig phrases) =  
+    B.INTERNAL_TYPED_PROCESS_DEFN 
+        (toBnfcPIdent $ pprint ident)
+        (translateTypeToBnfcType sig)
+        (map f $ NE.toList phrases)
+  where
+    f ((patts, ins, outs), cmds) =
+        B.PROCESS_PHRASE 
+            (map translatePatternGtoBnfcPattern patts)
+            (map (toBnfcPIdent . pprint) ins)
+            (map (toBnfcPIdent . pprint) outs)
+            (B.PROCESS_COMMANDS_DO_BLOCK $ NE.toList $ fmap translateProcessCommandToBnfcProcessCommand cmds)
+
+translateProcessCommandToBnfcProcessCommand ::
+    ( PPrint ident
+    , Eq typevar
+    , PPrint typevar
+    , PPrint chident ) =>
+    ProcessCommandG ident typevar chident ->
+    B.ProcessCommand
+translateProcessCommandToBnfcProcessCommand (CGet patt ident) = 
+    PROCESS_GET (translatePatternGtoBnfcPattern patt) (toBnfcPIdent $ pprint ident)
+translateProcessCommandToBnfcProcessCommand (CPut patt ident) = 
+    PROCESS_PUT (translateExprGToBnfcExpr patt) (toBnfcPIdent $ pprint ident)
+translateProcessCommandToBnfcProcessCommand (CHalt ident) = 
+    PROCESS_HALT (toBnfcPIdent $ pprint ident)
 
 
 bnfcLBracket = LBracket ((-1,-1), "(")

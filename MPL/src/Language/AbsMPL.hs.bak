@@ -150,7 +150,8 @@ data TupleExprList = TUPLE_EXPR_LIST Expr
   deriving (Eq, Ord, Show, Read)
 
 data RecordExprPhrase
-    = RECORD_EXPR_HIGHER_ORDER_PHRASE UIdent [Pattern] Expr
+    = RECORD_EXPR_PHRASE UIdent Expr
+    | RECORD_EXPR_HIGHER_ORDER_PHRASE UIdent PattExprPhrase
   deriving (Eq, Ord, Show, Read)
 
 data SwitchExprPhrase = SWITCH_EXPR_PHRASE Expr Expr
@@ -191,6 +192,7 @@ data FunctionDefn
 
 data ProcessDefn
     = TYPED_PROCESS_DEFN PIdent [MplType] [MplType] [MplType] [ProcessPhrase]
+    | INTERNAL_TYPED_PROCESS_DEFN PIdent [MplType] [MplType] [MplType] [ProcessPhrase]
     | PROCESS_DEFN PIdent [ProcessPhrase]
   deriving (Eq, Ord, Show, Read)
 

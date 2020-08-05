@@ -46,6 +46,8 @@ import Control.Arrow
 import Data.Either
 import Data.Function
 import Data.Semigroup
+import Data.Functor.Foldable hiding (fold)
+import Data.Functor.Base 
 
 import Data.Map ( Map (..) )
 import qualified Data.Map as Map
@@ -275,6 +277,8 @@ defnsToGraph (a:as) = case a ^. unDefnI of
     ProcessDecDefn (ProcessDefn ident proctype procbody) -> mdo
         procident' <- lift $ tagBnfcIdent ident
         ttypes <- lift freshExprTypeTags
+        let ttype = ttypes ^. exprTtype
+            ttypeinternal = ttypes ^. exprTtypeInternal
 
         let procbody' = NE.toList procbody
 
@@ -289,8 +293,6 @@ defnsToGraph (a:as) = case a ^. unDefnI of
                 mfuntypefreevarsandsubs <- traverse genTypeGSubs proctype'
                 return $ fromMaybe ([],[]) mfuntypefreevarsandsubs 
 
-        let ttype = ttypes ^. exprTtype
-            ttypeinternal = ttypes ^. exprTtypeInternal
 
         tagmap <- gview equality 
 
@@ -316,15 +318,27 @@ defnsToGraph (a:as) = case a ^. unDefnI of
             $ traverse (\(tag, pattschscmds) -> patternsChsCmdIToGraph tag pattschscmds)
             $ zip ttypespattschscmds procbody'
 
-        let proc' = undefined
-            ttypephrases = undefined
-            typeeqns = undefined
+        let proc' = ProcessDefn procident' (fromJust $ Map.lookup ttypeinternal tagmap) 
+                $ NE.fromList pattsgchscmdsg
+            ttypephrases = map (view exprTtype) ttypespattschscmds 
+            typeeqns = TypeEqnsStableRef (ttypeinternal, TypeVar ttype []):
+                -- if there is for all quantification, we need to include the equality to the
+                -- user provided type
+                toList (fmap (TypeEqnsEq . (TypeVar ttype [],))
+                    $ join 
+                    $ substitutesTypeGToTypeGTypeTag forallsubs 
+                    <$> proctype') 
+                -- Ensure that each of the type phrases is equal to the parent type.
+                ++ map (TypeEqnsEq . (TypeVar ttype [],) . flip TypeVar []) ttypephrases 
+                -- collected equations context 
+                ++ eqns
+                
         
         tieDefnsTypeEqnsPkg % tieDefnsTypeForall %= (++forallvars)
         tieDefnsTypeEqnsPkg % tieDefnsTypeExist  %= (++ttypephrases)
         tieDefnsTypeEqnsPkg % tieDefnsTypeEqns   %= (++typeeqns)
 
-        tell [ ProcessDecDefG proc']
+        tell [ ProcessDecDefG  proc' ]
 
         defnsToGraph as
 
@@ -381,7 +395,7 @@ patternsChsCmdIToGraph ttypes ((patts, inchs, outchs), cmds) = do
     tieProcSymTab .= symtab'
 
     -- compilation of the cmds
-    (cmds', cmdeqns) <- cmdsIToGraph cmds
+    ~(cmds', cmdeqns) <- cmdsIToGraph cmds
 
     tieProcSymTab .= symtab
 
@@ -407,32 +421,163 @@ patternsChsCmdIToGraph ttypes ((patts, inchs, outchs), cmds) = do
     -- return (((pattsg, inchs', outchs'), NE.fromList cmds'), ttypeeqn)
     return (((pattsg, inchs', outchs'), cmds'), ttypeeqn)
 
+cmdIToGraph :: 
+    ProcessCommandI BnfcIdent -> 
+    TieProc
+        ( ProcessCommandG TaggedBnfcIdent TypeTag TaggedChIdent
+        , [TypeEqns TaggedBnfcIdent TypeTag] )
+cmdIToGraph (CHalt ch) = do
+        chcxt <- guse tieProcChCxt 
+        let lkupch = lookup (ch ^. bnfcIdentName) chcxt
+            lkupch'  = fromJust lkupch
+            chcxt' = deleteSymTab (ch^.bnfcIdentName) chcxt
+        tieProcChCxt .= chcxt'
+
+        lift $ tell $ bool [] [_NotInScope # ch] $ isNothing lkupch
+
+        topbot <- lift $ tagConcTypeF $ _BnfcTypeTopBotF # ()
+        let eqn = TypeEqnsEq 
+                ( _TypeVar # (lkupch' ^. symEntryInfo % symChTypeTag, [])
+                , TypeConc topbot )
+            cmd' = CHalt $ (ch ^. bnfcIdentName, lkupch') ^. taggedChIdent
+            
+        return (cmd' , bool [] [eqn] $ isJust lkupch)
+
+cmdIToGraph (CClose ch) = do
+        chcxt <- guse tieProcChCxt 
+        let lkupch = lookup (ch ^. bnfcIdentName) chcxt
+            lkupch'  = fromJust lkupch
+            chcxt' = deleteSymTab (ch^.bnfcIdentName) chcxt
+        tieProcChCxt .= chcxt'
+
+        lift $ tell $ bool [] [_NotInScope # ch] $ isNothing lkupch
+
+        topbot <- lift $ tagConcTypeF $ _BnfcTypeTopBotF # ()
+        let eqn = TypeEqnsEq 
+                ( _TypeVar # (lkupch' ^. symEntryInfo % symChTypeTag, [])
+                , TypeConc topbot )
+            cmd' = CClose $ (ch ^. bnfcIdentName, lkupch') ^. taggedChIdent
+            
+        return (cmd' , bool [] [eqn] $ isJust lkupch)
+cmdIToGraph (CGet patt ch) = do
+        chcxt <- guse tieProcChCxt 
+        symtab <- guse tieProcSymTab
+        tagmap <- gview equality
+
+        -- compile the pattern first..
+        ttypespatt <- lift freshExprTypeTags
+        ((patteqns, patt'), symtab') <- lift 
+            $ join . fmap writer . splitGraphGenCore 
+            $ runTieFun (TieExprEnv ttypespatt tagmap) symtab 
+            $ patternIToGraph patt
+        tieProcSymTab .= symtab'
+
+        -- then now the channel..
+        ttypech' <- lift freshTypeTag
+        let lkupch = lookup (ch ^. bnfcIdentName) chcxt
+            lkupch' = fromJust lkupch
+            ch' = (ch ^. bnfcIdentName, lkupch') ^. taggedChIdent
+
+            ttypech = lkupch' ^. symEntryInfo % symChTypeTag
+            chpol = lkupch' ^. symEntryInfo % symChPolarity
+
+            chcxt' = maybeToList 
+                (((ch ^. bnfcIdentName,) . set (symEntryInfo % symChTypeTag) ttypech') <$> lkupch)
+                <> deleteSymTab (ch ^. bnfcIdentName) chcxt
+        tieProcChCxt .= chcxt'
+
+        lift $ tell $ bool [] [_NotInScope # ch] $ isNothing lkupch
+
+        -- (rst', rsteqns) <- cmdsIToGraph (NE.fromList rst)
+
+        eqtype <- lift 
+            $ fmap fst . splitGraphGenCore 
+            $ tagConcTypeF 
+            $ polarity chpol 
+                ( _BnfcTypePutF # (TypeVar (ttypespatt ^. exprTtype) []
+                , TypeVar ttypech' []) )
+                ( _BnfcTypeGetF # (TypeVar (ttypespatt ^. exprTtype) []
+                , TypeVar ttypech' []))
+        let eqns = TypeEqnsExist [ttypespatt ^. exprTtype, ttypech'] $ 
+                [ TypeEqnsEq (TypeVar ttypech [], TypeConc eqtype) 
+                , TypeEqnsStableRef (ttypespatt ^. exprTtypeInternal, TypeVar (ttypespatt ^. exprTtype) [])]
+                -- ++ rsteqns
+                ++ patteqns
+
+            cmd' = CGet patt' ch'
+
+        -- return (cmd' :| NE.toList rst', bool [] [eqns] $ isJust lkupch)
+        return (cmd' , bool [] [eqns] $ isJust lkupch)
+cmdIToGraph (CPut expr ch) = do
+        chcxt <- guse tieProcChCxt 
+        symtab <- guse tieProcSymTab
+        tagmap <- gview equality
+
+        -- compile the expression first..
+        ttypesexpr <- lift freshExprTypeTags
+
+        -- TODO We need a higher order check here...
+        ((expr', expreqns), symtab') <- lift 
+            $ join . fmap writer . splitGraphGenCore 
+            $ runTieFun (TieExprEnv ttypesexpr tagmap) symtab 
+            $ exprIToGraph expr
+        tieProcSymTab .= symtab'
+
+        -- then now the channel..
+        ttypech' <- lift freshTypeTag
+        let lkupch = lookup (ch ^. bnfcIdentName) chcxt
+            lkupch' = fromJust lkupch
+            ch' = (ch ^. bnfcIdentName, lkupch') ^. taggedChIdent
+
+            ttypech = lkupch' ^. symEntryInfo % symChTypeTag
+            chpol = lkupch' ^. symEntryInfo % symChPolarity
+
+            chcxt' = maybeToList 
+                (((ch ^. bnfcIdentName,) . set (symEntryInfo % symChTypeTag) ttypech') <$> lkupch)
+                <> deleteSymTab (ch ^. bnfcIdentName) chcxt
+        tieProcChCxt .= chcxt'
+
+        lift $ tell $ bool [] [_NotInScope # ch] $ isNothing lkupch
+
+        -- (rst', rsteqns) <- cmdsIToGraph (NE.fromList rst)
+
+        eqtype <- lift 
+            $ fmap fst . splitGraphGenCore 
+            $ tagConcTypeF 
+            $ polarity chpol 
+                ( _BnfcTypeGetF # (TypeVar (ttypesexpr ^. exprTtype) []
+                , TypeVar ttypech' []))
+                ( _BnfcTypePutF # (TypeVar (ttypesexpr ^. exprTtype) []
+                , TypeVar ttypech' []) )
+        let eqns = TypeEqnsExist [ttypesexpr ^. exprTtype, ttypech'] $ 
+                [ TypeEqnsEq (TypeVar ttypech [], TypeConc eqtype) 
+                , TypeEqnsStableRef (ttypesexpr ^. exprTtypeInternal, TypeVar (ttypesexpr ^. exprTtype) [])]
+                -- ++ rsteqns
+                ++ expreqns
+
+            cmd' = CPut expr' ch'
+
+        -- return (cmd' :| NE.toList rst', bool [] [eqns] $ isJust lkupch)
+        return (cmd' , bool [] [eqns] $ isJust lkupch)
+
 cmdsIToGraph ::
     NonEmpty (ProcessCommandI BnfcIdent) -> 
     TieProc
         ( NonEmpty (ProcessCommandG TaggedBnfcIdent TypeTag TaggedChIdent)
         , [TypeEqns TaggedBnfcIdent TypeTag] )
-cmdsIToGraph (cmd :| []) = case cmd of
-    CHalt ch -> do
-        chcxt <- guse tieProcChCxt 
-        let mch' = lookup (ch ^. bnfcIdentName) chcxt
-            ch'  = fromJust mch'
-            chcxt' = filter (view $ _1 % to (not . (==ch^.bnfcIdentName))) chcxt
-
-        -- check scope
-        lift $ tell $ bool [] [_NotInScope # ch] $ isNothing mch'
-        lift $ tell $ unclosedChannelsCheck chcxt'
-
-        -- <- tagConcTypeF (TypeConc $ TypeTopBotF topBotIdent)
-        let eqn = TypeEqnsEq 
-                ( _TypeVar # (ch' ^. symEntryInfo % symChTypeTag, [])
-                , TypeConc $ undefined )
-
-        return (undefined, [eqn])
-cmdsIToGraph (cmd :| rst) = case cmd of
-    CGet patt ch -> do
-        undefined
-            
+cmdsIToGraph = cata f
+  where
+    f (NonEmptyF cmd Nothing) = do
+        (cmd', eqns)<- case cmd of
+            CHalt _ -> cmdIToGraph cmd
+            _ -> error "bad last instruction"
+        chcxt <- guse tieProcChCxt
+        lift $ tell $ unclosedChannelsCheck chcxt
+        return (cmd' :| [], eqns)
+    f (NonEmptyF cmd (Just rst)) = do
+        (cmd', cmdeqns) <- cmdIToGraph cmd
+        (rst', eqns) <- rst
+        return (cmd' :| NE.toList rst', cmdeqns & mapped % _TypeEqnsExist % _2 %~ (++eqns) )
 
 ----------------------------
 -- Functions

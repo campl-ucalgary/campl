@@ -154,9 +154,8 @@ type ProcessCommandG ident typevar chident =
         (PatternG ident typevar)
         (StmtG ident typevar chident)
         (TypeGTypeVar ident typevar)
-        (TypeGTypeVar ident typevar)
-        (TypeGTypeVar ident typevar) 
-        ident chident
+        (FunctionCallValueKnot ident typevar chident)
+        (ProcessCallValueKnot ident typevar chident) ident chident
 
     
 
@@ -208,7 +207,6 @@ instance HasUniqueTag (ClausesGraph ident) where
 instance Eq (ClausesGraph ident) where
     a == b = a ^. uniqueTag == b ^. uniqueTag
 
-
 progGQueryFunctions :: 
     (Prog (DefnG TaggedBnfcIdent TypeTag TaggedChIdent)) -> 
     [FunctionDefG TaggedBnfcIdent TypeTag TaggedChIdent]
@@ -216,6 +214,15 @@ progGQueryFunctions (Prog defsg) = concatMap f defsg
   where
     f (Stmt defns wdefs) = mapMaybe g (NE.toList defns) ++ progGQueryFunctions (Prog wdefs)
     g (FunctionDecDefG defn) = Just defn
+    g _ = Nothing
+
+progGQueryProcesses :: 
+    (Prog (DefnG TaggedBnfcIdent TypeTag TaggedChIdent)) -> 
+    [ProcessDefG TaggedBnfcIdent TypeTag TaggedChIdent]
+progGQueryProcesses (Prog defsg) = concatMap f defsg
+  where
+    f (Stmt defns wdefs) = mapMaybe g (NE.toList defns) ++ progGQueryProcesses (Prog wdefs)
+    g (ProcessDecDefG defn) = Just defn
     g _ = Nothing
 
 progGQueryTypeClausesGraphs :: 

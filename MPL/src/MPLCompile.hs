@@ -69,6 +69,12 @@ typeTester n = do
         Right n -> putStrLn $ mconcat $ pprintFunctionTypes n
         Left n -> mapM_ print n
 
+typeTesterp n = do
+    proggraph <- unsafeTranslateParseLexGraph n 
+    case proggraph of
+        Right n -> putStrLn $ concatMap pprint $ progGQueryProcesses n
+        Left n -> mapM_ print n
+
 testdata = [r|
 defn
     data
@@ -120,43 +126,10 @@ fun test :: B -> C =
 
 testkartofler = [r| 
 
-defn 
-    data
-        Fix(F) -> S =
-            Fix :: F(S) -> S
-    codata
-        S -> Mendler(F,A,B)  =
-            Mendler :: Fun(A,B),F(A),S -> B
-
-    codata
-        S -> Fun(A,B) =
-            Apply :: A,S -> B
-
-    data 
-        ListF(F) -> S =
-            ConsF  :: Nat,F -> S
-            NilF   ::    -> S
-        
-    data Nat -> S =
-            Succ :: S -> S
-            Zero ::   -> S
-
-    data Unit -> S =
-        Unit :: -> S
-
-    
-
-fun add :: Nat,Nat -> Nat =
-    a,b -> fold a of
-        Succ : a -> Succ(a)
-        Zero : -> b
-
-fun test :: Fix(ListF) -> Nat =
-    Fix(NilF) -> Zero
-    Fix(ConsF(a,b)) -> add(a, test(b))
-    -- Fix(NilF) -> NilF
-    -- a -> Fix(Identity(a))
-
+proc testing =
+    | => out -> do  
+        get a on out
+        halt out
 |]
 
 
