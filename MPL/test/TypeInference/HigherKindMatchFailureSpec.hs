@@ -33,31 +33,54 @@ import Data.Traversable
 
 import TypeInference.GraphAssertions 
 
+-- tests for match failure with higher kinded data
 
 spec :: Spec
 spec = do
-    mapM_ describeForallMatchFailure
-        [ test1 ]
+    mapM_ describeMatchFailure
+        [ test1 
+        , test2 
+        , test3 
+        ]
 
+-- TODO, we can get better error messages here
+-- like arity mismatch instead..
 test1 = [r| 
-fun test :: B -> C =
-    a -> a
-|]
-
-
-test1Err = [r| 
 data 
     Zig(A,B) -> Z =
         Zig :: A,B -> Z
 
-data 
-    Kartofler -> C =
-        Kartofler :: -> C
+fun test :: Zig -> Zig =
+    a,b -> Zig(a, b)
+|]
 
+
+test2 = [r| 
+data 
+    Unit -> C =
+        Unit :: -> C
+
+fun test :: A(B,C) -> A(B,C) =
+    a -> a
+
+fun fail =
+    a -> test(Unit)
+|]
+
+test3 = [r| 
 data 
     Orange -> C =
         Orange :: -> C
+data 
+    Kartofler -> C =
+        Kartofler :: -> C
+data 
+    HigherKind(A,B) -> C =
+        HigherKind :: A,B -> C
 
-fun test :: Zig -> Zig =
-    a,b -> Zig(a, b)
+fun test :: A(B,B) -> A(B,B) =
+    a -> a
+
+fun fail =
+    a -> test(HigherKind(Orange, Kartofler))
 |]

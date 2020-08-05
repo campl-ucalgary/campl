@@ -443,11 +443,12 @@ cmdIToGraph (CHalt ch) = do
             
         return (cmd' , bool [] [eqn] $ isJust lkupch)
 
+-- HAVE NOT TESTED THIS YET
 cmdIToGraph (CClose ch) = do
         chcxt <- guse tieProcChCxt 
         let lkupch = lookup (ch ^. bnfcIdentName) chcxt
             lkupch'  = fromJust lkupch
-            chcxt' = deleteSymTab (ch^.bnfcIdentName) chcxt
+            chcxt' = deleteSymTab (ch ^. bnfcIdentName) chcxt
         tieProcChCxt .= chcxt'
 
         lift $ tell $ bool [] [_NotInScope # ch] $ isNothing lkupch
@@ -488,8 +489,6 @@ cmdIToGraph (CGet patt ch) = do
 
         lift $ tell $ bool [] [_NotInScope # ch] $ isNothing lkupch
 
-        -- (rst', rsteqns) <- cmdsIToGraph (NE.fromList rst)
-
         eqtype <- lift 
             $ fmap fst . splitGraphGenCore 
             $ tagConcTypeF 
@@ -501,12 +500,10 @@ cmdIToGraph (CGet patt ch) = do
         let eqns = TypeEqnsExist [ttypespatt ^. exprTtype, ttypech'] $ 
                 [ TypeEqnsEq (TypeVar ttypech [], TypeConc eqtype) 
                 , TypeEqnsStableRef (ttypespatt ^. exprTtypeInternal, TypeVar (ttypespatt ^. exprTtype) [])]
-                -- ++ rsteqns
                 ++ patteqns
 
             cmd' = CGet patt' ch'
 
-        -- return (cmd' :| NE.toList rst', bool [] [eqns] $ isJust lkupch)
         return (cmd' , bool [] [eqns] $ isJust lkupch)
 cmdIToGraph (CPut expr ch) = do
         chcxt <- guse tieProcChCxt 
@@ -539,8 +536,6 @@ cmdIToGraph (CPut expr ch) = do
 
         lift $ tell $ bool [] [_NotInScope # ch] $ isNothing lkupch
 
-        -- (rst', rsteqns) <- cmdsIToGraph (NE.fromList rst)
-
         eqtype <- lift 
             $ fmap fst . splitGraphGenCore 
             $ tagConcTypeF 
@@ -552,12 +547,10 @@ cmdIToGraph (CPut expr ch) = do
         let eqns = TypeEqnsExist [ttypesexpr ^. exprTtype, ttypech'] $ 
                 [ TypeEqnsEq (TypeVar ttypech [], TypeConc eqtype) 
                 , TypeEqnsStableRef (ttypesexpr ^. exprTtypeInternal, TypeVar (ttypesexpr ^. exprTtype) [])]
-                -- ++ rsteqns
                 ++ expreqns
 
             cmd' = CPut expr' ch'
 
-        -- return (cmd' :| NE.toList rst', bool [] [eqns] $ isJust lkupch)
         return (cmd' , bool [] [eqns] $ isJust lkupch)
 
 cmdsIToGraph ::
@@ -577,7 +570,13 @@ cmdsIToGraph = cata f
     f (NonEmptyF cmd (Just rst)) = do
         (cmd', cmdeqns) <- cmdIToGraph cmd
         (rst', eqns) <- rst
-        return (cmd' :| NE.toList rst', cmdeqns & mapped % _TypeEqnsExist % _2 %~ (++eqns) )
+        return 
+            ( cmd' :| NE.toList rst'
+            , bool 
+                (cmdeqns ++ eqns) 
+                (cmdeqns & mapped % _TypeEqnsExist % _2 %~ (++eqns))
+                (folded % _TypeEqnsExist `has` cmdeqns)
+            )
 
 ----------------------------
 -- Functions

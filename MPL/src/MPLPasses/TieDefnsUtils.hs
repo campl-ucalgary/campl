@@ -335,3 +335,11 @@ freshExprTypeTags = ExprTypeTags <$> freshTypeTag <*> freshTypeTag
 
 instance HasExprTypeTags TieExprEnv where
     exprTypeTags = tieExprEnvTypeTags
+
+processCommandVariableClosure ::
+    ProcessCommandI BnfcIdent ->
+    GraphGenCore (ProcessCommandI BnfcIdent)
+processCommandVariableClosure = fmap fst . cata f
+  where
+    f (CCloseF ident) = return (CClose ident, [])
+    f (CHaltF ident) = return (CHalt ident, [])

@@ -33,10 +33,16 @@ import Data.Traversable
 
 import TypeInference.GraphAssertions 
 
+-- FUTURE TESTS:
+-- Boolean satisfibility
+
+-- Test cases to see if the annotated programs do indeed
+-- type check...
+
 
 spec :: Spec
 spec = do
-    mapM_ (`describeValidGraph` const (return ()) )
+    mapM_ (`describeValidGraph` const (return ()))
         [ test1 
         , test2
         , test3
@@ -76,9 +82,11 @@ spec = do
         , test37
         , test38
         , test39
+        , test40
         ]
 
 
+-- Mutually recursvie data type (stolen from Prashant's thesis)
 test1 = [r| 
 data 
     Zig -> Z =
@@ -107,6 +115,7 @@ fun test :: Zig, Zig -> Zig =
     a,b -> Zig(a, b)
 |]
 
+-- silly mutually recursive tests...
 test2 = [r| 
 defn
     fun orange :: A -> B = 
@@ -157,6 +166,7 @@ defn
 
 
 
+-- classic append example
 test8 = [r| 
 data
     List(A) -> C =
@@ -169,6 +179,7 @@ fun append :: List(A), List(A) -> List(A) =
         Cons(list1head, append(list1rest,list2))
 |]
 
+-- Type checking codata in patterns..
 test9 = [r| 
 codata 
     S -> Tuple(A,B,C) =
@@ -193,6 +204,7 @@ fun tomato :: Function(Arg,Output), Arg -> Output =
     (Apply := app), arg -> app(arg)
 |]
 
+-- Type checking building co data (for the const function)..
 test11 = [r| 
 codata 
     S -> Function(Arg, Output) =
@@ -285,6 +297,7 @@ fun genInfiniteNats :: Nat -> Stream(Nat)=
     n -> (Head := -> n, Tail := -> genInfiniteNats(Succ(n)) )
 |]
 
+-- testing a fold
 test18 = [r| 
 data 
     Nat -> S =
@@ -297,6 +310,7 @@ fun addNat :: Nat, Nat -> Nat =
         Zero : -> b
 |]
 
+-- A strange test just for testing nesting folds
 test19 = [r|
 data 
     Nat -> S =
@@ -316,6 +330,7 @@ fun addNatAndOdds :: Nat, Odds -> Nat =
             One : -> Succ(Zero)
 |]
 
+-- A mutually recursive fold test..
 test20 = [r|
 data 
     Nat -> S =
@@ -356,6 +371,7 @@ fun strangeFoldTreeSum :: Tree(Nat) -> Nat =
 
 |]
 
+-- Scott's bottom
 test21 = [r| 
 fun scottsbottom :: -> A =
     -> scottsbottom
@@ -364,13 +380,16 @@ fun scottsbottom :: -> A =
 -- Note: 
 -- This test used to puzzingly fail to compile
 -- because it scotts bottom is really of type
--- -> A -- to fix this, we added an arrow simplification
--- step inbetween stages of unification...
+-- "-> A" ( NOTE THE ARROW "->")
+-- To fix this, we added an arrow simplification
+-- step inbetween stages of unification... so 
+-- this "-> A" simplifies to "A"
 test22 = [r| 
 fun scottsbottom =
     -> scottsbottom
 |]
 
+-- unfold co data test..
 test23 = [r| 
 codata
     S -> Triple(A,B,C) =
@@ -386,6 +405,7 @@ fun myTriple :: S -> Triple(S,S,S)=
             P3 : -> b
 |]
 
+-- test case stolen from Prashant's thesis..
 test24 = [r| 
 codata
     S -> Stream(A) =
@@ -403,6 +423,8 @@ fun myInfList :: -> Stream(Nat) =
             Tail : -> Succ(n)
 |]
 
+-- test case stolen from Prashant's thesis testing 
+-- type changing mutually recursive unfolds
 test25 = [r| 
 codata
     S -> Zig(A,B) =
@@ -447,6 +469,7 @@ fun myInfZigZag2 :: -> Zag(Nat, NegativeNat) =
             TailA : -> (P1 := -> n, P2 := -> Succ(p))
 |]
 
+-- Higher order data tests..
 test26 = [r|
 data
     HigherOrder(A,B) -> C =
@@ -468,6 +491,11 @@ fun test :: Fix(A) -> A(Fix(A)) =
     Fix(a) -> a
 |]
 
+-- Classic list paramerterized by a fixed point
+-- data type.. Note that since we cannot partially
+-- apply types e.g. If we have a tuple "Tuple(A,B)",
+-- we cannot have "Tuple(A)" and use "Tuple(A)" as a 
+-- partially applied function..
 test28 = [r| 
 defn 
     data
@@ -494,6 +522,7 @@ fun sum :: Fix(ListF) -> Nat =
 
 |]
 
+-- Basic get/halt/close/put tests..
 test29 = [r| 
 proc testing :: | => Get(A | TopBot) =
     | => out -> do  
@@ -533,6 +562,7 @@ proc testing :: | TopBot => =
         halt inch
 |]
 
+-- pattern matching against a unit type gives us a unit
 test34 = [r| 
 data 
     Unit -> S =
@@ -583,4 +613,13 @@ proc test38 :: A | Get(A | Put(B | Get(B | TopBot))) =>  =
 |]
 
 test39 = [r|
+proc test39 :: | TopBot => Get(A | TopBot)=
+    | inn => out -> do  
+        get a on out
+        close inn
+        halt out
+|]
+
+test40 = [r|
+
 |]

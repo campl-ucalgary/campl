@@ -49,6 +49,7 @@ spec = do
         , outOfScopeTest10
         , outOfScopeTest11
         , outOfScopeTest12
+        , outOfScopeTest13
         ]
 
 --------------------
@@ -160,4 +161,12 @@ outOfScopeTest12 = [r|
 proc outofscope :: | => =
     | => -> do  
         halt hahaha
+|]
+outOfScopeTest13 = [r| 
+proc testing :: | TopBot => Get(A | TopBot)=
+    | inn => out -> do  
+        get a on out
+        close inn
+        put a on inn
+        halt out
 |]

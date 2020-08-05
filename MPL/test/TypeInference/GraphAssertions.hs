@@ -37,35 +37,33 @@ import Data.Traversable
 describeValidGraph prog rst = do
     describe ("Testing the valid program:\n " ++ prog) $ do
         prog' <- runIO $ unsafeTranslateParseLexGraph prog
-
-        it "should be a valid program" $ do
+        it "Should be a valid program that does NOT throw exceptions" $ do
             case prog' of
-                Right prog' -> return ()
-                Left errs -> assertFailure (show errs)
-        let Right prog'' = prog'
-        it "testing if the program's functions (TODO change this for the entire program) does NOT throw exceptions" $ do
-            assertBool "" 
-                ( mconcat (pprintFunctionTypes prog'') 
-                == mconcat (pprintFunctionTypes prog'') )
-        rst prog''
+                Right prog'' -> do
+                    assertBool "" ( mconcat (pprintFunctionTypes prog'') == mconcat (pprintFunctionTypes prog'') )
+                    rst prog''
+                    return ()
 
-describeAllFailures pred prog = do
-    describe ("Testing for out of scope error:\n" ++ prog) $ do
+                Left errs -> assertFailure (show errs) >> return ()
+
+describeAllFailures pred expectedmsg prog = do
+    describe ("Testing for" ++ expectedmsg ++ " :\n" ++ prog) $ do
         prog' <- runIO $ unsafeTranslateParseLexGraph prog
 
-        it "Testing for out of scope error." $ do
+        it ("Testing for " ++ expectedmsg ++ " error.") $ do
             case prog' of
                 Right _ -> assertFailure "Program is valid when it should not be..."
                 Left errs -> assertBool
-                    ("Expected out of scope errors but got: " ++ show errs)
+                    ("Expected " ++ expectedmsg ++ " but got " ++ show errs)
                     (allOf folded pred errs)
 
-
 describeOutOfScope = describeAllFailures 
-    (has _NotInScope)
+    (has _NotInScope) "NotInScope"
 
 describeForallMatchFailure = describeAllFailures 
     (has (_TieDefnUnificationError % _ForallMatchFailure))
+    "ForallMatchFailure"
 
 describeMatchFailure = describeAllFailures 
     (has (_TieDefnUnificationError % _MatchFailure))
+    "MatchFailure"

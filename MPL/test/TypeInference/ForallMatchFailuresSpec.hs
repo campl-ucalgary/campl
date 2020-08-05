@@ -33,15 +33,22 @@ import Data.Traversable
 
 import TypeInference.GraphAssertions 
 
+-- Test cases to see if forall match failure occurs
 
 spec :: Spec
 spec = do
     mapM_ describeForallMatchFailure
-        [ testfail1
+        [ testfail0
+        , testfail1
         , testfail2 
         , testfail3 
         , testfail4 
         ]
+
+testfail0 = [r| 
+fun test :: B -> C =
+    a -> a
+|]
 
 testfail1 = [r| 
 defn

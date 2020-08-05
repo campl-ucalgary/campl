@@ -66,10 +66,9 @@ natNatToNatTester test = describeValidGraph test $ \prog -> do
         functiontesttype = view funTypesFromTo
             $ head 
             $ progGQueryFunctions prog
-    it "functiontest should have type Nat,Nat -> Nat" $ do
-        assertBool ("Actual type: " ++ pprint functiontesttype) 
-            (TypeSeq (TypeSeqArrF [nattype, nattype] nattype)
-             == functiontesttype)
+    assertBool ("Function should have type Nat,Nat -> Nat Actual type: " ++ pprint functiontesttype) 
+        (TypeSeq (TypeSeqArrF [nattype, nattype] nattype)
+         == functiontesttype)
 natNatToNatTest1 = [r|
 data
     Nat -> STATEVAR =

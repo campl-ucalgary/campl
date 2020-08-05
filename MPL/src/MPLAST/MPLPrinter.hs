@@ -309,6 +309,8 @@ translateProcessCommandToBnfcProcessCommand (CPut patt ident) =
     PROCESS_PUT (translateExprGToBnfcExpr patt) (toBnfcPIdent $ pprint ident)
 translateProcessCommandToBnfcProcessCommand (CHalt ident) = 
     PROCESS_HALT (toBnfcPIdent $ pprint ident)
+translateProcessCommandToBnfcProcessCommand (CClose ident) = 
+    PROCESS_CLOSE (toBnfcPIdent $ pprint ident)
 
 
 bnfcLBracket = LBracket ((-1,-1), "(")
