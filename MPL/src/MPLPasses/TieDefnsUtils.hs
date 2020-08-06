@@ -3,6 +3,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleContexts #-}
 module MPLPasses.TieDefnsUtils where
 
 import Optics 
@@ -22,10 +23,13 @@ import MPLPasses.GraphGenCore
 
 import MPLPasses.Unification
 
-import Data.Functor.Foldable
+import Data.Functor.Foldable hiding (fold)
 
 import Data.Map ( Map (..) )
 import qualified Data.Map as Map
+
+import Data.Set ( Set (..) )
+import qualified Data.Set as Set
 
 import Control.Monad.State
 import Control.Monad.Except
@@ -40,6 +44,7 @@ import qualified Data.List.NonEmpty as NE
 import Data.Maybe
 import Data.Foldable
 import Data.List
+import Data.Bool
 
 import Control.Arrow
 import Debug.Trace
@@ -327,8 +332,6 @@ annotateTypeIToTypeGAndScopeFreeVars = cata f
     f (TypeConcF conc) = do
         conc' <- sequenceA conc
         TypeConc <$> lift (tagConcTypeF conc')
-    
-
 
 freshExprTypeTags :: GraphGenCore ExprTypeTags
 freshExprTypeTags = ExprTypeTags <$> freshTypeTag <*> freshTypeTag
@@ -336,10 +339,45 @@ freshExprTypeTags = ExprTypeTags <$> freshTypeTag <*> freshTypeTag
 instance HasExprTypeTags TieExprEnv where
     exprTypeTags = tieExprEnvTypeTags
 
-processCommandVariableClosure ::
+-- This will propogate the bound channels and free channels in a Set and remove
+-- the bound variables from the free channels to compute the free variables 
+-- that should be present in the declaration
+-- So, the tuple returned by 'f' is (Command with the deduced variables, (bound channels, free channels) )
+processCommandComputeVariableDeclarations ::
     ProcessCommandI BnfcIdent ->
     GraphGenCore (ProcessCommandI BnfcIdent)
-processCommandVariableClosure = fmap fst . cata f
+processCommandComputeVariableDeclarations = fmap fst . cata f
   where
-    f (CCloseF ident) = return (CClose ident, [])
-    f (CHaltF ident) = return (CHalt ident, [])
+    f (CCloseF ident) = return (CClose ident, (Set.empty, Set.singleton ident))
+    f (CHaltF ident) = return (CHalt ident, (Set.empty, Set.singleton ident))
+
+    f (CGetF pat ident) = return (CGet pat ident, (Set.empty, Set.singleton ident))
+    f (CPutF expr ident) = return (CPut expr ident, (Set.empty, Set.singleton ident))
+
+    f (CSplitF spliton (a,b)) = return (CSplit spliton (a,b), (Set.fromList [a,b], Set.singleton spliton))
+
+    -- TODO support this stuff..
+    f (CForkF forkon ((a, _ :_, acmds), (b, _, bcmds))) = 
+        error "provided context in fork instruction not supported"
+    f (CForkF forkon ((a, _, acmds), (b, _:_, bcmds))) = 
+        error "provided context in fork instruction not supported"
+    f (CForkF forkon ((a, awithchs, acmds), (b, bwithchs, bcmds))) = do
+        acmds' <- sequenceA acmds 
+        bcmds' <- sequenceA bcmds 
+        let afree = traceShowId $ computeFreeVariables (Set.fromList [forkon, a]) $ fmap snd acmds'
+            bfree = traceShowId $ computeFreeVariables (Set.fromList [forkon, b]) $ fmap snd bcmds'
+            common = afree `Set.intersection` bfree 
+        tell $ bool [ _ForkNonDisjointChannels # Set.toList common ] [] $ has _Empty common
+
+        return 
+            ( CFork forkon ((a, Set.toList afree, fmap fst acmds'), (b, Set.toList bfree, fmap fst bcmds'))
+            , (Set.singleton forkon , afree `Set.union` bfree ) )
+
+    computeFreeVariables cxt = 
+        fold
+        . snd
+        . mapAccumL 
+            (\acc (bound,free) -> (acc `Set.union` bound, free `Set.difference` acc))
+            cxt
+
+

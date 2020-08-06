@@ -74,7 +74,7 @@ data SymCallTypeVar =
 data SymChInfo = SymChInfo {
     _symChTypeTag :: TypeTag
     , _symChPolarity :: Polarity
-}
+}  deriving Show
 
 $(makePrisms ''SymEntry)
 $(concat <$> traverse makeClassyPrisms 

@@ -61,7 +61,9 @@ data ProcessCommand pattern letdef typedef
     | CHPut  { _cHPut :: ident, _cHPutDef :: conccalleddef , _cHPutCh :: chident }
 
     | CSplit  { _cSplit :: chident, _cSplitInto :: (chident, chident) }
-    | CFork  { _cFork :: ident, _cForkInto :: 
+    | CFork  { 
+        _cFork :: chident
+        , _cForkInto :: 
         ( (chident, [chident], ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident)
         , (chident, [chident], ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident) ) }
 

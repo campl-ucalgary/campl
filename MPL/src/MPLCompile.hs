@@ -126,12 +126,12 @@ fun test :: B -> C =
 
 testkartofler = [r| 
 
-proc testing :: | TopBot => Get(A | TopBot)=
-    | inn => out -> do  
-        get a on out
-        close inn
-        put a on inn
-        halt out
+proc testing = 
+    | a => -> do  
+        fork a as
+            a -> halt a
+            a -> halt a
+            
 |]
 
 

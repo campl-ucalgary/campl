@@ -395,7 +395,7 @@ patternsChsCmdIToGraph ttypes ((patts, inchs, outchs), cmds) = do
     tieProcSymTab .= symtab'
 
     -- compilation of the cmds
-    ~(cmds', cmdeqns) <- cmdsIToGraph cmds
+    ~(cmds', cmdeqns) <- cmdsIToGraph <=< lift . traverse processCommandComputeVariableDeclarations $ cmds
 
     tieProcSymTab .= symtab
 
@@ -426,12 +426,13 @@ cmdIToGraph ::
     TieProc
         ( ProcessCommandG TaggedBnfcIdent TypeTag TaggedChIdent
         , [TypeEqns TaggedBnfcIdent TypeTag] )
-cmdIToGraph (CHalt ch) = do
+cmdIToGraph = cata f
+  where
+    f (CHaltF ch) = do
         chcxt <- guse tieProcChCxt 
         let lkupch = lookup (ch ^. bnfcIdentName) chcxt
             lkupch'  = fromJust lkupch
-            chcxt' = deleteSymTab (ch^.bnfcIdentName) chcxt
-        tieProcChCxt .= chcxt'
+        tieProcChCxt %= deleteSymTab (ch^.bnfcIdentName)
 
         lift $ tell $ bool [] [_NotInScope # ch] $ isNothing lkupch
 
@@ -442,14 +443,11 @@ cmdIToGraph (CHalt ch) = do
             cmd' = CHalt $ (ch ^. bnfcIdentName, lkupch') ^. taggedChIdent
             
         return (cmd' , bool [] [eqn] $ isJust lkupch)
-
--- HAVE NOT TESTED THIS YET
-cmdIToGraph (CClose ch) = do
+    f (CCloseF ch) = do
         chcxt <- guse tieProcChCxt 
         let lkupch = lookup (ch ^. bnfcIdentName) chcxt
             lkupch'  = fromJust lkupch
-            chcxt' = deleteSymTab (ch ^. bnfcIdentName) chcxt
-        tieProcChCxt .= chcxt'
+        tieProcChCxt %= deleteSymTab (ch ^. bnfcIdentName)
 
         lift $ tell $ bool [] [_NotInScope # ch] $ isNothing lkupch
 
@@ -460,7 +458,8 @@ cmdIToGraph (CClose ch) = do
             cmd' = CClose $ (ch ^. bnfcIdentName, lkupch') ^. taggedChIdent
             
         return (cmd' , bool [] [eqn] $ isJust lkupch)
-cmdIToGraph (CGet patt ch) = do
+
+    f (CGetF patt ch) = do
         chcxt <- guse tieProcChCxt 
         symtab <- guse tieProcSymTab
         tagmap <- gview equality
@@ -482,10 +481,9 @@ cmdIToGraph (CGet patt ch) = do
             ttypech = lkupch' ^. symEntryInfo % symChTypeTag
             chpol = lkupch' ^. symEntryInfo % symChPolarity
 
-            chcxt' = maybeToList 
-                (((ch ^. bnfcIdentName,) . set (symEntryInfo % symChTypeTag) ttypech') <$> lkupch)
-                <> deleteSymTab (ch ^. bnfcIdentName) chcxt
-        tieProcChCxt .= chcxt'
+        tieProcChCxt %= 
+            (maybeToList (((ch ^. bnfcIdentName,) . set (symEntryInfo % symChTypeTag) ttypech') <$> lkupch)
+                <>) . deleteSymTab (ch ^. bnfcIdentName)
 
         lift $ tell $ bool [] [_NotInScope # ch] $ isNothing lkupch
 
@@ -505,7 +503,8 @@ cmdIToGraph (CGet patt ch) = do
             cmd' = CGet patt' ch'
 
         return (cmd' , bool [] [eqns] $ isJust lkupch)
-cmdIToGraph (CPut expr ch) = do
+
+    f (CPutF expr ch) = do
         chcxt <- guse tieProcChCxt 
         symtab <- guse tieProcSymTab
         tagmap <- gview equality
@@ -529,10 +528,9 @@ cmdIToGraph (CPut expr ch) = do
             ttypech = lkupch' ^. symEntryInfo % symChTypeTag
             chpol = lkupch' ^. symEntryInfo % symChPolarity
 
-            chcxt' = maybeToList 
-                (((ch ^. bnfcIdentName,) . set (symEntryInfo % symChTypeTag) ttypech') <$> lkupch)
-                <> deleteSymTab (ch ^. bnfcIdentName) chcxt
-        tieProcChCxt .= chcxt'
+        tieProcChCxt %= 
+            (maybeToList (((ch ^. bnfcIdentName,) . set (symEntryInfo % symChTypeTag) ttypech') <$> lkupch)
+                <>) . deleteSymTab (ch ^. bnfcIdentName) 
 
         lift $ tell $ bool [] [_NotInScope # ch] $ isNothing lkupch
 
@@ -553,6 +551,127 @@ cmdIToGraph (CPut expr ch) = do
 
         return (cmd' , bool [] [eqns] $ isJust lkupch)
 
+    f (CSplitF ch (ch0,ch1) ) = do
+        chcxt <- guse tieProcChCxt 
+        symtab <- guse tieProcSymTab
+        tagmap <- gview equality
+
+        ch0' <- lift $ tagBnfcIdent ch0
+        ch1' <- lift $ tagBnfcIdent ch1
+        ttypech0 <- lift freshTypeTag
+        ttypech1 <- lift freshTypeTag
+
+        let lkupch = lookup (ch ^. bnfcIdentName) chcxt
+            lkupch' = fromJust lkupch
+            ch' = (ch ^. bnfcIdentName, lkupch') ^. taggedChIdent
+
+            ttypech = lkupch' ^. symEntryInfo % symChTypeTag
+            chpol = lkupch' ^. symEntryInfo % symChPolarity
+
+        tieProcChCxt %= (
+                [ ( ch0' ^. bnfcIdentName
+                    , _SymEntry # 
+                        ( ch0' ^. uniqueTag
+                        , ch0' ^. bnfcIdentPos
+                        , SymChInfo ttypech0 chpol 
+                        ) 
+                    ) 
+                , ( ch1' ^. bnfcIdentName
+                    , _SymEntry # 
+                        ( ch1' ^. uniqueTag
+                        , ch1' ^. bnfcIdentPos
+                        , SymChInfo ttypech1 chpol 
+                        ) 
+                    )
+                ]<>) . deleteSymTab (ch ^. bnfcIdentName) 
+
+        eqtype <- lift 
+            $ fmap fst . splitGraphGenCore 
+            $ tagConcTypeF 
+            $ polarity chpol
+                (_BnfcTypeTensorF # (TypeVar ttypech0 [], TypeVar ttypech1 [])) 
+                (_BnfcTypeParF # (TypeVar ttypech0 [], TypeVar ttypech1 []))
+            
+        let cmd' = CSplit ch' (TaggedChIdent ch0' chpol, TaggedChIdent ch1' chpol)
+            eqns = TypeEqnsExist [ttypech0, ttypech1] $
+                [ TypeEqnsEq (TypeVar ttypech [], TypeConc eqtype) ]
+                
+        lift $ tell $ bool [] [_NotInScope # ch] $ isNothing lkupch
+
+        return (cmd' , bool [] [eqns] $ isJust lkupch)
+
+    f (CForkF ch ((ch0, ch0with, cmds0), (ch1, ch1with, cmds1))) = do
+        chcxt <- guse tieProcChCxt 
+        symtab <- guse tieProcSymTab
+        tagmap <- gview equality 
+
+        let lkupch = lookup (ch ^. bnfcIdentName) chcxt
+            lkupch' = fromJust lkupch
+            ch' = (ch ^. bnfcIdentName, lkupch') ^. taggedChIdent
+
+            -- this is actually useless..
+            lkupch0with = traverse (flip lookup chcxt . view bnfcIdentName) ch0with
+            lkupch1with = traverse (flip lookup chcxt . view bnfcIdentName) ch1with
+            lkupch0with' = fromJust lkupch0with
+            lkupch1with' = fromJust lkupch1with
+
+            ttypech = lkupch' ^. symEntryInfo % symChTypeTag
+            chpol = lkupch' ^. symEntryInfo % symChPolarity
+
+        lift $ tell $ bool [] [_NotInScope # ch] $ isNothing lkupch
+
+        ~ch0' <- lift $ flip TaggedChIdent chpol <$> tagBnfcIdent ch0
+        ~ch1' <- lift $ flip TaggedChIdent chpol <$> tagBnfcIdent ch1
+        ttypech0 <- lift freshTypeTag
+        ttypech1 <- lift freshTypeTag
+
+        tieProcChCxt %= deleteSymTab (ch ^. bnfcIdentName) 
+
+        tieProcChCxt %= (
+                [ ( ch0' ^. bnfcIdentName
+                    , _SymEntry # 
+                        ( ch0' ^. uniqueTag
+                        , ch0' ^. bnfcIdentPos
+                        , SymChInfo ttypech0 chpol 
+                        ) 
+                    ) ] <>)
+        cmds0' <- sequenceA cmds0
+
+        tieProcChCxt %= (
+                [ ( ch1' ^. bnfcIdentName
+                    , _SymEntry # 
+                        ( ch1' ^. uniqueTag
+                        , ch1' ^. bnfcIdentPos
+                        , SymChInfo ttypech1 chpol 
+                        ) 
+                    ) ] <>)
+
+        cmds1' <- sequenceA cmds1
+
+        eqtype <- lift 
+            $ fmap fst . splitGraphGenCore 
+            $ tagConcTypeF 
+            $ polarity chpol
+                (_BnfcTypeParF # (TypeVar ttypech0 [], TypeVar ttypech1 []))
+                (_BnfcTypeTensorF # (TypeVar ttypech0 [], TypeVar ttypech1 [])) 
+
+        let cmd' = CFork ch'
+                ( ( ch0'
+                    , zipWith (\ch0 -> view taggedChIdent . (ch0 ^. bnfcIdentName,)) 
+                        ch0with lkupch0with'
+                    , fmap fst cmds0' )
+                , ( ch1'
+                    , zipWith (\ch1 -> view taggedChIdent . (ch1 ^. bnfcIdentName,)) 
+                        ch1with lkupch1with'
+                    , fmap fst cmds1' )
+                )
+            eqns = TypeEqnsExist [ttypech0, ttypech1] $
+                [ TypeEqnsEq (TypeVar ttypech [], TypeConc eqtype) ]
+                ++ concatMap snd cmds0'
+                ++ concatMap snd cmds1'
+
+        return (cmd', bool [] [eqns] $ isJust lkupch && isJust lkupch0with && isJust lkupch1with)
+
 cmdsIToGraph ::
     NonEmpty (ProcessCommandI BnfcIdent) -> 
     TieProc
@@ -563,11 +682,16 @@ cmdsIToGraph = cata f
     f (NonEmptyF cmd Nothing) = do
         (cmd', eqns)<- case cmd of
             CHalt _ -> cmdIToGraph cmd
-            _ -> error "bad last instruction"
+            CFork _ _ -> cmdIToGraph cmd
+            _ -> lift (tell [_IllegalLastInstruction # cmd]) >> cmdIToGraph cmd
         chcxt <- guse tieProcChCxt
         lift $ tell $ unclosedChannelsCheck chcxt
         return (cmd' :| [], eqns)
     f (NonEmptyF cmd (Just rst)) = do
+        case cmd of
+            CFork _ _ -> lift $ tell [_IllegalNonLastInstruction # cmd]
+            _ -> return ()
+
         (cmd', cmdeqns) <- cmdIToGraph cmd
         (rst', eqns) <- rst
         return 

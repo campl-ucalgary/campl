@@ -26,6 +26,24 @@ _BnfcTypePutF = prism' cts prj
         fmap (const (seq,conc)) $ str ^? _InternalConcTypeParser % _InternalPut
     prj _ = Nothing
 
+_BnfcTypeParF :: Prism' (ConcTypeF BnfcIdent t) (t, t)
+_BnfcTypeParF = prism' cts prj
+  where
+    cts (seq, conc) = _TypeParF # (mkBnfcIdent $ _InternalConcTypeParser # InternalPar, seq, conc)
+
+    prj (TypeParF (BnfcIdent (str,(-1,-1))) seq conc) = 
+        fmap (const (seq,conc)) $ str ^? _InternalConcTypeParser % _InternalPar
+    prj _ = Nothing
+
+_BnfcTypeTensorF :: Prism' (ConcTypeF BnfcIdent t) (t, t)
+_BnfcTypeTensorF = prism' cts prj
+  where
+    cts (seq, conc) = _TypeTensorF # (mkBnfcIdent $ _InternalConcTypeParser # InternalTensor, seq, conc)
+
+    prj (TypeTensorF (BnfcIdent (str,(-1,-1))) seq conc) = 
+        fmap (const (seq,conc)) $ str ^? _InternalConcTypeParser % _InternalTensor
+    prj _ = Nothing
+
 
 mkBnfcIdent :: 
     String ->

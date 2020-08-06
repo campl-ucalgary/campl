@@ -122,6 +122,10 @@ translateTypeToBnfcType n = case n of
                 (translateTypeToBnfcType rarg)
                 bnfcRBracket
         TypeTopBotF ident -> MPL_UIDENT_NO_ARGS_TYPE (toBnfcUIdent $ pprint ident)
+        TypeParF ident l r -> PAR_TYPE 
+            (translateTypeToBnfcType l) (Par ((-1,-1),pprint ident)) (translateTypeToBnfcType r)
+        TypeTensorF ident l r -> TENSOR_TYPE
+            (translateTypeToBnfcType l) (Tensor ((-1,-1), pprint ident)) (translateTypeToBnfcType r)
         TypeConcArrF seqs ins outs -> 
             B.MPL_CONC_ARROW_TYPE 
                 (nub $ map (MPL_SEQ_FUN_TYPE_FORALL_LIST . toBnfcUIdent) 
@@ -311,6 +315,22 @@ translateProcessCommandToBnfcProcessCommand (CHalt ident) =
     PROCESS_HALT (toBnfcPIdent $ pprint ident)
 translateProcessCommandToBnfcProcessCommand (CClose ident) = 
     PROCESS_CLOSE (toBnfcPIdent $ pprint ident)
+translateProcessCommandToBnfcProcessCommand (CSplit ident (ident0, ident1)) = 
+    PROCESS_SPLIT (toBnfcPIdent $ pprint ident)
+        [SPLIT_CHANNEL $ toBnfcPIdent $ pprint ident0, SPLIT_CHANNEL $ toBnfcPIdent $ pprint ident1]
+translateProcessCommandToBnfcProcessCommand (CFork ident (fsts, snds)) = 
+    PROCESS_FORK (toBnfcPIdent $ pprint ident)
+        [ f fsts , f snds ]
+  where
+    f (ident, idents, cmds) 
+        | null idents = FORK_PHRASE 
+            (toBnfcPIdent $ pprint ident)
+            (PROCESS_COMMANDS_DO_BLOCK $ NE.toList $ fmap translateProcessCommandToBnfcProcessCommand cmds)
+        | otherwise = FORK_WITH_PHRASE 
+            (toBnfcPIdent $ pprint ident) 
+            (map (FORK_CHANNEL .  toBnfcPIdent . pprint) idents) 
+            (PROCESS_COMMANDS_DO_BLOCK $ NE.toList $ fmap translateProcessCommandToBnfcProcessCommand cmds)
+
 
 
 bnfcLBracket = LBracket ((-1,-1), "(")

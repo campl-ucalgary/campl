@@ -40,6 +40,9 @@ instance Ord TaggedBnfcIdent where
 instance Eq BnfcIdent where
     BnfcIdent (str0, _) == BnfcIdent (str1, _) = str0 == str1 
 
+instance Ord BnfcIdent where
+    BnfcIdent (str0, _) <= BnfcIdent (str1, _) = str0 <= str1 
+
 
 newtype UniqueTag = UniqueTag { _unUniqueTag :: Unique }
   deriving (Show, Eq, Ord, Read, Enum)

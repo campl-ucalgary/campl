@@ -50,6 +50,7 @@ spec = do
         , outOfScopeTest11
         , outOfScopeTest12
         , outOfScopeTest13
+        , outOfScopeTest14
         ]
 
 --------------------
@@ -169,4 +170,13 @@ proc testing :: | TopBot => Get(A | TopBot)=
         close inn
         put a on inn
         halt out
+|]
+
+outOfScopeTest14 = [r|
+proc outOfScopeTest14 :: | => TopBot (+) TopBot  =
+    | => out -> do  
+        split out into a, b
+        close a
+        close out
+        halt b
 |]

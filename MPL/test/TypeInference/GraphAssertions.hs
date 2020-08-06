@@ -57,6 +57,18 @@ describeAllFailures pred expectedmsg prog = do
                     ("Expected " ++ expectedmsg ++ " but got " ++ show errs)
                     (allOf folded pred errs)
 
+describeAnyFailures pred expectedmsg prog = do
+    describe ("Testing for" ++ expectedmsg ++ " :\n" ++ prog) $ do
+        prog' <- runIO $ unsafeTranslateParseLexGraph prog
+
+        it ("Testing for " ++ expectedmsg ++ " error.") $ do
+            case prog' of
+                Right _ -> assertFailure "Program is valid when it should not be..."
+                Left errs -> assertBool
+                    ("Expected " ++ expectedmsg ++ " but got " ++ show errs)
+                    (anyOf folded pred errs)
+
+
 describeOutOfScope = describeAllFailures 
     (has _NotInScope) "NotInScope"
 

@@ -51,6 +51,10 @@ data FunctionError =
 
 data ProcessError =
     UnclosedChannels [BnfcIdent]
+    | ForkNonDisjointChannels [BnfcIdent]
+
+    | IllegalLastInstruction (ProcessCommandI BnfcIdent)
+    | IllegalNonLastInstruction (ProcessCommandI BnfcIdent)
   deriving Show
     
 

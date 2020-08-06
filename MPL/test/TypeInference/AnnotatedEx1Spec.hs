@@ -41,7 +41,7 @@ import TypeInference.GraphAssertions
 
 
 spec :: Spec
-spec = do
+spec = 
     mapM_ (`describeValidGraph` const (return ()))
         [ test1 
         , test2
@@ -83,6 +83,15 @@ spec = do
         , test38
         , test39
         , test40
+        , test41
+        , test42
+        , test43
+        , test44
+        , test45
+        , test46
+        , test47
+        , test48
+        , test49
         ]
 
 
@@ -621,5 +630,127 @@ proc test39 :: | TopBot => Get(A | TopBot)=
 |]
 
 test40 = [r|
+proc test40 :: | => TopBot (+) TopBot  =
+    | => out -> do  
+        split out into a, b
+        close a
+        halt b
+|]
 
+test41 = [r|
+proc test41 :: | TopBot (*) TopBot => =
+    | inn => -> do  
+        split inn into a, b
+        close a
+        halt b
+|]
+
+test42 = [r|
+proc test42 :: | => Get(A | TopBot (+) TopBot) (+) TopBot =
+    | => out -> do  
+        split out into a, b
+        get n on a
+        split a into aa, bb
+        close aa 
+        close bb
+        halt b
+|]
+
+test43 = [r|
+proc test43 :: | => TopBot (*) TopBot =
+    | => out -> do  
+        fork out as
+            a -> do
+                halt a
+            b -> do
+                halt b
+|]
+
+test44 = [r|
+proc test44 :: | => (TopBot (*) TopBot) (*) TopBot =
+    | => out -> do  
+        fork out as
+            a -> do
+                fork a as
+                    a ->
+                        halt a
+                    b ->
+                        halt b
+            b -> do
+                halt b
+|]
+
+test45 = [r|
+proc test45 :: | TopBot (+) TopBot =>  =
+    | inn => -> do  
+        fork inn as
+            a -> do
+                halt a
+            b -> do
+                halt b
+|]
+
+test46 = [r|
+proc test46 :: | (TopBot (+) TopBot) (+) TopBot =>  =
+    | inn  => -> do  
+        fork inn as
+            a -> do
+                fork a as
+                    a ->
+                        halt a
+                    b ->
+                        halt b
+            b -> do
+                halt b
+|]
+
+test47 = [r|
+proc test47 :: | => ( (TopBot (+) TopBot) (*) TopBot ) (*) TopBot=
+    | => out -> do  
+        fork out as
+            a -> do
+                fork a as
+                    a -> do
+                        split a into a,b
+                        close b
+                        halt a
+                    b ->
+                        halt b
+            b -> do
+                halt b
+|]
+
+test48 = [r|
+proc test48 :: | ( (TopBot (*) TopBot) (+) TopBot ) (+) TopBot => =
+    | inn => -> do  
+        fork inn as
+            a -> do
+                fork a as
+                    a -> do
+                        split a into a,b
+                        close b
+                        halt a
+                    b ->
+                        halt b
+            b -> do
+                halt b
+|]
+
+test49 = [r|
+proc test49 :: | Get(A | TopBot) => ( Get(A |TopBot (+) TopBot ) (*) TopBot ) (*) TopBot =
+    | inn => out,  -> do  
+        fork out as
+            a -> do
+                fork a as
+                    a -> do
+                        get n on a
+                        put n on inn
+                        split a into a,b
+                        close b
+                        close inn
+                        halt a
+                    b ->
+                        halt b
+            b -> do
+                halt b
 |]

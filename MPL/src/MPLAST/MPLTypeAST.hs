@@ -117,8 +117,8 @@ _InternalConcTypeParser = prism' embed match
         [ ("Get", InternalGet)
         , ("Put", InternalPut)
         , ("TopBot", InternalTopBot)
-        , ("Tensor", InternalTensor)
-        , ("Par", InternalPar)
+        , ("(*)", InternalTensor)
+        , ("(+)", InternalPar)
         ]
 
     embed n = fst . fromJust $ find ((n==) . snd) tmp
