@@ -1,6 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE RecursiveDo #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE RecursiveDo #-} {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -339,13 +338,155 @@ freshExprTypeTags = ExprTypeTags <$> freshTypeTag <*> freshTypeTag
 instance HasExprTypeTags TieExprEnv where
     exprTypeTags = tieExprEnvTypeTags
 
--- This will propogate the bound channels and free channels in a Set and remove
--- the bound variables from the free channels to compute the free variables 
--- that should be present in the declaration
--- So, the tuple returned by 'f' is (Command with the deduced variables, (bound channels, free channels) )
+processComputeVariableDeclarations :: 
+    NonEmpty (ProcessCommandI BnfcIdent) ->
+    StateT 
+        -- | bound, free
+        (Set BnfcIdent, Set BnfcIdent) 
+        GraphGenCore 
+        (NonEmpty (ProcessCommandI BnfcIdent))
+processComputeVariableDeclarations = 
+    traverse processCommandComputeVariableDeclarations
+    
 processCommandComputeVariableDeclarations ::
     ProcessCommandI BnfcIdent ->
-    GraphGenCore (ProcessCommandI BnfcIdent)
+    StateT 
+        -- | bound, free
+        (Set BnfcIdent, Set BnfcIdent) 
+        GraphGenCore 
+        (ProcessCommandI BnfcIdent)
+processCommandComputeVariableDeclarations = f
+  where
+    addToFree ident = do
+        bound <- guse boundvars
+        freevars %= bool (Set.singleton ident `Set.union`) id (ident `elem` bound)
+
+    boundvars = _1
+    freevars = _2 
+
+    f (CClose ident) = do
+        addToFree ident
+        return (CClose ident)
+    f (CHalt ident) = do
+        addToFree ident
+        return (CHalt ident)
+
+    f (CGet patt ident) = do
+        addToFree ident
+        return (CGet patt ident)
+    f (CPut expr ident) = do
+        addToFree ident
+        return (CPut expr ident)
+
+    f (CSplit spliton (a,b)) = do
+        addToFree spliton
+        boundvars %= (Set.fromList [a,b] `Set.union`)
+        return (CSplit spliton (a,b))
+
+    f (CFork forkon ((a, _ :_, acmds), (b, _, bcmds))) = 
+        error "provided context in fork instruction not supported"
+    f (CFork forkon ((a, _, acmds), (b, _:_, bcmds))) = 
+        error "provided context in fork instruction not supported"
+
+    f (CFork forkon ((a, awithchs, acmds), (b, bwithchs, bcmds))) = do
+        bound <- guse boundvars
+        free <- guse freevars
+
+        -- just make the bound variables those bound by this expression
+        freevars .= mempty
+        boundvars .= Set.singleton a
+        acmds' <- processComputeVariableDeclarations acmds
+        awithchs' <- guse freevars 
+
+        freevars .= mempty
+        boundvars .= Set.singleton b
+        bcmds' <- processComputeVariableDeclarations bcmds
+        bwithchs' <- guse freevars
+
+        let common = awithchs' `Set.intersection` bwithchs'
+        freevars .= (free `Set.union` awithchs' `Set.union`  bwithchs') 
+            `Set.difference` bound 
+        boundvars .= bound
+
+        tell $ bool [ _ForkNonDisjointChannels # (Set.toList awithchs' ++ Set.toList bwithchs') ] [] 
+            $ has _Empty common
+
+        return ( CFork forkon 
+            ( (a, Set.toList $ awithchs', acmds')
+            , (b, Set.toList $ bwithchs', bcmds')))
+
+    f (CHPut ident calldef ch) = do
+        addToFree ch
+        return (CHPut ident calldef ch)
+
+    f (CHCase ch cases) = do
+        bound <- guse boundvars
+        freevars .= mempty
+
+        cases' <- traverse (g (bound `Set.union` Set.singleton ch)) cases
+
+        return $ CHCase ch cases
+      where
+        g bound (phrase, calldef, cmds) = do
+            boundvars .= bound
+            cmds' <- processComputeVariableDeclarations cmds
+            return (phrase, calldef, cmds')
+
+    f (CId a b) = do
+        addToFree a
+        addToFree b
+        return $ CId a b
+    f (CIdNeg a b) = do
+        addToFree a
+        addToFree b
+        return $ CIdNeg a b
+
+    f (CPlug [] cmd0 cmd1 cmds) = do
+        bound <- guse boundvars
+        free <- guse freevars
+
+        withcxt <- traverse g (cmd0:cmd1:cmds)
+        let cmd0':cmd1':cmds' = fmap (first Set.toList) withcxt
+            plugged = foldMap fst withcxt
+
+        boundvars .= bound
+        freevars .= free
+            
+        return $ CPlug (Set.toList $ plugged `Set.difference` bound) cmd0' cmd1' cmds'
+      where
+        g (with, cmds) = do
+            bound <- guse boundvars
+            free <- guse freevars
+
+            boundvars .= mempty
+            freevars .= mempty
+            cmds' <- processComputeVariableDeclarations cmds
+            free' <- guse freevars
+
+            boundvars .= bound
+            freevars  .= free
+
+            return (free', cmds')
+
+    f (CPlug plugs cmd0 cmd1 cmds) = do
+        error "internal error -- explicit plugged channels cannot happen (limitation of bnfc parser)"
+
+
+toSymEntryChInfo :: TypeTag -> Getter TaggedChIdent (SymEntry SymChInfo)
+toSymEntryChInfo ttype = to f
+  where
+    f :: TaggedChIdent -> SymEntry SymChInfo
+    f nvar = _SymEntry #
+            ( nvar ^. uniqueTag
+            , nvar ^. bnfcIdentPos
+            , SymChInfo ttype (nvar ^. taggedChIdentPolarity)
+            )
+
+
+
+
+
+{-
 processCommandComputeVariableDeclarations = fmap fst . cata f
   where
     f (CCloseF ident) = return (CClose ident, (Set.empty, Set.singleton ident))
@@ -364,20 +505,48 @@ processCommandComputeVariableDeclarations = fmap fst . cata f
     f (CForkF forkon ((a, awithchs, acmds), (b, bwithchs, bcmds))) = do
         acmds' <- sequenceA acmds 
         bcmds' <- sequenceA bcmds 
-        let afree = traceShowId $ computeFreeVariables (Set.fromList [forkon, a]) $ fmap snd acmds'
-            bfree = traceShowId $ computeFreeVariables (Set.fromList [forkon, b]) $ fmap snd bcmds'
+        let afree = computeNEListFreeVars (Set.fromList [forkon, a]) $ fmap snd acmds'
+            bfree = computeNEListFreeVars (Set.fromList [forkon, b]) $ fmap snd bcmds'
             common = afree `Set.intersection` bfree 
         tell $ bool [ _ForkNonDisjointChannels # Set.toList common ] [] $ has _Empty common
 
         return 
             ( CFork forkon ((a, Set.toList afree, fmap fst acmds'), (b, Set.toList bfree, fmap fst bcmds'))
-            , (Set.singleton forkon , afree `Set.union` bfree ) )
+            , (Set.singleton forkon, afree `Set.union` bfree ) )
 
-    computeFreeVariables cxt = 
+    f (CHPutF ident () ch) = do
+        return (CHPut ident () ch, (Set.empty, Set.singleton ch))
+
+    f (CHCaseF ch cases) = do
+        casescmds' <- traverse (sequenceA . view _3) cases
+        let frees = foldMap (computeNEListFreeVars (Set.singleton ch) . fmap snd) casescmds'
+            cmd' = CHCase ch $
+                NE.zipWith (\(a,b,_) res -> (a,b, fst $ NE.unzip res)) cases casescmds'
+        -- return (cmd', (Set.singleton ch, frees))
+        return (cmd', (Set.empty, Set.singleton ch `Set.union` frees))
+
+    f (CIdF ch0 ch1) = return (CId ch0 ch1, (Set.empty, Set.fromList [ch0,ch1]))
+    f (CIdNegF ch0 ch1) = return (CIdNeg ch0 ch1, (Set.empty, Set.fromList [ch0,ch1]))
+
+    f (CPlugF plugs cmd0 cmd1 cmds) = do
+        cmd0' <- sequenceA $ snd cmd0
+        cmd1' <- sequenceA $ snd cmd1
+        cmds' <- traverse (sequenceA . snd) cmds
+
+        let (with0:with1:withs) = f 
+                (computeNEListFreeVars Set.empty $ fmap snd cmd0') 
+                (computeNEListFreeVars Set.empty $ fmap snd cmd1') 
+                (map (computeNEListFreeVars Set.empty . fmap snd) cmds')
+        undefined
+      where
+        f (bound0, free0) (bound1, free1) [] = undefined
+        
+
+    computeNEListFreeVars cxt = 
         fold
         . snd
         . mapAccumL 
             (\acc (bound,free) -> (acc `Set.union` bound, free `Set.difference` acc))
             cxt
 
-
+-}

@@ -107,8 +107,7 @@ validRecordPhrasesCheck phrasesg =
         $ NE.toList 
         $ fmap (view (typePhraseName % taggedBnfcIdentBnfcIdent)) phrasesg
     {- Old way of testing for duplicated declarations
-    duplicateddecs = map (review _DuplicatedDeclarations . NE.toList) duplicateddecs
-      where
+    duplicateddecs = map (review _DuplicatedDeclarations . NE.toList) duplicateddecs where
         duplicateddecseqclasses = NE.group1 $ fmap (view (typePhraseName % taggedBnfcIdentBnfcIdent))  phrasesg
         duplicateddecs = NE.filter ((>1) . length) duplicateddecseqclasses
         -}
@@ -154,12 +153,12 @@ duplicatedDeclarationsCheck decs = map (review _DuplicatedDeclarations) duplicat
       where
         duplicateddecsclasses = group decs
         duplicateddecs = filter ((>1) . length) duplicateddecsclasses
-    
-foldUnfoldPhrasesFromDifferentGraphsCheck ::
-    [TypePhraseG TaggedBnfcIdent] -> 
-    [TieDefnsError]
-foldUnfoldPhrasesFromDifferentGraphsCheck phrasesg = 
-    bool [] [_FoldUnfoldPhraseFromDifferentGraphs # map (map fst) identstotagseq]
+
+phrasesDifferentGraphsCheck ::
+    [TypePhraseG TaggedBnfcIdent] ->
+    Maybe [[BnfcIdent]]
+phrasesDifferentGraphsCheck phrasesg = 
+    bool Nothing (Just $ map (map fst) identstotagseq)
         (length identstotagseq /= 1)
   where
     idents = fmap (view (typePhraseName % taggedBnfcIdentBnfcIdent)) phrasesg
@@ -169,14 +168,11 @@ foldUnfoldPhrasesFromDifferentGraphsCheck phrasesg =
 
     identstotagseq = groupBy ((==) `on` snd) identstotags 
 
-nonExhaustiveFoldPhrase ::
+nonExhaustivePhrasesFromClauses ::
     NonEmpty (TypePhraseG TaggedBnfcIdent) ->
-    [TieDefnsError]
-nonExhaustiveFoldPhrase phrasesg@(phraseg :| _) = 
-    bool []
-        [_NonExhaustiveFold # 
-            (missedphrases ^.. folded % taggedBnfcIdentBnfcIdent)]
-        (not $ null missedphrases)
+    Maybe [BnfcIdent]
+nonExhaustivePhrasesFromClauses phrasesg@(phraseg :| _) = 
+    bool Nothing (Just $ missedphrases ^.. folded % taggedBnfcIdentBnfcIdent) (not $ null missedphrases)
   where
     clausegraph = phraseg ^. phraseGClausesGraph
 
@@ -186,6 +182,19 @@ nonExhaustiveFoldPhrase phrasesg@(phraseg :| _) =
     phrasesgidents = map (view typePhraseName) $ NE.toList phrasesg 
 
     missedphrases = exhaustivephrasesidents \\ phrasesgidents
+    
+foldUnfoldPhrasesFromDifferentGraphsCheck ::
+    [TypePhraseG TaggedBnfcIdent] -> 
+    [TieDefnsError]
+foldUnfoldPhrasesFromDifferentGraphsCheck phrasesg = 
+    maybe [] (pure . review _FoldUnfoldPhraseFromDifferentGraphs) $ phrasesDifferentGraphsCheck phrasesg
+
+
+nonExhaustiveFoldPhrase ::
+    NonEmpty (TypePhraseG TaggedBnfcIdent) ->
+    [TieDefnsError]
+nonExhaustiveFoldPhrase phrasesg = 
+    maybe [] (pure . review _NonExhaustiveFold) $ nonExhaustivePhrasesFromClauses phrasesg
 
 
 nonExhaustiveUnfoldClauses ::

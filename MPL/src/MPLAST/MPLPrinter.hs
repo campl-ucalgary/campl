@@ -331,6 +331,20 @@ translateProcessCommandToBnfcProcessCommand (CFork ident (fsts, snds)) =
             (map (FORK_CHANNEL .  toBnfcPIdent . pprint) idents) 
             (PROCESS_COMMANDS_DO_BLOCK $ NE.toList $ fmap translateProcessCommandToBnfcProcessCommand cmds)
 
+translateProcessCommandToBnfcProcessCommand (CHPut ident _ ch) = 
+    PROCESS_HPUT (toBnfcUIdent $ pprint ident) (toBnfcPIdent $ pprint ch)
+
+translateProcessCommandToBnfcProcessCommand (CHCase ch cases) = 
+    PROCESS_HCASE (toBnfcPIdent $ pprint ch) (map f $ NE.toList cases)
+  where
+    f (ident, _, cmds) = HCASE_PHRASE 
+        (toBnfcUIdent $ pprint ident)
+        (PROCESS_COMMANDS_DO_BLOCK $ NE.toList $ fmap translateProcessCommandToBnfcProcessCommand cmds)
+
+translateProcessCommandToBnfcProcessCommand (CId ch0 ch1) = 
+    PROCESS_ID (toBnfcPIdent $ pprint ch0) (toBnfcPIdent $ pprint ch1)
+        
+
 
 
 bnfcLBracket = LBracket ((-1,-1), "(")

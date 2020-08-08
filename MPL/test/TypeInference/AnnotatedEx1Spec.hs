@@ -92,6 +92,15 @@ spec =
         , test47
         , test48
         , test49
+        , test50
+        , test51
+        , test52
+        , test53
+        , test54
+        , test55
+        , test56
+        , test57
+        , test58
         ]
 
 
@@ -753,4 +762,161 @@ proc test49 :: | Get(A | TopBot) => ( Get(A |TopBot (+) TopBot ) (*) TopBot ) (*
                         halt b
             b -> do
                 halt b
+|]
+
+
+test50 = [r|
+data 
+    Nat -> S =
+        Zero :: -> S
+        Succ :: S -> S
+protocol 
+    Test(A) => S =
+        Test :: Put(A |TopBot) => S
+
+proc test50 :: | => Test(Nat)= 
+    | => a -> do  
+        hput Test on a
+        put Zero on a
+        halt a
+|]
+
+test51 = [r|
+data 
+    Nat -> S =
+        Zero :: -> S
+protocol 
+    Test(A) => S =
+        Test :: Put(A |TopBot) => S
+
+proc test51 ::  | => Get(A | TopBot), Test(A) = 
+    | => b, a -> do  
+        get n on b
+        hput Test on a
+        put n on a
+        close b
+        halt a
+|]
+
+test52 = [r|
+data 
+    Nat -> S =
+        Zero :: -> S
+        Succ :: S -> S
+coprotocol 
+    S => Test(A)=
+        Test :: S => Get(A |TopBot)
+
+proc test52 :: | Test(A) => Get(A | TopBot) =
+    | a => b -> do  
+        get n on b
+        hput Test on a
+        put n on a
+        close b
+        halt a
+|]
+
+test53 = [r|
+data 
+    Nat -> S =
+        Zero :: -> S
+coprotocol 
+    S => Test(A)=
+        Test :: S => Get(A |TopBot)
+proc testing :: Nat,A | Test(A) => = 
+    Zero,n | a => -> do  
+        hput Test on a
+        put n on a
+        halt a
+|]
+
+test54 = [r|
+
+protocol 
+    Test => S =
+        Test1 :: TopBot => S
+        Test2 :: TopBot => S
+
+proc test54 :: | Test => = 
+    | inn => -> do  
+        hcase inn of
+            Test1 -> do
+                halt inn
+            Test2 -> do
+                halt inn
+|]
+
+test55 = [r|
+data 
+    Unit -> S =
+        Unit :: -> S
+
+protocol 
+    Test => S =
+        Test1 :: TopBot => S
+        Test2 :: Get(Unit|TopBot) => S
+
+proc test55 :: | TopBot, Test => = 
+    | a,inn => -> do  
+        hcase inn of
+            Test1 -> do
+                close a
+                halt inn
+            Test2 -> do
+                close a
+                put Unit on inn
+                halt inn
+|]
+
+test56 = [r|
+data 
+    Unit -> S =
+        Unit :: -> S
+
+protocol 
+    Test => S =
+        Test1 :: TopBot => S
+        Test2 :: Get(Unit|TopBot) => S
+
+proc test56 :: | Put (Unit | TopBot), Test => =
+    | a,inn => -> do  
+        hcase inn of
+            Test1 -> do
+                get n on a
+                close a
+                halt inn
+            Test2 -> do
+                get n on a
+                close a
+                put n on inn
+                halt inn
+|]
+
+test57 = [r|
+protocol 
+    AA => S =
+        AA0 :: TopBot => S
+        AA1 :: T => S
+    and
+
+    BB => T =
+        BB0 :: TopBot => T
+    
+
+proc test57 =
+    | inn => -> do  
+        hcase inn of
+            AA0 -> do
+                halt inn
+            AA1 -> do
+                hcase inn of
+                    BB0 -> do
+                        halt inn
+|]
+
+test58 = [r|
+proc test58 :: | Put(A|T) => T = 
+    | a => b -> do  
+        get n on a
+        a |=| b
 |]

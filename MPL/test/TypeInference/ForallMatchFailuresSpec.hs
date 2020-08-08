@@ -43,6 +43,8 @@ spec = do
         , testfail2 
         , testfail3 
         , testfail4 
+        , testfail5 
+        , testfail6 
         ]
 
 testfail0 = [r| 
@@ -91,4 +93,21 @@ proc testfail5 :: A | => Put(A | Get(B | Put(A | TopBot))) =
         get b on out
         put b on out
         halt out
+|]
+
+testfail6 = [r|
+data 
+    Nat -> S =
+        Zero :: -> S
+protocol 
+    Test(A) => S =
+        Test :: Put(A |TopBot) => S
+
+proc test6 ::  | => Get(A | TopBot), Test(B) = 
+    | => b, a -> do  
+        get n on b
+        hput Test on a
+        put n on a
+        close b
+        halt a
 |]

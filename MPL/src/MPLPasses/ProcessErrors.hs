@@ -27,7 +27,6 @@ import Data.Bool
 import Data.Foldable
 import Data.Tuple
 import Data.Semigroup
-import Data.List.NonEmpty (NonEmpty (..))
 import Optics 
 import Optics.State
 import Optics.State.Operators
@@ -64,6 +63,8 @@ import Control.Monad.State
 import Control.Monad.Reader
 import Control.Applicative
 
+import MPLPasses.CallErrors
+
 
 unclosedChannelsCheck ::
     ChCxt ->
@@ -71,4 +72,27 @@ unclosedChannelsCheck ::
 unclosedChannelsCheck [] = []
 unclosedChannelsCheck as = 
     [_UnclosedChannels # map (view bnfcIdent) as]
+
+
+hCaseChecks ::
+    NonEmpty (TypePhraseG TaggedBnfcIdent) ->
+    [TieDefnsError]
+hCaseChecks phrasesg = dups ++ diffgraphs ++ nonexhaus
+  where
+    phraseidents = fmap (view (typePhraseName % bnfcIdent)) phrasesg 
+
+    dups = duplicatedDeclarationsCheck $ NE.toList phraseidents
+
+    diffgraphs = maybe [] (pure . review _HCaseDifferentClauses) 
+        $ phrasesDifferentGraphsCheck
+        $ NE.toList phrasesg
+
+    nonexhaus = maybe [] (pure . review _HCaseNonExhaustive) $ nonExhaustivePhrases phrasesg
+
+
+nonExhaustivePhrases phrasesg@(phraseg :| _) = bool (Just missed) Nothing $ null missed
+  where
+    givenphrasenames = NE.toList $ fmap (view (typePhraseName % bnfcIdent)) phrasesg
+    exhaustive = map (view (typePhraseName % bnfcIdent)) $ phraseg ^. typePhraseContext % phraseParent % typeClausePhrases
+    missed = exhaustive \\ givenphrasenames
 

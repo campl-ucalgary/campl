@@ -356,7 +356,7 @@ instance Print FunctionDefn where
 instance Print ProcessDefn where
   prt i e = case e of
     TYPED_PROCESS_DEFN pident mpltypes1 mpltypes2 mpltypes3 processphrases -> prPrec i 0 (concatD [doc (showString "proc"), prt 0 pident, doc (showString "::"), prt 0 mpltypes1, doc (showString "|"), prt 0 mpltypes2, doc (showString "=>"), prt 0 mpltypes3, doc (showString "="), doc (showString "{"), prt 0 processphrases, doc (showString "}")])
-    INTERNAL_TYPED_PROCESS_DEFN pident mpltypes1 mpltypes2 mpltypes3 processphrases -> prPrec i 0 (concatD [doc (showString "proc"), prt 0 pident, doc (showString "::"), prt 0 mpltypes1, doc (showString "|"), prt 0 mpltypes2, doc (showString "=>"), prt 0 mpltypes3, doc (showString "="), doc (showString "{"), prt 0 processphrases, doc (showString "}")])
+    INTERNAL_TYPED_PROCESS_DEFN pident mpltype processphrases -> prPrec i 0 (concatD [doc (showString "proc"), prt 0 pident, doc (showString "::"), prt 0 mpltype, doc (showString "="), doc (showString "{"), prt 0 processphrases, doc (showString "}")])
     PROCESS_DEFN pident processphrases -> prPrec i 0 (concatD [doc (showString "proc"), prt 0 pident, doc (showString "="), doc (showString "{"), prt 0 processphrases, doc (showString "}")])
 
 instance Print ProcessPhrase where

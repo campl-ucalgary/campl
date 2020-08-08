@@ -37,9 +37,19 @@ import TypeInference.GraphAssertions
 spec :: Spec
 spec = do
     mapM_ (describeAnyFailures (has (_TieDefnProcessError % _ForkNonDisjointChannels)) "ForkNonDisjointChannels")
-        [ test1
+        [ forkdisjoint1
         ]
 
+    mapM_ (describeAnyFailures 
+        (has (_TieDefnProcessError % _IllegalLastInstruction)) "IllegalNonInstruction")
+        [ nonlast1
+        ]
+
+
+    mapM_ (describeAnyFailures 
+        (has (_TieDefnProcessError % _UnclosedChannels)) "UnclosedChannels")
+        [ unclosed1
+        ]
 --------------------
 -- Assertion helpers
 --------------------
@@ -48,8 +58,8 @@ spec = do
 -- Tests
 --------------------
 
-test1 = [r|
-proc test1 = 
+forkdisjoint1 = [r|
+proc forkdisjoint1 = 
     | inn => out  -> do  
         fork out as
             a -> do
@@ -67,4 +77,28 @@ proc test1 =
                 halt b
 |]
 
+nonlast1 = [r|
+proc nonlast1 =
+    | => out -> do
+        fork out as
+            a -> close a
+            b -> close b
 
+|]
+
+
+unclosed1 = [r|
+protocol 
+    Test => S =
+        Test1 :: TopBot => S
+        Test2 :: TopBot => S
+
+proc unclosed1 :: | TopBot, Test => = 
+    | a,inn => -> do  
+        hcase inn of
+            Test1 -> do
+                close a
+                halt inn
+            Test2 -> do
+                halt inn
+|]

@@ -55,6 +55,19 @@ data ProcessError =
 
     | IllegalLastInstruction (ProcessCommandI BnfcIdent)
     | IllegalNonLastInstruction (ProcessCommandI BnfcIdent)
+
+    -- channel, (co) protocol type clause
+    | HPutOutputPolarityExpectsProtocol BnfcIdent BnfcIdent
+    | HPutInputPolarityExpectsCoprotocol BnfcIdent BnfcIdent
+
+    | HCaseNonExhaustive [BnfcIdent]
+        -- [BnfcIdent] is the missing channels
+    | HCaseDifferentClauses [[BnfcIdent]]
+        -- [BnfcIdent] are eq classes of being from 
+        -- different graphs
+
+    | IdExpectedDifferentPolarity BnfcIdent BnfcIdent
+    | IdNegExpectedSamePolarity BnfcIdent BnfcIdent
   deriving Show
     
 

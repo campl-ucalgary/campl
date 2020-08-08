@@ -377,7 +377,11 @@ translateBnfcProcessCommand (B.PROCESS_RACE races) =
     CRace <$> traverse translateBnfcRacePhrases (NE.fromList races)
 
 translateBnfcProcessCommand (B.PROCESS_PLUG phrases) = 
-    CPlug [] <$> traverse translateBnfcPlugPhrase phrases
+    if length phrases <= 1
+        then liftAEither $ Left (review _IllegalPlug () :| [])
+        else f <$> traverse translateBnfcPlugPhrase phrases
+  where
+    f (a:b:cs) = CPlug [] a b cs
 
 translateBnfcProcessCommand (B.PROCESS_CASE expr pcases) = 
     CCase 

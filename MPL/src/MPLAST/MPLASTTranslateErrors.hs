@@ -29,6 +29,7 @@ data TranslateBnfcErrors =
 
     | IllegalSplit { _translateBnfcErrorIllegalSplit :: [BnfcIdent] }
     | IllegalFork { _translateBnfcErrorIllegalFork :: [BnfcIdent] }
+    | IllegalPlug 
 
   deriving (Show, Eq, Read)
 

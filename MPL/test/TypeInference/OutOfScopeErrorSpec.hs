@@ -51,6 +51,7 @@ spec = do
         , outOfScopeTest12
         , outOfScopeTest13
         , outOfScopeTest14
+        , outOfScopeTest15
         ]
 
 --------------------
@@ -179,4 +180,14 @@ proc outOfScopeTest14 :: | => TopBot (+) TopBot  =
         close a
         close out
         halt b
+|]
+
+outOfScopeTest15 = [r|
+proc outOfScopeTest15 = -- :: | TopBot, Test => = 
+    | inn => -> do  
+        hcase inn of
+            Test1 -> do
+                halt inn
+            Test2 -> do
+                halt inn
 |]

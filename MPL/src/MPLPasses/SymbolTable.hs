@@ -153,27 +153,6 @@ instance CollectSymEntries (DefnG TaggedBnfcIdent TypeTag TaggedChIdent) where
 
     collectSymEntries _ = error "proceses todo"
 
-
-queryBnfcIdentName ::
-    BnfcIdent -> 
-    [(String, SymEntry info)] -> 
-    GraphGenCore (Maybe (SymEntry info))
-queryBnfcIdentName ident symtab = do
-    tell $ bool [] [NotInScope ident] notinscope
-    {-
-    tell $ bool [] 
-        [ AmbiguousLookup ident 
-        $ map (\(str, SymEntry _ pos _) -> BnfcIdent (str,pos)) symtab
-        ] 
-        ambig
-        -}
-    return $ bool (Just $ snd $ head namequeries) Nothing notinscope
-
-  where
-    namequeries = filter ( (ident ^. bnfcIdentName==) . fst ) symtab
-    notinscope = null namequeries
-
-
 lookupBnfcIdent ::
     BnfcIdent ->
     [(String, a)] ->
@@ -191,6 +170,20 @@ lookupsSeqPhrases idents symtab = fmap f idents
                 $ lookupBnfcIdent ident 
                 $ mapMaybe ( traverseOf (_2 % symEntryInfo)
                                     ( preview (_SymSeqCall % _SymPhrase) )) symtab
+
+lookupsConcPhrases ::    
+    Functor f => 
+    f BnfcIdent ->
+    SymbolTable ->
+    f (Maybe (TypePhraseG TaggedBnfcIdent))
+lookupsConcPhrases idents symtab = fmap f idents
+  where
+    f ident = fmap (view symEntryInfo)
+                $ lookupBnfcIdent ident 
+                $ mapMaybe ( traverseOf (_2 % symEntryInfo)
+                                    ( preview (_SymConcCall % _SymPhrase) )) symtab
+
+
 
 querySeqClauses ::
     AsSymSeqConcTypeInfo a =>

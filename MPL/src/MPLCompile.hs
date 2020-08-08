@@ -125,13 +125,24 @@ fun test :: B -> C =
 |]
 
 testkartofler = [r| 
-
-proc testing = 
-    | a => -> do  
-        fork a as
-            a -> halt a
-            a -> halt a
-            
+proc forkdisjoint1 = 
+    | inn => out  -> do  
+        fork out as
+            a -> do
+                fork a as
+                    a -> do
+                        get n on a
+                        close inn
+                        split a into a,b
+                        close b
+                        close mitsuha
+                        halt a
+                    b -> do
+                        close inn
+                        halt b
+            otherside -> do
+                -- close inn
+                halt otherside
 |]
 
 

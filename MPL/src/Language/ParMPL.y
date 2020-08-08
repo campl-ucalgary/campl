@@ -386,8 +386,7 @@ ListRacePhrase : {- empty -} { [] }
 PlugPhrase :: { PlugPhrase }
 PlugPhrase : ProcessCommandsBlock { Language.AbsMPL.PLUG_PHRASE $1 }
 ListPlugPhrase :: { [PlugPhrase] }
-ListPlugPhrase : {- empty -} { [] }
-               | PlugPhrase { (:[]) $1 }
+ListPlugPhrase : PlugPhrase { (:[]) $1 }
                | PlugPhrase ';' ListPlugPhrase { (:) $1 $3 }
 ProcessCasePhrase :: { ProcessCasePhrase }
 ProcessCasePhrase : Pattern '->' ProcessCommandsBlock { Language.AbsMPL.PROCESS_CASE_PHRASE $1 $3 }

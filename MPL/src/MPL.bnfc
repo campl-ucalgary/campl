@@ -372,7 +372,7 @@ separator RacePhrase ";" ;
 
 PLUG_PHRASE    . PlugPhrase ::= ProcessCommandsBlock ;
 -- PLUG_PHRASE_AS . PlugPhrase ::= "with" [PIdent] "->" ProcessCommandsBlock ;
-separator PlugPhrase ";" ;
+separator nonempty PlugPhrase ";" ;
 
 PROCESS_CASE_PHRASE . ProcessCasePhrase ::=  Pattern "->" ProcessCommandsBlock ;
 separator ProcessCasePhrase ";" ;

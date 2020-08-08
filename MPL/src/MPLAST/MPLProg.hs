@@ -112,7 +112,7 @@ data ProcessDefn patterns letdef typedef typesig seqcalleddef conccalleddef iden
 data Polarity = 
     Input
     | Output
-  deriving Show
+  deriving (Show, Eq)
 
 polarity :: Polarity -> a -> a -> a
 polarity Input a _ = a

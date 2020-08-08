@@ -329,8 +329,7 @@ All other symbols are terminals.
   |  |  **|**  | //RacePhrase// 
   |  |  **|**  | //RacePhrase// ``;`` //[RacePhrase]// 
   | //PlugPhrase// | -> | //ProcessCommandsBlock// 
-  | //[PlugPhrase]// | -> | **eps**
-  |  |  **|**  | //PlugPhrase// 
+  | //[PlugPhrase]// | -> | //PlugPhrase// 
   |  |  **|**  | //PlugPhrase// ``;`` //[PlugPhrase]// 
   | //ProcessCasePhrase// | -> | //Pattern// ``->`` //ProcessCommandsBlock// 
   | //[ProcessCasePhrase]// | -> | **eps**

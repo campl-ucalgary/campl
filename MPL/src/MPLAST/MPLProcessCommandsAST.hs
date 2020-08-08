@@ -57,7 +57,11 @@ data ProcessCommand pattern letdef typedef
     | CGet { _cGet :: pattern, _cGetCh :: chident }
     | CPut { _cPut :: Expr pattern letdef typedef seqcalleddef ident, _cPutCh :: chident }
 
-    | CHCase { _cHCase :: ident, _cHCases :: NonEmpty (ident, conccalleddef, ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident) }
+    | CHCase { _cHCase :: chident
+        , _cHCases :: NonEmpty 
+            ( ident
+            , conccalleddef
+            , ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident) }
     | CHPut  { _cHPut :: ident, _cHPutDef :: conccalleddef , _cHPutCh :: chident }
 
     | CSplit  { _cSplit :: chident, _cSplitInto :: (chident, chident) }
@@ -72,8 +76,14 @@ data ProcessCommand pattern letdef typedef
     
     | CRace { _cRaces :: NonEmpty (chident, ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident) }
 
-    | CPlug { _cPlugs :: [chident]
-        , _cPlugged :: [([chident], ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident)] }
+    | CPlug 
+        -- | plugged together
+        [chident] 
+        -- | plug phrases
+        ([chident], ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident) 
+        ([chident], ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident)
+        [([chident], ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident)]
+
 
     | CCase { _cCase :: Expr pattern letdef typedef seqcalleddef ident
         , _cCases :: [(pattern, ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident)] }

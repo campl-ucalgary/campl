@@ -285,7 +285,7 @@ defnsToGraph (a:as) = case a ^. unDefnI of
         proctype' <- lift $ case proctype of
             Just proctype -> Just 
                 <$> evalStateT (annotateTypeIToTypeGAndScopeFreeVars 
-                $ TypeConc $ _TypeConcArrF # proctype) (querySeqClauses symtab)
+                $ TypeConc $ _TypeConcArrF # proctype) (queryClauses symtab)
             Nothing -> return Nothing
 
         -- splitting is not needed here...
@@ -395,12 +395,15 @@ patternsChsCmdIToGraph ttypes ((patts, inchs, outchs), cmds) = do
     tieProcSymTab .= symtab'
 
     -- compilation of the cmds
-    ~(cmds', cmdeqns) <- cmdsIToGraph <=< lift . traverse processCommandComputeVariableDeclarations $ cmds
+    ~(cmds', cmdeqns) <- cmdsIToGraph 
+        <=< lift . traverse 
+            ( (`evalStateT` (Set.fromList (inchs ++ outchs), Set.empty))
+            . processCommandComputeVariableDeclarations) $ cmds
 
     tieProcSymTab .= symtab
 
     let ttypepatts = ttypespatts & mapped %~ view exprTtype
-        ttypeeqn = TypeEqnsExist ttypepatts $
+        ttypeeqn = TypeEqnsExist (ttypepatts ++ map (view exprTtype) (ttypesinchs ++ ttypesoutchs)) $
             [ TypeEqnsEq
                 ( TypeVar ttype []
                 , TypeConc $ TypeConcArrF
@@ -426,9 +429,12 @@ cmdIToGraph ::
     TieProc
         ( ProcessCommandG TaggedBnfcIdent TypeTag TaggedChIdent
         , [TypeEqns TaggedBnfcIdent TypeTag] )
-cmdIToGraph = cata f
+cmdIToGraph = f
   where
-    f (CHaltF ch) = do
+    f :: ProcessCommandI BnfcIdent -> TieProc
+        ( ProcessCommandG TaggedBnfcIdent TypeTag TaggedChIdent
+        , [TypeEqns TaggedBnfcIdent TypeTag] )
+    f (CHalt ch) = do
         chcxt <- guse tieProcChCxt 
         let lkupch = lookup (ch ^. bnfcIdentName) chcxt
             lkupch'  = fromJust lkupch
@@ -443,7 +449,7 @@ cmdIToGraph = cata f
             cmd' = CHalt $ (ch ^. bnfcIdentName, lkupch') ^. taggedChIdent
             
         return (cmd' , bool [] [eqn] $ isJust lkupch)
-    f (CCloseF ch) = do
+    f (CClose ch) = do
         chcxt <- guse tieProcChCxt 
         let lkupch = lookup (ch ^. bnfcIdentName) chcxt
             lkupch'  = fromJust lkupch
@@ -459,7 +465,7 @@ cmdIToGraph = cata f
             
         return (cmd' , bool [] [eqn] $ isJust lkupch)
 
-    f (CGetF patt ch) = do
+    f (CGet patt ch) = do
         chcxt <- guse tieProcChCxt 
         symtab <- guse tieProcSymTab
         tagmap <- gview equality
@@ -504,7 +510,7 @@ cmdIToGraph = cata f
 
         return (cmd' , bool [] [eqns] $ isJust lkupch)
 
-    f (CPutF expr ch) = do
+    f (CPut expr ch) = do
         chcxt <- guse tieProcChCxt 
         symtab <- guse tieProcSymTab
         tagmap <- gview equality
@@ -551,7 +557,7 @@ cmdIToGraph = cata f
 
         return (cmd' , bool [] [eqns] $ isJust lkupch)
 
-    f (CSplitF ch (ch0,ch1) ) = do
+    f (CSplit ch (ch0,ch1) ) = do
         chcxt <- guse tieProcChCxt 
         symtab <- guse tieProcSymTab
         tagmap <- gview equality
@@ -600,7 +606,7 @@ cmdIToGraph = cata f
 
         return (cmd' , bool [] [eqns] $ isJust lkupch)
 
-    f (CForkF ch ((ch0, ch0with, cmds0), (ch1, ch1with, cmds1))) = do
+    f (CFork ch ((ch0, ch0with, cmds0), (ch1, ch1with, cmds1))) = do
         chcxt <- guse tieProcChCxt 
         symtab <- guse tieProcSymTab
         tagmap <- gview equality 
@@ -610,8 +616,8 @@ cmdIToGraph = cata f
             ch' = (ch ^. bnfcIdentName, lkupch') ^. taggedChIdent
 
             -- this is actually useless..
-            lkupch0with = traverse (flip lookup chcxt . view bnfcIdentName) ch0with
-            lkupch1with = traverse (flip lookup chcxt . view bnfcIdentName) ch1with
+            lkupch0with = traverse (\n -> (n ^. bnfcIdentName,) <$> lookup (n ^. bnfcIdentName) chcxt) ch0with
+            lkupch1with = traverse (\n -> (n ^. bnfcIdentName,) <$> lookup (n ^. bnfcIdentName) chcxt) ch1with
             lkupch0with' = fromJust lkupch0with
             lkupch1with' = fromJust lkupch1with
 
@@ -626,7 +632,7 @@ cmdIToGraph = cata f
         ttypech1 <- lift freshTypeTag
 
         tieProcChCxt %= deleteSymTab (ch ^. bnfcIdentName) 
-
+        tieProcChCxt %= bool id (const lkupch0with') (isJust lkupch0with)
         tieProcChCxt %= (
                 [ ( ch0' ^. bnfcIdentName
                     , _SymEntry # 
@@ -635,8 +641,10 @@ cmdIToGraph = cata f
                         , SymChInfo ttypech0 chpol 
                         ) 
                     ) ] <>)
-        cmds0' <- sequenceA cmds0
+        (cmds0', cmds0eqns) <- cmdsIToGraph cmds0
 
+        -- tieProcChCxt .= lkupch1with'
+        tieProcChCxt %= bool id (const lkupch1with') (isJust lkupch1with)
         tieProcChCxt %= (
                 [ ( ch1' ^. bnfcIdentName
                     , _SymEntry # 
@@ -646,7 +654,7 @@ cmdIToGraph = cata f
                         ) 
                     ) ] <>)
 
-        cmds1' <- sequenceA cmds1
+        (cmds1', cmds1eqns) <- cmdsIToGraph cmds1
 
         eqtype <- lift 
             $ fmap fst . splitGraphGenCore 
@@ -657,20 +665,263 @@ cmdIToGraph = cata f
 
         let cmd' = CFork ch'
                 ( ( ch0'
-                    , zipWith (\ch0 -> view taggedChIdent . (ch0 ^. bnfcIdentName,)) 
+                    , zipWith (\ch0 -> view (_2 % taggedChIdent) . (ch0 ^. bnfcIdentName,)) 
                         ch0with lkupch0with'
-                    , fmap fst cmds0' )
+                    , cmds0' )
                 , ( ch1'
-                    , zipWith (\ch1 -> view taggedChIdent . (ch1 ^. bnfcIdentName,)) 
+                    , zipWith (\ch1 ->  view (_2 % taggedChIdent) . (ch1 ^. bnfcIdentName,)) 
                         ch1with lkupch1with'
-                    , fmap fst cmds1' )
+                    , cmds1' )
                 )
             eqns = TypeEqnsExist [ttypech0, ttypech1] $
                 [ TypeEqnsEq (TypeVar ttypech [], TypeConc eqtype) ]
-                ++ concatMap snd cmds0'
-                ++ concatMap snd cmds1'
+                ++ cmds0eqns
+                ++ cmds1eqns
 
         return (cmd', bool [] [eqns] $ isJust lkupch && isJust lkupch0with && isJust lkupch1with)
+    f (CHPut ident () ch) = do
+        chcxt <- guse tieProcChCxt 
+        symtab <- guse tieProcSymTab
+        tagmap <- gview equality 
+
+            -- lookup phrase
+        let lkup = lookupBnfcIdent ident $ mapMaybe 
+                    ( traverseOf (_2 % symEntryInfo)
+                        (preview (_SymConcCall % _SymPhrase))) 
+                    symtab
+            lkup' = fromJust lkup
+            phraseg = lkup' ^. symEntryInfo 
+            phrasetype = phraseg ^. phraseGObjType
+            clause =  phraseg ^. typePhraseContext % phraseParent
+
+            -- channel lookup
+            lkupch = lookup (ch ^. bnfcIdentName) chcxt
+            lkupch' = fromJust lkupch
+            ch' = (ch ^. bnfcIdentName, lkupch') ^. taggedChIdent
+            ttypech = lkupch' ^. symEntryInfo % symChTypeTag
+            chpol = lkupch' ^. symEntryInfo % symChPolarity
+
+            lkupexist = isJust lkup && isJust lkupch
+
+        ttypech' <- lift freshTypeTag
+        tieProcChCxt %= 
+            (maybeToList (((ch ^. bnfcIdentName,) . set (symEntryInfo % symChTypeTag) ttypech') <$> lkupch) <>)
+            . deleteSymTab (ch ^. bnfcIdentName) 
+
+        -- not in scope tests
+        lift $ tell $ bool [] [_NotInScope # ident] $ isNothing lkup
+        lift $ tell $ bool [] [_NotInScope # ch] $ isNothing lkupch
+
+        -- polarity checks
+        lift $ tell $ bool [] [_HPutOutputPolarityExpectsProtocol # (ch, ident)] $ 
+            lkupexist && has _ProtocolObj phrasetype && has _Input chpol
+        lift $ tell $ bool [] [_HPutOutputPolarityExpectsProtocol # (ch, ident)] $ 
+            lkupexist && has _CoprotocolObj phrasetype && has _Output chpol
+
+        -- get the substitutions..
+        ~(clausetype, ttypeargs, clausesubstitutions) <- lift . fmap fst . splitGraphGenCore $ 
+                clauseSubstitutions (phraseg ^. typePhraseContext % phraseParent)
+
+        let eqns = TypeEqnsExist (ttypech' : ttypeargs) $
+                [ TypeEqnsEq (TypeVar ttypech [], clausetype)
+                , TypeEqnsEq ( TypeVar ttypech' []
+                    , fromJust $ substitutesTypeGToTypeGTypeTag clausesubstitutions $ 
+                        polarity chpol 
+                            (phraseg ^. typePhraseTo)
+                            (fromJust $ phraseg ^? typePhraseFrom % _Cons % _1) 
+                        ) ]
+            cmd' = CHPut ((ident ^. bnfcIdentName, lkup') ^. taggedBnfcIdent) (ProtocolCoprotocolKnot phraseg) ch'
+
+        return (cmd', bool [] [eqns] $ lkupexist)
+    f (CHCase ch cases) = do
+        tagmap <- gview equality 
+        chcxt <- guse tieProcChCxt 
+        symtab <- guse tieProcSymTab
+
+            -- channel lookup
+        let lkupch = lookup (ch ^. bnfcIdentName) chcxt
+            lkupch' = fromJust lkupch
+            ch' = (ch ^. bnfcIdentName, lkupch') ^. taggedChIdent
+            ttypech = lkupch' ^. symEntryInfo % symChTypeTag
+            chpol = lkupch' ^. symEntryInfo % symChPolarity
+
+            -- phrase lookup
+            phraseidents = fmap (view _1) cases
+            lkups  = lookupsConcPhrases phraseidents symtab
+            lkups' = sequenceA lkups
+            (phraseg :| _) = fromJust lkups'
+
+            casecmds = fmap (view _3) cases
+
+        -- not in scope check..
+        lift $ tell $ bool [] [_NotInScope # ch] $ isNothing lkupch
+        lift $ tell $ fold $ zipWith (\ident -> maybe [ _NotInScope # ident] (const [])) 
+                (NE.toList phraseidents) (NE.toList lkups)
+
+        lift $ tell $ bool [] (hCaseChecks $ fromJust lkups') $ isJust lkups'
+
+        -- get the substitutions..
+        ~(clausetype, ttypeargs, clausesubstitutions) <- lift . fmap fst . splitGraphGenCore $ 
+                clauseSubstitutions (phraseg ^. typePhraseContext % phraseParent)
+
+
+        (cases', (ttypechs', phrasesg, cmdeqns)) <- fmap (second unzip3 . unzip) $
+            traverse 
+                (\(~(cmds, ~(Just phraseg))) -> do 
+                    st <- guse equality
+
+                    ttypech' <- lift freshTypeTag 
+                    tieProcChCxt %= 
+                        ((ch ^. bnfcIdentName, lkupch' & symEntryInfo % symChTypeTag .~ ttypech'):)
+                        . deleteSymTab (ch ^. bnfcIdentName)
+                    ~(cmds', cmdeqns) <- cmdsIToGraph cmds
+
+                    equality .= st
+
+                    return (cmds', (ttypech', phraseg, cmdeqns))
+                ) 
+            $ NE.toList $ NE.zip casecmds lkups
+
+        tieProcChCxt .= mempty
+
+        let eqns = TypeEqnsExist (ttypechs' ++ ttypeargs) $
+                [ TypeEqnsEq (TypeVar ttypech [], clausetype) ] 
+                ++ zipWith (\ttypech' phraseg -> 
+                    TypeEqnsEq 
+                        ( TypeVar ttypech' []
+                        , fromJust 
+                            $ substitutesTypeGToTypeGTypeTag clausesubstitutions 
+                            $ polarity chpol 
+                                (fromJust $ phraseg ^? typePhraseFrom % _Cons % _1) 
+                                (phraseg ^. typePhraseTo)
+                            ) 
+                        ) 
+                    ttypechs' phrasesg
+                ++ concat cmdeqns
+            cmd' = CHCase ch' 
+                $ NE.fromList 
+                $ zipWith3 (\(ident,_,_) phraseg c' -> 
+                    ( phraseg ^. typePhraseName & taggedBnfcIdentPos .~ ident ^. bnfcIdentPos
+                    , ProtocolCoprotocolKnot phraseg
+                    , c') ) 
+                        (NE.toList cases) phrasesg cases' 
+
+        return (cmd' , bool [] [eqns] $ isJust lkupch && isJust lkups' )
+
+    f (CId ch0 ch1) = do
+        tagmap <- gview equality 
+        chcxt <- guse tieProcChCxt 
+        symtab <- guse tieProcSymTab
+
+        let lkupch0 = lookup (ch0 ^. bnfcIdentName) chcxt
+            lkupch0' = fromJust lkupch0
+            ch0' = (ch0 ^. bnfcIdentName, lkupch0') ^. taggedChIdent
+            ttypech0 = lkupch0' ^. symEntryInfo % symChTypeTag
+            ch0pol = lkupch0' ^. symEntryInfo % symChPolarity
+
+        let lkupch1 = lookup (ch1 ^. bnfcIdentName) chcxt
+            lkupch1' = fromJust lkupch1
+            ch1' = (ch1 ^. bnfcIdentName, lkupch1') ^. taggedChIdent
+            ttypech1 = lkupch1' ^. symEntryInfo % symChTypeTag
+            ch1pol = lkupch1' ^. symEntryInfo % symChPolarity
+
+        lift $ tell $ bool [] [_NotInScope # ch0] $ isNothing lkupch0
+        lift $ tell $ bool [] [_NotInScope # ch1] $ isNothing lkupch1
+
+        lift $ tell $ bool [] [_IdExpectedDifferentPolarity # (ch0, ch1)] $ ch0pol == ch1pol
+
+        let cmd' = CId ch0' ch1'
+            eqns = TypeEqnsEq (TypeVar ttypech0 [], TypeVar ttypech1 [])
+        
+        tieProcChCxt .= mempty
+
+        return (cmd', bool [] [eqns] $ isJust lkupch0 && isJust lkupch1)
+
+    f (CIdNeg ch0 ch1) = do
+        tagmap <- gview equality 
+        chcxt <- guse tieProcChCxt 
+        symtab <- guse tieProcSymTab
+
+        let lkupch0 = lookup (ch0 ^. bnfcIdentName) chcxt
+            lkupch0' = fromJust lkupch0
+            ch0' = (ch0 ^. bnfcIdentName, lkupch0') ^. taggedChIdent
+            ttypech0 = lkupch0' ^. symEntryInfo % symChTypeTag
+            ch0pol = lkupch0' ^. symEntryInfo % symChPolarity
+
+        let lkupch1 = lookup (ch1 ^. bnfcIdentName) chcxt
+            lkupch1' = fromJust lkupch1
+            ch1' = (ch1 ^. bnfcIdentName, lkupch1') ^. taggedChIdent
+            ttypech1 = lkupch1' ^. symEntryInfo % symChTypeTag
+            ch1pol = lkupch1' ^. symEntryInfo % symChPolarity
+
+        lift $ tell $ bool [] [_NotInScope # ch0] $ isNothing lkupch0
+        lift $ tell $ bool [] [_NotInScope # ch1] $ isNothing lkupch1
+
+        lift $ tell $ bool [] [_IdExpectedDifferentPolarity # (ch0, ch1)] $ ch0pol /= ch1pol
+
+        let cmd' = CIdNeg ch0' ch1'
+            eqns = TypeEqnsEq (TypeVar ttypech0 [], TypeVar ttypech1 [])
+        
+        tieProcChCxt .= mempty
+
+        return (cmd', bool [] [eqns] $ isJust lkupch0 && isJust lkupch1)
+
+    f (CPlug plugs cmd0 cmd1 cmds) = do
+        undefined
+      where
+        g s t [] = h s t 
+        g s t (r:rs) = (<>) <$> (h s t) <*> g t r rs
+
+        h :: (_, _) -> (_,_) -> TieProc [((_,_), (TypeTag, [TypeEqns TaggedBnfcIdent TypeTag]))]
+        h (with0, cmds0) (with1, cmds1) = do
+            undefined
+            {-
+            symtab <- guse tieProcChCxt
+
+            let common = with0 `intersect` with1 `intersect` plugs
+            common' <- lift $ traverse tagBnfcIdent common
+
+            let common0 = map (flip TaggedChIdent Output) common'
+                common1 = map (flip TaggedChIdent Input) common'
+            ttypescommon0 <- lift $ traverse (const freshTypeTag) common0
+            ttypescommon1 <- lift $ traverse (const freshTypeTag) common1
+
+            st <- guse equality 
+
+            let lkups0 = map (flip lookup symtab . view bnfcIdentName) with0
+
+            lift $ tell $ fold $ zipWith (\ident -> maybe [ _NotInScope # ident] (const [])) 
+                with0 lkups0
+
+            tieProcChCxt %= (
+                    (zipWith (\nvar ttype -> 
+                            ( nvar ^. bnfcIdentName
+                            , nvar ^. toSymEntryChInfo ttype
+                            )
+                        ) 
+                        nvars0 ttypesnvars0)<>
+                    )
+            (cmds0', eqns0) <- cmdsIToGraph cmds0
+
+            equality .= st
+
+            tieProcChCxt %= (
+                    (zipWith (\nvar ttype -> 
+                            ( nvar ^. bnfcIdentName
+                            , nvar ^. toSymEntryChInfo ttype
+                            )
+                        ) 
+                        nvars1 ttypesnvars1)<>
+                    )
+            (cmds1', eqns1) <- cmdsIToGraph cmds0
+
+            return (cmds0')
+
+            undefined
+            -}
+            
+            
+
 
 cmdsIToGraph ::
     NonEmpty (ProcessCommandI BnfcIdent) -> 
@@ -683,6 +934,8 @@ cmdsIToGraph = cata f
         (cmd', eqns)<- case cmd of
             CHalt _ -> cmdIToGraph cmd
             CFork _ _ -> cmdIToGraph cmd
+            CHCase _ _ -> cmdIToGraph cmd
+            CId _ _ -> cmdIToGraph cmd
             _ -> lift (tell [_IllegalLastInstruction # cmd]) >> cmdIToGraph cmd
         chcxt <- guse tieProcChCxt
         lift $ tell $ unclosedChannelsCheck chcxt
@@ -690,10 +943,13 @@ cmdsIToGraph = cata f
     f (NonEmptyF cmd (Just rst)) = do
         case cmd of
             CFork _ _ -> lift $ tell [_IllegalNonLastInstruction # cmd]
+            CId _ _ -> lift $ tell [_IllegalNonLastInstruction # cmd]
             _ -> return ()
+
 
         (cmd', cmdeqns) <- cmdIToGraph cmd
         (rst', eqns) <- rst
+
         return 
             ( cmd' :| NE.toList rst'
             , bool 
