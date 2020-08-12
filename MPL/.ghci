@@ -1,5 +1,5 @@
-:set -isrc
 :set -fwarn-incomplete-patterns
+:set -isrc
 :set -XTemplateHaskell 
 :set -XDataKinds 
 :set -XUndecidableInstances 
@@ -28,8 +28,8 @@ import GHC.Generics hiding ( to )
 import Data.List.NonEmpty (NonEmpty (..))
 
 import qualified Data.Map as Map
-import Data.Map (Map (..))
+import Data.Map (Map )
 import qualified Data.Set as Set
-import Data.Set (Set (..))
+import Data.Set (Set )
 
 

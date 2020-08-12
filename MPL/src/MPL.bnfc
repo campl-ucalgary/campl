@@ -40,14 +40,27 @@ position token Colon ':' ;
 -- both as cons, and as a seperator for fold phrases
 -- Instead, we have a Colon token (as above) and use that
 -- whereever we require a colon
-token Infixl1op ({"||"});
-token Infixl2op ({"&&"});
-token Infixl3op ({"=="}|{"/="}|'<'|'>'|{"<="}|{">="});
-token Infixl4op ({"++"}) ;
-token Infixl5op ('+'|'-');
-token Infixl6op ('*'|'/' | '%');
-token Infixr7op ('^') ;
-token Infixl8op ({"!!"}) ;
+position token Infixl1op ({"||"});
+position token Infixl2op ({"&&"});
+position token Infixl3op ({"=="}|{"/="}|'<'|'>'|{"<="}|{">="});
+position token Infixl4op ({"++"}) ;
+position token Infixl5op ('+'|'-');
+position token Infixl6op ('*'|'/' | '%');
+position token Infixr7op ('^') ;
+position token Infixl8op ({"!!"}) ;
+
+position token Close {"close"} ;
+position token Halt {"halt"} ;
+position token Get {"get"} ;
+position token Put {"put"} ;
+position token HCase {"hcase"} ;
+position token HPut {"hput"} ;
+position token Split {"split"} ;
+position token Fork {"fork"} ;
+position token ChId {"|=|"} ;
+
+position token Case {"case"} ;
+
 
 separator PIdent "," ;
 
@@ -202,7 +215,7 @@ UNIT_EXPR        . Expr10 ::= LBracket RBracket ;
 
 FOLD_EXPR        . Expr10 ::= "fold" Expr "of" "{" [FoldExprPhrase] "}" ;
 UNFOLD_EXPR      . Expr10 ::= "unfold" Expr "of" "{" [UnfoldExprPhrase] "}" ;
-CASE_EXPR        . Expr10 ::= "case" Expr "of" "{" [PattExprPhrase] "}" ;
+CASE_EXPR        . Expr10 ::= Case Expr "of" "{" [PattExprPhrase] "}" ;
 SWITCH_EXP       . Expr10 ::= "switch" "{" [SwitchExprPhrase] "}" ;
 
 
@@ -326,21 +339,50 @@ PROCESS_COMMANDS_SINGLE_COMMAND_BLOCK . ProcessCommandsBlock ::=
 
 separator ProcessCommand ";" ;
 
+-----------------------------
+-- Old version without as many tokens..
+-----------------------------
+-- PROCESS_RUN   .   ProcessCommand ::= PIdent LBracket [Expr] "|" [PIdent] "=>" [PIdent] RBracket ;
+-- PROCESS_CLOSE .   ProcessCommand ::= "close" PIdent ;
+-- PROCESS_HALT  .   ProcessCommand ::= "halt" PIdent ;
+-- 
+-- PROCESS_GET   .   ProcessCommand ::= "get" Pattern "on" PIdent ;
+-- PROCESS_PUT   .   ProcessCommand ::= "put" Expr "on" PIdent ;
+-- 
+-- PROCESS_HCASE .   ProcessCommand ::= "hcase" PIdent "of" "{" [HCasePhrase] "}";
+-- PROCESS_HPUT  .   ProcessCommand ::= "hput" UIdent "on" PIdent ;
+-- 
+-- PROCESS_SPLIT . ProcessCommand ::= "split" PIdent "into" [ SplitChannel ] ;
+-- PROCESS_FORK  . ProcessCommand ::= "fork" PIdent "as" "{" [ ForkPhrase ] "}" ;
+-- 
+-- PROCESS_ID    . ProcessCommand ::= PIdent "|=|" PIdent ;
+-- PROCESS_NEG   . ProcessCommand ::= PIdent "|=|" "neg" PIdent ;
+-- 
+-- PROCESS_RACE  . ProcessCommand ::= "race" "{" [ RacePhrase ] "}" ;
+-- 
+-- PROCESS_PLUG    . ProcessCommand ::= "plug" "{" [ PlugPhrase ] "}" ;
+-- -- "plug" is a layout word, so we can't use this rule unforunately...
+-- -- PROCESS_PLUG_AS . ProcessCommand ::= "plug"  [PIdent] "as" "{" [ PlugPhrase ] "}" ;
+-- 
+-- PROCESS_CASE   . ProcessCommand ::= "case" Expr "of" "{" [ProcessCasePhrase] "}";
+-- PROCESS_SWITCH . ProcessCommand ::= "switch" "{" [ProcessSwitchPhrase] "}";
+-----------------------------
+
 PROCESS_RUN   .   ProcessCommand ::= PIdent LBracket [Expr] "|" [PIdent] "=>" [PIdent] RBracket ;
-PROCESS_CLOSE .   ProcessCommand ::= "close" PIdent ;
-PROCESS_HALT  .   ProcessCommand ::= "halt" PIdent ;
+PROCESS_CLOSE .   ProcessCommand ::= Close PIdent ;
+PROCESS_HALT  .   ProcessCommand ::= Halt PIdent ;
 
-PROCESS_GET   .   ProcessCommand ::= "get" Pattern "on" PIdent ;
-PROCESS_PUT   .   ProcessCommand ::= "put" Expr "on" PIdent ;
+PROCESS_GET   .   ProcessCommand ::= Get Pattern "on" PIdent ;
+PROCESS_PUT   .   ProcessCommand ::= Put Expr "on" PIdent ;
 
-PROCESS_HCASE .   ProcessCommand ::= "hcase" PIdent "of" "{" [HCasePhrase] "}";
-PROCESS_HPUT  .   ProcessCommand ::= "hput" UIdent "on" PIdent ;
+PROCESS_HCASE .   ProcessCommand ::= HCase PIdent "of" "{" [HCasePhrase] "}";
+PROCESS_HPUT  .   ProcessCommand ::= HPut UIdent "on" PIdent ;
 
-PROCESS_SPLIT . ProcessCommand ::= "split" PIdent "into" [ SplitChannel ] ;
-PROCESS_FORK  . ProcessCommand ::= "fork" PIdent "as" "{" [ ForkPhrase ] "}" ;
+PROCESS_SPLIT . ProcessCommand ::= Split PIdent "into" [ SplitChannel ] ;
+PROCESS_FORK  . ProcessCommand ::= Fork PIdent "as" "{" [ ForkPhrase ] "}" ;
 
-PROCESS_ID    . ProcessCommand ::= PIdent "|=|" PIdent ;
-PROCESS_NEG   . ProcessCommand ::= PIdent "|=|" "neg" PIdent ;
+PROCESS_ID    . ProcessCommand ::= PIdent ChId PIdent ;
+PROCESS_NEG   . ProcessCommand ::= PIdent ChId "neg" PIdent ;
 
 PROCESS_RACE  . ProcessCommand ::= "race" "{" [ RacePhrase ] "}" ;
 
@@ -348,7 +390,7 @@ PROCESS_PLUG    . ProcessCommand ::= "plug" "{" [ PlugPhrase ] "}" ;
 -- "plug" is a layout word, so we can't use this rule unforunately...
 -- PROCESS_PLUG_AS . ProcessCommand ::= "plug"  [PIdent] "as" "{" [ PlugPhrase ] "}" ;
 
-PROCESS_CASE   . ProcessCommand ::= "case" Expr "of" "{" [ProcessCasePhrase] "}";
+PROCESS_CASE   . ProcessCommand ::= Case Expr "of" "{" [ProcessCasePhrase] "}";
 PROCESS_SWITCH . ProcessCommand ::= "switch" "{" [ProcessSwitchPhrase] "}";
 
 
@@ -365,7 +407,7 @@ FORK_WITH_PHRASE . ForkPhrase ::= PIdent "with" [ForkChannel] "->" ProcessComman
 separator nonempty ForkPhrase ";" ;
 
 FORK_CHANNEL . ForkChannel ::= PIdent ;
-separator nonempty ForkChannel ";" ;
+separator ForkChannel ";" ;
 
 RACE_PHRASE . RacePhrase ::= PIdent "->" ProcessCommandsBlock ;
 separator RacePhrase ";" ;

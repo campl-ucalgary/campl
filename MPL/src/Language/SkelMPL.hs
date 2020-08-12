@@ -69,6 +69,36 @@ transInfixr7op x = case x of
 transInfixl8op :: Infixl8op -> Result
 transInfixl8op x = case x of
   Infixl8op string -> failure x
+transClose :: Close -> Result
+transClose x = case x of
+  Close string -> failure x
+transHalt :: Halt -> Result
+transHalt x = case x of
+  Halt string -> failure x
+transGet :: Get -> Result
+transGet x = case x of
+  Get string -> failure x
+transPut :: Put -> Result
+transPut x = case x of
+  Put string -> failure x
+transHCase :: HCase -> Result
+transHCase x = case x of
+  HCase string -> failure x
+transHPut :: HPut -> Result
+transHPut x = case x of
+  HPut string -> failure x
+transSplit :: Split -> Result
+transSplit x = case x of
+  Split string -> failure x
+transFork :: Fork -> Result
+transFork x = case x of
+  Fork string -> failure x
+transChId :: ChId -> Result
+transChId x = case x of
+  ChId string -> failure x
+transCase :: Case -> Result
+transCase x = case x of
+  Case string -> failure x
 transMplProg :: MplProg -> Result
 transMplProg x = case x of
   MPL_PROG mplstmts -> failure x
@@ -151,7 +181,7 @@ transExpr x = case x of
   UNIT_EXPR lbracket rbracket -> failure x
   FOLD_EXPR expr foldexprphrases -> failure x
   UNFOLD_EXPR expr unfoldexprphrases -> failure x
-  CASE_EXPR expr pattexprphrases -> failure x
+  CASE_EXPR case_ expr pattexprphrases -> failure x
   SWITCH_EXP switchexprphrases -> failure x
   DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR uident lbracket exprs rbracket -> failure x
   DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR uident -> failure x
@@ -223,19 +253,19 @@ transProcessCommandsBlock x = case x of
 transProcessCommand :: ProcessCommand -> Result
 transProcessCommand x = case x of
   PROCESS_RUN pident lbracket exprs pidents1 pidents2 rbracket -> failure x
-  PROCESS_CLOSE pident -> failure x
-  PROCESS_HALT pident -> failure x
-  PROCESS_GET pattern pident -> failure x
-  PROCESS_PUT expr pident -> failure x
-  PROCESS_HCASE pident hcasephrases -> failure x
-  PROCESS_HPUT uident pident -> failure x
-  PROCESS_SPLIT pident splitchannels -> failure x
-  PROCESS_FORK pident forkphrases -> failure x
-  PROCESS_ID pident1 pident2 -> failure x
-  PROCESS_NEG pident1 pident2 -> failure x
+  PROCESS_CLOSE close pident -> failure x
+  PROCESS_HALT halt pident -> failure x
+  PROCESS_GET get pattern pident -> failure x
+  PROCESS_PUT put expr pident -> failure x
+  PROCESS_HCASE hcase pident hcasephrases -> failure x
+  PROCESS_HPUT hput uident pident -> failure x
+  PROCESS_SPLIT split pident splitchannels -> failure x
+  PROCESS_FORK fork pident forkphrases -> failure x
+  PROCESS_ID pident1 chid pident2 -> failure x
+  PROCESS_NEG pident1 chid pident2 -> failure x
   PROCESS_RACE racephrases -> failure x
   PROCESS_PLUG plugphrases -> failure x
-  PROCESS_CASE expr processcasephrases -> failure x
+  PROCESS_CASE case_ expr processcasephrases -> failure x
   PROCESS_SWITCH processswitchphrases -> failure x
 transHCasePhrase :: HCasePhrase -> Result
 transHCasePhrase x = case x of

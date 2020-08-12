@@ -30,14 +30,40 @@ newtype NullPattern = NullPattern ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
 newtype Colon = Colon ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
-newtype Infixl1op = Infixl1op String deriving (Eq, Ord, Show, Read)
-newtype Infixl2op = Infixl2op String deriving (Eq, Ord, Show, Read)
-newtype Infixl3op = Infixl3op String deriving (Eq, Ord, Show, Read)
-newtype Infixl4op = Infixl4op String deriving (Eq, Ord, Show, Read)
-newtype Infixl5op = Infixl5op String deriving (Eq, Ord, Show, Read)
-newtype Infixl6op = Infixl6op String deriving (Eq, Ord, Show, Read)
-newtype Infixr7op = Infixr7op String deriving (Eq, Ord, Show, Read)
-newtype Infixl8op = Infixl8op String deriving (Eq, Ord, Show, Read)
+newtype Infixl1op = Infixl1op ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Infixl2op = Infixl2op ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Infixl3op = Infixl3op ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Infixl4op = Infixl4op ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Infixl5op = Infixl5op ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Infixl6op = Infixl6op ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Infixr7op = Infixr7op ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Infixl8op = Infixl8op ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Close = Close ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Halt = Halt ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Get = Get ((Int,Int),String) deriving (Eq, Ord, Show, Read)
+newtype Put = Put ((Int,Int),String) deriving (Eq, Ord, Show, Read)
+newtype HCase = HCase ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype HPut = HPut ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Split = Split ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Fork = Fork ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype ChId = ChId ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Case = Case ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
 data MplProg = MPL_PROG [MplStmt]
   deriving (Eq, Ord, Show, Read)
 
@@ -192,7 +218,7 @@ data FunctionDefn
 
 data ProcessDefn
     = TYPED_PROCESS_DEFN PIdent [MplType] [MplType] [MplType] [ProcessPhrase]
-    | INTERNAL_TYPED_PROCESS_DEFN PIdent [MplType] [MplType] [MplType] [ProcessPhrase]
+    | INTERNAL_TYPED_PROCESS_DEFN PIdent MplType [ProcessPhrase]
     | PROCESS_DEFN PIdent [ProcessPhrase]
   deriving (Eq, Ord, Show, Read)
 
@@ -207,19 +233,19 @@ data ProcessCommandsBlock
 
 data ProcessCommand
     = PROCESS_RUN PIdent LBracket [Expr] [PIdent] [PIdent] RBracket
-    | PROCESS_CLOSE PIdent
-    | PROCESS_HALT PIdent
-    | PROCESS_GET Pattern PIdent
-    | PROCESS_PUT Expr PIdent
-    | PROCESS_HCASE PIdent [HCasePhrase]
-    | PROCESS_HPUT UIdent PIdent
-    | PROCESS_SPLIT PIdent [SplitChannel]
-    | PROCESS_FORK PIdent [ForkPhrase]
-    | PROCESS_ID PIdent PIdent
-    | PROCESS_NEG PIdent PIdent
+    | PROCESS_CLOSE Close PIdent
+    | PROCESS_HALT Halt PIdent
+    | PROCESS_GET Get Pattern PIdent
+    | PROCESS_PUT Put Expr PIdent
+    | PROCESS_HCASE HCase PIdent [HCasePhrase]
+    | PROCESS_HPUT HPut UIdent PIdent
+    | PROCESS_SPLIT Split PIdent [SplitChannel]
+    | PROCESS_FORK Fork PIdent [ForkPhrase]
+    | PROCESS_ID PIdent ChId PIdent
+    | PROCESS_NEG PIdent ChId PIdent
     | PROCESS_RACE [RacePhrase]
     | PROCESS_PLUG [PlugPhrase]
-    | PROCESS_CASE Expr [ProcessCasePhrase]
+    | PROCESS_CASE Case Expr [ProcessCasePhrase]
     | PROCESS_SWITCH [ProcessSwitchPhrase]
   deriving (Eq, Ord, Show, Read)
 

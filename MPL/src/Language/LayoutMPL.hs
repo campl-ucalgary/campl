@@ -215,45 +215,35 @@ sToken p s = PT p (TS s i)
       "=>" -> 8
       "and" -> 9
       "as" -> 10
-      "case" -> 11
-      "close" -> 12
-      "codata" -> 13
-      "coprotocol" -> 14
-      "data" -> 15
-      "defn" -> 16
-      "do" -> 17
-      "else" -> 18
-      "fold" -> 19
-      "forall" -> 20
-      "fork" -> 21
-      "fun" -> 22
-      "get" -> 23
-      "halt" -> 24
-      "hcase" -> 25
-      "hput" -> 26
-      "if" -> 27
-      "in" -> 28
-      "into" -> 29
-      "let" -> 30
-      "neg" -> 31
-      "of" -> 32
-      "on" -> 33
-      "plug" -> 34
-      "potato" -> 35
-      "proc" -> 36
-      "protocol" -> 37
-      "put" -> 38
-      "race" -> 39
-      "split" -> 40
-      "switch" -> 41
-      "then" -> 42
-      "unfold" -> 43
-      "where" -> 44
-      "with" -> 45
-      "{" -> 46
-      "|" -> 47
-      "|=|" -> 48
-      "}" -> 49
+      "codata" -> 11
+      "coprotocol" -> 12
+      "data" -> 13
+      "defn" -> 14
+      "do" -> 15
+      "else" -> 16
+      "fold" -> 17
+      "forall" -> 18
+      "fun" -> 19
+      "if" -> 20
+      "in" -> 21
+      "into" -> 22
+      "let" -> 23
+      "neg" -> 24
+      "of" -> 25
+      "on" -> 26
+      "plug" -> 27
+      "potato" -> 28
+      "proc" -> 29
+      "protocol" -> 30
+      "race" -> 31
+      "switch" -> 32
+      "then" -> 33
+      "unfold" -> 34
+      "where" -> 35
+      "with" -> 36
+      "{" -> 37
+      "|" -> 38
+      "}" -> 39
       _ -> error $ "not a reserved word: " ++ show s
 
 -- | Get the position of a token.
