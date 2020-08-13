@@ -22,7 +22,7 @@ import Control.Arrow
 import Control.Applicative
 
 parseNoArgInternalType :: 
-    ( ToIdentP ident ) =>
+    ( ToNameOcc ident ) =>
     ident ->
     Maybe (MplType MplParsed)
 parseNoArgInternalType typeident = f $ typeident ^. to toTypeIdentP
@@ -30,7 +30,7 @@ parseNoArgInternalType typeident = f $ typeident ^. to toTypeIdentP
     f ident 
         | Just InternalTopBot <- ident ^? unwrap %  _InternalConcTypeParser = 
             return $ _TypeTopBotF # toLocation ident
-        | Just n <- ident ^? identPName % _Name % _InternalSeqBuiltInTypeParser = 
+        | Just n <- ident ^? name % _Name % _InternalSeqBuiltInTypeParser = 
             case n of 
                 InternalString -> return $ _TypeStringF # toLocation ident
                 InternalUnit -> return $ _TypeUnitF # toLocation ident
@@ -42,7 +42,7 @@ parseNoArgInternalType typeident = f $ typeident ^. to toTypeIdentP
                 InternalChar -> return $ _TypeCharF # toLocation ident
                 InternalDouble -> return $ _TypeDoubleF # toLocation ident
         | otherwise = Nothing
-    unwrap = identPName % _Name 
+    unwrap = name % _Name 
 
 
 parseBnfcType :: 
@@ -61,15 +61,17 @@ parseBnfcType (B.TENSOR_TYPE a p b) = do
     a' <- parseBnfcType a
     b' <- parseBnfcType b
     return $ _TypeTensorF # (toLocation p, a', b') 
+{-
 parseBnfcType (B.GETPUT_TYPE getput _ a b _) = do
     a' <- parseBnfcType a
     b' <- parseBnfcType b
     let getput' = getput ^. to toTypeIdentP 
         res = (toLocation getput, a', b')
-    case getput' ^? identPName % _Name % _InternalConcTypeParser of
+    case getput' ^? name % _Name % _InternalConcTypeParser of
         Just InternalGet -> return $ _TypeGetF # res
         Just InternalPut -> return $ _TypePutF # res
         _ -> tell [_ExpectedGetOrPutButGot # getput'] >> throwError ()
+-}
 parseBnfcType (B.MPL_UIDENT_NO_ARGS_TYPE ident) = case parseNoArgInternalType ident of
     Just mpltype -> return mpltype
     Nothing -> return $ _TypeWithArgs # ((), toTypeIdentP ident, [])
@@ -77,6 +79,26 @@ parseBnfcType (B.MPL_UIDENT_NO_ARGS_TYPE ident) = case parseNoArgInternalType id
 parseBnfcType (B.MPL_UIDENT_ARGS_TYPE ident _ args _) = do
     args' <- traverse parseBnfcType args
     return $ _TypeWithArgs # ((), toTypeIdentP ident, args')
+
+parseBnfcType (B.MPL_UIDENT_SEQ_CONC_ARGS_TYPE ident _ seqs concs _) = do
+    seqs' <- traverse parseBnfcType seqs
+    concs' <- traverse parseBnfcType concs
+    undefined
+    {-
+    args' <- traverse parseBnfcType args
+    return $ _TypeWithArgs # ((), toTypeIdentP ident, args')
+    -}
+
+    {-
+    a' <- parseBnfcType a
+    b' <- parseBnfcType b
+    let getput' = getput ^. to toTypeIdentP 
+        res = (toLocation getput, a', b')
+    case getput' ^? name % _Name % _InternalConcTypeParser of
+        Just InternalGet -> return $ _TypeGetF # res
+        Just InternalPut -> return $ _TypePutF # res
+        _ -> tell [_ExpectedGetOrPutButGot # getput'] >> throwError ()
+    -}
 
 parseBnfcType (B.MPL_BRACKETED_TYPE _ ty _) =
     parseBnfcType ty

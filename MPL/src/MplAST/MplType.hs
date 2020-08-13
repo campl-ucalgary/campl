@@ -66,9 +66,7 @@ type family XTypeConcArrF x
 
 
 data MplType x  =
-    TypeWithArgs 
-        !(XTypeWithArgs x) 
-        (IdP x) [MplType x ]
+    TypeWithArgs !(XTypeWithArgs x) (IdP x) [MplType x]
     | TypeVar !(XTypeVar x) (TypeP x) [MplType x]
 
     | TypeSeq !(MplSeqTypesF x (MplType x))

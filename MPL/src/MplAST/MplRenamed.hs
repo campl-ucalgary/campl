@@ -67,6 +67,7 @@ data ChIdentR = ChIdentR {
 }
 
 $(makeClassy ''ChIdentR)
+$(makePrisms ''ChIdentR)
 
 instance HasIdentR ChIdentR where
     identR = chIdentRIdentR
@@ -141,21 +142,21 @@ type instance XPListCons MplRenamed = Location
 -- Process Command
 type instance XMplCmd MplRenamed = MplCmd MplRenamed
 type instance XCRun MplRenamed = ()
-type instance XCClose MplRenamed = IdP MplRenamed
-type instance XCHalt MplRenamed = IdP MplRenamed
-type instance XCGet MplRenamed = IdP MplRenamed
-type instance XCPut MplRenamed = IdP MplRenamed
-type instance XCHCase MplRenamed = IdP MplRenamed
-type instance XCHPut MplRenamed = IdP MplRenamed
-type instance XCSplit MplRenamed = IdP MplRenamed
-type instance XCFork MplRenamed = IdP MplRenamed
-type instance XCId MplRenamed = IdP MplRenamed
-type instance XCIdNeg MplRenamed = IdP MplRenamed
-type instance XCRace MplRenamed = IdP MplRenamed
+type instance XCClose MplRenamed = KeyWordNameOcc
+type instance XCHalt MplRenamed = KeyWordNameOcc
+type instance XCGet MplRenamed = KeyWordNameOcc
+type instance XCPut MplRenamed = KeyWordNameOcc
+type instance XCHCase MplRenamed = KeyWordNameOcc
+type instance XCHPut MplRenamed = KeyWordNameOcc
+type instance XCSplit MplRenamed = KeyWordNameOcc
+type instance XCFork MplRenamed = KeyWordNameOcc
+type instance XCId MplRenamed = KeyWordNameOcc
+type instance XCIdNeg MplRenamed = KeyWordNameOcc
+type instance XCRace MplRenamed = KeyWordNameOcc
 type instance XCPlug MplRenamed = Void
-type instance XCPlugs MplRenamed = IdP MplRenamed
-type instance XCCase MplRenamed = IdP MplRenamed
-type instance XCSwitch MplRenamed = IdP MplRenamed
+type instance XCPlugs MplRenamed = KeyWordNameOcc
+type instance XCCase MplRenamed = KeyWordNameOcc
+type instance XCSwitch MplRenamed = KeyWordNameOcc
 type instance XCHCasePhrase MplRenamed  = ()
 type instance XCForkPhrase MplRenamed  = Maybe [(ChP MplRenamed)] -- user can supply their own context
 type instance XCPlugPhrase MplRenamed  = Maybe [ChP MplRenamed] -- user can supply their own context

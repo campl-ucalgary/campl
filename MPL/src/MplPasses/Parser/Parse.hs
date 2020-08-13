@@ -25,6 +25,8 @@ import Data.List.NonEmpty (NonEmpty (..))
 
 import Control.Arrow
 
+import Data.Coerce
+
 runParse' :: 
     B.MplProg -> 
     Either [ParseErrors] (MplProg MplParsed)
@@ -298,29 +300,29 @@ parseBnfcCmd (B.PROCESS_RUN ident _ seqs inchs outchs _) = do
         , map toChIdentP outchs
         )
 parseBnfcCmd (B.PROCESS_CLOSE cxt ident) = 
-    return $ _CClose # (toChIdentP cxt, toChIdentP ident)
+    return $ _CClose # (coerce $ toNameOcc cxt, toChIdentP ident)
 parseBnfcCmd (B.PROCESS_HALT cxt ident) = 
-    return $ _CHalt # (toChIdentP cxt, toChIdentP ident)
+    return $ _CHalt # (coerce $ toNameOcc cxt, toChIdentP ident)
 
 parseBnfcCmd (B.PROCESS_GET cxt patt ident) = do
     patt' <- parseBnfcPattern patt
-    return $ _CGet # (toChIdentP cxt, patt' , toChIdentP ident)
+    return $ _CGet # (coerce $ toNameOcc cxt, patt' , toChIdentP ident)
 parseBnfcCmd (B.PROCESS_PUT cxt expr ident) = do
     expr' <- parseBnfcExpr expr
-    return $ _CPut # (toChIdentP cxt, expr', toChIdentP ident)
+    return $ _CPut # (coerce $ toNameOcc cxt, expr', toChIdentP ident)
 parseBnfcCmd (B.PROCESS_HCASE cxt ident phrases) = do
     phrases' <- traverseTryEach f phrases
-    return $ _CHCase # (toChIdentP cxt, toChIdentP ident, NE.fromList phrases')
+    return $ _CHCase # (coerce $ toNameOcc cxt, toChIdentP ident, NE.fromList phrases')
   where
     f (B.HCASE_PHRASE uident cmdblk) = do
         cmds <- parseBnfcCmdBlock cmdblk
         return $ ((), toTermIdentP uident, cmds)
 parseBnfcCmd (B.PROCESS_HPUT cxt s t) = do
-    return $ _CHPut # (toChIdentP cxt, toTermIdentP s, toChIdentP t)
+    return $ _CHPut # (coerce $ toNameOcc cxt, toTermIdentP s, toChIdentP t)
 
 parseBnfcCmd (B.PROCESS_SPLIT cxt s chs) = do
     let chs' = map f chs in case chs' of
-        [p,q] -> return $ _CSplit # (toChIdentP cxt, toChIdentP s, (p, q))
+        [p,q] -> return $ _CSplit # (coerce $ toNameOcc cxt, toChIdentP s, (p, q))
         _ -> tell [_SplitExpectedExactlyTwoChannelsButGot # chs'] >> throwError ()
   where
     f (B.SPLIT_CHANNEL ch) = toChIdentP ch
@@ -328,7 +330,7 @@ parseBnfcCmd (B.PROCESS_SPLIT cxt s chs) = do
 parseBnfcCmd (B.PROCESS_FORK cxt ch phrases) = do
     phrases' <- traverseTryEach f phrases
     case phrases' of
-        [p,q] -> return $ _CFork # (toChIdentP cxt, toChIdentP ch, (p,q))
+        [p,q] -> return $ _CFork # (coerce $ toNameOcc cxt, toChIdentP ch, (p,q))
         _ -> tell [_ForkExpectedExactlyTwoForkedChannelsButGot # phrases'] >> throwError ()
   where
     f (B.FORK_PHRASE ch cmds) = do
@@ -339,14 +341,14 @@ parseBnfcCmd (B.PROCESS_FORK cxt ch phrases) = do
         return $ (toChIdentP ch, Just (map toChIdentP cxt), cmds')
 
 parseBnfcCmd (B.PROCESS_ID a cxt b) =
-    return $ _CId # (toChIdentP cxt, (toChIdentP a, toChIdentP b))
+    return $ _CId # (coerce $ toNameOcc cxt, (toChIdentP a, toChIdentP b))
 parseBnfcCmd (B.PROCESS_NEG a cxt b) =
-    return $ _CIdNeg # (toChIdentP cxt, (toChIdentP a, toChIdentP b))
+    return $ _CIdNeg # (coerce $ toNameOcc cxt, (toChIdentP a, toChIdentP b))
 
 parseBnfcCmd (B.PROCESS_RACE races) = do
     races' <- traverseTryEach f races
     return $ _CRace # 
-        ( _IdentP # (Name "race", trace "TODO: Fix location info.." $ Location (-1,-1), ChannelLevel)
+        (  buggedKeywordNameOcc "race"
         , NE.fromList races'
         )
   where
@@ -358,22 +360,28 @@ parseBnfcCmd (B.PROCESS_PLUG phrases) = do
     phrases' <- traverseTryEach f phrases
     case phrases' of
         (a:b:cs) -> return $ _CPlugs # 
-            ( _IdentP # (Name "plug", trace "TODO: Fix location info.." $ Location (-1,-1), ChannelLevel)
+            ( ( buggedKeywordNameOcc "plug"
+              , Nothing
+                -- Note: as of now, it is impossible for a user to supply 
+                -- their own context. This is a limitation of bnfc that a layout
+                -- word cannot be used in multiple ways. Indeed, we can bypass
+                -- this by adding a keyword after plug, and using the new keyword
+                -- as the layout word instead of plug.
+                --
+                -- TODO: currently, with the grammar given, it is impossible to explictly provide channels to
+                -- be plugged against, but this system should support this first class in the future.
+                )
             , (a, b, cs))
         as -> tell [_PlugExpectedTwoOrMorePhrasesButGot # listToMaybe as] >> throwError ()
         -- <=1
   where
-    -- Note: as of now, it is impossible for a user to supply 
-    -- their own context. This is a limitation of bnfc that a layout
-    -- word cannot be used in multiple ways. Indeed, we can bypass
-    -- this by adding a keyword after plug, and using the new keyword
-    -- as the layout word instead of plug.
     f (B.PLUG_PHRASE cmds) = (Nothing,) <$> parseBnfcCmdBlock cmds
+    f (B.PLUG_PHRASE_AS cxt cmds) = (Just (map toChIdentP cxt),) <$> parseBnfcCmdBlock cmds
 
 parseBnfcCmd (B.PROCESS_CASE cxt expr pcases) = do
     expr' <- parseBnfcExpr expr
     pcases' <- traverseTryEach f pcases
-    return $ _CCase # (toChIdentP cxt, expr', NE.fromList pcases')
+    return $ _CCase # (coerce $ toNameOcc cxt, expr', NE.fromList pcases')
   where
     f (B.PROCESS_CASE_PHRASE patt cmds) = do
         patt' <- parseBnfcPattern patt
@@ -383,10 +391,13 @@ parseBnfcCmd (B.PROCESS_CASE cxt expr pcases) = do
 parseBnfcCmd (B.PROCESS_SWITCH pswitch) = do
     pswitch' <- traverseTryEach f pswitch
     return $ _CSwitch # 
-        ( _IdentP # (Name "switch", trace "TODO: Fix location info.." $ Location (-1,-1), ChannelLevel)
+        ( buggedKeywordNameOcc "switch"
         , NE.fromList pswitch' )
   where
     f (B.PROCESS_SWITCH_PHRASE expr cmds) = do
         expr' <- parseBnfcExpr expr
         cmds' <- parseBnfcCmdBlock cmds
         return (expr', cmds')
+
+buggedKeywordNameOcc :: String -> KeyWordNameOcc
+buggedKeywordNameOcc str = KeyWordNameOcc $ toNameOcc (trace "TODO: Fix location info.." $ (-1 :: Int ,-1 :: Int), str)

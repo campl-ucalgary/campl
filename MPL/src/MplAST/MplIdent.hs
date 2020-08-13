@@ -27,12 +27,24 @@ type family IdP x
 
 newtype Name = 
     Name String
-  deriving (Show, Eq)
+  deriving (Show, Ord, Eq)
 
 data Location = 
     Location (Int,Int)
     | Span (Int, Int) (Int, Int)
   deriving (Show, Eq)
+
+data NameOcc = NameOcc { 
+    _nameOccName :: Name 
+    , _nameOccLocation :: Location 
+}  deriving Show
+
+instance Eq NameOcc where
+    NameOcc a _ == NameOcc b _ = a == b
+
+newtype KeyWordNameOcc = KeyWordNameOcc NameOcc
+  deriving Show
+
 data Namespace = 
     TypeLevel
     | TermLevel
@@ -45,6 +57,7 @@ newtype UniqueTag = UniqueTag Unique
 
 $(concat <$> traverse makeClassy 
     [ ''Name
+    , ''NameOcc
     , ''Location
     , ''Namespace
     , ''UniqueTag
@@ -52,11 +65,18 @@ $(concat <$> traverse makeClassy
  )
 $(concat <$> traverse makePrisms
     [ ''Name
+    , ''NameOcc
     , ''Location
     , ''Namespace
     , ''UniqueTag
     ]
  )
+
+instance HasName NameOcc where
+    name = nameOccName
+
+instance HasLocation NameOcc where
+    location = nameOccLocation
 
 eqUniqueTag :: 
     HasUniqueTag a =>
@@ -74,6 +94,8 @@ data Polarity =
     | Output
   deriving (Show, Eq)
 $(makeClassy ''Polarity)
+$(makePrisms ''Polarity)
+
 
 inputOutput :: Polarity -> a -> a -> a
 inputOutput Input a _ = a

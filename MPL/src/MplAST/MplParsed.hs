@@ -35,8 +35,7 @@ import MplAST.MplProg
 import MplAST.MplExt
 
 data IdentP = IdentP { 
-        _identPName :: Name 
-        , _identPLocation :: Location 
+        _identPNameOcc :: NameOcc
         , _identPNamespace :: Namespace
     }
   deriving Show
@@ -44,16 +43,18 @@ $(makeClassy ''IdentP)
 $(makePrisms ''IdentP)
 
 instance HasName IdentP where
-    name = identPName
+    name = identPNameOcc % name
 
 instance HasLocation IdentP where
-    location = identPLocation
+    location = identPNameOcc % location
 
 instance HasNamespace IdentP where
     namespace = identPNamespace
 
+-- equality depends on the names and the 
+-- namespaces only
 instance Eq IdentP where
-    IdentP n0 _ ns0 == IdentP n1 _ ns1 = n0 == n1 && ns0 == ns1
+    IdentP n0 ns0 == IdentP n1 ns1 = n0 == n1 && ns0 == ns1
 
 -- The type for MPL types..
 
@@ -112,21 +113,25 @@ type instance XPListCons MplParsed = Location
 -- Process Command
 type instance XMplCmd MplParsed = MplCmd MplParsed
 type instance XCRun MplParsed = ()
-type instance XCClose MplParsed = IdP MplParsed
-type instance XCHalt MplParsed = IdP MplParsed
-type instance XCGet MplParsed = IdP MplParsed
-type instance XCPut MplParsed = IdP MplParsed
-type instance XCHCase MplParsed = IdP MplParsed
-type instance XCHPut MplParsed = IdP MplParsed
-type instance XCSplit MplParsed = IdP MplParsed
-type instance XCFork MplParsed = IdP MplParsed
-type instance XCId MplParsed = IdP MplParsed
-type instance XCIdNeg MplParsed = IdP MplParsed
-type instance XCRace MplParsed = IdP MplParsed
+type instance XCClose MplParsed = KeyWordNameOcc
+type instance XCHalt MplParsed = KeyWordNameOcc
+type instance XCGet MplParsed = KeyWordNameOcc
+type instance XCPut MplParsed = KeyWordNameOcc
+type instance XCHCase MplParsed = KeyWordNameOcc
+type instance XCHPut MplParsed = KeyWordNameOcc
+type instance XCSplit MplParsed = KeyWordNameOcc
+type instance XCFork MplParsed = KeyWordNameOcc
+type instance XCId MplParsed = KeyWordNameOcc
+type instance XCIdNeg MplParsed = KeyWordNameOcc
+type instance XCRace MplParsed = KeyWordNameOcc
 type instance XCPlug MplParsed = Void
-type instance XCPlugs MplParsed = IdP MplParsed
-type instance XCCase MplParsed = IdP MplParsed
-type instance XCSwitch MplParsed = IdP MplParsed
+type instance XCPlugs MplParsed = 
+    (KeyWordNameOcc, Maybe [(ChP MplParsed)])
+        -- user can explictly write the channels 
+        -- being bound. Note: due to a limitation of bnfc
+        -- we can never actually write this
+type instance XCCase MplParsed = KeyWordNameOcc
+type instance XCSwitch MplParsed = KeyWordNameOcc
 type instance XCHCasePhrase MplParsed  = ()
 type instance XCForkPhrase MplParsed  = Maybe [(ChP MplParsed)] -- user can supply their own context
 type instance XCPlugPhrase MplParsed  = Maybe [ChP MplParsed] -- user can supply their own context

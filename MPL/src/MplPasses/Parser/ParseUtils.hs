@@ -84,85 +84,82 @@ instance ToLocation B.PInteger  where
     toLocation (B.PInteger (pos,str)) = toLocation pos
 
 instance ToLocation IdentP  where
-    toLocation =  view identPLocation
+    toLocation =  view (identPNameOcc % location)
 
+class ToNameOcc ident where
+    toNameOcc :: ident -> NameOcc
 
-class ToIdentP ident where
-    toIdentP :: Namespace -> ident -> IdentP
+instance ToNameOcc ((Int,Int), String) where
+    toNameOcc (pos, name) = NameOcc (Name name) (toLocation pos)
 
-instance ToIdentP B.PIdent where
-    toIdentP n (B.PIdent (pos, str)) = 
-        IdentP (Name str) (Location pos) n
+instance ToNameOcc B.Case where
+    toNameOcc (B.Case uident) = 
+        toNameOcc uident
 
-instance ToIdentP B.UIdent where
-    toIdentP n (B.UIdent (pos, str)) = 
-        IdentP (Name str) (Location pos) n
+instance ToNameOcc B.ChId where
+    toNameOcc (B.ChId uident) = 
+        toNameOcc uident
 
-instance ToIdentP B.PInteger where
-    toIdentP n (B.PInteger (pos, str)) = 
-        IdentP (Name str) (Location pos) n
+instance ToNameOcc B.Fork where
+    toNameOcc (B.Fork uident) = 
+        toNameOcc uident
 
-instance ToIdentP B.TypeHandleName where
-    toIdentP n (B.TYPE_HANDLE_NAME uident) = 
-        toIdentP n uident
+instance ToNameOcc B.Split where
+    toNameOcc (B.Split uident) = 
+        toNameOcc uident
 
-instance ToIdentP B.ForkChannel where
-    toIdentP n (B.FORK_CHANNEL uident) = 
-        toIdentP n uident
+instance ToNameOcc B.HPut where
+    toNameOcc (B.HPut uident) = 
+        toNameOcc uident
 
-instance ToIdentP ((Int,Int), String) where
-    toIdentP n (pos, str) =
-        IdentP (Name str) (Location pos) n
+instance ToNameOcc B.HCase where
+    toNameOcc (B.HCase uident) = 
+        toNameOcc uident
 
-instance ToIdentP B.Case where
-    toIdentP n (B.Case uident) = 
-        toIdentP n uident
+instance ToNameOcc B.Put where
+    toNameOcc (B.Put uident) = 
+        toNameOcc uident
 
-instance ToIdentP B.ChId where
-    toIdentP n (B.ChId uident) = 
-        toIdentP n uident
+instance ToNameOcc B.Get where
+    toNameOcc (B.Get uident) = 
+        toNameOcc uident
 
-instance ToIdentP B.Fork where
-    toIdentP n (B.Fork uident) = 
-        toIdentP n uident
+instance ToNameOcc B.Halt where
+    toNameOcc (B.Halt uident) = 
+        toNameOcc uident
 
-instance ToIdentP B.Split where
-    toIdentP n (B.Split uident) = 
-        toIdentP n uident
+instance ToNameOcc B.Close where
+    toNameOcc (B.Close uident) = 
+        toNameOcc uident
 
-instance ToIdentP B.HPut where
-    toIdentP n (B.HPut uident) = 
-        toIdentP n uident
+instance ToNameOcc B.PIdent where
+    toNameOcc (B.PIdent posstr) = 
+        toNameOcc posstr
 
-instance ToIdentP B.HCase where
-    toIdentP n (B.HCase uident) = 
-        toIdentP n uident
+instance ToNameOcc B.UIdent where
+    toNameOcc (B.UIdent posstr) = 
+        toNameOcc posstr
 
-instance ToIdentP B.Put where
-    toIdentP n (B.Put uident) = 
-        toIdentP n uident
+instance ToNameOcc B.PInteger where
+    toNameOcc (B.PInteger posstr) = 
+        toNameOcc posstr
 
-instance ToIdentP B.Get where
-    toIdentP n (B.Get uident) = 
-        toIdentP n uident
+instance ToNameOcc B.TypeHandleName where
+    toNameOcc (B.TYPE_HANDLE_NAME uident) = 
+        toNameOcc uident
 
-instance ToIdentP B.Halt where
-    toIdentP n (B.Halt uident) = 
-        toIdentP n uident
+instance ToNameOcc B.ForkChannel where
+    toNameOcc (B.FORK_CHANNEL uident) = 
+        toNameOcc uident
 
-instance ToIdentP B.Close where
-    toIdentP n (B.Close uident) = 
-        toIdentP n uident
+toChIdentP :: ToNameOcc ident => ident -> IdentP
+toChIdentP = flip IdentP ChannelLevel . toNameOcc
 
+toTermIdentP :: ToNameOcc ident => ident -> IdentP
+toTermIdentP = flip IdentP TermLevel . toNameOcc
 
-toChIdentP :: ToIdentP ident => ident -> IdentP
-toChIdentP = toIdentP ChannelLevel
-
-toTermIdentP :: ToIdentP ident => ident -> IdentP
-toTermIdentP = toIdentP TermLevel
-
-toTypeIdentP :: ToIdentP ident => ident -> IdentP
-toTypeIdentP = toIdentP TypeLevel
+toTypeIdentP :: ToNameOcc ident => ident -> IdentP
+toTypeIdentP = flip IdentP TypeLevel . toNameOcc
 
 
 toSpanLocation :: 

@@ -155,10 +155,8 @@ MplType1 :: { MplType }
 MplType1 : MplType2 Tensor MplType2 { Language.AbsMPL.TENSOR_TYPE $1 $2 $3 }
          | MplType2 { $1 }
 MplType2 :: { MplType }
-MplType2 : UIdent LBracket MplType '|' MplType RBracket { Language.AbsMPL.GETPUT_TYPE $1 $2 $3 $5 $6 }
-         | MplType3 { $1 }
-MplType3 :: { MplType }
-MplType3 : UIdent LBracket ListMplType RBracket { Language.AbsMPL.MPL_UIDENT_ARGS_TYPE $1 $2 $3 $4 }
+MplType2 : UIdent LBracket ListMplType RBracket { Language.AbsMPL.MPL_UIDENT_ARGS_TYPE $1 $2 $3 $4 }
+         | UIdent LBracket ListMplType '|' ListMplType RBracket { Language.AbsMPL.MPL_UIDENT_SEQ_CONC_ARGS_TYPE $1 $2 $3 $5 $6 }
          | UIdent { Language.AbsMPL.MPL_UIDENT_NO_ARGS_TYPE $1 }
          | LBracket RBracket { Language.AbsMPL.MPL_UNIT_TYPE $1 $2 }
          | LBracket MplType RBracket { Language.AbsMPL.MPL_BRACKETED_TYPE $1 $2 $3 }
@@ -396,6 +394,7 @@ ListRacePhrase : {- empty -} { [] }
                | RacePhrase ';' ListRacePhrase { (:) $1 $3 }
 PlugPhrase :: { PlugPhrase }
 PlugPhrase : ProcessCommandsBlock { Language.AbsMPL.PLUG_PHRASE $1 }
+           | 'with' ListPIdent '->' ProcessCommandsBlock { Language.AbsMPL.PLUG_PHRASE_AS $2 $4 }
 ListPlugPhrase :: { [PlugPhrase] }
 ListPlugPhrase : PlugPhrase { (:[]) $1 }
                | PlugPhrase ';' ListPlugPhrase { (:) $1 $3 }

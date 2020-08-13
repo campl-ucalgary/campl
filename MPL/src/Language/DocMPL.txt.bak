@@ -153,14 +153,13 @@ Case literals are recognized by the regular expression
 The set of reserved words is the set of terminals appearing in the grammar. Those reserved words that consist of non-letter characters are called symbols, and they are treated in a different way from those that are similar to identifiers. The lexer follows rules familiar from languages like Haskell, C, and Java, including longest match and spacing conventions.
 
 The reserved words used in MPL are the following:
-  | ``and`` | ``as`` | ``case`` | ``codata``
-  | ``coprotocol`` | ``data`` | ``defn`` | ``do``
-  | ``else`` | ``fold`` | ``forall`` | ``fun``
-  | ``if`` | ``in`` | ``into`` | ``let``
-  | ``neg`` | ``of`` | ``on`` | ``plug``
-  | ``potato`` | ``proc`` | ``protocol`` | ``race``
-  | ``switch`` | ``then`` | ``unfold`` | ``where``
-  | ``with`` |  |  | 
+  | ``and`` | ``as`` | ``codata`` | ``coprotocol``
+  | ``data`` | ``defn`` | ``do`` | ``else``
+  | ``fold`` | ``forall`` | ``fun`` | ``if``
+  | ``in`` | ``into`` | ``let`` | ``neg``
+  | ``of`` | ``on`` | ``plug`` | ``potato``
+  | ``proc`` | ``protocol`` | ``race`` | ``switch``
+  | ``then`` | ``unfold`` | ``where`` | ``with``
 
 The symbols used in MPL are the following:
   | , | { | } | ;
@@ -200,6 +199,7 @@ All other symbols are terminals.
   | //MplType2// | -> | //UIdent// //LBracket// //MplType// ``|`` //MplType// //RBracket// 
   |  |  **|**  | //MplType3// 
   | //MplType3// | -> | //UIdent// //LBracket// //[MplType]// //RBracket// 
+  |  |  **|**  | //UIdent// //LBracket// //[MplType]// ``|`` //[MplType]// //RBracket// 
   |  |  **|**  | //UIdent// 
   |  |  **|**  | //LBracket// //RBracket// 
   |  |  **|**  | //LBracket// //MplType// //RBracket// 
@@ -266,7 +266,7 @@ All other symbols are terminals.
   |  |  **|**  | //LBracket// //RBracket// 
   |  |  **|**  | ``fold`` //Expr// ``of`` ``{`` //[FoldExprPhrase]// ``}`` 
   |  |  **|**  | ``unfold`` //Expr// ``of`` ``{`` //[UnfoldExprPhrase]// ``}`` 
-  |  |  **|**  | ``case`` //Expr// ``of`` ``{`` //[PattExprPhrase]// ``}`` 
+  |  |  **|**  | //Case// //Expr// ``of`` ``{`` //[PattExprPhrase]// ``}`` 
   |  |  **|**  | ``switch`` ``{`` //[SwitchExprPhrase]// ``}`` 
   |  |  **|**  | //UIdent// //LBracket// //[Expr]// //RBracket// 
   |  |  **|**  | //UIdent// 
@@ -368,6 +368,7 @@ All other symbols are terminals.
   |  |  **|**  | //RacePhrase// 
   |  |  **|**  | //RacePhrase// ``;`` //[RacePhrase]// 
   | //PlugPhrase// | -> | //ProcessCommandsBlock// 
+  |  |  **|**  | ``with`` //[PIdent]// ``->`` //ProcessCommandsBlock// 
   | //[PlugPhrase]// | -> | //PlugPhrase// 
   |  |  **|**  | //PlugPhrase// ``;`` //[PlugPhrase]// 
   | //ProcessCasePhrase// | -> | //Pattern// ``->`` //ProcessCommandsBlock// 

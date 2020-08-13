@@ -104,19 +104,17 @@ _                 . MplType0 ::= MplType1 ;
 TENSOR_TYPE       . MplType1 ::= MplType2 Tensor MplType2;
 _                 . MplType1 ::= MplType2 ;
 
-GETPUT_TYPE       . MplType2 ::= UIdent LBracket MplType "|" MplType RBracket ;
-_                 . MplType2 ::= MplType3 ;
-
 -- Sequential types / user defined types / type variables follow..
-MPL_UIDENT_ARGS_TYPE    . MplType3 ::= UIdent LBracket [MplType] RBracket ;
-MPL_UIDENT_NO_ARGS_TYPE . MplType3 ::= UIdent ;
-MPL_UNIT_TYPE           . MplType3 ::= LBracket RBracket ;
-MPL_BRACKETED_TYPE      . MplType3 ::= LBracket MplType RBracket ;
-MPL_LIST_TYPE           . MplType3 ::= LSquareBracket MplType RSquareBracket ;
-MPL_TUPLE_TYPE          . MplType3 ::= LBracket MplType "," [TupleListType] RBracket ;
+MPL_UIDENT_ARGS_TYPE             . MplType2 ::= UIdent LBracket [MplType] RBracket ;
+MPL_UIDENT_SEQ_CONC_ARGS_TYPE    . MplType2 ::= UIdent LBracket [MplType] "|" [MplType] RBracket ;
+MPL_UIDENT_NO_ARGS_TYPE . MplType2 ::= UIdent ;
+MPL_UNIT_TYPE           . MplType2 ::= LBracket RBracket ;
+MPL_BRACKETED_TYPE      . MplType2 ::= LBracket MplType RBracket ;
+MPL_LIST_TYPE           . MplType2 ::= LSquareBracket MplType RSquareBracket ;
+MPL_TUPLE_TYPE          . MplType2 ::= LBracket MplType "," [TupleListType] RBracket ;
 
-internal MPL_SEQ_ARROW_TYPE  . MplType3 ::= "forall" [ForallVarList] "." [MplType] "->" MplType ;
-internal MPL_CONC_ARROW_TYPE . MplType3 ::= "forall" [ForallVarList] "." [MplType] "|" [MplType] "=>" [MplType] ;
+internal MPL_SEQ_ARROW_TYPE  . MplType2 ::= "forall" [ForallVarList] "." [MplType] "->" MplType ;
+internal MPL_CONC_ARROW_TYPE . MplType2 ::= "forall" [ForallVarList] "." [MplType] "|" [MplType] "=>" [MplType] ;
 
 TUPLE_LIST_TYPE . TupleListType ::= MplType ;
 
@@ -413,7 +411,7 @@ RACE_PHRASE . RacePhrase ::= PIdent "->" ProcessCommandsBlock ;
 separator RacePhrase ";" ;
 
 PLUG_PHRASE    . PlugPhrase ::= ProcessCommandsBlock ;
--- PLUG_PHRASE_AS . PlugPhrase ::= "with" [PIdent] "->" ProcessCommandsBlock ;
+PLUG_PHRASE_AS . PlugPhrase ::= "with" [PIdent] "->" ProcessCommandsBlock ;
 separator nonempty PlugPhrase ";" ;
 
 PROCESS_CASE_PHRASE . ProcessCasePhrase ::=  Pattern "->" ProcessCommandsBlock ;

@@ -121,6 +121,7 @@ transMplType x = case x of
   TENSOR_TYPE mpltype1 tensor mpltype2 -> failure x
   GETPUT_TYPE uident lbracket mpltype1 mpltype2 rbracket -> failure x
   MPL_UIDENT_ARGS_TYPE uident lbracket mpltypes rbracket -> failure x
+  MPL_UIDENT_SEQ_CONC_ARGS_TYPE uident lbracket mpltypes1 mpltypes2 rbracket -> failure x
   MPL_UIDENT_NO_ARGS_TYPE uident -> failure x
   MPL_UNIT_TYPE lbracket rbracket -> failure x
   MPL_BRACKETED_TYPE lbracket mpltype rbracket -> failure x
@@ -181,7 +182,7 @@ transExpr x = case x of
   UNIT_EXPR lbracket rbracket -> failure x
   FOLD_EXPR expr foldexprphrases -> failure x
   UNFOLD_EXPR expr unfoldexprphrases -> failure x
-  CASE_EXPR expr pattexprphrases -> failure x
+  CASE_EXPR case_ expr pattexprphrases -> failure x
   SWITCH_EXP switchexprphrases -> failure x
   DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR uident lbracket exprs rbracket -> failure x
   DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR uident -> failure x
@@ -286,6 +287,7 @@ transRacePhrase x = case x of
 transPlugPhrase :: PlugPhrase -> Result
 transPlugPhrase x = case x of
   PLUG_PHRASE processcommandsblock -> failure x
+  PLUG_PHRASE_AS pidents processcommandsblock -> failure x
 transProcessCasePhrase :: ProcessCasePhrase -> Result
 transProcessCasePhrase x = case x of
   PROCESS_CASE_PHRASE pattern processcommandsblock -> failure x

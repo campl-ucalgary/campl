@@ -22,6 +22,7 @@ import MplPasses.Renamer.RenameErrors
 import MplPasses.Renamer.RenameObj 
 import MplPasses.Renamer.RenameType 
 import MplPasses.Renamer.RenamePatt 
+import MplPasses.Renamer.RenameCmdFreeVars 
 
 import Control.Monad.State
 import Control.Monad.Writer
@@ -34,6 +35,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
 
 import Data.Foldable
+import Control.Arrow
 
 runRename ::
     Rename (MplProg MplParsed) (MplProg MplRenamed)
@@ -236,7 +238,8 @@ renameCmds (cmd :| rst) = do
         CFork cxt _ _ -> tell [_IllegalNonLastCommand # cxt]
         CId cxt _ -> tell [_IllegalNonLastCommand # cxt]
         CIdNeg cxt _ -> tell [_IllegalNonLastCommand # cxt]
-        CRun _ cxt _ _ _ -> tell [_IllegalNonLastCommand # cxt]
+        CRun _ cxt _ _ _ -> tell [review _IllegalNonLastCommand $ cxt ^. identPNameOcc % to KeyWordNameOcc]
+            -- techincally not a keyword..
         CHCase cxt _ _ -> tell [_IllegalNonLastCommand # cxt]
         CHalt cxt _ -> tell [_IllegalNonLastCommand # cxt]
         CRace cxt _ -> tell [_IllegalNonLastCommand # cxt]
@@ -247,18 +250,19 @@ renameCmds (cmd :| rst) = do
 
 renameCmd ::
     Rename (MplCmd MplParsed) (MplCmd MplRenamed)
-renameCmd = f
+renameCmd = 
+    f . ((`evalState`[])  -- to start, there are always no free variables..
+      . cmdBindFreeVars)
   where
+    f :: MplCmd MplCmdFreeVars -> _ (MplCmd MplRenamed)
     f (CRun cxt ident seqs ins outs) = do
-        undefined
-        {-
         symtab <- guse symTab
         let identlkup = lookupSym ident (_Just % _SymProcInfo) symtab
             ident' = _IdentR # (ident, identlkup ^. to fromJust % uniqueTag )
-            inslkup' = fromJust $ 
-                traverse (flip lookupCh symtab) ins
-            outslkup' = fromJust $ 
-                traverse (flip lookupCh symtab) outs
+            inslkup = traverse (flip lookupCh symtab) ins
+            outslkup = traverse (flip lookupCh symtab) outs
+            inslkup' = fromJust inslkup
+            outslkup' = fromJust outslkup
 
             ins' = zipWith 
                 (\ch -> review _IdentR 
@@ -273,19 +277,30 @@ renameCmd = f
             [ maybe [_OutOfScope # ident] (const []) identlkup
             , outOfScopes symtab ins 
             , outOfScopes symtab outs ]
+        tell $ maybe (concatMap expectedInputPolarity $ zip ins inslkup') (const []) $ inslkup
+        tell $ maybe (concatMap expectedOutputPolarity $ zip ins outslkup') (const []) $ outslkup
 
         seqs' <- traverse (\expr -> do
-                expr' <- splitUniqueSupply >=> renameExpr $ expr
+                expr' <- splitUniqueSupply >=> renameExpr $ pure expr
                 -- let bindings change the symbol table, so we make sure
                 -- to reset this..
                 symTab .= symtab
                 return expr' ) seqs
-        return $ _CRun # (cxt, ident', seqs', ins', outs')
-        -}
+        return $ _CRun # 
+            ( cxt
+            , ident'
+            , seqs'
+            , map (review _ChIdentR . (,Input)  ) ins'
+            , map (review _ChIdentR . (,Output) ) outs')
 
+    f (CClose cxt ch) = do
+        symtab <- guse symTab
+        let chlkup = lookupCh ch symtab
+            chlkup' = fromJust chlkup
+            ch' = _ChIdentR # (_IdentR # (ch, chlkup' ^. uniqueTag ), chlkup' ^. symEntryInfo)
+        return $ CClose undefined ch'
+        
     {-
-    CRun !(XCRun x) (IdP x) [XMplExpr x] [ChP x] [ChP x] 
-        -- called, seq args, input chs, outchs 
     | CClose !(XCClose x) (ChP x )
     | CHalt !(XCHalt x) (ChP x)
 

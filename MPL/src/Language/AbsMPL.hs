@@ -85,8 +85,8 @@ data MplType
     = MPL_TYPE MplType
     | PAR_TYPE MplType Par MplType
     | TENSOR_TYPE MplType Tensor MplType
-    | GETPUT_TYPE UIdent LBracket MplType MplType RBracket
     | MPL_UIDENT_ARGS_TYPE UIdent LBracket [MplType] RBracket
+    | MPL_UIDENT_SEQ_CONC_ARGS_TYPE UIdent LBracket [MplType] [MplType] RBracket
     | MPL_UIDENT_NO_ARGS_TYPE UIdent
     | MPL_UNIT_TYPE LBracket RBracket
     | MPL_BRACKETED_TYPE LBracket MplType RBracket
@@ -266,7 +266,9 @@ data ForkChannel = FORK_CHANNEL PIdent
 data RacePhrase = RACE_PHRASE PIdent ProcessCommandsBlock
   deriving (Eq, Ord, Show, Read)
 
-data PlugPhrase = PLUG_PHRASE ProcessCommandsBlock
+data PlugPhrase
+    = PLUG_PHRASE ProcessCommandsBlock
+    | PLUG_PHRASE_AS [PIdent] ProcessCommandsBlock
   deriving (Eq, Ord, Show, Read)
 
 data ProcessCasePhrase

@@ -28,9 +28,11 @@ data RenameError =
         -- list of equivalence classes of the arguments on (==)
     | ExpectedStateVarButGot IdentP IdentP 
         -- expected, actual
+    | ExpectedOppositePolarity (IdentP, Polarity)
+        -- channel, polarity of channel. 
 
-    | IllegalLastCommand IdentP 
-    | IllegalNonLastCommand IdentP 
+    | IllegalLastCommand KeyWordNameOcc 
+    | IllegalNonLastCommand KeyWordNameOcc 
 
     | InternalRenameError 
 
@@ -77,3 +79,17 @@ outOfScopeWith f symtab identp =
 
 outOfScopesWith f symtab identp = 
     foldMap (outOfScopeWith f symtab)
+
+expectedInputPolarity ::
+    AsRenameError e =>
+    (IdentP, SymEntry Polarity) -> 
+    [e]
+expectedInputPolarity ch@(ident, SymEntry _ Output) = [_ExpectedOppositePolarity # (ident, Output)]
+expectedInputPolarity _ = []
+
+expectedOutputPolarity ::
+    AsRenameError e =>
+    (IdentP, SymEntry Polarity) -> 
+    [e]
+expectedOutputPolarity ch@(ident, SymEntry _ Input) = [_ExpectedOppositePolarity # (ident, Input)]
+expectedOutputPolarity _ = []

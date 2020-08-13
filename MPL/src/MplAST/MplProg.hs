@@ -220,7 +220,6 @@ $(concat <$> traverse makePrisms
     , ''MplTypePhrase
     , ''MplFunction
     , ''MplProcess
-    , ''Polarity
     ]
  )
 $(concat <$> traverse makeClassyPrisms
