@@ -175,6 +175,7 @@ type instance XTypeUnitF MplParsed = Location
 type instance XTypeBoolF MplParsed = Location
 type instance XTypeListF MplParsed = Location
 type instance XTypeTupleF MplParsed = Location
+type instance XTypeSeqWithArgs MplParsed = ()
 
 type instance XTypeGet MplParsed = Location
 type instance XTypePut MplParsed = Location

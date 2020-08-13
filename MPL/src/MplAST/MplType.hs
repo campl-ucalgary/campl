@@ -54,6 +54,9 @@ type family XTypeBoolF x
 type family XTypeListF x
 type family XTypeTupleF x
 
+type family XTypeSeqWithArgs x
+-- type family XTypeSeqVar x
+
 type family XTypeGet x
 type family XTypePut x
 type family XTypeTensor x
@@ -66,8 +69,9 @@ type family XTypeConcArrF x
 
 
 data MplType x  =
-    TypeWithArgs !(XTypeWithArgs x) (IdP x) [MplType x]
-    | TypeVar !(XTypeVar x) (TypeP x) [MplType x]
+    TypeVar !(XTypeVar x) (TypeP x) 
+    | TypeSeqWithArgs !(XTypeSeqWithArgs x) (IdP x) [MplType x]
+    | TypeConcWithArgs !(XTypeSeqWithArgs x) (IdP x) ([MplType x], [MplType x])
 
     | TypeSeq !(MplSeqTypesF x (MplType x))
     | TypeConc !(MplConcTypesF x (MplType x))
@@ -76,8 +80,10 @@ data MplType x  =
     | XType !(XXType x)
 
 
-pattern UTypeWithArgs id args = TypeWithArgs () id args
-pattern UTypeVar id args = TypeVar () id args
+-- pattern UTypeWithArgs id args = TypeWithArgs () id args
+-- pattern UTypeVar id args = TypeVar () id args
+--
+data MplBuiltInTypes x r 
 
 data MplSeqTypesF x r =
     -- primitive types
@@ -91,6 +97,8 @@ data MplSeqTypesF x r =
     | TypeBoolF !(XTypeBoolF x)
     | TypeListF !(XTypeListF x) r
     | TypeTupleF !(XTypeTupleF x) (r, r, [r])
+
+    -- | TypeSeqVar !(XTypeVar x) (TypeP x) [r]
   deriving (Functor, Foldable, Traversable)
 
 data MplConcTypesF x r = 
@@ -124,6 +132,8 @@ type ForallMplType (c :: Type -> Constraint) x =
     , c (XTypeBoolF x)
     , c (XTypeListF x)
     , c (XTypeTupleF x)
+    , c (XTypeSeqWithArgs x)
+    -- , c (XTypeSeqVar x)
 
     , c (MplConcTypesF x (MplType x))
     , c (XTypeGet x)

@@ -74,11 +74,11 @@ parseBnfcType (B.GETPUT_TYPE getput _ a b _) = do
 -}
 parseBnfcType (B.MPL_UIDENT_NO_ARGS_TYPE ident) = case parseNoArgInternalType ident of
     Just mpltype -> return mpltype
-    Nothing -> return $ _TypeWithArgs # ((), toTypeIdentP ident, [])
+    Nothing -> return $ _TypeSeqWithArgs # ((), toTypeIdentP ident, [])
 
 parseBnfcType (B.MPL_UIDENT_ARGS_TYPE ident _ args _) = do
     args' <- traverse parseBnfcType args
-    return $ _TypeWithArgs # ((), toTypeIdentP ident, args')
+    return $ _TypeSeqWithArgs # ((), toTypeIdentP ident, args')
 
 parseBnfcType (B.MPL_UIDENT_SEQ_CONC_ARGS_TYPE ident _ seqs concs _) = do
     seqs' <- traverse parseBnfcType seqs
@@ -124,23 +124,23 @@ parseBnfcType (B.MPL_SEQ_ARROW_TYPE _ _ _) =
 parseBnfcType (B.MPL_CONC_ARROW_TYPE _ _ _ _) = 
     error "Internal error: Received an MPL_CONC_ARROW_TYPE"
 
-parseTypeVariable :: 
+parseTypeSeqVariable :: 
     ( AsParseErrors e
     , MonadError () m 
     , MonadWriter [e] m ) => 
     MplType MplParsed -> 
     m (IdP MplParsed)
-parseTypeVariable n = case n ^? _TypeWithArgs of
+parseTypeSeqVariable n = case n ^? _TypeSeqWithArgs of
     Just (_, a, []) -> return a
     _ -> tell [_ExpectedTypeVarButGot # n] >> throwError ()
 
-parseTypeWithArgs :: 
+parseTypeSeqWithArgs :: 
     ( AsParseErrors e
     , MonadError () m 
     , MonadWriter [e] m ) => 
     MplType MplParsed -> 
     m (IdP MplParsed, [MplType MplParsed])
-parseTypeWithArgs n = case n ^? _TypeWithArgs of
+parseTypeSeqWithArgs n = case n ^? _TypeSeqWithArgs of
     Just (_, a, args) -> return (a, args)
     _ -> tell [_ExpectedTypeWithVarsButGot # n] >> throwError ()
 
@@ -156,10 +156,10 @@ parseTypeWithArgsAndStateVar typeident st = do
     typeident' <-  parseBnfcType typeident
     st' <- parseBnfcType st
 
-    (typeident'', args) <- parseTypeWithArgs typeident'
-    args' <- traverseTryEach parseTypeVariable args
+    (typeident'', args) <- parseTypeSeqWithArgs typeident'
+    args' <- traverseTryEach parseTypeSeqVariable args
 
-    st'' <- parseTypeVariable st'
+    st'' <- parseTypeSeqVariable st'
 
     return ((typeident'', args'), st'')
         
