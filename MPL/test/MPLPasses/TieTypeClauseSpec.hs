@@ -12,6 +12,8 @@ import Text.RawString.QQ
 import MPLCompile
 import MPLPasses.TieTypeClause
 import MPLPasses.GraphGenCore
+import MPLPasses.TieDefnsErrors
+import MPLAST.MPLProg
 import MPLAST.MPLProgGraph
 import MPLAST.MPLTypeAST
 import MPLAST.MPLASTCore
@@ -21,23 +23,28 @@ import Data.List.NonEmpty ( NonEmpty (..) )
 import qualified Data.List.NonEmpty as NE
 import Control.Monad.RWS
 
+import System.IO.Unsafe
+
 -- helper functions for running the graph maker..
---
-unsafeRunMakeTypeClauseGraph :: NonEmpty (TypeClause () () () BnfcIdent BnfcIdent) -> ClausesGraph TaggedBnfcIdent
-unsafeRunMakeTypeClauseGraph a = 
+{-# NOINLINE testGraphGenCoreState #-}
+(testGraphGenCoreEnv, testGraphGenCoreState) = unsafePerformIO defaultGraphGenCore
+
+runMakeTypeClauseGraph :: NonEmpty (TypeClause () () () BnfcIdent BnfcIdent) -> Either [TieDefnsError] (ClausesGraph TaggedBnfcIdent) 
+runMakeTypeClauseGraph a = 
     case runRWS (unGraphGenCore (tieTypeClauseGraph [] DataObj a))
-        defaultGraphGenCoreEnv defaultGraphGenCoreState of
-        (res,_, []) -> res
-        (_ ,_,errs) -> error $ show errs
+        testGraphGenCoreEnv testGraphGenCoreState of
+        (res,_, []) -> Right res
+        (_ ,_,errs) -> Left errs
 
 unsafeMakeTypeClauseGraphFromStr str = case unsafeTranslateParseLex str of
-    Prog [Stmt (DefnI (DataDefn n):| []) _] -> unsafeRunMakeTypeClauseGraph n
+    Prog [Stmt (DefnI (DataDefn n):| []) _] -> runMakeTypeClauseGraph n
 
 spec :: Spec
 spec = do
     describe "Tie type clause wth hand written example.."  $ do
-        it "Exhaustively testing equalities.." $ do
-            let spine = (unsafeRunMakeTypeClauseGraph mutuallyrecursiveTest) ^. clauseGraphSpine
+        it "Valid mutually recursive data type -- exhaustively testing equalities on the correctness of tying the knot.." $ do
+            let Right typeclauseg = runMakeTypeClauseGraph mutuallyrecursiveTest
+                spine = typeclauseg ^. clauseGraphSpine
                 spineTest tspine = do
                     assertEqual "" 2 (length spine) 
 
@@ -70,44 +77,17 @@ spec = do
 
             -- testing if the substituted variables really are substituted to the correct parts 
             -- we no longer immediately substitute the state variables when making the graph
+            -- So, we do not test this...
             -- clause2Test $ fromJust (((NE.toList spine !! 0 ^. typeClausePhrases) !! 0) ^? typePhraseTo 
             --                 % _TypeWithArgs % _2 % _TypeClauseNode)
             -- clause1Test $ fromJust (((NE.toList spine !! 1 ^. typeClausePhrases) !! 0) ^? typePhraseTo 
             --                 % _TypeWithArgs % _2 % _TypeClauseNode)
+        it "Testing type out of scope..." $ do
+            let typeclauseg = runMakeTypeClauseGraph outofscopeTest
+            assertBool ("Expected a (Left out of scope), but got: " ++ show typeclauseg) 
+                (has (_Left % traversed % _NotInScope ) typeclauseg)
+            
 
-
-
-    -- , _typeClauseStateVar ::  ident
-    -- , _typeClausePhrases :: [TypePhrase phrasecontext calldef ident]
-    -- , _typeClauseNeighbors :: neighbors
-
-    -- _typePhraseContext :: phrasecontext
-    -- , _typePhraseName :: ident
-    -- , _typePhraseFrom :: [Type calldef ident]
-    -- , _typePhraseTo :: Type calldef ident
-                    
-
-
-
-{-
-makeTypeClauseGraph :: 
-    -- AsTieTypeClauseError e =>
-    ObjectType -> 
-    TieTypeClauseContext -> 
-    NonEmpty (TypeClause () () () BnfcIdent) -> 
-    -- Either e (UniqueTag, ClausesGraph TypeClauseNode TaggedBnfcIdent)
-    Either TieTypeClauseError (UniqueTag, ClausesGraph TypeClauseNode TaggedBnfcIdent)
-    -}
-
-testClauses' = unsafeMakeTypeClauseGraphFromStr testClauses
-testClauses = [r|
-data
-    Clause1 -> A =
-        Phrase1 :: -> B
-    and
-    Clause2 -> B =
-        Phrase2 :: -> A
-|]
 
 mutuallyrecursiveTest = NE.fromList [
     TypeClause (mkident "Clause1") [] (mkident "ST")
@@ -122,6 +102,18 @@ mutuallyrecursiveTest = NE.fromList [
             (mkident "Phrase2")
             []
             (TypeWithArgs (mkident "ST") () [])
+        ]
+        ()
+    ]
+  where
+    mkident str = (review _BnfcIdent (str, (1,1)))
+
+outofscopeTest = NE.fromList [
+    TypeClause (mkident "Clause1") [] (mkident "ST")
+        [ TypePhrase ()
+            (mkident "Phrase1")
+            []
+            (TypeWithArgs (mkident "Potato") () [])
         ]
         ()
     ]

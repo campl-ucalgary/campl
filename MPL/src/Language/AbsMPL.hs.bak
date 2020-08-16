@@ -30,14 +30,40 @@ newtype NullPattern = NullPattern ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
 newtype Colon = Colon ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
-newtype Infixl1op = Infixl1op String deriving (Eq, Ord, Show, Read)
-newtype Infixl2op = Infixl2op String deriving (Eq, Ord, Show, Read)
-newtype Infixl3op = Infixl3op String deriving (Eq, Ord, Show, Read)
-newtype Infixl4op = Infixl4op String deriving (Eq, Ord, Show, Read)
-newtype Infixl5op = Infixl5op String deriving (Eq, Ord, Show, Read)
-newtype Infixl6op = Infixl6op String deriving (Eq, Ord, Show, Read)
-newtype Infixr7op = Infixr7op String deriving (Eq, Ord, Show, Read)
-newtype Infixl8op = Infixl8op String deriving (Eq, Ord, Show, Read)
+newtype Infixl1op = Infixl1op ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Infixl2op = Infixl2op ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Infixl3op = Infixl3op ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Infixl4op = Infixl4op ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Infixl5op = Infixl5op ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Infixl6op = Infixl6op ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Infixr7op = Infixr7op ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Infixl8op = Infixl8op ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Close = Close ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Halt = Halt ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Get = Get ((Int,Int),String) deriving (Eq, Ord, Show, Read)
+newtype Put = Put ((Int,Int),String) deriving (Eq, Ord, Show, Read)
+newtype HCase = HCase ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype HPut = HPut ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Split = Split ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Fork = Fork ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype ChId = ChId ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype Case = Case ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
 data MplProg = MPL_PROG [MplStmt]
   deriving (Eq, Ord, Show, Read)
 
@@ -61,13 +87,14 @@ data MplType
     | TENSOR_TYPE MplType Tensor MplType
     | GETPUT_TYPE UIdent LBracket MplType MplType RBracket
     | MPL_UIDENT_ARGS_TYPE UIdent LBracket [MplType] RBracket
+    | MPL_UIDENT_SEQ_CONC_ARGS_TYPE UIdent LBracket [MplType] [MplType] RBracket
     | MPL_UIDENT_NO_ARGS_TYPE UIdent
     | MPL_UNIT_TYPE LBracket RBracket
     | MPL_BRACKETED_TYPE LBracket MplType RBracket
     | MPL_LIST_TYPE LSquareBracket MplType RSquareBracket
     | MPL_TUPLE_TYPE LBracket MplType [TupleListType] RBracket
-    | MPL_SEQ_ARROW_TYPE UPIdent [ForallVarList] [MplType] MplType
-    | MPL_CONC_ARROW_TYPE UPIdent [ForallVarList] [MplType] [MplType] [MplType]
+    | MPL_SEQ_ARROW_TYPE [ForallVarList] [MplType] MplType
+    | MPL_CONC_ARROW_TYPE [ForallVarList] [MplType] [MplType] [MplType]
   deriving (Eq, Ord, Show, Read)
 
 data TupleListType = TUPLE_LIST_TYPE MplType
@@ -106,6 +133,7 @@ data TypeHandleName = TYPE_HANDLE_NAME UIdent
 
 data Expr
     = EXPR Expr
+    | TYPED_EXPR Expr MplType
     | IF_EXPR Expr Expr Expr
     | LET_EXPR [LetExprPhrase] Expr
     | INFIXR0_EXPR Expr Colon Expr
@@ -126,7 +154,7 @@ data Expr
     | UNIT_EXPR LBracket RBracket
     | FOLD_EXPR Expr [FoldExprPhrase]
     | UNFOLD_EXPR Expr [UnfoldExprPhrase]
-    | CASE_EXPR Expr [PattExprPhrase]
+    | CASE_EXPR Case Expr [PattExprPhrase]
     | SWITCH_EXP [SwitchExprPhrase]
     | DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR UIdent LBracket [Expr] RBracket
     | DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR UIdent
@@ -148,7 +176,9 @@ data LetExprPhrase = LET_EXPR_PHRASE MplStmt
 data TupleExprList = TUPLE_EXPR_LIST Expr
   deriving (Eq, Ord, Show, Read)
 
-data RecordExprPhrase = RECORD_EXPR_PHRASE UIdent Expr
+data RecordExprPhrase
+    = RECORD_EXPR_PHRASE UIdent Expr
+    | RECORD_EXPR_HIGHER_ORDER_PHRASE UIdent PattExprPhrase
   deriving (Eq, Ord, Show, Read)
 
 data SwitchExprPhrase = SWITCH_EXPR_PHRASE Expr Expr
@@ -159,11 +189,12 @@ data PattExprPhrase = PATTERN_TO_EXPR [Pattern] Expr
 
 data Pattern
     = PATTERN Pattern
+    | TYPED_PATTERN Pattern MplType
     | LIST_COLON_PATTERN Pattern Colon Pattern
     | CONSTRUCTOR_PATTERN_ARGS UIdent LBracket [Pattern] RBracket
     | CONSTRUCTOR_PATTERN_NO_ARGS UIdent
     | UNIT_PATTERN LBracket RBracket
-    | RECORD_PATTERN LBracket DestructorPatternPhrase [DestructorPatternPhrase] RBracket
+    | RECORD_PATTERN LBracket [DestructorPatternPhrase] RBracket
     | LIST_PATTERN LSquareBracket [Pattern] RSquareBracket
     | TUPLE_PATTERN LBracket Pattern [TupleListPattern] RBracket
     | VAR_PATTERN PIdent
@@ -181,12 +212,14 @@ data DestructorPatternPhrase
   deriving (Eq, Ord, Show, Read)
 
 data FunctionDefn
-    = TYPED_FUNCTION_DEFN PIdent [MplType] MplType [PattExprPhrase]
+    = INTERNAL_TYPED_FUNCTION_DEFN PIdent MplType [PattExprPhrase]
+    | TYPED_FUNCTION_DEFN PIdent [MplType] MplType [PattExprPhrase]
     | FUNCTION_DEFN PIdent [PattExprPhrase]
   deriving (Eq, Ord, Show, Read)
 
 data ProcessDefn
     = TYPED_PROCESS_DEFN PIdent [MplType] [MplType] [MplType] [ProcessPhrase]
+    | INTERNAL_TYPED_PROCESS_DEFN PIdent MplType [ProcessPhrase]
     | PROCESS_DEFN PIdent [ProcessPhrase]
   deriving (Eq, Ord, Show, Read)
 
@@ -201,19 +234,19 @@ data ProcessCommandsBlock
 
 data ProcessCommand
     = PROCESS_RUN PIdent LBracket [Expr] [PIdent] [PIdent] RBracket
-    | PROCESS_CLOSE PIdent
-    | PROCESS_HALT PIdent
-    | PROCESS_GET Pattern PIdent
-    | PROCESS_PUT Expr PIdent
-    | PROCESS_HCASE PIdent [HCasePhrase]
-    | PROCESS_HPUT UIdent PIdent
-    | PROCESS_SPLIT PIdent [SplitChannel]
-    | PROCESS_FORK PIdent [ForkPhrase]
-    | PROCESS_ID PIdent PIdent
-    | PROCESS_NEG PIdent PIdent
+    | PROCESS_CLOSE Close PIdent
+    | PROCESS_HALT Halt PIdent
+    | PROCESS_GET Get Pattern PIdent
+    | PROCESS_PUT Put Expr PIdent
+    | PROCESS_HCASE HCase PIdent [HCasePhrase]
+    | PROCESS_HPUT HPut UIdent PIdent
+    | PROCESS_SPLIT Split PIdent [SplitChannel]
+    | PROCESS_FORK Fork PIdent [ForkPhrase]
+    | PROCESS_ID PIdent ChId PIdent
+    | PROCESS_NEG PIdent ChId PIdent
     | PROCESS_RACE [RacePhrase]
     | PROCESS_PLUG [PlugPhrase]
-    | PROCESS_CASE Expr [ProcessCasePhrase]
+    | PROCESS_CASE Case Expr [ProcessCasePhrase]
     | PROCESS_SWITCH [ProcessSwitchPhrase]
   deriving (Eq, Ord, Show, Read)
 
@@ -234,7 +267,9 @@ data ForkChannel = FORK_CHANNEL PIdent
 data RacePhrase = RACE_PHRASE PIdent ProcessCommandsBlock
   deriving (Eq, Ord, Show, Read)
 
-data PlugPhrase = PLUG_PHRASE ProcessCommandsBlock
+data PlugPhrase
+    = PLUG_PHRASE ProcessCommandsBlock
+    | PLUG_PHRASE_AS [PIdent] ProcessCommandsBlock
   deriving (Eq, Ord, Show, Read)
 
 data ProcessCasePhrase

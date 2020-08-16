@@ -40,14 +40,27 @@ position token Colon ':' ;
 -- both as cons, and as a seperator for fold phrases
 -- Instead, we have a Colon token (as above) and use that
 -- whereever we require a colon
-token Infixl1op ({"||"});
-token Infixl2op ({"&&"});
-token Infixl3op ({"=="}|{"/="}|'<'|'>'|{"<="}|{">="});
-token Infixl4op ({"++"}) ;
-token Infixl5op ('+'|'-');
-token Infixl6op ('*'|'/' | '%');
-token Infixr7op ('^') ;
-token Infixl8op ({"!!"}) ;
+position token Infixl1op ({"||"});
+position token Infixl2op ({"&&"});
+position token Infixl3op ({"=="}|{"/="}|'<'|'>'|{"<="}|{">="});
+position token Infixl4op ({"++"}) ;
+position token Infixl5op ('+'|'-');
+position token Infixl6op ('*'|'/' | '%');
+position token Infixr7op ('^') ;
+position token Infixl8op ({"!!"}) ;
+
+position token Close {"close"} ;
+position token Halt {"halt"} ;
+position token Get {"get"} ;
+position token Put {"put"} ;
+position token HCase {"hcase"} ;
+position token HPut {"hput"} ;
+position token Split {"split"} ;
+position token Fork {"fork"} ;
+position token ChId {"|=|"} ;
+
+position token Case {"case"} ;
+
 
 separator PIdent "," ;
 
@@ -91,19 +104,17 @@ _                 . MplType0 ::= MplType1 ;
 TENSOR_TYPE       . MplType1 ::= MplType2 Tensor MplType2;
 _                 . MplType1 ::= MplType2 ;
 
-GETPUT_TYPE       . MplType2 ::= UIdent LBracket MplType "|" MplType RBracket ;
-_                 . MplType2 ::= MplType3 ;
-
 -- Sequential types / user defined types / type variables follow..
-MPL_UIDENT_ARGS_TYPE    . MplType3 ::= UIdent LBracket [MplType] RBracket ;
-MPL_UIDENT_NO_ARGS_TYPE . MplType3 ::= UIdent ;
-MPL_UNIT_TYPE           . MplType3 ::= LBracket RBracket ;
-MPL_BRACKETED_TYPE      . MplType3 ::= LBracket MplType RBracket ;
-MPL_LIST_TYPE           . MplType3 ::= LSquareBracket MplType RSquareBracket ;
-MPL_TUPLE_TYPE          . MplType3 ::= LBracket MplType "," [TupleListType] RBracket ;
+MPL_UIDENT_ARGS_TYPE             . MplType2 ::= UIdent LBracket [MplType] RBracket ;
+MPL_UIDENT_SEQ_CONC_ARGS_TYPE    . MplType2 ::= UIdent LBracket [MplType] "|" [MplType] RBracket ;
+MPL_UIDENT_NO_ARGS_TYPE . MplType2 ::= UIdent ;
+MPL_UNIT_TYPE           . MplType2 ::= LBracket RBracket ;
+MPL_BRACKETED_TYPE      . MplType2 ::= LBracket MplType RBracket ;
+MPL_LIST_TYPE           . MplType2 ::= LSquareBracket MplType RSquareBracket ;
+MPL_TUPLE_TYPE          . MplType2 ::= LBracket MplType "," [TupleListType] RBracket ;
 
-internal MPL_SEQ_ARROW_TYPE  . MplType3 ::= "forall" [ForallVarList] "." [MplType] "->" MplType ;
-internal MPL_CONC_ARROW_TYPE . MplType3 ::= "forall" [ForallVarList] "." [MplType] "|" [MplType] "=>" [MplType] ;
+internal MPL_SEQ_ARROW_TYPE  . MplType2 ::= "forall" [ForallVarList] "." [MplType] "->" MplType ;
+internal MPL_CONC_ARROW_TYPE . MplType2 ::= "forall" [ForallVarList] "." [MplType] "|" [MplType] "=>" [MplType] ;
 
 TUPLE_LIST_TYPE . TupleListType ::= MplType ;
 
@@ -150,7 +161,8 @@ separator nonempty TypeHandleName "," ;
 -- ====================================================================
 --  MPL Expr definition
 -- ====================================================================
-EXPR      . Expr  ::= Expr0 ;
+EXPR                        . Expr  ::= Expr0 ;
+internal TYPED_EXPR         . Expr  ::=  Expr "::" MplType  ;
 -- TODO -- not totally sure about this IF and LET precedence?
 -- ASK THE OTHER DEVELOPER ABOUT THIS
 IF_EXPR   . Expr  ::= "if" Expr "then"  Expr  "else"  Expr ;
@@ -201,7 +213,7 @@ UNIT_EXPR        . Expr10 ::= LBracket RBracket ;
 
 FOLD_EXPR        . Expr10 ::= "fold" Expr "of" "{" [FoldExprPhrase] "}" ;
 UNFOLD_EXPR      . Expr10 ::= "unfold" Expr "of" "{" [UnfoldExprPhrase] "}" ;
-CASE_EXPR        . Expr10 ::= "case" Expr "of" "{" [PattExprPhrase] "}" ;
+CASE_EXPR        . Expr10 ::= Case Expr "of" "{" [PattExprPhrase] "}" ;
 SWITCH_EXP       . Expr10 ::= "switch" "{" [SwitchExprPhrase] "}" ;
 
 
@@ -214,10 +226,10 @@ RECORD_EXPR      . Expr10 ::= LBracket [RecordExprPhrase] RBracket ;
 BRACKETED_EXPR   . Expr10 ::= LBracket Expr RBracket ;
 
 UNFOLD_EXPR_PHRASE.    UnfoldExprPhrase ::= Pattern "of" "{" [FoldExprPhrase] "}"  ;
-separator UnfoldExprPhrase ";" ;
+separator nonempty UnfoldExprPhrase ";" ;
 
-FOLD_EXPR_PHRASE.    FoldExprPhrase ::= UIdent Colon  [Pattern]  "->"  Expr   ;
-separator FoldExprPhrase ";" ;
+FOLD_EXPR_PHRASE.    FoldExprPhrase ::= UIdent Colon [Pattern]  "->"  Expr   ;
+separator nonempty FoldExprPhrase ";" ;
 
 LET_EXPR_PHRASE . LetExprPhrase ::= MplStmt ; 
 separator nonempty LetExprPhrase ";" ;
@@ -225,7 +237,22 @@ separator nonempty LetExprPhrase ";" ;
 TUPLE_EXPR_LIST . TupleExprList ::= Expr ;
 separator nonempty TupleExprList "," ;
 
-RECORD_EXPR_PHRASE . RecordExprPhrase ::= UIdent ":=" Expr ;
+-- TODO a fairly major refactor is needed to get the RECORD_EXPR_PHRASE to not
+-- give us reduce/reduce conflicts.. Ideally, would make a PattExprPhrase
+-- have a rule like [AlmightParsingRule] "->" AlmightParsingRule where  
+-- AlmightParsingRule is a rule for both patterns and expressions
+-- and resolve ambiguities later of what a pattern and an expression is later...
+
+-- BUT, this will still generate a shift/reduce error because we have
+-- a list of RecordExprPhrase when this is called. I think (give more thought later..)
+-- since the patterns are separated by commas and the RecordExprPhrase is also separted 
+-- by commas we get the shift/reduce error. A solution would be to separate one of them 
+-- by another character (e.g. "."), or to make the AlmightParsingRule even more almighty
+-- and include ":=" as an operator and resolve more ambiguities later...
+internal RECORD_EXPR_PHRASE     . RecordExprPhrase ::= UIdent ":=" Expr ;
+RECORD_EXPR_HIGHER_ORDER_PHRASE . RecordExprPhrase ::= UIdent ":=" PattExprPhrase ;
+
+
 separator nonempty RecordExprPhrase "," ;
 
 SWITCH_EXPR_PHRASE . SwitchExprPhrase ::= Expr "->" Expr ;
@@ -240,7 +267,8 @@ separator Expr "," ;
 
 PATTERN_TO_EXPR . PattExprPhrase ::= [Pattern] "->" Expr ;
 
-PATTERN  . Pattern ::= Pattern0 ;
+PATTERN                 . Pattern ::= Pattern0 ;
+internal TYPED_PATTERN  . Pattern ::= Pattern "::" MplType ;
 separator Pattern "," ;
 
 LIST_COLON_PATTERN       . Pattern0 ::= Pattern1 Colon Pattern0 ;
@@ -249,7 +277,7 @@ _                        . Pattern0 ::= Pattern1 ;
 CONSTRUCTOR_PATTERN_ARGS    . Pattern1 ::=  UIdent LBracket [Pattern] RBracket ;
 CONSTRUCTOR_PATTERN_NO_ARGS . Pattern1 ::=  UIdent ;
 UNIT_PATTERN                . Pattern1 ::= LBracket RBracket ; 
-RECORD_PATTERN              . Pattern1 ::= LBracket DestructorPatternPhrase "," [DestructorPatternPhrase] RBracket ;
+RECORD_PATTERN              . Pattern1 ::= LBracket [DestructorPatternPhrase] RBracket ;
 LIST_PATTERN                . Pattern1 ::=  LSquareBracket [Pattern] RSquareBracket ;
 TUPLE_PATTERN               . Pattern1 ::=  LBracket Pattern "," [TupleListPattern] RBracket ;
 VAR_PATTERN                 . Pattern1 ::=  PIdent ;
@@ -268,6 +296,11 @@ separator nonempty DestructorPatternPhrase "," ;
 -- ====================================================================
 --  MPL Function definition
 -- ====================================================================
+
+internal INTERNAL_TYPED_FUNCTION_DEFN . FunctionDefn ::= 
+    "fun" PIdent "::" MplType
+        "=" "{" [ PattExprPhrase ]"}" ;
+
 TYPED_FUNCTION_DEFN . FunctionDefn ::= 
     "fun" PIdent "::" [MplType] "->" MplType 
         "=" "{" [ PattExprPhrase ]"}" ;
@@ -285,6 +318,10 @@ TYPED_PROCESS_DEFN . ProcessDefn ::=
     "proc" PIdent "::" [MplType]  "|" [MplType] "=>" [MplType]
                    "=" "{" [ProcessPhrase] "}" ;
 
+internal INTERNAL_TYPED_PROCESS_DEFN . ProcessDefn ::= 
+    "proc" PIdent "::" MplType
+                   "=" "{" [ProcessPhrase] "}" ;
+
 PROCESS_DEFN . ProcessDefn ::= 
     "proc" PIdent "=" "{" [ProcessPhrase] "}" ;
 
@@ -300,21 +337,50 @@ PROCESS_COMMANDS_SINGLE_COMMAND_BLOCK . ProcessCommandsBlock ::=
 
 separator ProcessCommand ";" ;
 
+-----------------------------
+-- Old version without as many tokens..
+-----------------------------
+-- PROCESS_RUN   .   ProcessCommand ::= PIdent LBracket [Expr] "|" [PIdent] "=>" [PIdent] RBracket ;
+-- PROCESS_CLOSE .   ProcessCommand ::= "close" PIdent ;
+-- PROCESS_HALT  .   ProcessCommand ::= "halt" PIdent ;
+-- 
+-- PROCESS_GET   .   ProcessCommand ::= "get" Pattern "on" PIdent ;
+-- PROCESS_PUT   .   ProcessCommand ::= "put" Expr "on" PIdent ;
+-- 
+-- PROCESS_HCASE .   ProcessCommand ::= "hcase" PIdent "of" "{" [HCasePhrase] "}";
+-- PROCESS_HPUT  .   ProcessCommand ::= "hput" UIdent "on" PIdent ;
+-- 
+-- PROCESS_SPLIT . ProcessCommand ::= "split" PIdent "into" [ SplitChannel ] ;
+-- PROCESS_FORK  . ProcessCommand ::= "fork" PIdent "as" "{" [ ForkPhrase ] "}" ;
+-- 
+-- PROCESS_ID    . ProcessCommand ::= PIdent "|=|" PIdent ;
+-- PROCESS_NEG   . ProcessCommand ::= PIdent "|=|" "neg" PIdent ;
+-- 
+-- PROCESS_RACE  . ProcessCommand ::= "race" "{" [ RacePhrase ] "}" ;
+-- 
+-- PROCESS_PLUG    . ProcessCommand ::= "plug" "{" [ PlugPhrase ] "}" ;
+-- -- "plug" is a layout word, so we can't use this rule unforunately...
+-- -- PROCESS_PLUG_AS . ProcessCommand ::= "plug"  [PIdent] "as" "{" [ PlugPhrase ] "}" ;
+-- 
+-- PROCESS_CASE   . ProcessCommand ::= "case" Expr "of" "{" [ProcessCasePhrase] "}";
+-- PROCESS_SWITCH . ProcessCommand ::= "switch" "{" [ProcessSwitchPhrase] "}";
+-----------------------------
+
 PROCESS_RUN   .   ProcessCommand ::= PIdent LBracket [Expr] "|" [PIdent] "=>" [PIdent] RBracket ;
-PROCESS_CLOSE .   ProcessCommand ::= "close" PIdent ;
-PROCESS_HALT  .   ProcessCommand ::= "halt" PIdent ;
+PROCESS_CLOSE .   ProcessCommand ::= Close PIdent ;
+PROCESS_HALT  .   ProcessCommand ::= Halt PIdent ;
 
-PROCESS_GET   .   ProcessCommand ::= "get" Pattern "on" PIdent ;
-PROCESS_PUT   .   ProcessCommand ::= "put" Expr "on" PIdent ;
+PROCESS_GET   .   ProcessCommand ::= Get Pattern "on" PIdent ;
+PROCESS_PUT   .   ProcessCommand ::= Put Expr "on" PIdent ;
 
-PROCESS_HCASE .   ProcessCommand ::= "hcase" PIdent "of" "{" [HCasePhrase] "}";
-PROCESS_HPUT  .   ProcessCommand ::= "hput" UIdent "on" PIdent ;
+PROCESS_HCASE .   ProcessCommand ::= HCase PIdent "of" "{" [HCasePhrase] "}";
+PROCESS_HPUT  .   ProcessCommand ::= HPut UIdent "on" PIdent ;
 
-PROCESS_SPLIT . ProcessCommand ::= "split" PIdent "into" [ SplitChannel ] ;
-PROCESS_FORK  . ProcessCommand ::= "fork" PIdent "as" "{" [ ForkPhrase ] "}" ;
+PROCESS_SPLIT . ProcessCommand ::= Split PIdent "into" [ SplitChannel ] ;
+PROCESS_FORK  . ProcessCommand ::= Fork PIdent "as" "{" [ ForkPhrase ] "}" ;
 
-PROCESS_ID    . ProcessCommand ::= PIdent "|=|" PIdent ;
-PROCESS_NEG   . ProcessCommand ::= PIdent "|=|" "neg" PIdent ;
+PROCESS_ID    . ProcessCommand ::= PIdent ChId PIdent ;
+PROCESS_NEG   . ProcessCommand ::= PIdent ChId "neg" PIdent ;
 
 PROCESS_RACE  . ProcessCommand ::= "race" "{" [ RacePhrase ] "}" ;
 
@@ -322,7 +388,7 @@ PROCESS_PLUG    . ProcessCommand ::= "plug" "{" [ PlugPhrase ] "}" ;
 -- "plug" is a layout word, so we can't use this rule unforunately...
 -- PROCESS_PLUG_AS . ProcessCommand ::= "plug"  [PIdent] "as" "{" [ PlugPhrase ] "}" ;
 
-PROCESS_CASE   . ProcessCommand ::= "case" Expr "of" "{" [ProcessCasePhrase] "}";
+PROCESS_CASE   . ProcessCommand ::= Case Expr "of" "{" [ProcessCasePhrase] "}";
 PROCESS_SWITCH . ProcessCommand ::= "switch" "{" [ProcessSwitchPhrase] "}";
 
 
@@ -339,14 +405,14 @@ FORK_WITH_PHRASE . ForkPhrase ::= PIdent "with" [ForkChannel] "->" ProcessComman
 separator nonempty ForkPhrase ";" ;
 
 FORK_CHANNEL . ForkChannel ::= PIdent ;
-separator nonempty ForkChannel ";" ;
+separator ForkChannel ";" ;
 
 RACE_PHRASE . RacePhrase ::= PIdent "->" ProcessCommandsBlock ;
 separator RacePhrase ";" ;
 
 PLUG_PHRASE    . PlugPhrase ::= ProcessCommandsBlock ;
--- PLUG_PHRASE_AS . PlugPhrase ::= "with" [PIdent] "->" ProcessCommandsBlock ;
-separator PlugPhrase ";" ;
+PLUG_PHRASE_AS . PlugPhrase ::= "with" [PIdent] "->" ProcessCommandsBlock ;
+separator nonempty PlugPhrase ";" ;
 
 PROCESS_CASE_PHRASE . ProcessCasePhrase ::=  Pattern "->" ProcessCommandsBlock ;
 separator ProcessCasePhrase ";" ;

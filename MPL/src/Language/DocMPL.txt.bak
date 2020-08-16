@@ -48,6 +48,16 @@ followed by an unsigned or negative exponent.
 
 
 
+
+
+
+
+
+
+
+
+
+
 UIdent literals are recognized by the regular expression
 `````('#' upper | upper) (letter | digit | '_')*`````
 
@@ -108,26 +118,53 @@ Infixr7op literals are recognized by the regular expression
 Infixl8op literals are recognized by the regular expression
 `````{"!!"}`````
 
+Close literals are recognized by the regular expression
+`````{"close"}`````
+
+Halt literals are recognized by the regular expression
+`````{"halt"}`````
+
+Get literals are recognized by the regular expression
+`````{"get"}`````
+
+Put literals are recognized by the regular expression
+`````{"put"}`````
+
+HCase literals are recognized by the regular expression
+`````{"hcase"}`````
+
+HPut literals are recognized by the regular expression
+`````{"hput"}`````
+
+Split literals are recognized by the regular expression
+`````{"split"}`````
+
+Fork literals are recognized by the regular expression
+`````{"fork"}`````
+
+ChId literals are recognized by the regular expression
+`````{"|=|"}`````
+
+Case literals are recognized by the regular expression
+`````{"case"}`````
+
 
 ===Reserved words and symbols===
 The set of reserved words is the set of terminals appearing in the grammar. Those reserved words that consist of non-letter characters are called symbols, and they are treated in a different way from those that are similar to identifiers. The lexer follows rules familiar from languages like Haskell, C, and Java, including longest match and spacing conventions.
 
 The reserved words used in MPL are the following:
-  | ``and`` | ``as`` | ``case`` | ``close``
-  | ``codata`` | ``coprotocol`` | ``data`` | ``defn``
-  | ``do`` | ``else`` | ``fold`` | ``forall``
-  | ``fork`` | ``fun`` | ``get`` | ``halt``
-  | ``hcase`` | ``hput`` | ``if`` | ``in``
-  | ``into`` | ``let`` | ``neg`` | ``of``
-  | ``on`` | ``plug`` | ``potato`` | ``proc``
-  | ``protocol`` | ``put`` | ``race`` | ``split``
-  | ``switch`` | ``then`` | ``unfold`` | ``where``
-  | ``with`` |  |  | 
+  | ``and`` | ``as`` | ``codata`` | ``coprotocol``
+  | ``data`` | ``defn`` | ``do`` | ``else``
+  | ``fold`` | ``forall`` | ``fun`` | ``if``
+  | ``in`` | ``into`` | ``let`` | ``neg``
+  | ``of`` | ``on`` | ``plug`` | ``potato``
+  | ``proc`` | ``protocol`` | ``race`` | ``switch``
+  | ``then`` | ``unfold`` | ``where`` | ``with``
 
 The symbols used in MPL are the following:
   | , | { | } | ;
-  | | | :: | . | ->
-  | => | = | := | |=|
+  | | | . | -> | =>
+  | = | :: | := | 
 
 ===Comments===
 Single-line comments begin with --.Multiple-line comments are  enclosed with {- and -}.
@@ -162,6 +199,7 @@ All other symbols are terminals.
   | //MplType2// | -> | //UIdent// //LBracket// //MplType// ``|`` //MplType// //RBracket// 
   |  |  **|**  | //MplType3// 
   | //MplType3// | -> | //UIdent// //LBracket// //[MplType]// //RBracket// 
+  |  |  **|**  | //UIdent// //LBracket// //[MplType]// ``|`` //[MplType]// //RBracket// 
   |  |  **|**  | //UIdent// 
   |  |  **|**  | //LBracket// //RBracket// 
   |  |  **|**  | //LBracket// //MplType// //RBracket// 
@@ -228,7 +266,7 @@ All other symbols are terminals.
   |  |  **|**  | //LBracket// //RBracket// 
   |  |  **|**  | ``fold`` //Expr// ``of`` ``{`` //[FoldExprPhrase]// ``}`` 
   |  |  **|**  | ``unfold`` //Expr// ``of`` ``{`` //[UnfoldExprPhrase]// ``}`` 
-  |  |  **|**  | ``case`` //Expr// ``of`` ``{`` //[PattExprPhrase]// ``}`` 
+  |  |  **|**  | //Case// //Expr// ``of`` ``{`` //[PattExprPhrase]// ``}`` 
   |  |  **|**  | ``switch`` ``{`` //[SwitchExprPhrase]// ``}`` 
   |  |  **|**  | //UIdent// //LBracket// //[Expr]// //RBracket// 
   |  |  **|**  | //UIdent// 
@@ -237,12 +275,10 @@ All other symbols are terminals.
   |  |  **|**  | //LBracket// //[RecordExprPhrase]// //RBracket// 
   |  |  **|**  | //LBracket// //Expr// //RBracket// 
   | //UnfoldExprPhrase// | -> | //Pattern// ``of`` ``{`` //[FoldExprPhrase]// ``}`` 
-  | //[UnfoldExprPhrase]// | -> | **eps**
-  |  |  **|**  | //UnfoldExprPhrase// 
+  | //[UnfoldExprPhrase]// | -> | //UnfoldExprPhrase// 
   |  |  **|**  | //UnfoldExprPhrase// ``;`` //[UnfoldExprPhrase]// 
   | //FoldExprPhrase// | -> | //UIdent// //Colon// //[Pattern]// ``->`` //Expr// 
-  | //[FoldExprPhrase]// | -> | **eps**
-  |  |  **|**  | //FoldExprPhrase// 
+  | //[FoldExprPhrase]// | -> | //FoldExprPhrase// 
   |  |  **|**  | //FoldExprPhrase// ``;`` //[FoldExprPhrase]// 
   | //LetExprPhrase// | -> | //MplStmt// 
   | //[LetExprPhrase]// | -> | //LetExprPhrase// 
@@ -250,7 +286,7 @@ All other symbols are terminals.
   | //TupleExprList// | -> | //Expr// 
   | //[TupleExprList]// | -> | //TupleExprList// 
   |  |  **|**  | //TupleExprList// ``,`` //[TupleExprList]// 
-  | //RecordExprPhrase// | -> | //UIdent// ``:=`` //Expr// 
+  | //RecordExprPhrase// | -> | //UIdent// ``:=`` //PattExprPhrase// 
   | //[RecordExprPhrase]// | -> | //RecordExprPhrase// 
   |  |  **|**  | //RecordExprPhrase// ``,`` //[RecordExprPhrase]// 
   | //SwitchExprPhrase// | -> | //Expr// ``->`` //Expr// 
@@ -269,7 +305,7 @@ All other symbols are terminals.
   | //Pattern1// | -> | //UIdent// //LBracket// //[Pattern]// //RBracket// 
   |  |  **|**  | //UIdent// 
   |  |  **|**  | //LBracket// //RBracket// 
-  |  |  **|**  | //LBracket// //DestructorPatternPhrase// ``,`` //[DestructorPatternPhrase]// //RBracket// 
+  |  |  **|**  | //LBracket// //[DestructorPatternPhrase]// //RBracket// 
   |  |  **|**  | //LSquareBracket// //[Pattern]// //RSquareBracket// 
   |  |  **|**  | //LBracket// //Pattern// ``,`` //[TupleListPattern]// //RBracket// 
   |  |  **|**  | //PIdent// 
@@ -298,19 +334,19 @@ All other symbols are terminals.
   |  |  **|**  | //ProcessCommand// 
   |  |  **|**  | //ProcessCommand// ``;`` //[ProcessCommand]// 
   | //ProcessCommand// | -> | //PIdent// //LBracket// //[Expr]// ``|`` //[PIdent]// ``=>`` //[PIdent]// //RBracket// 
-  |  |  **|**  | ``close`` //PIdent// 
-  |  |  **|**  | ``halt`` //PIdent// 
-  |  |  **|**  | ``get`` //Pattern// ``on`` //PIdent// 
-  |  |  **|**  | ``put`` //Expr// ``on`` //PIdent// 
-  |  |  **|**  | ``hcase`` //PIdent// ``of`` ``{`` //[HCasePhrase]// ``}`` 
-  |  |  **|**  | ``hput`` //UIdent// ``on`` //PIdent// 
-  |  |  **|**  | ``split`` //PIdent// ``into`` //[SplitChannel]// 
-  |  |  **|**  | ``fork`` //PIdent// ``as`` ``{`` //[ForkPhrase]// ``}`` 
-  |  |  **|**  | //PIdent// ``|=|`` //PIdent// 
-  |  |  **|**  | //PIdent// ``|=|`` ``neg`` //PIdent// 
+  |  |  **|**  | //Close// //PIdent// 
+  |  |  **|**  | //Halt// //PIdent// 
+  |  |  **|**  | //Get// //Pattern// ``on`` //PIdent// 
+  |  |  **|**  | //Put// //Expr// ``on`` //PIdent// 
+  |  |  **|**  | //HCase// //PIdent// ``of`` ``{`` //[HCasePhrase]// ``}`` 
+  |  |  **|**  | //HPut// //UIdent// ``on`` //PIdent// 
+  |  |  **|**  | //Split// //PIdent// ``into`` //[SplitChannel]// 
+  |  |  **|**  | //Fork// //PIdent// ``as`` ``{`` //[ForkPhrase]// ``}`` 
+  |  |  **|**  | //PIdent// //ChId// //PIdent// 
+  |  |  **|**  | //PIdent// //ChId// ``neg`` //PIdent// 
   |  |  **|**  | ``race`` ``{`` //[RacePhrase]// ``}`` 
   |  |  **|**  | ``plug`` ``{`` //[PlugPhrase]// ``}`` 
-  |  |  **|**  | ``case`` //Expr// ``of`` ``{`` //[ProcessCasePhrase]// ``}`` 
+  |  |  **|**  | //Case// //Expr// ``of`` ``{`` //[ProcessCasePhrase]// ``}`` 
   |  |  **|**  | ``switch`` ``{`` //[ProcessSwitchPhrase]// ``}`` 
   | //HCasePhrase// | -> | //UIdent// ``->`` //ProcessCommandsBlock// 
   | //[HCasePhrase]// | -> | **eps**
@@ -324,15 +360,16 @@ All other symbols are terminals.
   | //[ForkPhrase]// | -> | //ForkPhrase// 
   |  |  **|**  | //ForkPhrase// ``;`` //[ForkPhrase]// 
   | //ForkChannel// | -> | //PIdent// 
-  | //[ForkChannel]// | -> | //ForkChannel// 
+  | //[ForkChannel]// | -> | **eps**
+  |  |  **|**  | //ForkChannel// 
   |  |  **|**  | //ForkChannel// ``;`` //[ForkChannel]// 
   | //RacePhrase// | -> | //PIdent// ``->`` //ProcessCommandsBlock// 
   | //[RacePhrase]// | -> | **eps**
   |  |  **|**  | //RacePhrase// 
   |  |  **|**  | //RacePhrase// ``;`` //[RacePhrase]// 
   | //PlugPhrase// | -> | //ProcessCommandsBlock// 
-  | //[PlugPhrase]// | -> | **eps**
-  |  |  **|**  | //PlugPhrase// 
+  |  |  **|**  | ``with`` //[PIdent]// ``->`` //ProcessCommandsBlock// 
+  | //[PlugPhrase]// | -> | //PlugPhrase// 
   |  |  **|**  | //PlugPhrase// ``;`` //[PlugPhrase]// 
   | //ProcessCasePhrase// | -> | //Pattern// ``->`` //ProcessCommandsBlock// 
   | //[ProcessCasePhrase]// | -> | **eps**

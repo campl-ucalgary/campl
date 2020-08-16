@@ -130,35 +130,75 @@ instance Print Colon where
 
 
 instance Print Infixl1op where
-  prt _ (Infixl1op i) = doc (showString ( i))
+  prt _ (Infixl1op (_,i)) = doc (showString ( i))
 
 
 instance Print Infixl2op where
-  prt _ (Infixl2op i) = doc (showString ( i))
+  prt _ (Infixl2op (_,i)) = doc (showString ( i))
 
 
 instance Print Infixl3op where
-  prt _ (Infixl3op i) = doc (showString ( i))
+  prt _ (Infixl3op (_,i)) = doc (showString ( i))
 
 
 instance Print Infixl4op where
-  prt _ (Infixl4op i) = doc (showString ( i))
+  prt _ (Infixl4op (_,i)) = doc (showString ( i))
 
 
 instance Print Infixl5op where
-  prt _ (Infixl5op i) = doc (showString ( i))
+  prt _ (Infixl5op (_,i)) = doc (showString ( i))
 
 
 instance Print Infixl6op where
-  prt _ (Infixl6op i) = doc (showString ( i))
+  prt _ (Infixl6op (_,i)) = doc (showString ( i))
 
 
 instance Print Infixr7op where
-  prt _ (Infixr7op i) = doc (showString ( i))
+  prt _ (Infixr7op (_,i)) = doc (showString ( i))
 
 
 instance Print Infixl8op where
-  prt _ (Infixl8op i) = doc (showString ( i))
+  prt _ (Infixl8op (_,i)) = doc (showString ( i))
+
+
+instance Print Close where
+  prt _ (Close (_,i)) = doc (showString ( i))
+
+
+instance Print Halt where
+  prt _ (Halt (_,i)) = doc (showString ( i))
+
+
+instance Print Get where
+  prt _ (Get (_,i)) = doc (showString ( i))
+
+
+instance Print Put where
+  prt _ (Put (_,i)) = doc (showString ( i))
+
+
+instance Print HCase where
+  prt _ (HCase (_,i)) = doc (showString ( i))
+
+
+instance Print HPut where
+  prt _ (HPut (_,i)) = doc (showString ( i))
+
+
+instance Print Split where
+  prt _ (Split (_,i)) = doc (showString ( i))
+
+
+instance Print Fork where
+  prt _ (Fork (_,i)) = doc (showString ( i))
+
+
+instance Print ChId where
+  prt _ (ChId (_,i)) = doc (showString ( i))
+
+
+instance Print Case where
+  prt _ (Case (_,i)) = doc (showString ( i))
 
 
 
@@ -189,13 +229,14 @@ instance Print MplType where
     TENSOR_TYPE mpltype1 tensor mpltype2 -> prPrec i 1 (concatD [prt 2 mpltype1, prt 0 tensor, prt 2 mpltype2])
     GETPUT_TYPE uident lbracket mpltype1 mpltype2 rbracket -> prPrec i 2 (concatD [prt 0 uident, prt 0 lbracket, prt 0 mpltype1, doc (showString "|"), prt 0 mpltype2, prt 0 rbracket])
     MPL_UIDENT_ARGS_TYPE uident lbracket mpltypes rbracket -> prPrec i 3 (concatD [prt 0 uident, prt 0 lbracket, prt 0 mpltypes, prt 0 rbracket])
+    MPL_UIDENT_SEQ_CONC_ARGS_TYPE uident lbracket mpltypes1 mpltypes2 rbracket -> prPrec i 3 (concatD [prt 0 uident, prt 0 lbracket, prt 0 mpltypes1, doc (showString "|"), prt 0 mpltypes2, prt 0 rbracket])
     MPL_UIDENT_NO_ARGS_TYPE uident -> prPrec i 3 (concatD [prt 0 uident])
     MPL_UNIT_TYPE lbracket rbracket -> prPrec i 3 (concatD [prt 0 lbracket, prt 0 rbracket])
     MPL_BRACKETED_TYPE lbracket mpltype rbracket -> prPrec i 3 (concatD [prt 0 lbracket, prt 0 mpltype, prt 0 rbracket])
     MPL_LIST_TYPE lsquarebracket mpltype rsquarebracket -> prPrec i 3 (concatD [prt 0 lsquarebracket, prt 0 mpltype, prt 0 rsquarebracket])
     MPL_TUPLE_TYPE lbracket mpltype tuplelisttypes rbracket -> prPrec i 3 (concatD [prt 0 lbracket, prt 0 mpltype, doc (showString ","), prt 0 tuplelisttypes, prt 0 rbracket])
-    MPL_SEQ_ARROW_TYPE upident forallvarlists mpltypes mpltype -> prPrec i 3 (concatD [prt 0 upident, doc (showString "::"), doc (showString "forall"), prt 0 forallvarlists, doc (showString "."), prt 0 mpltypes, doc (showString "->"), prt 0 mpltype])
-    MPL_CONC_ARROW_TYPE upident forallvarlists mpltypes1 mpltypes2 mpltypes3 -> prPrec i 3 (concatD [prt 0 upident, doc (showString "::"), doc (showString "forall"), prt 0 forallvarlists, doc (showString "."), prt 0 mpltypes1, doc (showString "|"), prt 0 mpltypes2, doc (showString "=>"), prt 0 mpltypes3])
+    MPL_SEQ_ARROW_TYPE forallvarlists mpltypes mpltype -> prPrec i 3 (concatD [doc (showString "forall"), prt 0 forallvarlists, doc (showString "."), prt 0 mpltypes, doc (showString "->"), prt 0 mpltype])
+    MPL_CONC_ARROW_TYPE forallvarlists mpltypes1 mpltypes2 mpltypes3 -> prPrec i 3 (concatD [doc (showString "forall"), prt 0 forallvarlists, doc (showString "."), prt 0 mpltypes1, doc (showString "|"), prt 0 mpltypes2, doc (showString "=>"), prt 0 mpltypes3])
   prtList _ [] = (concatD [])
   prtList _ [x] = (concatD [prt 0 x])
   prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ","), prt 0 xs])
@@ -250,6 +291,7 @@ instance Print TypeHandleName where
 instance Print Expr where
   prt i e = case e of
     EXPR expr -> prPrec i 0 (concatD [prt 0 expr])
+    TYPED_EXPR expr mpltype -> prPrec i 0 (concatD [prt 0 expr, doc (showString "::"), prt 0 mpltype])
     IF_EXPR expr1 expr2 expr3 -> prPrec i 0 (concatD [doc (showString "if"), prt 0 expr1, doc (showString "then"), prt 0 expr2, doc (showString "else"), prt 0 expr3])
     LET_EXPR letexprphrases expr -> prPrec i 0 (concatD [doc (showString "let"), doc (showString "{"), prt 0 letexprphrases, doc (showString "}"), doc (showString "in"), prt 0 expr])
     INFIXR0_EXPR expr1 colon expr2 -> prPrec i 0 (concatD [prt 1 expr1, prt 0 colon, prt 0 expr2])
@@ -270,7 +312,7 @@ instance Print Expr where
     UNIT_EXPR lbracket rbracket -> prPrec i 10 (concatD [prt 0 lbracket, prt 0 rbracket])
     FOLD_EXPR expr foldexprphrases -> prPrec i 10 (concatD [doc (showString "fold"), prt 0 expr, doc (showString "of"), doc (showString "{"), prt 0 foldexprphrases, doc (showString "}")])
     UNFOLD_EXPR expr unfoldexprphrases -> prPrec i 10 (concatD [doc (showString "unfold"), prt 0 expr, doc (showString "of"), doc (showString "{"), prt 0 unfoldexprphrases, doc (showString "}")])
-    CASE_EXPR expr pattexprphrases -> prPrec i 10 (concatD [doc (showString "case"), prt 0 expr, doc (showString "of"), doc (showString "{"), prt 0 pattexprphrases, doc (showString "}")])
+    CASE_EXPR case_ expr pattexprphrases -> prPrec i 10 (concatD [prt 0 case_, prt 0 expr, doc (showString "of"), doc (showString "{"), prt 0 pattexprphrases, doc (showString "}")])
     SWITCH_EXP switchexprphrases -> prPrec i 10 (concatD [doc (showString "switch"), doc (showString "{"), prt 0 switchexprphrases, doc (showString "}")])
     DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR uident lbracket exprs rbracket -> prPrec i 10 (concatD [prt 0 uident, prt 0 lbracket, prt 0 exprs, prt 0 rbracket])
     DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR uident -> prPrec i 10 (concatD [prt 0 uident])
@@ -284,13 +326,11 @@ instance Print Expr where
 instance Print UnfoldExprPhrase where
   prt i e = case e of
     UNFOLD_EXPR_PHRASE pattern foldexprphrases -> prPrec i 0 (concatD [prt 0 pattern, doc (showString "of"), doc (showString "{"), prt 0 foldexprphrases, doc (showString "}")])
-  prtList _ [] = (concatD [])
   prtList _ [x] = (concatD [prt 0 x])
   prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ";"), prt 0 xs])
 instance Print FoldExprPhrase where
   prt i e = case e of
     FOLD_EXPR_PHRASE uident colon patterns expr -> prPrec i 0 (concatD [prt 0 uident, prt 0 colon, prt 0 patterns, doc (showString "->"), prt 0 expr])
-  prtList _ [] = (concatD [])
   prtList _ [x] = (concatD [prt 0 x])
   prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ";"), prt 0 xs])
 instance Print LetExprPhrase where
@@ -306,6 +346,7 @@ instance Print TupleExprList where
 instance Print RecordExprPhrase where
   prt i e = case e of
     RECORD_EXPR_PHRASE uident expr -> prPrec i 0 (concatD [prt 0 uident, doc (showString ":="), prt 0 expr])
+    RECORD_EXPR_HIGHER_ORDER_PHRASE uident pattexprphrase -> prPrec i 0 (concatD [prt 0 uident, doc (showString ":="), prt 0 pattexprphrase])
   prtList _ [x] = (concatD [prt 0 x])
   prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ","), prt 0 xs])
 instance Print SwitchExprPhrase where
@@ -321,11 +362,12 @@ instance Print PattExprPhrase where
 instance Print Pattern where
   prt i e = case e of
     PATTERN pattern -> prPrec i 0 (concatD [prt 0 pattern])
+    TYPED_PATTERN pattern mpltype -> prPrec i 0 (concatD [prt 0 pattern, doc (showString "::"), prt 0 mpltype])
     LIST_COLON_PATTERN pattern1 colon pattern2 -> prPrec i 0 (concatD [prt 1 pattern1, prt 0 colon, prt 0 pattern2])
     CONSTRUCTOR_PATTERN_ARGS uident lbracket patterns rbracket -> prPrec i 1 (concatD [prt 0 uident, prt 0 lbracket, prt 0 patterns, prt 0 rbracket])
     CONSTRUCTOR_PATTERN_NO_ARGS uident -> prPrec i 1 (concatD [prt 0 uident])
     UNIT_PATTERN lbracket rbracket -> prPrec i 1 (concatD [prt 0 lbracket, prt 0 rbracket])
-    RECORD_PATTERN lbracket destructorpatternphrase destructorpatternphrases rbracket -> prPrec i 1 (concatD [prt 0 lbracket, prt 0 destructorpatternphrase, doc (showString ","), prt 0 destructorpatternphrases, prt 0 rbracket])
+    RECORD_PATTERN lbracket destructorpatternphrases rbracket -> prPrec i 1 (concatD [prt 0 lbracket, prt 0 destructorpatternphrases, prt 0 rbracket])
     LIST_PATTERN lsquarebracket patterns rsquarebracket -> prPrec i 1 (concatD [prt 0 lsquarebracket, prt 0 patterns, prt 0 rsquarebracket])
     TUPLE_PATTERN lbracket pattern tuplelistpatterns rbracket -> prPrec i 1 (concatD [prt 0 lbracket, prt 0 pattern, doc (showString ","), prt 0 tuplelistpatterns, prt 0 rbracket])
     VAR_PATTERN pident -> prPrec i 1 (concatD [prt 0 pident])
@@ -348,12 +390,14 @@ instance Print DestructorPatternPhrase where
   prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ","), prt 0 xs])
 instance Print FunctionDefn where
   prt i e = case e of
+    INTERNAL_TYPED_FUNCTION_DEFN pident mpltype pattexprphrases -> prPrec i 0 (concatD [doc (showString "fun"), prt 0 pident, doc (showString "::"), prt 0 mpltype, doc (showString "="), doc (showString "{"), prt 0 pattexprphrases, doc (showString "}")])
     TYPED_FUNCTION_DEFN pident mpltypes mpltype pattexprphrases -> prPrec i 0 (concatD [doc (showString "fun"), prt 0 pident, doc (showString "::"), prt 0 mpltypes, doc (showString "->"), prt 0 mpltype, doc (showString "="), doc (showString "{"), prt 0 pattexprphrases, doc (showString "}")])
     FUNCTION_DEFN pident pattexprphrases -> prPrec i 0 (concatD [doc (showString "fun"), prt 0 pident, doc (showString "="), doc (showString "{"), prt 0 pattexprphrases, doc (showString "}")])
 
 instance Print ProcessDefn where
   prt i e = case e of
     TYPED_PROCESS_DEFN pident mpltypes1 mpltypes2 mpltypes3 processphrases -> prPrec i 0 (concatD [doc (showString "proc"), prt 0 pident, doc (showString "::"), prt 0 mpltypes1, doc (showString "|"), prt 0 mpltypes2, doc (showString "=>"), prt 0 mpltypes3, doc (showString "="), doc (showString "{"), prt 0 processphrases, doc (showString "}")])
+    INTERNAL_TYPED_PROCESS_DEFN pident mpltype processphrases -> prPrec i 0 (concatD [doc (showString "proc"), prt 0 pident, doc (showString "::"), prt 0 mpltype, doc (showString "="), doc (showString "{"), prt 0 processphrases, doc (showString "}")])
     PROCESS_DEFN pident processphrases -> prPrec i 0 (concatD [doc (showString "proc"), prt 0 pident, doc (showString "="), doc (showString "{"), prt 0 processphrases, doc (showString "}")])
 
 instance Print ProcessPhrase where
@@ -369,19 +413,19 @@ instance Print ProcessCommandsBlock where
 instance Print ProcessCommand where
   prt i e = case e of
     PROCESS_RUN pident lbracket exprs pidents1 pidents2 rbracket -> prPrec i 0 (concatD [prt 0 pident, prt 0 lbracket, prt 0 exprs, doc (showString "|"), prt 0 pidents1, doc (showString "=>"), prt 0 pidents2, prt 0 rbracket])
-    PROCESS_CLOSE pident -> prPrec i 0 (concatD [doc (showString "close"), prt 0 pident])
-    PROCESS_HALT pident -> prPrec i 0 (concatD [doc (showString "halt"), prt 0 pident])
-    PROCESS_GET pattern pident -> prPrec i 0 (concatD [doc (showString "get"), prt 0 pattern, doc (showString "on"), prt 0 pident])
-    PROCESS_PUT expr pident -> prPrec i 0 (concatD [doc (showString "put"), prt 0 expr, doc (showString "on"), prt 0 pident])
-    PROCESS_HCASE pident hcasephrases -> prPrec i 0 (concatD [doc (showString "hcase"), prt 0 pident, doc (showString "of"), doc (showString "{"), prt 0 hcasephrases, doc (showString "}")])
-    PROCESS_HPUT uident pident -> prPrec i 0 (concatD [doc (showString "hput"), prt 0 uident, doc (showString "on"), prt 0 pident])
-    PROCESS_SPLIT pident splitchannels -> prPrec i 0 (concatD [doc (showString "split"), prt 0 pident, doc (showString "into"), prt 0 splitchannels])
-    PROCESS_FORK pident forkphrases -> prPrec i 0 (concatD [doc (showString "fork"), prt 0 pident, doc (showString "as"), doc (showString "{"), prt 0 forkphrases, doc (showString "}")])
-    PROCESS_ID pident1 pident2 -> prPrec i 0 (concatD [prt 0 pident1, doc (showString "|=|"), prt 0 pident2])
-    PROCESS_NEG pident1 pident2 -> prPrec i 0 (concatD [prt 0 pident1, doc (showString "|=|"), doc (showString "neg"), prt 0 pident2])
+    PROCESS_CLOSE close pident -> prPrec i 0 (concatD [prt 0 close, prt 0 pident])
+    PROCESS_HALT halt pident -> prPrec i 0 (concatD [prt 0 halt, prt 0 pident])
+    PROCESS_GET get pattern pident -> prPrec i 0 (concatD [prt 0 get, prt 0 pattern, doc (showString "on"), prt 0 pident])
+    PROCESS_PUT put expr pident -> prPrec i 0 (concatD [prt 0 put, prt 0 expr, doc (showString "on"), prt 0 pident])
+    PROCESS_HCASE hcase pident hcasephrases -> prPrec i 0 (concatD [prt 0 hcase, prt 0 pident, doc (showString "of"), doc (showString "{"), prt 0 hcasephrases, doc (showString "}")])
+    PROCESS_HPUT hput uident pident -> prPrec i 0 (concatD [prt 0 hput, prt 0 uident, doc (showString "on"), prt 0 pident])
+    PROCESS_SPLIT split pident splitchannels -> prPrec i 0 (concatD [prt 0 split, prt 0 pident, doc (showString "into"), prt 0 splitchannels])
+    PROCESS_FORK fork pident forkphrases -> prPrec i 0 (concatD [prt 0 fork, prt 0 pident, doc (showString "as"), doc (showString "{"), prt 0 forkphrases, doc (showString "}")])
+    PROCESS_ID pident1 chid pident2 -> prPrec i 0 (concatD [prt 0 pident1, prt 0 chid, prt 0 pident2])
+    PROCESS_NEG pident1 chid pident2 -> prPrec i 0 (concatD [prt 0 pident1, prt 0 chid, doc (showString "neg"), prt 0 pident2])
     PROCESS_RACE racephrases -> prPrec i 0 (concatD [doc (showString "race"), doc (showString "{"), prt 0 racephrases, doc (showString "}")])
     PROCESS_PLUG plugphrases -> prPrec i 0 (concatD [doc (showString "plug"), doc (showString "{"), prt 0 plugphrases, doc (showString "}")])
-    PROCESS_CASE expr processcasephrases -> prPrec i 0 (concatD [doc (showString "case"), prt 0 expr, doc (showString "of"), doc (showString "{"), prt 0 processcasephrases, doc (showString "}")])
+    PROCESS_CASE case_ expr processcasephrases -> prPrec i 0 (concatD [prt 0 case_, prt 0 expr, doc (showString "of"), doc (showString "{"), prt 0 processcasephrases, doc (showString "}")])
     PROCESS_SWITCH processswitchphrases -> prPrec i 0 (concatD [doc (showString "switch"), doc (showString "{"), prt 0 processswitchphrases, doc (showString "}")])
   prtList _ [] = (concatD [])
   prtList _ [x] = (concatD [prt 0 x])
@@ -406,6 +450,7 @@ instance Print ForkPhrase where
 instance Print ForkChannel where
   prt i e = case e of
     FORK_CHANNEL pident -> prPrec i 0 (concatD [prt 0 pident])
+  prtList _ [] = (concatD [])
   prtList _ [x] = (concatD [prt 0 x])
   prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ";"), prt 0 xs])
 instance Print RacePhrase where
@@ -417,7 +462,7 @@ instance Print RacePhrase where
 instance Print PlugPhrase where
   prt i e = case e of
     PLUG_PHRASE processcommandsblock -> prPrec i 0 (concatD [prt 0 processcommandsblock])
-  prtList _ [] = (concatD [])
+    PLUG_PHRASE_AS pidents processcommandsblock -> prPrec i 0 (concatD [doc (showString "with"), prt 0 pidents, doc (showString "->"), prt 0 processcommandsblock])
   prtList _ [x] = (concatD [prt 0 x])
   prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ";"), prt 0 xs])
 instance Print ProcessCasePhrase where

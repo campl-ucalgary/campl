@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 61491a44e320d524e9a656684ca77640a3f97e8352db49d8876a5e51122e1c7b
+-- hash: a830b5066c718240047401b3544cd6db636b71181a6c1d9b882ed6b07609e4af
 
 name:           MPL
 version:        0.1.0.0
@@ -38,42 +38,38 @@ library
       Language.ParMPL
       Language.PrintMPL
       Language.SkelMPL
-      MPLAST.MPLASTCore
-      MPLAST.MPLASTTranslate
-      MPLAST.MPLASTTranslateErrors
-      MPLAST.MPLASTTranslatePatterns
-      MPLAST.MPLASTTranslateType
-      MPLAST.MPLBuiltIn
-      MPLAST.MPLExprAST
-      MPLAST.MPLPatternAST
-      MPLAST.MPLPrinter
-      MPLAST.MPLProcessCommandsAST
-      MPLAST.MPLProg
-      MPLAST.MPLProgGraph
-      MPLAST.MPLProgI
-      MPLAST.MPLProgTraversals
-      MPLAST.MPLTypeAST
-      MPLCompile
+      MplAST.MplCmd
+      MplAST.MplCmdContext
+      MplAST.MplCore
+      MplAST.MplExpr
+      MplAST.MplExt
+      MplAST.MplIdent
+      MplAST.MplParsed
+      MplAST.MplPattern
+      MplAST.MplPrinter
+      MplAST.MplProg
+      MplAST.MplProgGraph
+      MplAST.MplProgUtil
+      MplAST.MplRenamed
+      MplAST.MplType
+      MplCompile
       MPLMain
-      MPLPasses.GraphGenCore
-      MPLPasses.InferExprType
-      MPLPasses.MPLRunPasses
-      MPLPasses.SymbolTable
-      MPLPasses.TieDefns
-      MPLPasses.TieDefnsErrors
-      MPLPasses.TieDefnsTypes
-      MPLPasses.TieDefnsUtils
-      MPLPasses.TiePattern
-      MPLPasses.TieTypeClause
-      MPLPasses.TypeClauseSanityErrors
-      MPLPasses.Unification
-      MPLPasses.UnificationErrors
-      MPLUtil.Data.Either
-      MPLUtil.Data.Either.AccumEither
-      MPLUtil.Data.List.NonEmpty
-      MPLUtil.Data.Tuple.Optics
-      MPLUtil.Optics.TH
-      MPLUtil.UniqueSupply
+      MplPasses.Parser.BnfcParse
+      MplPasses.Parser.Parse
+      MplPasses.Parser.ParseErrors
+      MplPasses.Parser.ParseMplPattern
+      MplPasses.Parser.ParseMplType
+      MplPasses.Parser.ParseUtils
+      MplPasses.Renamer.Rename
+      MplPasses.Renamer.RenameErrors
+      MplPasses.Renamer.RenameObj
+      MplPasses.Renamer.RenamePatt
+      MplPasses.Renamer.RenameSym
+      MplPasses.Renamer.RenameType
+      MplPasses.Renamer.RenameUtils
+      MplUtil.Data.Stream
+      MplUtil.Data.Tuple.Optics
+      MplUtil.UniqueSupply
   other-modules:
       Paths_MPL
   hs-source-dirs:
@@ -117,7 +113,14 @@ test-suite MPL-test
       MPLAST.MPLASTTranslateSpec
       MPLPasses.TieTypeClauseSpec
       MPLPasses.UnificationSpec
-      TypeInferenceSpec
+      TypeInference.AnnotatedEx1Spec
+      TypeInference.ForallMatchFailuresSpec
+      TypeInference.GraphAssertions
+      TypeInference.HigherKindMatchFailureSpec
+      TypeInference.MatchFailuresSpec
+      TypeInference.OutOfScopeErrorSpec
+      TypeInference.ProcessErrorsSpec
+      TypeInference.UnannotatedNatNatToNatExSpec
       Paths_MPL
   hs-source-dirs:
       test

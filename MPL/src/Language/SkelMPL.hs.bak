@@ -69,6 +69,36 @@ transInfixr7op x = case x of
 transInfixl8op :: Infixl8op -> Result
 transInfixl8op x = case x of
   Infixl8op string -> failure x
+transClose :: Close -> Result
+transClose x = case x of
+  Close string -> failure x
+transHalt :: Halt -> Result
+transHalt x = case x of
+  Halt string -> failure x
+transGet :: Get -> Result
+transGet x = case x of
+  Get string -> failure x
+transPut :: Put -> Result
+transPut x = case x of
+  Put string -> failure x
+transHCase :: HCase -> Result
+transHCase x = case x of
+  HCase string -> failure x
+transHPut :: HPut -> Result
+transHPut x = case x of
+  HPut string -> failure x
+transSplit :: Split -> Result
+transSplit x = case x of
+  Split string -> failure x
+transFork :: Fork -> Result
+transFork x = case x of
+  Fork string -> failure x
+transChId :: ChId -> Result
+transChId x = case x of
+  ChId string -> failure x
+transCase :: Case -> Result
+transCase x = case x of
+  Case string -> failure x
 transMplProg :: MplProg -> Result
 transMplProg x = case x of
   MPL_PROG mplstmts -> failure x
@@ -91,13 +121,14 @@ transMplType x = case x of
   TENSOR_TYPE mpltype1 tensor mpltype2 -> failure x
   GETPUT_TYPE uident lbracket mpltype1 mpltype2 rbracket -> failure x
   MPL_UIDENT_ARGS_TYPE uident lbracket mpltypes rbracket -> failure x
+  MPL_UIDENT_SEQ_CONC_ARGS_TYPE uident lbracket mpltypes1 mpltypes2 rbracket -> failure x
   MPL_UIDENT_NO_ARGS_TYPE uident -> failure x
   MPL_UNIT_TYPE lbracket rbracket -> failure x
   MPL_BRACKETED_TYPE lbracket mpltype rbracket -> failure x
   MPL_LIST_TYPE lsquarebracket mpltype rsquarebracket -> failure x
   MPL_TUPLE_TYPE lbracket mpltype tuplelisttypes rbracket -> failure x
-  MPL_SEQ_ARROW_TYPE upident forallvarlists mpltypes mpltype -> failure x
-  MPL_CONC_ARROW_TYPE upident forallvarlists mpltypes1 mpltypes2 mpltypes3 -> failure x
+  MPL_SEQ_ARROW_TYPE forallvarlists mpltypes mpltype -> failure x
+  MPL_CONC_ARROW_TYPE forallvarlists mpltypes1 mpltypes2 mpltypes3 -> failure x
 transTupleListType :: TupleListType -> Result
 transTupleListType x = case x of
   TUPLE_LIST_TYPE mpltype -> failure x
@@ -130,6 +161,7 @@ transTypeHandleName x = case x of
 transExpr :: Expr -> Result
 transExpr x = case x of
   EXPR expr -> failure x
+  TYPED_EXPR expr mpltype -> failure x
   IF_EXPR expr1 expr2 expr3 -> failure x
   LET_EXPR letexprphrases expr -> failure x
   INFIXR0_EXPR expr1 colon expr2 -> failure x
@@ -150,7 +182,7 @@ transExpr x = case x of
   UNIT_EXPR lbracket rbracket -> failure x
   FOLD_EXPR expr foldexprphrases -> failure x
   UNFOLD_EXPR expr unfoldexprphrases -> failure x
-  CASE_EXPR expr pattexprphrases -> failure x
+  CASE_EXPR case_ expr pattexprphrases -> failure x
   SWITCH_EXP switchexprphrases -> failure x
   DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR uident lbracket exprs rbracket -> failure x
   DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR uident -> failure x
@@ -173,6 +205,7 @@ transTupleExprList x = case x of
 transRecordExprPhrase :: RecordExprPhrase -> Result
 transRecordExprPhrase x = case x of
   RECORD_EXPR_PHRASE uident expr -> failure x
+  RECORD_EXPR_HIGHER_ORDER_PHRASE uident pattexprphrase -> failure x
 transSwitchExprPhrase :: SwitchExprPhrase -> Result
 transSwitchExprPhrase x = case x of
   SWITCH_EXPR_PHRASE expr1 expr2 -> failure x
@@ -182,11 +215,12 @@ transPattExprPhrase x = case x of
 transPattern :: Pattern -> Result
 transPattern x = case x of
   PATTERN pattern -> failure x
+  TYPED_PATTERN pattern mpltype -> failure x
   LIST_COLON_PATTERN pattern1 colon pattern2 -> failure x
   CONSTRUCTOR_PATTERN_ARGS uident lbracket patterns rbracket -> failure x
   CONSTRUCTOR_PATTERN_NO_ARGS uident -> failure x
   UNIT_PATTERN lbracket rbracket -> failure x
-  RECORD_PATTERN lbracket destructorpatternphrase destructorpatternphrases rbracket -> failure x
+  RECORD_PATTERN lbracket destructorpatternphrases rbracket -> failure x
   LIST_PATTERN lsquarebracket patterns rsquarebracket -> failure x
   TUPLE_PATTERN lbracket pattern tuplelistpatterns rbracket -> failure x
   VAR_PATTERN pident -> failure x
@@ -202,11 +236,13 @@ transDestructorPatternPhrase x = case x of
   DESTRUCTOR_PATTERN_PHRASE uident pattern -> failure x
 transFunctionDefn :: FunctionDefn -> Result
 transFunctionDefn x = case x of
+  INTERNAL_TYPED_FUNCTION_DEFN pident mpltype pattexprphrases -> failure x
   TYPED_FUNCTION_DEFN pident mpltypes mpltype pattexprphrases -> failure x
   FUNCTION_DEFN pident pattexprphrases -> failure x
 transProcessDefn :: ProcessDefn -> Result
 transProcessDefn x = case x of
   TYPED_PROCESS_DEFN pident mpltypes1 mpltypes2 mpltypes3 processphrases -> failure x
+  INTERNAL_TYPED_PROCESS_DEFN pident mpltype processphrases -> failure x
   PROCESS_DEFN pident processphrases -> failure x
 transProcessPhrase :: ProcessPhrase -> Result
 transProcessPhrase x = case x of
@@ -218,19 +254,19 @@ transProcessCommandsBlock x = case x of
 transProcessCommand :: ProcessCommand -> Result
 transProcessCommand x = case x of
   PROCESS_RUN pident lbracket exprs pidents1 pidents2 rbracket -> failure x
-  PROCESS_CLOSE pident -> failure x
-  PROCESS_HALT pident -> failure x
-  PROCESS_GET pattern pident -> failure x
-  PROCESS_PUT expr pident -> failure x
-  PROCESS_HCASE pident hcasephrases -> failure x
-  PROCESS_HPUT uident pident -> failure x
-  PROCESS_SPLIT pident splitchannels -> failure x
-  PROCESS_FORK pident forkphrases -> failure x
-  PROCESS_ID pident1 pident2 -> failure x
-  PROCESS_NEG pident1 pident2 -> failure x
+  PROCESS_CLOSE close pident -> failure x
+  PROCESS_HALT halt pident -> failure x
+  PROCESS_GET get pattern pident -> failure x
+  PROCESS_PUT put expr pident -> failure x
+  PROCESS_HCASE hcase pident hcasephrases -> failure x
+  PROCESS_HPUT hput uident pident -> failure x
+  PROCESS_SPLIT split pident splitchannels -> failure x
+  PROCESS_FORK fork pident forkphrases -> failure x
+  PROCESS_ID pident1 chid pident2 -> failure x
+  PROCESS_NEG pident1 chid pident2 -> failure x
   PROCESS_RACE racephrases -> failure x
   PROCESS_PLUG plugphrases -> failure x
-  PROCESS_CASE expr processcasephrases -> failure x
+  PROCESS_CASE case_ expr processcasephrases -> failure x
   PROCESS_SWITCH processswitchphrases -> failure x
 transHCasePhrase :: HCasePhrase -> Result
 transHCasePhrase x = case x of
@@ -251,6 +287,7 @@ transRacePhrase x = case x of
 transPlugPhrase :: PlugPhrase -> Result
 transPlugPhrase x = case x of
   PLUG_PHRASE processcommandsblock -> failure x
+  PLUG_PHRASE_AS pidents processcommandsblock -> failure x
 transProcessCasePhrase :: ProcessCasePhrase -> Result
 transProcessCasePhrase x = case x of
   PROCESS_CASE_PHRASE pattern processcommandsblock -> failure x

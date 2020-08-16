@@ -21,7 +21,7 @@ $i = [$l $d _ ']          -- identifier character
 $u = [\0-\255]          -- universal: any character
 
 @rsyms =    -- symbols and non-identifier-like reserved words
-   \, | \{ | \} | \; | \| | \: \: | \. | \- \> | \= \> | \= | \: \= | \| \= \|
+   \, | \{ | \} | \; | \| | \. | \- \> | \= \> | \= | \: \: | \: \=
 
 :-
 "--" [.]* ; -- Toss single line comments
@@ -49,6 +49,16 @@ $l ($l | $d | \_ | \')* { tok (\p s -> PT p (eitherResIdent (T_PIdent . share) s
 \* | \/ | \% { tok (\p s -> PT p (eitherResIdent (T_Infixl6op . share) s)) }
 \^ { tok (\p s -> PT p (eitherResIdent (T_Infixr7op . share) s)) }
 \! \! { tok (\p s -> PT p (eitherResIdent (T_Infixl8op . share) s)) }
+c l o s e { tok (\p s -> PT p (eitherResIdent (T_Close . share) s)) }
+h a l t { tok (\p s -> PT p (eitherResIdent (T_Halt . share) s)) }
+g e t { tok (\p s -> PT p (eitherResIdent (T_Get . share) s)) }
+p u t { tok (\p s -> PT p (eitherResIdent (T_Put . share) s)) }
+h c a s e { tok (\p s -> PT p (eitherResIdent (T_HCase . share) s)) }
+h p u t { tok (\p s -> PT p (eitherResIdent (T_HPut . share) s)) }
+s p l i t { tok (\p s -> PT p (eitherResIdent (T_Split . share) s)) }
+f o r k { tok (\p s -> PT p (eitherResIdent (T_Fork . share) s)) }
+\| \= \| { tok (\p s -> PT p (eitherResIdent (T_ChId . share) s)) }
+c a s e { tok (\p s -> PT p (eitherResIdent (T_Case . share) s)) }
 
 $l $i*   { tok (\p s -> PT p (eitherResIdent (TV . share) s)) }
 \" ([$u # [\" \\ \n]] | (\\ (\" | \\ | \' | n | t)))* \"{ tok (\p s -> PT p (TL $ share $ unescapeInitTail s)) }
@@ -91,6 +101,16 @@ data Tok =
  | T_Infixl6op !String
  | T_Infixr7op !String
  | T_Infixl8op !String
+ | T_Close !String
+ | T_Halt !String
+ | T_Get !String
+ | T_Put !String
+ | T_HCase !String
+ | T_HPut !String
+ | T_Split !String
+ | T_Fork !String
+ | T_ChId !String
+ | T_Case !String
 
  deriving (Eq,Show,Ord)
 
@@ -145,6 +165,16 @@ prToken t = case t of
   PT _ (T_Infixl6op s) -> s
   PT _ (T_Infixr7op s) -> s
   PT _ (T_Infixl8op s) -> s
+  PT _ (T_Close s) -> s
+  PT _ (T_Halt s) -> s
+  PT _ (T_Get s) -> s
+  PT _ (T_Put s) -> s
+  PT _ (T_HCase s) -> s
+  PT _ (T_HPut s) -> s
+  PT _ (T_Split s) -> s
+  PT _ (T_Fork s) -> s
+  PT _ (T_ChId s) -> s
+  PT _ (T_Case s) -> s
 
 
 data BTree = N | B String Tok BTree BTree deriving (Show)
@@ -158,7 +188,7 @@ eitherResIdent tv s = treeFind resWords
                               | s == a = t
 
 resWords :: BTree
-resWords = b "hcase" 25 (b "codata" 13 (b "=" 7 (b "::" 4 (b "->" 2 (b "," 1 N N) (b "." 3 N N)) (b ";" 6 (b ":=" 5 N N) N)) (b "as" 10 (b "and" 9 (b "=>" 8 N N) N) (b "close" 12 (b "case" 11 N N) N))) (b "fold" 19 (b "defn" 16 (b "data" 15 (b "coprotocol" 14 N N) N) (b "else" 18 (b "do" 17 N N) N)) (b "fun" 22 (b "fork" 21 (b "forall" 20 N N) N) (b "halt" 24 (b "get" 23 N N) N)))) (b "put" 38 (b "of" 32 (b "into" 29 (b "if" 27 (b "hput" 26 N N) (b "in" 28 N N)) (b "neg" 31 (b "let" 30 N N) N)) (b "potato" 35 (b "plug" 34 (b "on" 33 N N) N) (b "protocol" 37 (b "proc" 36 N N) N))) (b "where" 44 (b "switch" 41 (b "split" 40 (b "race" 39 N N) N) (b "unfold" 43 (b "then" 42 N N) N)) (b "|" 47 (b "{" 46 (b "with" 45 N N) N) (b "}" 49 (b "|=|" 48 N N) N))))
+resWords = b "if" 21 (b "case" 11 (b ";" 6 (b "." 3 (b "->" 2 (b "," 1 N N) N) (b ":=" 5 (b "::" 4 N N) N)) (b "and" 9 (b "=>" 8 (b "=" 7 N N) N) (b "as" 10 N N))) (b "do" 16 (b "data" 14 (b "coprotocol" 13 (b "codata" 12 N N) N) (b "defn" 15 N N)) (b "forall" 19 (b "fold" 18 (b "else" 17 N N) N) (b "fun" 20 N N)))) (b "protocol" 31 (b "of" 26 (b "let" 24 (b "into" 23 (b "in" 22 N N) N) (b "neg" 25 N N)) (b "potato" 29 (b "plug" 28 (b "on" 27 N N) N) (b "proc" 30 N N))) (b "where" 36 (b "then" 34 (b "switch" 33 (b "race" 32 N N) N) (b "unfold" 35 N N)) (b "|" 39 (b "{" 38 (b "with" 37 N N) N) (b "}" 40 N N))))
    where b s n = let bs = id s
                   in B bs (TS bs n)
 
