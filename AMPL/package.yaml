@@ -37,6 +37,7 @@ dependencies:
     - time 
 
     - mpl-lib 
+    - bytestring
 
 library:
     source-dirs: 

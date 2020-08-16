@@ -99,6 +99,7 @@ data BytecodeEntry =
     | BServiceType ServiceType
     | BPolarity Polarity
     | BU Word64
+    | BIdx Word64
     | BCellU Word64
     | BCellS Int64
     | BFunID FunID
@@ -108,8 +109,14 @@ data BytecodeEntry =
 
 bytecodeEntryToByteString :: BytecodeEntry -> Builder
 bytecodeEntryToByteString (BI cmd) = word64LE $ fromIntegral $ fromEnum cmd
-bytecodeEntryToByteString (BChID (LocalChanID id)) = int64LE $ fromIntegral id
-bytecodeEntryToByteString (BGlobalChID (GlobalChanID id)) = int64LE $ fromIntegral id
+bytecodeEntryToByteString (BChID (LocalChanID id)) = 
+    if (id + 1000) < 0  then error "LocalChanID must be >= 0"
+                        else int64LE $ fromIntegral $ (id + 1000) -- Update channel ids to start at 1
+    
+bytecodeEntryToByteString (BGlobalChID (GlobalChanID id)) = 
+    if (id + 1000) < 0  then error "GlobalChanID must be >= 0"
+                        else int64LE $ fromIntegral $ (id + 1000) -- Update channel ids to start at 1
+
 bytecodeEntryToByteString (BServiceDataType IntService) = word64LE $ fromIntegral 0
 bytecodeEntryToByteString (BServiceDataType CharService) = word64LE $ fromIntegral 1
 bytecodeEntryToByteString (BServiceType StdService) = word64LE $ fromIntegral 0
@@ -118,8 +125,9 @@ bytecodeEntryToByteString (BServiceType (TerminalNetworkedService _ _)) = word64
 bytecodeEntryToByteString (BPolarity Output) = word64LE $ fromIntegral 0
 bytecodeEntryToByteString (BPolarity Input) = word64LE $ fromIntegral 1
 bytecodeEntryToByteString (BU v) =  word64LE v
+bytecodeEntryToByteString (BIdx v) =  word64LE $ v + (fromIntegral 1)
 bytecodeEntryToByteString (BCellU cell) = word64LE $ (cell .&. (0x8 `shiftR` 60))
-bytecodeEntryToByteString (BCellS cell) = int64LE (cell .&. (0x8 `shiftR` 60)) -- TODO fix this to properly compute cell values
+bytecodeEntryToByteString (BCellS cell) = int64LE (cell .&. (0x8 `shiftR` 60))
 bytecodeEntryToByteString (BFunID (FunID _)) = error "FunID cannot be converted to bytestrings (translate to jumps)"
 bytecodeEntryToByteString (BJ loc) = int64LE $ fromIntegral loc
 bytecodeEntryToByteString (BHeader word) = word64BE word
@@ -127,8 +135,6 @@ bytecodeEntryToByteString (BHeader word) = word64BE word
 translateBytecodeToByteString :: [BytecodeEntry] -> Builder
 translateBytecodeToByteString (head:rest) = mappend (bytecodeEntryToByteString head) (translateBytecodeToByteString rest)
 translateBytecodeToByteString [] = mempty
-
-
 
 -- emitted code, current position, function locations
 type BytecodeState = ([(Int, BytecodeEntry)], Int, [(Int, FunID)])
@@ -208,14 +214,14 @@ translateSequential (IStore) = emit $ BI B_AM_STOR
 
 translateSequential (IAccess location) = do 
     ret <- emit $ BI B_AM_LOAD
-    emit $ BU $ fromIntegral location
+    emit $ BIdx $ (fromIntegral location) + 1 -- load starts at 1
     return ret
 
 translateSequential (IRet) = emit $ BI B_AM_RET
 
 translateSequential (ICall funid num) = do
     ret <- emit $ BI B_AM_STOR_N
-    emit $ BU $ fromIntegral num
+    emit $ BIdx $ fromIntegral num
     emit $ BI B_AM_CALL
     emit $ BFunID funid
     return ret
@@ -252,7 +258,7 @@ translateSequential (ILeq) = emit $ BI B_AM_LE
 
 translateSequential (ICons (ConsIx consIdx) nargs) = do
     ret <- emit $ BI B_AM_CONS
-    emit $ BU $ fromIntegral consIdx
+    emit $ BIdx $ fromIntegral consIdx
     emit $ BU $ fromIntegral nargs
     return ret
 
@@ -286,10 +292,9 @@ translateSequential (IRec entryInstructions) = let
 
 
 translateSequential (IDest (DesIx idx) nargs) = do
-        ret <- emit $ BI B_AM_STOR_N
+        ret <- emit $ BI B_AM_DEST
+        emit $ BIdx $ fromIntegral idx
         emit $ BU $ fromIntegral nargs
-        emit $ BI B_AM_DEST
-        emit $ BU $ fromIntegral idx
         return ret
 
 translateSequential (IErrorMsg _) = emit $ BI B_AM_ERROR
@@ -415,7 +420,7 @@ translateConcurrent (IRun localTrans fun nargs) = let
 translateConcurrent (IHPut chID (HCaseIx caseIdx)) = do
     ret <- emit $ BI B_AM_HPUT
     emit $ BChID chID
-    emit $ BU $ fromIntegral caseIdx
+    emit $ BIdx $ fromIntegral caseIdx
     return ret
 
 translateConcurrent (IHCase chID caseArr) = let
@@ -467,16 +472,19 @@ translateFun instr = do
 
 translateServiceTable :: ([GlobalChanID], [(GlobalChanID, (ServiceDataType, ServiceType))]) -> State BytecodeState (Int, Int)
 translateServiceTable (internalServices, externalServices) = let
+        translateInternal :: [GlobalChanID] -> State BytecodeState ()
         translateInternal (head:rest) = do
             emit $ BGlobalChID head
             translateInternal rest
             return ()
         translateInternal [] = return ()
 
+        translateExternal :: [(GlobalChanID, (ServiceDataType, ServiceType))] -> State BytecodeState ()
         translateExternal ((id, (serviceDataType, serviceType)):rest) = do
             emit $ BGlobalChID id
             emit $ BServiceDataType serviceDataType
             emit $ BServiceType serviceType
+            translateExternal rest
             return ()
         translateExternal [] = return ()
     in do
@@ -492,6 +500,7 @@ translateMainTranslation list = let
         emit $ BPolarity pol
         emit $ BChID localID
         emit $ BGlobalChID globalID
+        translateMainTranslation' tail
         return ()
     translateMainTranslation' [] = return ()
     in do
@@ -545,15 +554,16 @@ translateMachineState state = let
                     next <- patchEntry rest
                     return $ head:next
 
-                -- make channel ids start at 0
-                patchEntry ((BGlobalChID (GlobalChanID id)):rest) = do 
-                    let head = BGlobalChID $ GlobalChanID $ id + 1
+                patchEntry ((BGlobalChID (GlobalChanID id)):rest) = do
                     next <- patchEntry rest
-                    return $ head:next
+                    -- TODO make this not garbage
+                    if (id + 1000) >= 0  then return ((BGlobalChID (GlobalChanID id)):next)
+                                       else error "global channel id not >= 0"
+
                 patchEntry ((BChID (LocalChanID id)):rest) = do
-                    let head = BChID $ LocalChanID $ id + 1
                     next <- patchEntry rest
-                    return $ head:next
+                    if (id + 1000) >= 0  then return ((BChID (LocalChanID id)):next)
+                                       else error "local channel id not >= 0"
 
                 -- ignore other entries
                 patchEntry (head:rest) = do 
@@ -583,8 +593,27 @@ printInitMachineStateToBytecodeFile filename state = let
         B.hPut handle $ BL.toStrict $ toLazyByteString $ translateToByteString state
 
 
-
-
--- testState = InitAMPLMachState {initAmplMachStateServices = ([],[(GlobalChanID 0,(IntService,StdService))]), initAmplMachMainFun = ([SequentialInstr (IConst (VInt 0)),SequentialInstr IStore,SequentialInstr (IConst (VInt 0)),SequentialInstr IStore,SequentialInstr (IConst (VInt 100)),SequentialInstr IStore,SequentialInstr (IRec (array (DesIx 0,DesIx 0) [(DesIx 0,[SequentialInstr (IConst (VInt 1)),SequentialInstr (IAccess 2),SequentialInstr IAddInt,SequentialInstr IRet])])),SequentialInstr IStore,SequentialInstr (IAccess 1),SequentialInstr (IAccess 2),SequentialInstr (IAccess 3),SequentialInstr (IAccess 0),SequentialInstr (IDest (DesIx 0) 3),SequentialInstr IStore,ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 1)),SequentialInstr (IAccess 0),ConcurrentInstr (IPut (LocalChanID 0)),ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2))],[(Input,(LocalChanID 0,GlobalChanID 0))]), initAmplMachFuns = []}
-
-
+externalCharMach = InitAMPLMachState {
+    initAmplMachStateServices = (
+        [],
+        [      
+            (GlobalChanID 0,(CharService,StdService)),
+            (GlobalChanID (-1),(CharService,TerminalNetworkedService "xterm -e 'amplc -hn 127.0.0.1 -p 5000 -k 15973771760003421084  ; read'" (Key "15973771760003421084")))
+        ]), 
+    initAmplMachMainFun = (
+        [
+            ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 0)),
+            ConcurrentInstr (IGet (LocalChanID 0)),
+            SequentialInstr IStore,
+            ConcurrentInstr (IHPut (LocalChanID 1) (HCaseIx 1)),
+            SequentialInstr (IAccess 0),
+            ConcurrentInstr (IPut (LocalChanID 1)),
+            ConcurrentInstr (IHPut (LocalChanID 1) (HCaseIx 2)),
+            ConcurrentInstr (IHPut (LocalChanID 0) (HCaseIx 2)),
+            ConcurrentInstr (IClose (LocalChanID 0))
+        ],
+        [
+            (Input,(LocalChanID 0,GlobalChanID 0)),
+            (Output,(LocalChanID 1,GlobalChanID (-1)))
+        ]), 
+    initAmplMachFuns = [] }
