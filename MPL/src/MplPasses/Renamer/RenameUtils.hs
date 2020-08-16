@@ -13,6 +13,7 @@ import MplAST.MplParsed
 import MplAST.MplRenamed
 
 import MplUtil.UniqueSupply
+import MplPasses.Env
 
 import Control.Monad.State
 import Control.Monad.Writer
@@ -21,16 +22,7 @@ import Control.Monad.Reader
 import MplPasses.Renamer.RenameSym
 import MplPasses.Renamer.RenameErrors
 
-data RenameEnv = RenameEnv {
-    _renameEnvUniqueSupply :: UniqueSupply
-    , _symTab :: SymTab
-}
-
-$(makeLenses ''RenameEnv)
-$(makePrisms ''RenameEnv)
-
-instance HasUniqueSupply RenameEnv where
-    uniqueSupply = renameEnvUniqueSupply 
+type RenameEnv = Env SymTab SymTab
 
 tagIdentP :: 
     ( HasUniqueSupply s
@@ -44,7 +36,7 @@ tagIdentP identp = do
 
 type Rename parsed renamed = 
     forall e m.
-    ( AsRenameError e
+    ( AsRenameErrors e
     , MonadState RenameEnv m
     , MonadWriter [e] m
     , MonadFix m ) =>
@@ -52,11 +44,11 @@ type Rename parsed renamed =
 
 type RenameConst parsed renamed = 
     forall e m.
-    ( AsRenameError e
+    ( AsRenameErrors e
     , MonadReader RenameEnv m
     , MonadWriter [e] m ) =>
     parsed -> m renamed
 
 newtype RenameM a = RenameM {
-        unRenameM :: StateT RenameEnv (Writer [RenameError]) a
+        unRenameM :: StateT RenameEnv (Writer [RenameErrors]) a
     }

@@ -20,6 +20,7 @@ import MplPasses.Renamer.RenameUtils
 import MplPasses.Renamer.RenameSym
 import MplPasses.Renamer.RenameErrors
 import MplPasses.Renamer.RenameType
+import MplPasses.Env
 
 import Control.Monad.State
 import Control.Monad.Writer
@@ -32,92 +33,140 @@ import Data.Maybe
 import Data.List
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
+import Data.Function
 
 import Data.Foldable
 
 renameTypeClauseSpine :: 
-   RenameTypePhrase t => 
+    ( TypeClauseSpineSameVarError t 
+    , TypeClauseVarsSymTab t 
+    , OverlappingDeclarations (MplTypeClauseSpine MplParsed t) 
+    , RenameTypeClause t
+    , RenameTypePhrase t 
+    ) => 
     Rename (MplTypeClauseSpine MplParsed t)
         (MplTypeClauseSpine MplRenamed t)
-renameTypeClauseSpine (UMplTypeClauseSpine spine) = do
+renameTypeClauseSpine spine = do
     -- first, check if all the args are the same 
     -- (mutually recursive types must have the same type variables)
-    tell $ bool [] 
-        [_TypeClauseGraphArgsMustContainTheSameTypeVariables # allargseqclasses] 
-        $ length allargs >= 2
-    
+    tell $ typeClauseSpineSameVarError spine
     -- moreover, we need to test for overlapping declarations of the 
     -- arguments and the state vars
-    tell $ overlappingDeclarations 
-        $ fold allargs <> NE.toList allstatevars
+    tell $ overlappingDeclarations spine
 
-    -- tag the args and state vars
-    args' <- traverse tagIdentP args 
-    statevars' <- traverse tagIdentP allstatevars
+    -- get the type variable symbol table declarations // add to the symbol table.
+    -- Note that all type clauses SHOULD share the same type variables! So we only include
+    -- the variables in common -- hence the nubBy call... 
+    stargs' <- nubBy ((==) `on` fst) . concat 
+        <$> traverse typeClauseVarsSymTab (spine ^. typeClauseSpineClauses)
 
-    -- add the arguments to the symbol table (all the args 
-    -- should be the the same)
-    symTab %= ((collectSymTab args' &
-        mapped % _2 % symEntryInfo .~ _Just % _SymTypeVar # ())<>)
+    envLcl %= (stargs'<>)
 
-    -- add the state vars to the symbol table 
-    symTab %= ((collectSymTab statevars' & 
-        mapped % _2 % symEntryInfo .~ _Just % _SymTypeVar # ())<>)
-
-    -- then rename the type clause
-    spine' <- traverse renameTypeClause spine
+    -- rename the type clauses
+    spine' <- traverse renameTypeClause (spine ^. typeClauseSpineClauses)
     return $ UMplTypeClauseSpine spine'
-  where
-    allargs = fmap (view typeClauseArgs) spine 
-    allargseqclasses = NE.group allargs
-    args = nub $ concat $ foldMap NE.toList $ allargseqclasses
 
-    allstatevars = fmap (view typeClauseStateVar) spine 
+class TypeClauseVarsSymTab t where
+    typeClauseVarsSymTab :: 
+        ( HasUniqueSupply s 
+        , MonadState s m 
+        , RenameTypePhrase t ) =>
+        MplTypeClause MplParsed t -> 
+        m SymTab
 
-renameTypeClause ::
-   RenameTypePhrase t => 
-   Rename (MplTypeClause MplParsed t) (MplTypeClause MplRenamed t)
-renameTypeClause clause = do
-    symtab <- guse symTab
-    -- tag the clause
-    name' <- clause ^. typeClauseName % to tagIdentP
+instance TypeClauseVarsSymTab (SeqObjTag t) where
+    typeClauseVarsSymTab clause = do
+        stargs' <- traverse tagIdentP $ st:args
+        return $ collectSymTab stargs' & mapped % _2 % symEntryInfo .~ _Just % _SymTypeVar # ()
+      where
+        args = clause ^. typeClauseArgs
+        st = clause ^. typeClauseStateVar
+        
 
-    -- look up the arguments
-    tell $ outOfScopes symtab (clause ^. typeClauseArgs)
-    let args' = fromJust $ clause ^. typeClauseArgs 
-            % to (traverse (flip lookupTypeVar symtab))
-        -- Note: we know the state variables and 
-        -- the type variables are disjoint, so we know we can safely
-        -- look this up
-        st' = fromJust $ lookupTypeVar (clause ^. typeClauseStateVar) symtab
+instance TypeClauseVarsSymTab (ConcObjTag t) where
+    typeClauseVarsSymTab clause = do
+        stargs' <- traverse tagIdentP $ st:args
+        return $ collectSymTab stargs' & mapped % _2 % symEntryInfo .~ _Just % _SymTypeVar # ()
+      where
+        args = clause ^. typeClauseArgs % to (uncurry mappend)
+        st = clause ^. typeClauseStateVar
 
-    phrases' <- traverse 
-        (renameTypePhrase 
-            (clause ^. typeClauseStateVar, st' ^. uniqueTag)) 
-        (clause ^. typeClausePhrases)
+class RenameTypeClause t where
+    renameTypeClause :: RenameTypePhrase t => 
+        Rename (MplTypeClause MplParsed t) (MplTypeClause MplRenamed t)
 
-    return $ _MplTypeClause #
-        ( name' 
-        , zipWith 
-            (\arg arg' -> _IdentR # (arg, arg' ^. symEntryUniqueTag)) 
-                (clause ^. typeClauseArgs) args'
-        , undefined 
-        , phrases' 
-        , ())
+instance RenameTypeClause (SeqObjTag t) where
+    renameTypeClause clause = do
+        symtab <- guse envLcl
+        -- tag the clause
+        name' <- clause ^. typeClauseName % to tagIdentP
 
-class RenameTypePhrase (t :: SMplObjectDefn) where
+        -- look up the arguments
+        tell $ outOfScopes symtab (clause ^. typeClauseArgs)
+        let args' = fromJust $ clause ^. typeClauseArgs 
+                % to (traverse (flip lookupTypeVar symtab))
+            -- Note: we know the state variables and 
+            -- the type variables are disjoint, so we know we can safely
+            -- look this up
+            st' = fromJust $ lookupTypeVar (clause ^. typeClauseStateVar) symtab
+
+        phrases' <- traverse 
+            (renameTypePhrase 
+                (clause ^. typeClauseStateVar, st' ^. uniqueTag)) 
+            (clause ^. typeClausePhrases)
+
+        return $ _MplTypeClause #
+            ( name' 
+            , zipWith tagIdentPWithSymEntry (clause ^. typeClauseArgs) args'
+            , tagIdentPWithSymEntry (clause ^. typeClauseStateVar) st'
+            , phrases' 
+            , ())
+
+instance RenameTypeClause (ConcObjTag t) where
+    renameTypeClause clause = do
+        symtab <- guse envLcl
+        -- tag the clause
+        name' <- clause ^. typeClauseName % to tagIdentP
+
+        -- look up the arguments
+        tell $ outOfScopes symtab (clause ^. typeClauseArgs % to (uncurry mappend))
+        let args' = fromJust $ clause ^. typeClauseArgs 
+                % to (traverseOf each (traverse (flip lookupTypeVar symtab)))
+            -- Note: we know the state variables and 
+            -- the type variables are disjoint, so we know we can safely
+            -- look this up
+            st' = fromJust $ lookupTypeVar (clause ^. typeClauseStateVar) symtab
+
+        phrases' <- traverse 
+            (renameTypePhrase 
+                (clause ^. typeClauseStateVar, st' ^. uniqueTag)) 
+            (clause ^. typeClausePhrases)
+
+        return $ _MplTypeClause #
+            ( name' 
+            , 
+                ( zipWith tagIdentPWithSymEntry 
+                    (clause ^. typeClauseArgs % _1) (args' ^. _1)
+                , zipWith tagIdentPWithSymEntry
+                        (clause ^. typeClauseArgs % _2) (args' ^. _2)
+                )
+            , tagIdentPWithSymEntry (clause ^. typeClauseStateVar) st'
+            , phrases' 
+            , ())
+    
+class RenameTypePhrase (t :: ObjectDefnTag) where
     renameTypePhrase :: 
-        ( AsRenameError e
+        ( AsRenameErrors e
         , MonadState RenameEnv m
-        , MonadWriter [e] m
-        , MonadFix m ) => 
+        , MonadWriter [e] m) => 
+            -- State variable ident, unique tag
             (IdentP, UniqueTag) -> 
             MplTypePhrase MplParsed t -> 
             m (MplTypePhrase MplRenamed t)
 
-instance RenameTypePhrase SDataDefn where
+instance RenameTypePhrase (SeqObjTag DataDefnTag) where
     renameTypePhrase st typephrase = do
-        symtab <- guse symTab
+        symtab <- guse envLcl
         name' <- typephrase ^. typePhraseName % to tagIdentP 
         let vfroms = typephrase ^. typePhraseFrom
             vto = typephrase ^. typePhraseTo
@@ -132,13 +181,13 @@ instance RenameTypePhrase SDataDefn where
         return $ _MplTypePhrase # 
             ( name'
             , vfroms'
-            , _TypeVar # ((), vto', [])
+            , _TypeVar # ((), vto')
             , ()
             )
 
-instance RenameTypePhrase SCodataDefn where
+instance RenameTypePhrase (SeqObjTag CodataDefnTag) where
     renameTypePhrase st typephrase = do
-        symtab <- guse symTab
+        symtab <- guse envLcl
         name' <- typephrase ^. typePhraseName % to tagIdentP 
         let (vfroms, vst) = typephrase ^. typePhraseFrom
             vto = typephrase ^. typePhraseTo
@@ -153,14 +202,14 @@ instance RenameTypePhrase SCodataDefn where
 
         return $ _MplTypePhrase # 
             ( name'
-            , (vfroms', _TypeVar # ((), vst', []))
+            , (vfroms', _TypeVar # ((), vst'))
             , vto'
             , ()
             )
 
-instance RenameTypePhrase SProtocolDefn where
+instance RenameTypePhrase (ConcObjTag ProtocolDefnTag) where
     renameTypePhrase st typephrase = do
-        symtab <- guse symTab
+        symtab <- guse envLcl
         name' <- typephrase ^. typePhraseName % to tagIdentP 
         let vfrom = typephrase ^. typePhraseFrom
             vto = typephrase ^. typePhraseTo
@@ -174,13 +223,13 @@ instance RenameTypePhrase SProtocolDefn where
         return $ _MplTypePhrase # 
             ( name'
             , vfrom'
-            , (_TypeVar # ((), vto', []))
+            , (_TypeVar # ((), vto'))
             , ()
             )
 
-instance RenameTypePhrase SCoprotocolDefn where
+instance RenameTypePhrase (ConcObjTag CoprotocolDefnTag) where
     renameTypePhrase st typephrase = do
-        symtab <- guse symTab
+        symtab <- guse envLcl
         name' <- typephrase ^. typePhraseName % to tagIdentP 
         let vfrom = typephrase ^. typePhraseFrom
             vfrom' = _IdentR # (vfrom, snd st)
@@ -193,9 +242,8 @@ instance RenameTypePhrase SCoprotocolDefn where
 
         return $ _MplTypePhrase # 
             ( name'
-            , (_TypeVar # ((), vfrom', []))
+            , _TypeVar # ((), vfrom')
             , vto'
             , ()
             )
-
 

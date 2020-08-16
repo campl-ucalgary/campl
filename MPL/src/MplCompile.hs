@@ -9,6 +9,10 @@ parsebnfc n = runParse' <$> runBnfc n
 
 test = [r|
 
+data 
+    Huh -> C =
+        Huh :: C -> C
+
 fun test :: Huh(Int| Int) -> Int =
     _ -> 3 
 |]

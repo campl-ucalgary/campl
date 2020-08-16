@@ -40,8 +40,13 @@ import Text.PrettyPrint.GenericPretty
 type family XMplType x
 type family TypeP x
 
-type family XTypeWithArgs x
 type family XTypeVar x
+
+type family XTypeSeqWithArgs x
+type family XTypeSeqVarWithArgs x
+type family XTypeConcWithArgs x
+type family XTypeConcVarWithArgs  x
+
 type family XXType x
 
 type family XTypeIntF x
@@ -54,7 +59,6 @@ type family XTypeBoolF x
 type family XTypeListF x
 type family XTypeTupleF x
 
-type family XTypeSeqWithArgs x
 -- type family XTypeSeqVar x
 
 type family XTypeGet x
@@ -67,63 +71,61 @@ type family XTypeNeg x
 type family XTypeSeqArrF x
 type family XTypeConcArrF x
 
+type family XXMplBuiltInTypesF x
 
 data MplType x  =
     TypeVar !(XTypeVar x) (TypeP x) 
-    | TypeSeqWithArgs !(XTypeSeqWithArgs x) (IdP x) [MplType x]
-    | TypeConcWithArgs !(XTypeSeqWithArgs x) (IdP x) ([MplType x], [MplType x])
 
-    | TypeSeq !(MplSeqTypesF x (MplType x))
-    | TypeConc !(MplConcTypesF x (MplType x))
-    | TypeArr !(MplArrTypesF x (MplType x))
+    | TypeSeqWithArgs !(XTypeSeqWithArgs x) (IdP x) [MplType x]
+    | TypeSeqVarWithArgs !(XTypeSeqVarWithArgs x) (TypeP x) [MplType x]
+
+    | TypeConcWithArgs !(XTypeConcWithArgs x) (IdP x) ([MplType x], [MplType x])
+    | TypeConcVarWithArgs !(XTypeConcVarWithArgs x) (TypeP x) ([MplType x], [MplType x])
+
+    | TypeBuiltIn !(MplBuiltInTypesF x (MplType x))
 
     | XType !(XXType x)
 
-
--- pattern UTypeWithArgs id args = TypeWithArgs () id args
--- pattern UTypeVar id args = TypeVar () id args
---
-data MplBuiltInTypes x r 
-
-data MplSeqTypesF x r =
-    -- primitive types
+data MplBuiltInTypesF x r =
+    -- primitive sequential types
     TypeIntF !(XTypeIntF x)
     | TypeCharF !(XTypeCharF x)
     | TypeDoubleF !(XTypeDoubleF x)
+    -- primitive concurrent types
+    | TypeGetF !(XTypeGet x) r r
+    | TypePutF !(XTypePut x) r r
+    | TypeTensorF !(XTypeTensor x) r r
+    | TypeParF !(XTypePar x) r r
+    | TypeNegF !(XTypeNeg x) r
+    | TypeTopBotF !(XTypeTopBot x)
 
-    -- built in types
+    -- built in non primitive types
     | TypeStringF !(XTypeStringF x)
     | TypeUnitF !(XTypeUnitF x)
     | TypeBoolF !(XTypeBoolF x)
     | TypeListF !(XTypeListF x) r
     | TypeTupleF !(XTypeTupleF x) (r, r, [r])
 
-    -- | TypeSeqVar !(XTypeVar x) (TypeP x) [r]
+    -- arrow types
+    | TypeSeqArrF !(XTypeSeqArrF x) (NonEmpty r) r
+    | TypeConcArrF !(XTypeConcArrF x) [r] [r] [r]
+
+    | XTypeBuiltIn !(XXMplBuiltInTypesF x)
   deriving (Functor, Foldable, Traversable)
 
-data MplConcTypesF x r = 
-    TypeGetF !(XTypeGet x) r r
-    | TypePutF !(XTypePut x) r r
-    | TypeTensorF !(XTypeTensor x) r r
-    | TypeParF !(XTypePar x) r r
-    | TypeNegF !(XTypeNeg x) r
-    | TypeTopBotF !(XTypeTopBot x)
-  deriving (Functor, Foldable, Traversable)
-
-
-data MplArrTypesF x t =
-    TypeSeqArrF !(XTypeSeqArrF x) (NonEmpty t) t
-    | TypeConcArrF !(XTypeConcArrF x) [t] [t] [t]
-  deriving (Functor, Foldable, Traversable)
 
 type ForallMplType (c :: Type -> Constraint) x =
     ( c (XMplType x)
     , c (TypeP x)
-    , c (XTypeWithArgs x)
     , c (XTypeVar x)
+
+    , c (XTypeSeqWithArgs x)
+    , c (XTypeSeqVarWithArgs x)
+    , c (XTypeConcWithArgs x)
+    , c (XTypeConcVarWithArgs  x)
+
     , c (XXType x)
 
-    , c (MplSeqTypesF x (MplType x))
     , c (XTypeIntF x)
     , c (XTypeCharF x)
     , c (XTypeDoubleF x)
@@ -135,7 +137,6 @@ type ForallMplType (c :: Type -> Constraint) x =
     , c (XTypeSeqWithArgs x)
     -- , c (XTypeSeqVar x)
 
-    , c (MplConcTypesF x (MplType x))
     , c (XTypeGet x)
     , c (XTypePut x)
     , c (XTypeTensor x)
@@ -145,6 +146,10 @@ type ForallMplType (c :: Type -> Constraint) x =
 
     , c (XTypeSeqArrF x)
     , c (XTypeConcArrF x)
+    
+    , c (MplBuiltInTypesF x (MplType x))
+
+    , c (XXMplBuiltInTypesF x)
     )
 
 deriving instance 
@@ -155,31 +160,17 @@ deriving instance
 deriving instance 
     ( ForallMplType Show x
     , Show (IdP x) ) => 
-    Show (MplSeqTypesF x (MplType x))
+    Show (MplBuiltInTypesF x (MplType x))
 
-deriving instance 
-    ( ForallMplType Show x
-    , Show (IdP x) ) => 
-    Show (MplConcTypesF x (MplType x))
-
-deriving instance 
-    ( ForallMplType Show x
-    , Show (IdP x) ) => 
-    Show (MplArrTypesF x (MplType x))
 
 $(makeBaseFunctor ''MplType)
 $(concat <$> traverse makeClassyPrisms
     [ ''MplType
-    , ''MplSeqTypesF
-    , ''MplConcTypesF
-    , ''MplArrTypesF
+    , ''MplBuiltInTypesF
     ]
  )
-instance AsMplSeqTypesF (MplType x) x (MplType x) where
-    _MplSeqTypesF = _TypeSeq
-
-instance AsMplConcTypesF (MplType x) x (MplType x) where
-    _MplConcTypesF = _TypeConc
+instance AsMplBuiltInTypesF (MplType x) x (MplType x) where
+    _MplBuiltInTypesF = _TypeBuiltIn
 
 
 data InternalConcTypes =

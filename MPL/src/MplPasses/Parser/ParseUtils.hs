@@ -33,16 +33,6 @@ type BnfcParse bnfc ast =
     ) =>
     bnfc -> m ast
 
-newtype BnfcParseM a = BnfcParseM {
-        unBnfcParseM :: ExceptT () (Writer [ParseErrors]) a
-    }
-  deriving 
-    ( Functor
-    , Applicative
-    , Monad
-    , MonadError ()
-    , MonadWriter [ParseErrors] )
-
 class ToLocation location where
     toLocation :: location -> Location
 
@@ -151,6 +141,21 @@ instance ToNameOcc B.TypeHandleName where
 instance ToNameOcc B.ForkChannel where
     toNameOcc (B.FORK_CHANNEL uident) = 
         toNameOcc uident
+
+instance ToNameOcc B.LBracket where
+    toNameOcc (B.LBracket uident) = 
+        toNameOcc uident
+
+instance ToNameOcc B.Tensor where
+    toNameOcc (B.Tensor uident) = 
+        toNameOcc uident
+
+instance ToNameOcc B.Par where
+    toNameOcc (B.Par uident) = 
+        toNameOcc uident
+
+instance ToNameOcc IdentP where
+    toNameOcc n = n ^. identPNameOcc
 
 toChIdentP :: ToNameOcc ident => ident -> IdentP
 toChIdentP = flip IdentP ChannelLevel . toNameOcc

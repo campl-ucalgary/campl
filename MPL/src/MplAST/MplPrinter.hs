@@ -1,35 +1,46 @@
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TypeFamilies #-} 
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
 module MplAST.MplPrinter where
 
-{-
+import MplAST.MplExpr
+import MplAST.MplPattern
+import MplAST.MplCmd
+import MplAST.MplType
+import MplAST.MplIdent
+
 import Optics
 
-import MplAST.MplTypeAST
-import MplAST.MplExprAST
-import MplAST.MplPatternAST
-import MplAST.MplProg
-import MplAST.MplProgI
-import MplAST.MplProgGraph
-import MplAST.MplASTIdent 
-import MplAST.MplProcessCommandsAST
-
-import MplAST.MplASTTranslateType
-import MplUtil.UniqueSupply
-
-import Data.Foldable
 import Data.Functor.Foldable
-import Data.Coerce
+import Data.Functor.Foldable.TH
 
-import qualified Data.List.NonEmpty as NE
-import Data.List.NonEmpty (NonEmpty (..))
-import Data.List
+import GHC.Generics 
+import Data.Void
 
-import Language.PrintMPL
-import Language.AbsMPL as B
+import Data.List.NonEmpty
+import Data.Data
+import Data.Kind
 
 class PPrint a where
     pprint :: a -> String
+
+{-
 
 instance (PPrint ident, Eq typevar, PPrint typevar) => PPrint (Type calldef ident typevar) where
     pprint = printTree . translateTypeToBnfcType

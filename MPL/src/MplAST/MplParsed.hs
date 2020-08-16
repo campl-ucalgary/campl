@@ -138,25 +138,25 @@ type instance XCPlugPhrase MplParsed  = Maybe [ChP MplParsed] -- user can supply
 type instance XXCmd MplParsed = Void
 
 -- Type clause
-type instance XTypeClauseSpineExt MplParsed = ()
-type instance XTypeClauseExt MplParsed = ()
-type instance XTypePhraseExt MplParsed  = ()
+type instance XTypeClauseSpineExt MplParsed t = ()
+type instance XTypeClauseExt MplParsed t = ()
+type instance XTypePhraseExt MplParsed  t = ()
 
 -- type phrases
-type instance XTypePhraseFrom MplParsed SDataDefn = [XMplType MplParsed]
-type instance XTypePhraseTo MplParsed SDataDefn = IdP MplParsed
+type instance XTypePhraseFrom MplParsed (SeqObjTag DataDefnTag) = [XMplType MplParsed]
+type instance XTypePhraseTo MplParsed (SeqObjTag DataDefnTag) = IdP MplParsed
 
-type instance XTypePhraseFrom MplParsed SCodataDefn = 
+type instance XTypePhraseFrom MplParsed (SeqObjTag CodataDefnTag) = 
     ([XMplType MplParsed], IdP MplParsed)
         -- args ++ [statevar]
         -- State var must be the last variable
-type instance XTypePhraseTo MplParsed SCodataDefn = XMplType MplParsed
+type instance XTypePhraseTo MplParsed (SeqObjTag CodataDefnTag) = XMplType MplParsed
 
-type instance XTypePhraseFrom MplParsed SProtocolDefn = XMplType MplParsed
-type instance XTypePhraseTo MplParsed SProtocolDefn = IdP MplParsed
+type instance XTypePhraseFrom MplParsed (ConcObjTag ProtocolDefnTag) = XMplType MplParsed
+type instance XTypePhraseTo MplParsed (ConcObjTag ProtocolDefnTag) = IdP MplParsed
 
-type instance XTypePhraseFrom MplParsed SCoprotocolDefn = IdP MplParsed
-type instance XTypePhraseTo MplParsed SCoprotocolDefn = XMplType MplParsed
+type instance XTypePhraseFrom MplParsed (ConcObjTag CoprotocolDefnTag) = IdP MplParsed
+type instance XTypePhraseTo MplParsed (ConcObjTag CoprotocolDefnTag) = XMplType MplParsed
 
 -- Function / process type
 type instance XFunType MplParsed  = Maybe ([XMplType MplParsed], XMplType MplParsed)
@@ -164,25 +164,29 @@ type instance XProcType MplParsed =
     Maybe ([XMplType MplParsed], [XMplType MplParsed], [XMplType MplParsed])
 
 type instance XMplType MplParsed = MplType MplParsed
-type instance XTypeWithArgs MplParsed = ()
-type instance XTypeVar MplParsed = Void
-type instance XXType MplParsed = Void
-type instance XTypeIntF MplParsed = Location
-type instance XTypeCharF MplParsed = Location
-type instance XTypeDoubleF MplParsed = Location
-type instance XTypeStringF MplParsed = Location
-type instance XTypeUnitF MplParsed = Location
-type instance XTypeBoolF MplParsed = Location
-type instance XTypeListF MplParsed = Location
-type instance XTypeTupleF MplParsed = Location
-type instance XTypeSeqWithArgs MplParsed = ()
+type instance XTypeSeqWithArgs MplParsed = Void
+type instance XTypeSeqVarWithArgs MplParsed = ()
+type instance XTypeConcWithArgs MplParsed = Void
+type instance XTypeConcVarWithArgs  MplParsed = ()
 
-type instance XTypeGet MplParsed = Location
-type instance XTypePut MplParsed = Location
-type instance XTypeTensor MplParsed = Location
-type instance XTypePar MplParsed = Location
-type instance XTypeTopBot MplParsed = Location
-type instance XTypeNeg MplParsed = Location
+type instance XTypeVar MplParsed = ()
+type instance XXType MplParsed = Void
+type instance XTypeIntF MplParsed = NameOcc
+type instance XTypeCharF MplParsed = NameOcc
+type instance XTypeDoubleF MplParsed = NameOcc
+type instance XTypeStringF MplParsed = NameOcc
+type instance XTypeUnitF MplParsed = NameOcc
+type instance XTypeBoolF MplParsed = NameOcc
+type instance XTypeListF MplParsed = NameOcc
+type instance XTypeTupleF MplParsed = NameOcc
+
+type instance XTypeGet MplParsed = NameOcc
+type instance XTypePut MplParsed = NameOcc
+type instance XTypeTensor MplParsed = NameOcc
+type instance XTypePar MplParsed = NameOcc
+type instance XTypeTopBot MplParsed = NameOcc
+type instance XTypeNeg MplParsed = NameOcc
 type instance XTypeSeqArrF MplParsed = Void
 type instance XTypeConcArrF MplParsed = Void
 
+type instance XXMplBuiltInTypesF MplParsed = Void

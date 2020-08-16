@@ -96,6 +96,13 @@ data Polarity =
 $(makeClassy ''Polarity)
 $(makePrisms ''Polarity)
 
+tupleName :: 
+    -- | number of elements
+    Int -> 
+    -- | name of the tuple
+    Name 
+tupleName n = Name $ "(" ++ replicate (n-1) ',' ++ ")"
+
 
 inputOutput :: Polarity -> a -> a -> a
 inputOutput Input a _ = a

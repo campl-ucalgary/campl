@@ -22,6 +22,7 @@ import MplPasses.Renamer.RenameUtils
 import MplPasses.Renamer.RenameSym
 import MplPasses.Renamer.RenameErrors
 import MplPasses.Renamer.RenameType
+import MplPasses.Env
 
 import Control.Monad.State
 import Control.Monad.Writer
@@ -46,7 +47,7 @@ renamePattern = cata f
     f :: Base (MplPattern MplParsed) (_ (MplPattern MplRenamed)) ->
         (_ (MplPattern MplRenamed))
     f (PConstructorF () ident args) = do
-        symtab <- guse symTab
+        symtab <- guse envLcl
         args' <- sequenceA args
         let ident' = fromJust $ lookupSym ident _Nothing symtab
         tell $ outOfScope symtab ident 
@@ -61,7 +62,7 @@ renamePattern = cata f
         return $ _PRecord # ( loc, phrases' )
       where
         g ((), ident, patt) = do
-            symtab <- guse symTab
+            symtab <- guse envLcl
             patt' <- patt
             let ident' = fromJust $ lookupSym ident _Nothing symtab
             tell $ outOfScope symtab ident 
@@ -69,7 +70,7 @@ renamePattern = cata f
     -- extends the variable context
     f (PVarF () ident) = do
         ident' <- tagIdentP ident
-        symTab %= ((collectSymTab ident')<>)
+        envLcl %= ((collectSymTab ident')<>)
         return $ _PVar # ((), ident')
      
     f (PNullF loc) = do

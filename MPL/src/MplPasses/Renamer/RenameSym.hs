@@ -29,7 +29,8 @@ data SymEntry info = SymEntry {
 -- needed, then you must add it yourself after calling ``collectSymTab"
 data SymInfo = 
     SymTypeInfo SymTypeVarInfo
-    | SymPhraseInfo SMplObjectDefn
+    | SymSeqPhraseInfo SeqObjDefnTag
+    | SymConcPhraseInfo ConcObjDefnTag
     | SymFunInfo 
     | SymProcInfo 
     | SymChInfo Polarity
@@ -37,7 +38,7 @@ data SymInfo =
 -- needed to resolve type variables and type clauses
 data SymTypeVarInfo = 
     SymTypeVar
-    | SymTypeClause SMplObjectDefn
+    | SymTypeClause ObjectDefnTag
 
 $(makeLenses ''SymEntry)
 $(makePrisms ''SymEntry)
@@ -46,11 +47,35 @@ $(concat <$> traverse makeClassyPrisms
     , ''SymTypeVarInfo ]
  )
 
+chSymPrism :: 
+    AsSymInfo sym =>
+    Prism' (Maybe sym) Polarity
+chSymPrism = _Just % _SymChInfo
+
 lookupCh ident = 
-    lookupSym ident (_Just % _SymChInfo)
+    lookupSym ident chSymPrism
+
+deleteCh ident = 
+    deleteSym ident chSymPrism
+
+filterChs :: 
+    [IdentP] ->
+    SymTab -> 
+    SymTab 
+filterChs chs syms = go chs syms
+  where
+    go chs (sym:syms) 
+        | has (_2 % symEntryInfo % chSymPrism) sym 
+            && sym ^. _1 `elem` chs = 
+                filterChs chs syms
+        | otherwise = sym : filterChs chs syms
+    go chs []  = []
 
 lookupProc ident = 
     lookupSym ident (_Just % _SymProcInfo)
+
+lookupConcPhrase ident = 
+    lookupSym ident (_Just % _SymConcPhraseInfo)
 
 lookupTypeVar ident = 
     lookupSym ident (_Just % _SymTypeInfo % _SymTypeVar)
@@ -62,16 +87,22 @@ lookupSym ident prism = join
     . fmap ( 
         traverseOf symEntryInfo 
             ( preview prism) . view _2 )
-    . find ((ident ^. name==) . view _1)
+    . find ((ident ==) . view _1)
+
+deleteSym ident prism [] = []
+deleteSym ident prism (sym:syms) 
+    | ident == sym ^. _1 
+        && has (_2 % symEntryInfo % prism) sym = syms
+    | otherwise = sym : deleteSym ident prism syms
+
 
 instance AsSymTypeVarInfo SymInfo where
     _SymTypeVarInfo = _SymTypeInfo 
 
-
 instance HasUniqueTag (SymEntry info) where
     uniqueTag = symEntryUniqueTag 
 
-type SymTab = [(Name, SymEntry (Maybe SymInfo))]
+type SymTab = [(IdentP, SymEntry (Maybe SymInfo))]
 
 class CollectSymTab a where
     collectSymTab :: a -> SymTab
@@ -87,32 +118,52 @@ instance CollectSymTab (MplStmt MplRenamed) where
 
 instance CollectSymTab (MplDefn MplRenamed) where
     collectSymTab (ObjectDefn n) = case n of
-        DataDefn n -> querySpines n SDataDefn
-        CodataDefn n -> querySpines n SCodataDefn
-        ProtocolDefn n -> querySpines n SProtocolDefn 
-        CoprotocolDefn n -> querySpines n SCoprotocolDefn 
+        DataDefn n -> querySpines n (_DataDefnTag # ()) 
+            (_SymSeqPhraseInfo % _DataDefnTag # ())
+        CodataDefn n -> querySpines n (_CodataDefnTag # ()) 
+            (_SymSeqPhraseInfo % _CodataDefnTag # ())
+        ProtocolDefn n -> querySpines n (_ProtocolDefnTag # ()) 
+            (_SymConcPhraseInfo % _ProtocolDefnTag # ())
+        CoprotocolDefn n -> querySpines n (_CoprotocolDefnTag # ()) 
+            (_SymConcPhraseInfo % _CoprotocolDefnTag # ())
       where
-        querySpines spine tp = 
+        querySpines spine tp tpphrase = 
             foldMapOf (typeClauseSpineClauses % folded)
                 (flip queryTypeClause tp) spine
             ++ foldMapOf (typeClauseSpineClauses % folded)
-                (flip queryTypePhrase tp) spine
+                (flip queryTypePhrase tpphrase) spine
 
         queryTypeClause clause tp = clause ^. typeClauseName 
             % to (set (mapped % _2 % symEntryInfo) 
                     (_Just % _SymTypeClause # tp) 
                 . collectSymTab)
-        queryTypePhrase clause tp = 
+        queryTypePhrase clause tpphrase = 
             foldMapOf (typeClausePhrases % traversed % typePhraseName)
                 ( set (mapped % _2 % symEntryInfo) 
-                    (_Just % _SymPhraseInfo # tp)
+                    (_Just # tpphrase)
                 . collectSymTab) 
                 clause
 
     collectSymTab (FunctionDefn (MplFunction name _ _)) = undefined
     collectSymTab (ProcessDefn (MplProcess name _ _)) = undefined
-        
 
 instance CollectSymTab IdentR where
-    collectSymTab = pure <<< view name &&& flip SymEntry Nothing . view uniqueTag
+    collectSymTab = pure <<< view identRIdentP &&& flip SymEntry Nothing . view uniqueTag
 
+instance CollectSymTab ChIdentR where
+    collectSymTab ch = (ch ^. chIdentRIdentR % to collectSymTab) 
+        & mapped % _2 % symEntryInfo .~ _Just % _SymChInfo # (ch ^. polarity)
+
+
+tagIdentPWithSymEntry ::
+    IdentP ->
+    SymEntry a ->
+    IdentR
+tagIdentPWithSymEntry identp entry = _IdentR # (identp, entry ^. symEntryUniqueTag)
+
+tagIdentPToChIdentRWithSymEntry :: 
+    IdentP ->
+    SymEntry Polarity ->
+    ChIdentR
+tagIdentPToChIdentRWithSymEntry ch entry = 
+    _ChIdentR # (_IdentR # (ch, entry ^. uniqueTag ), entry ^. symEntryInfo)

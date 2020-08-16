@@ -22,6 +22,7 @@ module MplAST.MplProg where
 import MplAST.MplExpr
 import MplAST.MplPattern
 import MplAST.MplCmd
+import MplAST.MplType
 import MplAST.MplIdent
 
 import Optics
@@ -77,46 +78,67 @@ data MplObjectDefn x =
     | ProtocolDefn !(XProtocolDefn x)
     | CoprotocolDefn !(XCoprotocolDefn x)
 
-{- Dont really need this? We could just use MplObjectDefn
- - paramertierzed by Void.... Also, the naming is confusing..
- - normally prefixing a captial S is for singleton but this isn't
- - even a singleton.. -}
-data SMplObjectDefn =
-    SDataDefn
-    | SCodataDefn
-    | SProtocolDefn
-    | SCoprotocolDefn
+data ObjectDefnTag =
+    SeqObjTag SeqObjDefnTag
+    | ConcObjTag ConcObjDefnTag 
+  deriving (Show, Eq)
+
+data SeqObjDefnTag =
+    DataDefnTag 
+    | CodataDefnTag
+  deriving (Show, Eq)
+
+data ConcObjDefnTag =
+    ProtocolDefnTag
+    | CoprotocolDefnTag
+  deriving (Show, Eq)
+
+$(concat <$> traverse makeClassyPrisms 
+    [ ''ObjectDefnTag
+    , ''SeqObjDefnTag
+    , ''ConcObjDefnTag ]
+ )
+
+instance AsSeqObjDefnTag ObjectDefnTag where
+    _SeqObjDefnTag = _SeqObjTag
+
+instance AsConcObjDefnTag ObjectDefnTag where
+    _ConcObjDefnTag = _ConcObjTag
 
 deriving instance (ForallDefn Show x) => Show (MplDefn x)
-deriving instance (ForallDefn Show x) => Show (MplObjectDefn x)
+deriving instance (ForallDefn Show x) => Show (MplObjectDefn x) 
 
+type family XTypeClauseSpineExt x (t :: ObjectDefnTag)
 
-type family XTypeClauseSpineExt x
-
-data MplTypeClauseSpine x (t :: SMplObjectDefn) = MplTypeClauseSpine {
+data MplTypeClauseSpine x (t :: ObjectDefnTag) = MplTypeClauseSpine {
         _typeClauseSpineClauses :: NonEmpty (MplTypeClause x t)
-        , _typeClauseSpineExt :: !(XTypeClauseSpineExt  x)
+        , _typeClauseSpineExt :: !(XTypeClauseSpineExt x t)
     }
 
 deriving instance 
-    ( Show (XTypeClauseSpineExt x)
+    ( Show (XTypeClauseSpineExt x t)
     , Show (MplTypeClause x t)) => Show (MplTypeClauseSpine x t)
 
 {-# COMPLETE UMplTypeClauseSpine #-}
 pattern UMplTypeClauseSpine n =  MplTypeClauseSpine n ()
 
-type family XTypeClauseExt x
+type family TypeClauseArgs x (t :: ObjectDefnTag) where
+    TypeClauseArgs x (SeqObjTag _) = [IdP x]
+    TypeClauseArgs x (ConcObjTag _) = ([IdP x], [IdP x])
+
+type family XTypeClauseExt x (t :: ObjectDefnTag)
 
 type ForallTypeClause (c :: Type -> Constraint) x t =
-    ( c (XTypeClauseExt x)
+    ( c (XTypeClauseExt x t)
+    , c (TypeClauseArgs x t)
     , ForallTypePhrase c x t)
 
-data MplTypeClause x (t :: SMplObjectDefn) = MplTypeClause {
+data MplTypeClause x (t :: ObjectDefnTag) = MplTypeClause {
     _typeClauseName :: IdP x
-    , _typeClauseArgs :: [IdP x]
+    , _typeClauseArgs :: TypeClauseArgs x t
     , _typeClauseStateVar :: IdP x
     , _typeClausePhrases :: [MplTypePhrase x t]
-    , _typeClauseExt :: (XTypeClauseExt x)
+    , _typeClauseExt :: (XTypeClauseExt x t)
 }  
 
 deriving instance 
@@ -126,21 +148,21 @@ deriving instance
 
 pattern UMplTypeClause a b c d =  MplTypeClause a b c d ()
 
-type family XTypePhraseExt x 
-type family XTypePhraseFrom x (t :: SMplObjectDefn)
-type family XTypePhraseTo x (t :: SMplObjectDefn)
+type family XTypePhraseExt x (t :: ObjectDefnTag)
+type family XTypePhraseFrom x (t :: ObjectDefnTag)
+type family XTypePhraseTo x (t :: ObjectDefnTag)
 
 type ForallTypePhrase (c :: Type -> Constraint) x t = 
-    ( c (XTypePhraseExt x)
+    ( c (XTypePhraseExt x t)
     , c (XTypePhraseFrom x t)
     , c (XTypePhraseTo x t)
     )
 
-data MplTypePhrase x (t :: SMplObjectDefn) = MplTypePhrase {
+data MplTypePhrase x (t :: ObjectDefnTag) = MplTypePhrase {
     _typePhraseName :: IdP x
     , _typePhraseFrom :: XTypePhraseFrom x t
     , _typePhraseTo :: XTypePhraseTo x t
-    , _typePhraseExt :: (XTypePhraseExt x)
+    , _typePhraseExt :: (XTypePhraseExt x t)
 }  
 
 deriving instance (Show (IdP x), ForallTypePhrase Show x t) => Show (MplTypePhrase x t)
@@ -190,13 +212,13 @@ deriving instance
 -- mapping for all the definitions (note that these defintiions are completely
 -- determined by other type families specified)
 type instance XDataDefn k  = 
-    MplTypeClauseSpine k 'SDataDefn
+    MplTypeClauseSpine k (SeqObjTag DataDefnTag)
 type instance XCodataDefn k  = 
-    MplTypeClauseSpine k 'SCodataDefn
+    MplTypeClauseSpine k (SeqObjTag CodataDefnTag)
 type instance XProtocolDefn k  = 
-    MplTypeClauseSpine k 'SProtocolDefn
+    MplTypeClauseSpine k (ConcObjTag ProtocolDefnTag)
 type instance XCoprotocolDefn k  = 
-    MplTypeClauseSpine k 'SCoprotocolDefn
+    MplTypeClauseSpine k (ConcObjTag CoprotocolDefnTag)
 
 type instance XFunctionDefn k = MplFunction k
 type instance XProcessDefn k  = MplProcess k

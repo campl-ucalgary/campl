@@ -46,6 +46,11 @@ type FreeVars = [IdP MplParsed]
 
 data MplCmdFreeVars
 
+data ContextInfo =
+    UserProvidedContext
+    | ComputedContext
+  deriving (Show, Eq)
+
 type instance IdP MplCmdFreeVars = IdP MplParsed
 type instance ChP MplCmdFreeVars = ChP MplParsed
 
@@ -67,16 +72,14 @@ type instance XCId MplCmdFreeVars = KeyWordNameOcc
 type instance XCIdNeg MplCmdFreeVars = KeyWordNameOcc
 type instance XCRace MplCmdFreeVars = KeyWordNameOcc
 type instance XCPlug MplCmdFreeVars = Void
-type instance XCPlugs MplCmdFreeVars = (KeyWordNameOcc, [IdP MplCmdFreeVars])
+type instance XCPlugs MplCmdFreeVars = (KeyWordNameOcc, (ContextInfo, [IdP MplCmdFreeVars]))
     -- plug command, plug scoped bound variables.
 type instance XCCase MplCmdFreeVars = KeyWordNameOcc
 type instance XCSwitch MplCmdFreeVars = KeyWordNameOcc
 type instance XCHCasePhrase MplCmdFreeVars  = ()
-type instance XCForkPhrase MplCmdFreeVars  = [IdP MplCmdFreeVars] 
-type instance XCPlugPhrase MplCmdFreeVars  = [IdP MplCmdFreeVars] 
-type instance XXCmd MplCmdFreeVars = Void
-
-
+type instance XCForkPhrase MplCmdFreeVars  = (ContextInfo, [IdP MplCmdFreeVars])
+type instance XCPlugPhrase MplCmdFreeVars  = (ContextInfo, [IdP MplCmdFreeVars])
+type instance XXCmd MplCmdFreeVars = Void 
 
 cmdsBindFreeVars ::
     ( MonadState FreeVars m ) =>
@@ -151,7 +154,10 @@ cmdBindFreeVars = f
         equality .= ch:initfreevars
 
         -- return $ CFork cxt ch ((ch1, fromMaybe cxt1' cxt1, cmds1), (ch2, fromMaybe cxt2' cxt2, cmds2))
-        return $ CFork cxt ch ((ch1, fromMaybe cxt1' cxt1, cmds1'), (ch2, fromMaybe cxt2' cxt2, cmds2'))
+        return $ CFork cxt ch 
+            ( (ch1, fromMaybe (ComputedContext, cxt1') ((UserProvidedContext,) <$> cxt1), cmds1')
+            , (ch2, fromMaybe (ComputedContext, cxt2') ((UserProvidedContext,) <$> cxt2), cmds2')
+            )
 
     f cmd@(CId cxt (s, t)) = do
         equality %= ([s,t]<>)
@@ -177,12 +183,12 @@ cmdBindFreeVars = f
         -- return $ CPlugs (cxt, ) (phr1', phr2', phrs')
         cxt' <- guse equality
         equality .= initfreevars
-        return $ CPlugs (over _2 (fromMaybe cxt') cxt) (phr1', phr2', phrs')
+        return $ CPlugs (over _2 (fromMaybe (ComputedContext, cxt')) (fmap (UserProvidedContext,) <$> cxt)) (phr1', phr2', phrs')
       where
         g initfreevars (cxt, cmds) = do
             cmds' <- cmdsBindFreeVars cmds
             cxt' <- guse equality
-            return (fromMaybe cxt' cxt, cmds')
+            return (fromMaybe (ComputedContext, cxt') ((UserProvidedContext,) <$> cxt), cmds')
 
     f (CCase cxt expr cases) = do   
         cases' <- traverse g cases

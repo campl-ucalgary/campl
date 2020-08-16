@@ -28,14 +28,14 @@ import Control.Arrow
 import Data.Coerce
 
 runParse' :: 
+    ( AsParseErrors err ) =>
     B.MplProg -> 
-    Either [ParseErrors] (MplProg MplParsed)
+    Either [err] (MplProg MplParsed)
 runParse' = 
     \case (Left _, w) -> Left w
           (Right prg, w) -> Right prg
     . runWriter 
     . runExceptT 
-    . unBnfcParseM
     . runParse
 
 runParse :: BnfcParse B.MplProg (MplProg MplParsed)
@@ -59,7 +59,7 @@ parseBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.DATA_DEFN clauses)) =
         <$> traverseTryEach f clauses
  where
     f (B.SEQ_TYPE_CLAUSE from to handles) = do
-        ((name, args), st) <- parseTypeWithArgsAndStateVar from to
+        ((name, args), st) <- parseTypeWithArgsSeqAndStateVar from to
         handles' <- traverseTryEach g handles
         return $ _MplTypeClause # (name, args, st, concat handles', ())
 
@@ -77,7 +77,7 @@ parseBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.CODATA_DEFN clauses)) =
         <$> traverseTryEach f clauses
  where
     f (B.SEQ_TYPE_CLAUSE from to handles) = do
-        ((name, args), st) <- parseStateVarAndTypeWithArgs from to
+        ((name, args), st) <- parseStateVarAndTypeWithArgsSeq from to
         handles' <- traverseTryEach g handles
         return $ _MplTypeClause # (name, args, st, concat handles', ())
 
@@ -98,7 +98,7 @@ parseBnfcDefn (B.MPL_CONCURRENT_TYPE_DEFN (B.PROTOCOL_DEFN clauses)) =
         <$> traverseTryEach f clauses
  where
     f (B.CONCURRENT_TYPE_CLAUSE from to handles) = do
-        ((name, args), st) <- parseTypeWithArgsAndStateVar from to
+        ((name, args), st) <- parseTypeWithArgsConcAndStateVar from to
         handles' <- traverseTryEach g handles
         return $ _MplTypeClause # (name, args, st, concat handles', ())
 
@@ -117,7 +117,7 @@ parseBnfcDefn (B.MPL_CONCURRENT_TYPE_DEFN (B.COPROTOCOL_DEFN clauses)) =
         <$> traverseTryEach f clauses
  where
     f (B.CONCURRENT_TYPE_CLAUSE from to handles) = do
-        ((name, args), st) <- parseTypeWithArgsAndStateVar from to
+        ((name, args), st) <- parseTypeWithArgsConcAndStateVar from to
         handles' <- traverseTryEach g handles
         return $ _MplTypeClause # (name, args, st, concat handles', ())
 
@@ -257,6 +257,7 @@ parseBnfcUnfoldPhrase (B.UNFOLD_EXPR_PHRASE patt foldphrases) = do
     foldphrases' <- traverseTryEach parseBnfcFoldPhrase foldphrases
     return $ ((), patt', NE.fromList foldphrases')
 
+---------------------------------
 -- PROCESS PARSING
 ---------------------------------
 parseBnfcProcess :: BnfcParse B.ProcessDefn (MplProcess MplParsed)

@@ -65,6 +65,7 @@ data ChIdentR = ChIdentR {
     _chIdentRIdentR :: IdentR
     , _chIdentRPolarity :: Polarity
 }
+  deriving Show
 
 $(makeClassy ''ChIdentR)
 $(makePrisms ''ChIdentR)
@@ -154,59 +155,65 @@ type instance XCId MplRenamed = KeyWordNameOcc
 type instance XCIdNeg MplRenamed = KeyWordNameOcc
 type instance XCRace MplRenamed = KeyWordNameOcc
 type instance XCPlug MplRenamed = Void
-type instance XCPlugs MplRenamed = KeyWordNameOcc
+type instance XCPlugs MplRenamed = (KeyWordNameOcc, [IdP MplRenamed])
+                                                    -- these are the new plugged channels.
+                                                    -- Note that these do not have a polarity 
+                                                    -- because it changes based on the phrase
 type instance XCCase MplRenamed = KeyWordNameOcc
 type instance XCSwitch MplRenamed = KeyWordNameOcc
 type instance XCHCasePhrase MplRenamed  = ()
-type instance XCForkPhrase MplRenamed  = Maybe [(ChP MplRenamed)] -- user can supply their own context
-type instance XCPlugPhrase MplRenamed  = Maybe [ChP MplRenamed] -- user can supply their own context
+type instance XCForkPhrase MplRenamed  = [ChP MplRenamed] 
+type instance XCPlugPhrase MplRenamed  = [ChP MplRenamed]
 type instance XXCmd MplRenamed = Void
 
--- Type clause
-type instance XTypeClauseSpineExt MplRenamed = ()
-type instance XTypeClauseExt MplRenamed = ()
-type instance XTypePhraseExt MplRenamed  = ()
-
-type instance XTypePhraseFrom MplRenamed SDataDefn = 
-    [XMplType MplRenamed]
-type instance XTypePhraseTo MplRenamed SDataDefn = 
-    XMplType MplRenamed
+-- Type clause (note, we tie the knot here so it is easy to compute all 
+-- the type phrases and type clauses when doing totality checks of
+-- folds and unfolds along with hcase)
+type instance XTypeClauseSpineExt MplRenamed t = ()
+type instance XTypeClauseExt MplRenamed t = () -- MplTypeClauseSpine MplRenamed t
+type instance XTypePhraseExt MplRenamed  t = ()
 
 type instance XTypePhraseTo MplRenamed t = 
     XMplType MplRenamed
 
-type instance XTypePhraseFrom MplRenamed SDataDefn = 
+type instance XTypePhraseFrom MplRenamed (SeqObjTag DataDefnTag) = 
     [XMplType MplRenamed]
-type instance XTypePhraseFrom MplRenamed SCodataDefn = 
-    ([XMplType MplRenamed], XMplType MplRenamed)
-        -- args ++ [statevar]
-        -- State var must be the last variable
-type instance XTypePhraseFrom MplRenamed SProtocolDefn = 
+type instance XTypePhraseFrom MplRenamed (SeqObjTag CodataDefnTag) = 
+    ([XMplType MplRenamed], XMplType MplRenamed) -- args ++ [statevar] State var must be the last variable
+type instance XTypePhraseFrom MplRenamed (ConcObjTag ProtocolDefnTag) = 
     XMplType MplRenamed
-type instance XTypePhraseFrom MplRenamed SCoprotocolDefn = 
+type instance XTypePhraseFrom MplRenamed (ConcObjTag CoprotocolDefnTag) = 
     XMplType MplRenamed
 
 -- Function / process type
-type instance XFunType MplRenamed  = Maybe ([XMplType MplRenamed], XMplType MplRenamed)
+type instance XFunType MplRenamed  = Maybe ([IdentR], [XMplType MplRenamed], XMplType MplRenamed)
 type instance XProcType MplRenamed = 
-    Maybe ([XMplType MplRenamed], [XMplType MplRenamed], [XMplType MplRenamed])
+    Maybe ([IdentR], [XMplType MplRenamed], [XMplType MplRenamed], [XMplType MplRenamed])
 
 type instance XMplType MplRenamed = MplType MplRenamed
-type instance XTypeWithArgs MplRenamed = ()
-type instance XTypeVar MplRenamed = ()
-type instance XXType MplRenamed = Void
-type instance XTypeIntF MplRenamed = Location
-type instance XTypeCharF MplRenamed = Location
-type instance XTypeDoubleF MplRenamed = Location
-type instance XTypeStringF MplRenamed = Location
-type instance XTypeUnitF MplRenamed = Location
-type instance XTypeBoolF MplParsed = Location
-type instance XTypeListF MplRenamed = Location
-type instance XTypeTupleF MplRenamed = Location
+type instance XTypeSeqWithArgs MplRenamed = ()
+type instance XTypeSeqVarWithArgs MplRenamed = ()
+type instance XTypeConcWithArgs MplRenamed = ()
+type instance XTypeConcVarWithArgs  MplRenamed = ()
 
-type instance XTypeGet MplRenamed = Location
-type instance XTypePut MplRenamed = Location
-type instance XTypeTensor MplRenamed = Location
-type instance XTypePar MplRenamed = Location
-type instance XTypeTopBot MplRenamed = Location
-type instance XTypeNeg MplRenamed = Location
+type instance XTypeVar MplRenamed = () 
+type instance XXType MplRenamed = Void
+type instance XTypeIntF MplRenamed = NameOcc
+type instance XTypeCharF MplRenamed = NameOcc
+type instance XTypeDoubleF MplRenamed = NameOcc
+type instance XTypeStringF MplRenamed = NameOcc
+type instance XTypeUnitF MplRenamed = NameOcc
+type instance XTypeBoolF MplRenamed = NameOcc
+type instance XTypeListF MplRenamed = NameOcc
+type instance XTypeTupleF MplRenamed = NameOcc
+
+type instance XTypeGet MplRenamed = NameOcc
+type instance XTypePut MplRenamed = NameOcc
+type instance XTypeTensor MplRenamed = NameOcc
+type instance XTypePar MplRenamed = NameOcc
+type instance XTypeTopBot MplRenamed = NameOcc
+type instance XTypeNeg MplRenamed = NameOcc
+type instance XTypeSeqArrF MplRenamed = Void
+type instance XTypeConcArrF MplRenamed = Void
+
+type instance XXMplBuiltInTypesF MplRenamed = Void

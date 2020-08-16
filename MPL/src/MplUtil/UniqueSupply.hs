@@ -42,11 +42,14 @@ uniquesFromSupply supply =
   where
     ~(_,r) = split supply
 
-initUniqueSupply :: IORef Word -> IO UniqueSupply
-initUniqueSupply ref = unsafeInterleaveIO $ do
+initUniqueSupply :: Word -> IO UniqueSupply
+initUniqueSupply seed = initUniqueSupply' =<< newIORef seed
+
+initUniqueSupply' :: IORef Word -> IO UniqueSupply
+initUniqueSupply' ref = unsafeInterleaveIO $ do
     n <- freshWord ref
-    l <- initUniqueSupply ref
-    r <- initUniqueSupply ref
+    l <- initUniqueSupply' ref
+    r <- initUniqueSupply' ref
     return (UniqueSupply n l r)
 
 {-

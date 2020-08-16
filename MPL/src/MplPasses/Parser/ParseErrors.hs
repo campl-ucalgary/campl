@@ -15,7 +15,8 @@ data ParseErrors =
     ExpectedGetOrPutButGot IdentP
     | InvalidInt IdentP
     | ExpectedTypeVarButGot (MplType MplParsed)
-    | ExpectedTypeWithVarsButGot (MplType MplParsed)
+    | ExpectedTypeSeqWithArgsButGot (MplType MplParsed)
+    | ExpectedTypeConcWithArgsButGot (MplType MplParsed)
 
     -- handle /phrase names
     | ExpectedCodataPhraseToHaveFromArgsButHasNone [IdentP] 

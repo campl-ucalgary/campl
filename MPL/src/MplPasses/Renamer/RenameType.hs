@@ -22,6 +22,7 @@ import MplAST.MplRenamed
 import MplPasses.Renamer.RenameUtils
 import MplPasses.Renamer.RenameSym
 import MplPasses.Renamer.RenameErrors
+import MplPasses.Env
 
 import Control.Monad.State
 import Control.Monad.Writer
@@ -40,9 +41,14 @@ import Data.Functor.Foldable
 
 import Data.Void
 
+-- TODO:
+-- We can generalize this all nicely with the continuation monad (ContT)
+-- since querying the data is all the same... Although, we would have to define
+-- another AST which is decorated with the symbol table look ups.
+
 renameScopedType :: 
     forall e m.
-    ( AsRenameError e
+    ( AsRenameErrors e
     , MonadReader SymTab m
     , MonadWriter [e] m ) =>
     MplType MplParsed -> 
@@ -51,7 +57,7 @@ renameScopedType = cata f
   where
     f :: Base (MplType MplParsed) (m (MplType MplRenamed)) -> 
         m (MplType MplRenamed)
-    f (TypeWithArgsF () ident args) = do
+    f (TypeSeqVarWithArgsF () ident args) = do
         args' <- sequenceA args
         ~lkup <- gviews equality $ lookupSym ident (_Just % _SymTypeInfo)
 
@@ -60,50 +66,110 @@ renameScopedType = cata f
         return $ case fromJust lkup of
             SymEntry tag n 
                 | has _SymTypeClause n -> 
-                    _TypeWithArgs # ( (), _IdentR # (ident, tag), args' )
+                    _TypeSeqWithArgs # ( (), _IdentR # (ident, tag), args' )
                 | otherwise -> 
-                    _TypeVar # ((), _IdentR # (ident, tag), args')
+                    _TypeSeqVarWithArgs # ((), _IdentR # (ident, tag), args')
 
-    f (TypeSeqF seq) =  do
-        seq' <- renameSeqType seq
-        return $ TypeSeq seq'
-    f (TypeConcF conc) =  do
-        conc' <- renameConcType conc
-        return $ TypeConc conc' 
+    -- more or less duplicated code from above
+    f (TypeConcVarWithArgsF () ident (seqs, concs)) = do
+        seqs' <- sequenceA seqs
+        concs' <- sequenceA concs
+        ~lkup <- gviews equality $ lookupSym ident (_Just % _SymTypeInfo)
+
+        tell $ maybe [ _OutOfScope # ident ] (const []) lkup
+
+        return $ case fromJust lkup of
+            SymEntry tag n 
+                | has _SymTypeClause n -> 
+                    _TypeConcWithArgs # ( (), _IdentR # (ident, tag), (seqs',concs') )
+                | otherwise -> 
+                    _TypeConcVarWithArgs # ((), _IdentR # (ident, tag), (seqs',concs'))
+
+    f (TypeVarF () ident) = do
+        ~lkup <- gviews equality $ lookupSym ident (_Just % _SymTypeInfo)
+        tell $ maybe [ _OutOfScope # ident ] (const []) lkup
+        return $ case fromJust lkup of
+            SymEntry tag (SymTypeClause objtag)
+                | has _SeqObjTag objtag  -> 
+                    _TypeSeqWithArgs # ( (), _IdentR # (ident, tag), mempty )
+                | otherwise  -> 
+                    _TypeConcWithArgs # ( (), _IdentR # (ident, tag), mempty )
+            SymEntry tag SymTypeVar -> _TypeVar # ((), _IdentR # (ident, tag))
 
 renameType :: 
-    Rename (MplType MplParsed) (MplType MplRenamed)
+    Rename 
+        (MplType MplParsed) 
+        ([IdentR], MplType MplRenamed)
+        -- explictly declared type variables, renamed type
 renameType = cata f
   where
-    f :: Base (MplType MplParsed) (_ (MplType MplRenamed)) -> 
-        _ (MplType MplRenamed)
-    f (TypeWithArgsF () ident args) = do
+    f :: Base (MplType MplParsed) (_ ([IdentR], MplType MplRenamed)) -> 
+        _ ([IdentR], MplType MplRenamed)
+    f (TypeSeqVarWithArgsF () ident args) = do
         args' <- sequenceA args
-        ~lkup <- guses symTab $ lookupSym ident (_Just % _SymTypeInfo)
+        ~lkup <- guses envLcl $ lookupSym ident (_Just % _SymTypeInfo)
 
         case lkup of
             Just (SymEntry tag n) 
-                | has _SymTypeClause n -> return $ 
-                    _TypeWithArgs # ( (), _IdentR # (ident, tag), args' )
-                | otherwise -> return $ 
-                    _TypeVar # ((), _IdentR # (ident, tag), args')
-            Nothing -> do
+                | has _SymTypeClause n -> return 
+                    ( concatMap fst args' 
+                    , _TypeSeqWithArgs # ( (), _IdentR # (ident, tag), fmap snd args' )
+                    )
+                | otherwise -> return
+                    ( concatMap fst args'
+                    , _TypeSeqVarWithArgs # ((), _IdentR # (ident, tag), fmap snd args')
+                    )
+            _ -> do
                 ident' <- tagIdentP ident
-                symTab %= ((collectSymTab ident' &
-                    mapped % _2 % symEntryInfo 
+                envLcl %= ((collectSymTab ident' & mapped % _2 % symEntryInfo 
                         .~ _Just % _SymTypeVar # () )<>)
-                return $ _TypeVar # ((), ident', args' ) 
+                return 
+                    ( ident' : concatMap fst args'
+                    , _TypeSeqVarWithArgs # ((), ident', fmap snd args')
+                    )
 
-    f (TypeSeqF seq) =  do
-        seq' <- renameSeqType seq
-        return $ TypeSeq seq'
-    f (TypeConcF conc) =  do
-        conc' <- renameConcType conc
-        return $ TypeConc conc'
+    -- more or less duplciated code..
+    f (TypeConcVarWithArgsF () ident args) = do
+        (seqs', concs') <- sequenceOf (each % traversed) args
+        ~lkup <- guses envLcl $ lookupSym ident (_Just % _SymTypeInfo)
+
+        case lkup of
+            Just (SymEntry tag n) 
+                | has _SymTypeClause n -> return 
+                    ( concatMap fst seqs' <> concatMap fst concs'
+                    , _TypeConcWithArgs # ( (), _IdentR # (ident, tag), (fmap snd seqs', fmap snd concs'))
+                    )
+                | otherwise -> return
+                    ( concatMap fst seqs' <> concatMap fst concs'
+                    , _TypeConcVarWithArgs # ( (), _IdentR # (ident, tag), (fmap snd seqs', fmap snd concs'))
+                    )
+            _ -> do
+                ident' <- tagIdentP ident
+                envLcl %= ((collectSymTab ident' & mapped % _2 % symEntryInfo 
+                        .~ _Just % _SymTypeVar # () )<>)
+                return 
+                    ( ident' : concatMap fst seqs' <> concatMap fst concs'
+                    , _TypeConcVarWithArgs # ( (), ident', (fmap snd seqs', fmap snd concs'))
+                    )
+    f (TypeVarF () ident) = do
+        ~lkup <- guses envLcl $ lookupSym ident (_Just % _SymTypeInfo)
+        case lkup of 
+            Just (SymEntry tag n)
+                | has _SymTypeClause n -> return 
+                    ( mempty
+                    , _TypeVar # ( (), _IdentR # (ident, tag))
+                    )
+                | otherwise -> do
+                    ident' <- tagIdentP ident
+                    return 
+                        ( pure ident'
+                        , _TypeVar # ( (), ident' )
+                        )
 
 
+{-
 renameSeqType :: 
-    ( AsRenameError e
+    ( AsRenameErrors e
     , MonadWriter [e] m ) =>
     MplSeqTypesF MplParsed (m (MplType MplRenamed)) ->
     m (MplSeqTypesF MplRenamed (MplType MplRenamed))
@@ -122,7 +188,7 @@ renameSeqType = f
     -}
 
 renameConcType :: 
-    ( AsRenameError e
+    ( AsRenameErrors e
     , MonadWriter [e] m ) =>
     MplConcTypesF MplParsed (m (MplType MplRenamed)) ->
     m (MplConcTypesF MplRenamed (MplType MplRenamed))
@@ -134,3 +200,4 @@ renameConcType = f
     f (TypeParF l s t) = TypeParF l <$> s <*> t 
     f (TypeNegF l s) = TypeNegF l <$> s
     f (TypeTopBotF l) = pure $ TypeTopBotF l
+    -}
