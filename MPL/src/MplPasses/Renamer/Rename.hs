@@ -32,6 +32,7 @@ import MplUtil.UniqueSupply
 
 import Data.Bool
 import Data.Maybe
+import Data.List
 import Data.Functor.Foldable (Base, cata)
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
@@ -81,6 +82,7 @@ renameStmt (MplStmt defns wheres) = do
     let entries = concatMap collectSymTab wheres'
     supply <- freshUniqueSupply
     defns' <- NE.fromList <$> renameDefns (NE.toList defns)
+
     return $ MplStmt defns' wheres'
 
 renameDefns ::
@@ -428,10 +430,14 @@ renameCmd =
             -- it, by providing the information of whether it was user supplied so we know whether
             -- to do out of scope checks.
         if p1 == UserProvidedContext
-            then tell $ outOfScopesWith lookupCh symtab cxt1 
+            then do 
+                tell $ outOfScopesWith lookupCh symtab cxt1 
+                tell $ overlappingDeclarations cxt1 
             else return ()
         if p2 == UserProvidedContext
-            then tell $ outOfScopesWith lookupCh symtab cxt2 
+            then do
+                tell $ outOfScopesWith lookupCh symtab cxt2 
+                tell $ overlappingDeclarations cxt1 
             else return ()
 
         envLcl %= deleteCh ch
@@ -490,6 +496,13 @@ renameCmd =
 
     f (CPlugs (keyword, (p, cxt)) (phr1, phr2, phrs)) = do
         symtab <- guse envLcl
+        let scopes = map fst $ channelsInScope symtab
+            plugged = if p == ComputedContext 
+                then cxt \\ scopes
+                else cxt
+        plugged' <- traverse tagIdentP plugged
+        undefined
+        {-
         cxt' <- plugged p cxt symtab (phr1:phr2:phrs)
         phr1' <- g phr1
         phr2' <- g phr2
@@ -504,18 +517,11 @@ renameCmd =
         plugged ComputedContext cxt symtab phrs = 
             let chsinscope = map undefined symtab
             in undefined
+        -}
+      where
+        g = undefined
             
     {-
-    | CPlugs !(XCPlugs x) (CPlugPhrase x, CPlugPhrase x, [CPlugPhrase x])
-        {-
-        -- | plugged together
-        [chident] 
-        -- | plug phrases
-        ([chident], ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident) 
-        ([chident], ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident)
-        [([chident], ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident)]
-        -}
-
     | CCase 
         !(XCCase x) 
         (XMplExpr x) 

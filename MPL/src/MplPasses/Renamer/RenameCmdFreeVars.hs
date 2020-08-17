@@ -78,7 +78,7 @@ type instance XCCase MplCmdFreeVars = KeyWordNameOcc
 type instance XCSwitch MplCmdFreeVars = KeyWordNameOcc
 type instance XCHCasePhrase MplCmdFreeVars  = ()
 type instance XCForkPhrase MplCmdFreeVars  = (ContextInfo, [IdP MplCmdFreeVars])
-type instance XCPlugPhrase MplCmdFreeVars  = (ContextInfo, [IdP MplCmdFreeVars])
+type instance XCPlugPhrase MplCmdFreeVars  = ()
 type instance XXCmd MplCmdFreeVars = Void 
 
 cmdsBindFreeVars ::
@@ -159,7 +159,7 @@ cmdBindFreeVars = f
             , (ch2, fromMaybe (ComputedContext, cxt2') ((UserProvidedContext,) <$> cxt2), cmds2')
             )
 
-    f cmd@(CId cxt (s, t)) = do
+    f (CId cxt (s, t)) = do
         equality %= ([s,t]<>)
         return $ CId cxt (s,t)
     f (CIdNeg cxt (s, t)) = do
@@ -177,18 +177,23 @@ cmdBindFreeVars = f
 
     f (CPlugs cxt (phr1, phr2, phrs)) = do
         initfreevars <- guse equality
-        phr1' <- g initfreevars phr1
-        phr2' <- g initfreevars phr2
-        phrs' <- traverse (g initfreevars) phrs
-        -- return $ CPlugs (cxt, ) (phr1', phr2', phrs')
-        cxt' <- guse equality
+        (free1, phr1') <- g initfreevars phr1
+        (free2, phr2') <- g initfreevars phr2
+        (free3, phrs') <- unzip <$> traverse (g initfreevars) phrs
         equality .= initfreevars
-        return $ CPlugs (over _2 (fromMaybe (ComputedContext, cxt')) (fmap (UserProvidedContext,) <$> cxt)) (phr1', phr2', phrs')
+        equality %= ((free1 <> free2 <> concat free3)<>)
+        return $ CPlugs 
+            (over _2 (fromMaybe (ComputedContext, cxt')) (fmap (UserProvidedContext,) <$> cxt)) 
+            (phr1', phr2', phrs')
       where
-        g initfreevars (cxt, cmds) = do
+        g initfreevars (cxt, (ins, outs), cmds) = do
+            equality .= initfreevars
             cmds' <- cmdsBindFreeVars cmds
-            cxt' <- guse equality
-            return (fromMaybe (ComputedContext, cxt') ((UserProvidedContext,) <$> cxt), cmds')
+            vs <- guse equality
+            return ((\\outs) . (\\ins) . nub $ vs, (cxt, (ins,outs), cmds'))
+
+        cxt' = undefined -- concatMap (uncurry (<>) . view _2) (phr1:phr2:phrs)
+
 
     f (CCase cxt expr cases) = do   
         cases' <- traverse g cases

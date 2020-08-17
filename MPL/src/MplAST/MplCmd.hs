@@ -71,7 +71,7 @@ type family XCForkPhrase x
 type family XCPlugPhrase x 
 
 -- aliases for some of the phrases
-type CPlugPhrase x = (XCPlugPhrase x, NonEmpty (MplCmd x))
+type CPlugPhrase x = (XCPlugPhrase x, ([ChP x], [ChP x]), NonEmpty (MplCmd x))
 
 -- aliases for some of the phrases
 type ForallProcessCommand (c :: Type -> Constraint) x =
@@ -203,9 +203,11 @@ pattern UCIdNeg ab = CIdNeg () ab
 
 pattern UCRace phrases = CRace () phrases
 
+{-
 pattern UCPlugs abcs <- CPlugs () ( (\(((), a), ((), b), cs) -> (a,b, map snd cs)) -> abcs)
   where
     UCPlugs (a,b,cs) = CPlugs () (((),a), ((),b), fmap ((),) cs)
+    -}
 
 pattern UCCase expr phrases = CCase () expr phrases
 pattern UCSwitch phrases = CSwitch () phrases

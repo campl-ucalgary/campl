@@ -19,6 +19,8 @@ import Control.Monad
 import Data.Word
 import Data.Void
 
+import Debug.Trace
+
 data MplPassesErrors =
     MplBnfcErrors B.BnfcErrors
     | MplParseErrors ParseErrors
@@ -50,9 +52,10 @@ mplPassesEnv = do
 runPasses :: 
     MplPassesEnv -> 
     String -> 
-    Either [MplPassesErrors] (MplProg MplRenamed)
+    Either [MplPassesErrors] _
 runPasses MplPassesEnv{mplPassesEnvUniqueSupply = supply, mplPassesContext = rsymtab} = 
     let (ls, rs) = split supply
+    -- in runRename' (TopLevel, ls, rsymtab) <=< runParse' <=< B.runBnfc
     in runRename' (TopLevel, ls, rsymtab) <=< runParse' <=< B.runBnfc
 
 runPassesTester ::

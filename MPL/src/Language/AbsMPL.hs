@@ -268,7 +268,7 @@ data RacePhrase = RACE_PHRASE PIdent ProcessCommandsBlock
 
 data PlugPhrase
     = PLUG_PHRASE ProcessCommandsBlock
-    | PLUG_PHRASE_AS [PIdent] ProcessCommandsBlock
+    | PLUG_PHRASE_AS [PIdent] [PIdent] ProcessCommandsBlock
   deriving (Eq, Ord, Show, Read)
 
 data ProcessCasePhrase

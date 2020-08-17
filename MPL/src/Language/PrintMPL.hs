@@ -461,7 +461,7 @@ instance Print RacePhrase where
 instance Print PlugPhrase where
   prt i e = case e of
     PLUG_PHRASE processcommandsblock -> prPrec i 0 (concatD [prt 0 processcommandsblock])
-    PLUG_PHRASE_AS pidents processcommandsblock -> prPrec i 0 (concatD [doc (showString "with"), prt 0 pidents, doc (showString "->"), prt 0 processcommandsblock])
+    PLUG_PHRASE_AS pidents1 pidents2 processcommandsblock -> prPrec i 0 (concatD [prt 0 pidents1, doc (showString "=>"), prt 0 pidents2, doc (showString "->"), prt 0 processcommandsblock])
   prtList _ [x] = (concatD [prt 0 x])
   prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ";"), prt 0 xs])
 instance Print ProcessCasePhrase where

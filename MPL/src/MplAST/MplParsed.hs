@@ -134,7 +134,7 @@ type instance XCCase MplParsed = KeyWordNameOcc
 type instance XCSwitch MplParsed = KeyWordNameOcc
 type instance XCHCasePhrase MplParsed  = ()
 type instance XCForkPhrase MplParsed  = Maybe [(ChP MplParsed)] -- user can supply their own context
-type instance XCPlugPhrase MplParsed  = Maybe [ChP MplParsed] -- user can supply their own context
+type instance XCPlugPhrase MplParsed  = () -- user can supply their own context
 type instance XXCmd MplParsed = Void
 
 -- Type clause

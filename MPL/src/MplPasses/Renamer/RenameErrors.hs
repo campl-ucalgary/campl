@@ -52,7 +52,6 @@ data RenameErrors =
 
     | IllegalLastCommand KeyWordNameOcc 
     | IllegalNonLastCommand KeyWordNameOcc 
-
   deriving Show
 
 $(makeClassyPrisms ''RenameErrors)

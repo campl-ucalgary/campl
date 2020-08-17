@@ -286,7 +286,7 @@ transRacePhrase x = case x of
 transPlugPhrase :: PlugPhrase -> Result
 transPlugPhrase x = case x of
   PLUG_PHRASE processcommandsblock -> failure x
-  PLUG_PHRASE_AS pidents processcommandsblock -> failure x
+  PLUG_PHRASE_AS pidents1 pidents2 processcommandsblock -> failure x
 transProcessCasePhrase :: ProcessCasePhrase -> Result
 transProcessCasePhrase x = case x of
   PROCESS_CASE_PHRASE pattern processcommandsblock -> failure x

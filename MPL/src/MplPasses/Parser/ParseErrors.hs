@@ -29,7 +29,9 @@ data ParseErrors =
         [(IdentP, Maybe [IdentP], NonEmpty (MplCmd MplParsed))]
 
     | PlugExpectedTwoOrMorePhrasesButGot 
-        (Maybe (Maybe [IdentP], NonEmpty (MplCmd MplParsed)))
+        (Maybe (CPlugPhrase MplParsed))
+    | PlugExpectedARunProcessCallButGot 
+        (NonEmpty (MplCmd MplParsed))
   deriving Show
 
 $(makeClassyPrisms ''ParseErrors)

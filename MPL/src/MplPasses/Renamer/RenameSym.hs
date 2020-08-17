@@ -15,6 +15,7 @@ import qualified Data.List.NonEmpty as NE
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List
 import Control.Monad
+import Data.Maybe
 
 import Control.Arrow
 
@@ -58,6 +59,7 @@ lookupCh ident =
 deleteCh ident = 
     deleteSym ident chSymPrism
 
+-- | Filter the channels to the provided idents in the symbol table
 filterChs :: 
     [IdentP] ->
     SymTab -> 
@@ -70,6 +72,10 @@ filterChs chs syms = go chs syms
                 filterChs chs syms
         | otherwise = sym : filterChs chs syms
     go chs []  = []
+    
+-- | finds all the channels currently in scope.
+channelsInScope :: SymTab -> [(IdentP, SymEntry Polarity)]
+channelsInScope = mapMaybe (traverseOf (_2 % symEntryInfo) (preview chSymPrism))
 
 lookupProc ident = 
     lookupSym ident (_Just % _SymProcInfo)
@@ -144,7 +150,8 @@ instance CollectSymTab (MplDefn MplRenamed) where
                 . collectSymTab) 
                 clause
 
-    collectSymTab (FunctionDefn (MplFunction name _ _)) = undefined
+    collectSymTab (FunctionDefn (MplFunction name _ _)) = 
+        [(name ^. identRIdentP, SymEntry (name ^. uniqueTag) (_Just % _SymFunInfo # ()))]
     collectSymTab (ProcessDefn (MplProcess name _ _)) = undefined
 
 instance CollectSymTab IdentR where

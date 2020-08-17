@@ -394,7 +394,7 @@ ListRacePhrase : {- empty -} { [] }
                | RacePhrase ';' ListRacePhrase { (:) $1 $3 }
 PlugPhrase :: { PlugPhrase }
 PlugPhrase : ProcessCommandsBlock { Language.AbsMPL.PLUG_PHRASE $1 }
-           | 'with' ListPIdent '->' ProcessCommandsBlock { Language.AbsMPL.PLUG_PHRASE_AS $2 $4 }
+           | ListPIdent '=>' ListPIdent '->' ProcessCommandsBlock { Language.AbsMPL.PLUG_PHRASE_AS $1 $3 $5 }
 ListPlugPhrase :: { [PlugPhrase] }
 ListPlugPhrase : PlugPhrase { (:[]) $1 }
                | PlugPhrase ';' ListPlugPhrase { (:) $1 $3 }

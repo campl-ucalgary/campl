@@ -366,7 +366,7 @@ All other symbols are terminals.
   |  |  **|**  | //RacePhrase// 
   |  |  **|**  | //RacePhrase// ``;`` //[RacePhrase]// 
   | //PlugPhrase// | -> | //ProcessCommandsBlock// 
-  |  |  **|**  | ``with`` //[PIdent]// ``->`` //ProcessCommandsBlock// 
+  |  |  **|**  | //[PIdent]// ``=>`` //[PIdent]// ``->`` //ProcessCommandsBlock// 
   | //[PlugPhrase]// | -> | //PlugPhrase// 
   |  |  **|**  | //PlugPhrase// ``;`` //[PlugPhrase]// 
   | //ProcessCasePhrase// | -> | //Pattern// ``->`` //ProcessCommandsBlock// 

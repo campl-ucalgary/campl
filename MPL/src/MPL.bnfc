@@ -410,8 +410,10 @@ separator ForkChannel ";" ;
 RACE_PHRASE . RacePhrase ::= PIdent "->" ProcessCommandsBlock ;
 separator RacePhrase ";" ;
 
+-- PLUG_PHRASE    . PlugPhrase ::= ProcessCommandsBlock ;
+-- PLUG_PHRASE_AS . PlugPhrase ::= "with" [PIdent] "->" ProcessCommandsBlock ;
 PLUG_PHRASE    . PlugPhrase ::= ProcessCommandsBlock ;
-PLUG_PHRASE_AS . PlugPhrase ::= "with" [PIdent] "->" ProcessCommandsBlock ;
+PLUG_PHRASE_AS . PlugPhrase ::= [PIdent] "=>" [PIdent] "->" ProcessCommandsBlock ;
 separator nonempty PlugPhrase ";" ;
 
 PROCESS_CASE_PHRASE . ProcessCasePhrase ::=  Pattern "->" ProcessCommandsBlock ;
