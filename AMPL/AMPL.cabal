@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 304b869bdbae1fa0eb2ebba271a44bda3e0f8b85f11eaa6f104e63044e8b2044
+-- hash: adf62eb43312f01a4b0356fc4b20903fa6df5e96d28b657f5c0e4270b463256e
 
 name:           AMPL
 version:        0.1.0.0
@@ -43,6 +43,7 @@ library
       GenericPretty
     , array
     , base
+    , bytestring
     , containers
     , mpl-lib
     , mtl
@@ -55,6 +56,7 @@ library
 executable ampl
   main-is: Main.hs
   other-modules:
+      Bytecode
       InteractiveTests
       Paths_AMPL
   hs-source-dirs:
@@ -65,6 +67,7 @@ executable ampl
     , GenericPretty
     , array
     , base
+    , bytestring
     , containers
     , mpl-lib
     , mtl
@@ -90,6 +93,7 @@ test-suite spec
     , QuickCheck
     , array
     , base
+    , bytestring
     , containers
     , hspec ==2.*
     , mpl-lib

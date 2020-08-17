@@ -1,1 +1,4 @@
 :set -fwarn-incomplete-patterns
+import Data.List
+
+import qualified Data.Stream
