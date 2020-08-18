@@ -156,7 +156,7 @@ parseTypeSeqWithArgs ::
     MplType MplParsed -> 
     m (IdP MplParsed, [MplType MplParsed])
 parseTypeSeqWithArgs n 
-    | Just (_, a, args) <- n ^? _TypeSeqWithArgs = return (a, args)
+    | Just (_, a, args) <- n ^? _TypeSeqVarWithArgs = return (a, args)
     | Just (_, a) <- n ^? _TypeVar = return (a, [])
     | otherwise = tell [_ExpectedTypeSeqWithArgsButGot # n] >> throwError ()
 
@@ -167,7 +167,7 @@ parseTypeConcWithArgs ::
     MplType MplParsed -> 
     m (IdP MplParsed, ([MplType MplParsed], [MplType MplParsed]))
 parseTypeConcWithArgs n 
-    | Just (_, a, args) <- n ^? _TypeConcWithArgs = return (a, args)
+    | Just (_, a, args) <- n ^? _TypeConcVarWithArgs = return (a, args)
     | Just (_, a) <- n ^? _TypeVar = return (a, mempty)
     | otherwise = tell [_ExpectedTypeConcWithArgsButGot # n] >> throwError ()
 

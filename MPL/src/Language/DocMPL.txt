@@ -58,15 +58,6 @@ followed by an unsigned or negative exponent.
 
 
 
-UIdent literals are recognized by the regular expression
-`````('#' upper | upper) (letter | digit | '_')*`````
-
-PIdent literals are recognized by the regular expression
-`````letter (letter | digit | '_' | ''')*`````
-
-UPIdent literals are recognized by the regular expression
-`````(letter | upper) (letter | digit | '_' | ''')*`````
-
 PInteger literals are recognized by the regular expression
 `````(["-"] digit | digit) digit*`````
 
@@ -147,6 +138,15 @@ ChId literals are recognized by the regular expression
 
 Case literals are recognized by the regular expression
 `````{"case"}`````
+
+UIdent literals are recognized by the regular expression
+`````('#' upper | upper) (letter | digit | '_')*`````
+
+PIdent literals are recognized by the regular expression
+`````letter (letter | digit | '_' | ''')*`````
+
+UPIdent literals are recognized by the regular expression
+`````(letter | upper) (letter | digit | '_' | ''')*`````
 
 
 ===Reserved words and symbols===
@@ -328,8 +328,7 @@ All other symbols are terminals.
   |  |  **|**  | //ProcessPhrase// ``;`` //[ProcessPhrase]// 
   | //ProcessCommandsBlock// | -> | ``do`` ``{`` //[ProcessCommand]// ``}`` 
   |  |  **|**  | //ProcessCommand// 
-  | //[ProcessCommand]// | -> | **eps**
-  |  |  **|**  | //ProcessCommand// 
+  | //[ProcessCommand]// | -> | //ProcessCommand// 
   |  |  **|**  | //ProcessCommand// ``;`` //[ProcessCommand]// 
   | //ProcessCommand// | -> | //PIdent// //LBracket// //[Expr]// ``|`` //[PIdent]// ``=>`` //[PIdent]// //RBracket// 
   |  |  **|**  | //Close// //PIdent// 

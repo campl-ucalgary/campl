@@ -163,7 +163,7 @@ type instance XCCase MplRenamed = KeyWordNameOcc
 type instance XCSwitch MplRenamed = KeyWordNameOcc
 type instance XCHCasePhrase MplRenamed  = ()
 type instance XCForkPhrase MplRenamed  = [ChP MplRenamed] 
-type instance XCPlugPhrase MplRenamed  = [ChP MplRenamed]
+type instance XCPlugPhrase MplRenamed  = ()
 type instance XXCmd MplRenamed = Void
 
 -- Type clause (note, we tie the knot here so it is easy to compute all 

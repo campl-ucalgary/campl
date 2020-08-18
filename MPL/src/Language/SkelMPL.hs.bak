@@ -285,7 +285,7 @@ transRacePhrase x = case x of
   RACE_PHRASE pident processcommandsblock -> failure x
 transPlugPhrase :: PlugPhrase -> Result
 transPlugPhrase x = case x of
-  PLUG_PHRASE pident lbracket exprs pidents1 pidents2 rbracket -> failure x
+  PLUG_PHRASE processcommandsblock -> failure x
   PLUG_PHRASE_AS pidents1 pidents2 processcommandsblock -> failure x
 transProcessCasePhrase :: ProcessCasePhrase -> Result
 transProcessCasePhrase x = case x of

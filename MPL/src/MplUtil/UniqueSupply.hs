@@ -87,6 +87,7 @@ freshUniqueSupply ::
 freshUniqueSupply =
     uniqueSupply %%= split
 
+-- this actually does nothing.
 splitUniqueSupply ::
     ( MonadState c m
     , HasUniqueSupply c ) => 

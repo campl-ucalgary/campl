@@ -56,9 +56,6 @@ import Language.ErrM
 L_quoted { PT _ (TL $$) }
 L_charac { PT _ (TC $$) }
 L_doubl  { PT _ (TD $$) }
-L_UIdent { PT _ (T_UIdent _) }
-L_PIdent { PT _ (T_PIdent _) }
-L_UPIdent { PT _ (T_UPIdent _) }
 L_PInteger { PT _ (T_PInteger _) }
 L_Par { PT _ (T_Par _) }
 L_Tensor { PT _ (T_Tensor _) }
@@ -86,6 +83,9 @@ L_Split { PT _ (T_Split _) }
 L_Fork { PT _ (T_Fork _) }
 L_ChId { PT _ (T_ChId _) }
 L_Case { PT _ (T_Case _) }
+L_UIdent { PT _ (T_UIdent _) }
+L_PIdent { PT _ (T_PIdent _) }
+L_UPIdent { PT _ (T_UPIdent _) }
 
 
 %%
@@ -93,9 +93,6 @@ L_Case { PT _ (T_Case _) }
 String  :: { String }  : L_quoted {  $1 }
 Char    :: { Char }    : L_charac { (read ( $1)) :: Char }
 Double  :: { Double }  : L_doubl  { (read ( $1)) :: Double }
-UIdent    :: { UIdent} : L_UIdent { UIdent (mkPosToken $1)}
-PIdent    :: { PIdent} : L_PIdent { PIdent (mkPosToken $1)}
-UPIdent    :: { UPIdent} : L_UPIdent { UPIdent (mkPosToken $1)}
 PInteger    :: { PInteger} : L_PInteger { PInteger (mkPosToken $1)}
 Par    :: { Par} : L_Par { Par (mkPosToken $1)}
 Tensor    :: { Tensor} : L_Tensor { Tensor (mkPosToken $1)}
@@ -123,6 +120,9 @@ Split    :: { Split} : L_Split { Split (mkPosToken $1)}
 Fork    :: { Fork} : L_Fork { Fork (mkPosToken $1)}
 ChId    :: { ChId} : L_ChId { ChId (mkPosToken $1)}
 Case    :: { Case} : L_Case { Case (mkPosToken $1)}
+UIdent    :: { UIdent} : L_UIdent { UIdent (mkPosToken $1)}
+PIdent    :: { PIdent} : L_PIdent { PIdent (mkPosToken $1)}
+UPIdent    :: { UPIdent} : L_UPIdent { UPIdent (mkPosToken $1)}
 
 ListPIdent :: { [PIdent] }
 ListPIdent : {- empty -} { [] }
@@ -344,8 +344,7 @@ ProcessCommandsBlock :: { ProcessCommandsBlock }
 ProcessCommandsBlock : 'do' '{' ListProcessCommand '}' { Language.AbsMPL.PROCESS_COMMANDS_DO_BLOCK $3 }
                      | ProcessCommand { Language.AbsMPL.PROCESS_COMMANDS_SINGLE_COMMAND_BLOCK $1 }
 ListProcessCommand :: { [ProcessCommand] }
-ListProcessCommand : {- empty -} { [] }
-                   | ProcessCommand { (:[]) $1 }
+ListProcessCommand : ProcessCommand { (:[]) $1 }
                    | ProcessCommand ';' ListProcessCommand { (:) $1 $3 }
 ProcessCommand :: { ProcessCommand }
 ProcessCommand : PIdent LBracket ListExpr '|' ListPIdent '=>' ListPIdent RBracket { Language.AbsMPL.PROCESS_RUN $1 $2 $3 $5 $7 $8 }

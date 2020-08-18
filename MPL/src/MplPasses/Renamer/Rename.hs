@@ -40,6 +40,8 @@ import qualified Data.List.NonEmpty as NE
 import Data.Foldable
 import Control.Arrow
 
+import Debug.Trace
+
 runRename' ::
     AsRenameErrors err =>
     (TopLevel, UniqueSupply, SymTab) ->
@@ -97,7 +99,7 @@ renameDefns (defn : defns) = do
     rec defn' <- splitUniqueSupply $ do
             envLcl .= symtab
             renameDefn defn
-        envGbl %= ((collectSymTab defn') <>)
+        envGbl %= (collectSymTab defn' <>)
         defns' <- renameDefns defns
         symtab <- guse envGbl
 
@@ -194,8 +196,8 @@ renameExpr = cata f
         
     f (EVarF cxt ident) = do
         symtab <- guse envLcl
-        let ident' = fromJust $ lookupSym ident _Nothing symtab
-        tell $ outOfScope symtab ident 
+        let ident' = fromJust $ lookupSymAny ident symtab
+        tell $ outOfScopeWith lookupSymAny symtab ident 
         return $ _EVar # (cxt, _IdentR # (ident, ident' ^. uniqueTag))
 
     f (EIntF cxt n) = return $ _EInt # (cxt, n)
@@ -216,8 +218,8 @@ renameExpr = cata f
             return (patt', expr')
     f (EObjCallF cxt ident args) = do
         symtab <- guse envLcl
-        let ident' = fromJust $ lookupSym ident _Nothing symtab
-        tell $ outOfScope symtab ident 
+        let ident' = fromJust $ lookupSymSeqPhrase ident  symtab
+        tell $ outOfScopeWith lookupSymSeqPhrase symtab ident 
 
         args' <- sequenceA args
 
@@ -225,16 +227,23 @@ renameExpr = cata f
             (cxt, _IdentR # (ident, ident' ^. uniqueTag), args')
     -- same thing for call...
     f (ECallF cxt ident args) = do
-        ~(EObjCall cxt ident args) <- f (EObjCallF cxt ident args)
-        return $ _ECall # (cxt, ident, args)
+        symtab <- guse envLcl 
+        let ident' = fromJust $ lookupSymAny ident symtab
+        tell $ outOfScopeWith lookupSymAny symtab ident 
+
+        args' <- sequenceA args
+
+        return $ _EObjCall # 
+            (cxt, _IdentR # (ident, ident' ^. uniqueTag), args')
+
     f (ERecordF cxt args) = do
         args' <- traverse g args
         return $ _ERecord # (cxt, args')
       where
         g (cxt, ident, (patts, expr)) = do
             symtab <- guse envLcl
-            let ident' = fromJust $ lookupSym ident _Nothing symtab
-            tell $ outOfScope symtab ident 
+            let ident' = fromJust $ lookupSymSeqPhrase ident symtab
+            tell $ outOfScopeWith lookupSymSeqPhrase symtab ident 
 
             patts' <- traverse (splitUniqueSupply . renamePattern) patts
             expr' <- expr
@@ -251,6 +260,7 @@ renameExpr = cata f
 renameCmds ::
     Rename (NonEmpty (MplCmd MplCmdFreeVars)) (NonEmpty (MplCmd MplRenamed))
 renameCmds (cmd :| []) = do
+    {-
     case cmd of
         (CClose cxt _) -> tell [_IllegalLastCommand # cxt]
         (CGet cxt _ _) -> tell [_IllegalLastCommand # cxt]
@@ -258,8 +268,10 @@ renameCmds (cmd :| []) = do
         (CHPut cxt _ _) -> tell [_IllegalLastCommand # cxt]
         (CSplit cxt _ _) -> tell [_IllegalLastCommand # cxt]
         _ -> tell []
+    -}
     (:|[]) <$> renameCmd cmd
 renameCmds (cmd :| rst) = do
+    {-
     case cmd of
         CFork cxt _ _ -> tell [_IllegalNonLastCommand # cxt]
         CId cxt _ -> tell [_IllegalNonLastCommand # cxt]
@@ -270,6 +282,7 @@ renameCmds (cmd :| rst) = do
         CHalt cxt _ -> tell [_IllegalNonLastCommand # cxt]
         CRace cxt _ -> tell [_IllegalNonLastCommand # cxt]
         _ -> tell []
+    -}
     cmd' <- renameCmd cmd
     rst' <- NE.toList <$> renameCmds (NE.fromList rst)
     return (cmd' :| rst')
@@ -300,10 +313,10 @@ renameCmd =
 
         tell $ concat 
             [ maybe [_OutOfScope # ident] (const []) identlkup
-            , outOfScopes symtab ins 
-            , outOfScopes symtab outs ]
-        tell $ maybe (concatMap expectedInputPolarity $ zip ins inslkup') (const []) $ inslkup
-        tell $ maybe (concatMap expectedOutputPolarity $ zip ins outslkup') (const []) $ outslkup
+            , outOfScopesWith lookupCh symtab ins 
+            , outOfScopesWith lookupCh symtab outs ]
+        -- tell $ maybe (concatMap expectedInputPolarity $ zip ins inslkup') (const []) $ inslkup
+        -- tell $ maybe (concatMap expectedOutputPolarity $ zip ins outslkup') (const []) $ outslkup
 
         seqs' <- traverse (\expr -> do
                 expr' <- splitUniqueSupply >=> renameExpr $ pure expr
@@ -369,12 +382,14 @@ renameCmd =
                 ident' = tagIdentPWithSymEntry ident lkup'
 
                 ch'' = fromJust ch'
+            {-
             tell $ bool [] 
                 (hCaseError 
                     (ch'' ^. chIdentRIdentR % identRIdentP, ch'' ^. polarity)
                     (ident' ^. identRIdentP, lkup' ^. symEntryInfo)
                     ) 
                 (isJust ch' && isJust lkup)
+                -}
 
             cmds' <- splitUniqueSupply $ renameCmds cmds
             envLcl .= symtab
@@ -391,12 +406,14 @@ renameCmd =
             lkup' = fromJust lkup 
             ident' = tagIdentPWithSymEntry ident lkup'
 
+        {-
         tell $ bool [] 
             (hPutError 
                 (ch' ^. chIdentRIdentR % identRIdentP, ch' ^. polarity)
                 (ident' ^. identRIdentP, lkup' ^. symEntryInfo)
                 ) 
             (isJust chlkup && isJust lkup)
+        -}
 
         return $ CHPut cxt ident' ch'
         
@@ -443,17 +460,18 @@ renameCmd =
         envLcl %= deleteCh ch
         symtab <- guse envLcl
 
-        tell $ forkExpectedDisjointChannelsButHasSharedChannels cxt1 cxt2
+        -- tell $ forkExpectedDisjointChannelsButHasSharedChannels cxt1 cxt2
 
         ch1' <- fmap (review _ChIdentR . (,ch' ^. polarity)) $ splitUniqueSupply $ tagIdentP ch1
         ch2' <- fmap (review _ChIdentR . (,ch' ^. polarity)) $ splitUniqueSupply $ tagIdentP ch2
 
         envLcl .= symtab
-        envLcl %= ((collectSymTab ch1')<>) . filterChs cxt1
+        envLcl %= ((collectSymTab ch1')<>) . restrictChs cxt1
+        
         cmds1' <- renameCmds cmds1
 
         envLcl .= symtab
-        envLcl %= ((collectSymTab ch2')<>) . filterChs cxt2
+        envLcl %= ((collectSymTab ch2')<>) . restrictChs cxt2
         cmds2' <- renameCmds cmds2
 
         envLcl .= symtab
@@ -495,32 +513,52 @@ renameCmd =
             return (ch', cmds')
 
     f (CPlugs (keyword, (p, cxt)) (phr1, phr2, phrs)) = do
-        symtab <- guse envLcl
-        let scopes = map fst $ channelsInScope symtab
-            plugged = if p == ComputedContext 
+        ~symtab <- guse envLcl
+
+        sup <- freshUniqueSupply
+
+        let ~scopes = map fst $ channelsInScope symtab
+            ~plugged = if p == ComputedContext 
                 then cxt \\ scopes
                 else cxt
-        plugged' <- traverse tagIdentP plugged
-        undefined
-        {-
-        cxt' <- plugged p cxt symtab (phr1:phr2:phrs)
-        phr1' <- g phr1
-        phr2' <- g phr2
-        phrs' <- traverse g phrs
-        return $ CPlugs (keyword, cxt') 
-            (phr1', phr2', phrs')
-      where
-        g ((p, cxt), cmds) = undefined
+            ~plugged' = (`evalState` sup) $ traverse tagIdentP plugged
 
-        plugged UserProvidedContext cxt symtab phrs = do
-            return $ undefined --  cxt
-        plugged ComputedContext cxt symtab phrs = 
-            let chsinscope = map undefined symtab
-            in undefined
-        -}
+        tell $ bool [] (overlappingDeclarations plugged) (p == UserProvidedContext)
+
+        ~(phr1':phr2':phrs') <- traverse (g plugged') (phr1:phr2:phrs)
+
+        return $ CPlugs (keyword, plugged') (phr1', phr2', phrs')
       where
-        g = undefined
-            
+        g :: _ -> ((), ([IdentP], [IdentP]), NonEmpty (MplCmd MplCmdFreeVars)) ->
+            _ ((), ([ChIdentR], [ChIdentR]), NonEmpty (MplCmd MplRenamed))
+        g plugged ((), (ins, outs), cmds) = do
+            initsymtab <- guse envLcl
+
+            -- check overlapping declarations...
+            tell $ overlappingDeclarations $ ins ++ outs
+
+            -- restrict and check out of scope for the input channels
+            envLcl %= (restrictChs ins (collectSymTab (map (review _ChIdentR . (,Input)) plugged))<>)
+            symtab <- guse envLcl
+            tell $ outOfScopesWith lookupCh symtab ins 
+            let inslkup = fromJust $ traverse (flip lookupCh symtab) ins
+                ins' = zipWith tagIdentPToChIdentRWithSymEntry ins inslkup
+            -- envLcl %= restrictChs ins
+
+            -- similarly, for the output channels
+            envLcl %= (restrictChs outs (collectSymTab (map (review _ChIdentR . (,Output)) plugged))<>)
+            symtab <- guse envLcl
+            tell $ outOfScopesWith lookupCh symtab outs 
+            let outslkup = fromJust $ traverse (flip lookupCh symtab) outs
+                outs' = zipWith tagIdentPToChIdentRWithSymEntry outs outslkup
+            envLcl %= restrictChs (ins ++ outs)
+
+            ~cmds' <- renameCmds cmds
+
+            envLcl .= initsymtab
+
+            return ((), (ins', outs'), cmds')
+
     {-
     | CCase 
         !(XCCase x) 

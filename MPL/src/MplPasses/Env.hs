@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 module MplPasses.Env where
 
 import Optics

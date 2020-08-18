@@ -79,20 +79,6 @@ instance Print Double where
 
 
 
-instance Print UIdent where
-  prt _ (UIdent (_,i)) = doc (showString ( i))
-
-
-instance Print PIdent where
-  prt _ (PIdent (_,i)) = doc (showString ( i))
-  prtList _ [] = (concatD [])
-  prtList _ [x] = (concatD [prt 0 x])
-  prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ","), prt 0 xs])
-
-instance Print UPIdent where
-  prt _ (UPIdent (_,i)) = doc (showString ( i))
-
-
 instance Print PInteger where
   prt _ (PInteger (_,i)) = doc (showString ( i))
 
@@ -199,6 +185,20 @@ instance Print ChId where
 
 instance Print Case where
   prt _ (Case (_,i)) = doc (showString ( i))
+
+
+instance Print UIdent where
+  prt _ (UIdent (_,i)) = doc (showString ( i))
+
+
+instance Print PIdent where
+  prt _ (PIdent (_,i)) = doc (showString ( i))
+  prtList _ [] = (concatD [])
+  prtList _ [x] = (concatD [prt 0 x])
+  prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ","), prt 0 xs])
+
+instance Print UPIdent where
+  prt _ (UPIdent (_,i)) = doc (showString ( i))
 
 
 
@@ -426,7 +426,6 @@ instance Print ProcessCommand where
     PROCESS_PLUG plugphrases -> prPrec i 0 (concatD [doc (showString "plug"), doc (showString "{"), prt 0 plugphrases, doc (showString "}")])
     PROCESS_CASE case_ expr processcasephrases -> prPrec i 0 (concatD [prt 0 case_, prt 0 expr, doc (showString "of"), doc (showString "{"), prt 0 processcasephrases, doc (showString "}")])
     PROCESS_SWITCH processswitchphrases -> prPrec i 0 (concatD [doc (showString "switch"), doc (showString "{"), prt 0 processswitchphrases, doc (showString "}")])
-  prtList _ [] = (concatD [])
   prtList _ [x] = (concatD [prt 0 x])
   prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ";"), prt 0 xs])
 instance Print HCasePhrase where

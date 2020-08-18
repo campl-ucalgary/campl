@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -37,6 +38,8 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 
 import Data.Foldable
+
+import Debug.Trace
 
 
 import Data.Foldable
@@ -149,12 +152,11 @@ cmdBindFreeVars = f
         cmds2' <- cmdsBindFreeVars cmds2
         cxt2' <- guses equality (filter (/=ch2) . nub)
 
-        -- reset the free vars (indeed, this when the fork command is
-        -- empty, but add the forked on variable which is indeed free)
-        equality .= ch:initfreevars
+        -- pass the free variables up more..
+        equality .= nub (ch:initfreevars ++ cxt2' ++ cxt1')
 
         -- return $ CFork cxt ch ((ch1, fromMaybe cxt1' cxt1, cmds1), (ch2, fromMaybe cxt2' cxt2, cmds2))
-        return $ CFork cxt ch 
+        return $ CFork cxt ch
             ( (ch1, fromMaybe (ComputedContext, cxt1') ((UserProvidedContext,) <$> cxt1), cmds1')
             , (ch2, fromMaybe (ComputedContext, cxt2') ((UserProvidedContext,) <$> cxt2), cmds2')
             )
@@ -192,7 +194,7 @@ cmdBindFreeVars = f
             vs <- guse equality
             return ((\\outs) . (\\ins) . nub $ vs, (cxt, (ins,outs), cmds'))
 
-        cxt' = undefined -- concatMap (uncurry (<>) . view _2) (phr1:phr2:phrs)
+        cxt' = nub $ concatMap (uncurry (<>) . view _2) (phr1:phr2:phrs)
 
 
     f (CCase cxt expr cases) = do   

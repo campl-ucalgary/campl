@@ -49,8 +49,9 @@ renamePattern = cata f
     f (PConstructorF () ident args) = do
         symtab <- guse envLcl
         args' <- sequenceA args
-        let ident' = fromJust $ lookupSym ident _Nothing symtab
-        tell $ outOfScope symtab ident 
+        let ident' = fromJust $ 
+                lookupSymSeqPhrase ident symtab
+        tell $ outOfScopeWith lookupSymSeqPhrase symtab ident 
 
         return $ _PConstructor # 
             ( ()
@@ -64,8 +65,8 @@ renamePattern = cata f
         g ((), ident, patt) = do
             symtab <- guse envLcl
             patt' <- patt
-            let ident' = fromJust $ lookupSym ident _Nothing symtab
-            tell $ outOfScope symtab ident 
+            let ident' = fromJust $ lookupSymSeqPhrase ident symtab
+            tell $ outOfScopeWith lookupSymSeqPhrase symtab ident 
             return ((), _IdentR # (ident, ident' ^. uniqueTag), patt')
     -- extends the variable context
     f (PVarF () ident) = do

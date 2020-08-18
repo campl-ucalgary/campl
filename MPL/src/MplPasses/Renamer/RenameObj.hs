@@ -1,6 +1,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DataKinds #-}
@@ -35,11 +38,12 @@ import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
 import Data.Function
 
+import Debug.Trace
+
 import Data.Foldable
 
 renameTypeClauseSpine :: 
-    ( TypeClauseSpineSameVarError t 
-    , TypeClauseVarsSymTab t 
+    ( TypeClauseVarsSymTab t 
     , OverlappingDeclarations (MplTypeClauseSpine MplParsed t) 
     , RenameTypeClause t
     , RenameTypePhrase t 
@@ -49,7 +53,7 @@ renameTypeClauseSpine ::
 renameTypeClauseSpine spine = do
     -- first, check if all the args are the same 
     -- (mutually recursive types must have the same type variables)
-    tell $ typeClauseSpineSameVarError spine
+    -- tell $ typeClauseSpineSameVarError spine
     -- moreover, we need to test for overlapping declarations of the 
     -- arguments and the state vars
     tell $ overlappingDeclarations spine
@@ -91,8 +95,8 @@ instance TypeClauseVarsSymTab (ConcObjTag t) where
         args = clause ^. typeClauseArgs % to (uncurry mappend)
         st = clause ^. typeClauseStateVar
 
-class RenameTypeClause t where
-    renameTypeClause :: RenameTypePhrase t => 
+class  RenameTypeClause t where
+    renameTypeClause :: RenameTypePhrase t =>
         Rename (MplTypeClause MplParsed t) (MplTypeClause MplRenamed t)
 
 instance RenameTypeClause (SeqObjTag t) where
@@ -102,7 +106,7 @@ instance RenameTypeClause (SeqObjTag t) where
         name' <- clause ^. typeClauseName % to tagIdentP
 
         -- look up the arguments
-        tell $ outOfScopes symtab (clause ^. typeClauseArgs)
+        tell $ outOfScopesWith lookupTypeVar symtab (clause ^. typeClauseArgs)
         let args' = fromJust $ clause ^. typeClauseArgs 
                 % to (traverse (flip lookupTypeVar symtab))
             -- Note: we know the state variables and 
@@ -129,7 +133,7 @@ instance RenameTypeClause (ConcObjTag t) where
         name' <- clause ^. typeClauseName % to tagIdentP
 
         -- look up the arguments
-        tell $ outOfScopes symtab (clause ^. typeClauseArgs % to (uncurry mappend))
+        tell $ outOfScopesWith lookupTypeVar symtab (clause ^. typeClauseArgs % to (uncurry mappend))
         let args' = fromJust $ clause ^. typeClauseArgs 
                 % to (traverseOf each (traverse (flip lookupTypeVar symtab)))
             -- Note: we know the state variables and 
@@ -175,8 +179,7 @@ instance RenameTypePhrase (SeqObjTag DataDefnTag) where
         vfroms' <- traverse ((`runReaderT`symtab) . renameScopedType) 
             vfroms
 
-        tell $ bool [] [_ExpectedStateVarButGot # (fst st, vto)]
-            (vto /= fst st)
+        -- tell $ bool [] [_ExpectedStateVarButGot # (fst st, vto)] (vto /= fst st)
 
         return $ _MplTypePhrase # 
             ( name'
@@ -197,8 +200,7 @@ instance RenameTypePhrase (SeqObjTag CodataDefnTag) where
             vfroms
         vto' <- (`runReaderT`symtab) . renameScopedType $ vto
 
-        tell $ bool [] [_ExpectedStateVarButGot # (fst st, vst)]
-            (vst /= fst st)
+        -- tell $ bool [] [_ExpectedStateVarButGot # (fst st, vst)] (vst /= fst st)
 
         return $ _MplTypePhrase # 
             ( name'
@@ -217,8 +219,7 @@ instance RenameTypePhrase (ConcObjTag ProtocolDefnTag) where
 
         vfrom' <- (`runReaderT`symtab) . renameScopedType $ vfrom
 
-        tell $ bool [] [_ExpectedStateVarButGot # (fst st, vto)]
-            (vto /= fst st)
+        -- tell $ bool [] [_ExpectedStateVarButGot # (fst st, vto)] (vto /= fst st)
 
         return $ _MplTypePhrase # 
             ( name'
@@ -237,8 +238,7 @@ instance RenameTypePhrase (ConcObjTag CoprotocolDefnTag) where
 
         vto' <- (`runReaderT`symtab) . renameScopedType $ vto
 
-        tell $ bool [] [_ExpectedStateVarButGot # (fst st, vfrom)]
-            (vfrom /= fst st)
+        -- tell $ bool [] [_ExpectedStateVarButGot # (fst st, vfrom)] (vfrom /= fst st)
 
         return $ _MplTypePhrase # 
             ( name'

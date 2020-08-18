@@ -328,8 +328,7 @@ All other symbols are terminals.
   |  |  **|**  | //ProcessPhrase// ``;`` //[ProcessPhrase]// 
   | //ProcessCommandsBlock// | -> | ``do`` ``{`` //[ProcessCommand]// ``}`` 
   |  |  **|**  | //ProcessCommand// 
-  | //[ProcessCommand]// | -> | **eps**
-  |  |  **|**  | //ProcessCommand// 
+  | //[ProcessCommand]// | -> | //ProcessCommand// 
   |  |  **|**  | //ProcessCommand// ``;`` //[ProcessCommand]// 
   | //ProcessCommand// | -> | //PIdent// //LBracket// //[Expr]// ``|`` //[PIdent]// ``=>`` //[PIdent]// //RBracket// 
   |  |  **|**  | //Close// //PIdent// 
@@ -365,7 +364,7 @@ All other symbols are terminals.
   | //[RacePhrase]// | -> | **eps**
   |  |  **|**  | //RacePhrase// 
   |  |  **|**  | //RacePhrase// ``;`` //[RacePhrase]// 
-  | //PlugPhrase// | -> | //PIdent// //LBracket// //[Expr]// ``|`` //[PIdent]// ``=>`` //[PIdent]// //RBracket// 
+  | //PlugPhrase// | -> | //ProcessCommandsBlock// 
   |  |  **|**  | //[PIdent]// ``=>`` //[PIdent]// ``->`` //ProcessCommandsBlock// 
   | //[PlugPhrase]// | -> | //PlugPhrase// 
   |  |  **|**  | //PlugPhrase// ``;`` //[PlugPhrase]// 

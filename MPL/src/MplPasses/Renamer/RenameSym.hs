@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE TemplateHaskell #-}
 module MplPasses.Renamer.RenameSym where
 
 import Optics
@@ -17,12 +18,14 @@ import Data.List
 import Control.Monad
 import Data.Maybe
 
+import Debug.Trace
+
 import Control.Arrow
 
 data SymEntry info = SymEntry { 
     _symEntryUniqueTag :: UniqueTag
     , _symEntryInfo :: info
-}
+}  deriving Show
 
 -- Extra info about the symbol if the namespace information (
 -- recall the namespaces are terms, types, and channels)
@@ -35,11 +38,13 @@ data SymInfo =
     | SymFunInfo 
     | SymProcInfo 
     | SymChInfo Polarity
+  deriving Show
 
 -- needed to resolve type variables and type clauses
 data SymTypeVarInfo = 
     SymTypeVar
     | SymTypeClause ObjectDefnTag
+  deriving Show
 
 $(makeLenses ''SymEntry)
 $(makePrisms ''SymEntry)
@@ -59,18 +64,19 @@ lookupCh ident =
 deleteCh ident = 
     deleteSym ident chSymPrism
 
--- | Filter the channels to the provided idents in the symbol table
-filterChs :: 
+-- | Restricts the channels to the provided idents in the symbol table
+restrictChs :: 
     [IdentP] ->
     SymTab -> 
     SymTab 
-filterChs chs syms = go chs syms
+restrictChs chs syms = go chs syms
   where
     go chs (sym:syms) 
-        | has (_2 % symEntryInfo % chSymPrism) sym 
-            && sym ^. _1 `elem` chs = 
-                filterChs chs syms
-        | otherwise = sym : filterChs chs syms
+        | has (_2 % symEntryInfo % chSymPrism) sym =
+            if sym ^. _1 `elem` chs 
+                then sym : go chs syms
+                else go chs syms
+        | otherwise = sym : go chs syms
     go chs []  = []
     
 -- | finds all the channels currently in scope.
@@ -89,11 +95,16 @@ lookupTypeVar ident =
 lookupTypeClause ident = 
     lookupSym ident (_Just % _SymTypeInfo % _SymTypeClause)
 
+lookupSymSeqPhrase ident = 
+    lookupSym ident (_Just % _SymSeqPhraseInfo)
+
 lookupSym ident prism = join 
     . fmap ( 
         traverseOf symEntryInfo 
-            ( preview prism) . view _2 )
+            ( preview prism ) . view _2 )
     . find ((ident ==) . view _1)
+
+lookupSymAny ident = fmap snd . find ((ident ==) . view _1)
 
 deleteSym ident prism [] = []
 deleteSym ident prism (sym:syms) 
@@ -152,7 +163,8 @@ instance CollectSymTab (MplDefn MplRenamed) where
 
     collectSymTab (FunctionDefn (MplFunction name _ _)) = 
         [(name ^. identRIdentP, SymEntry (name ^. uniqueTag) (_Just % _SymFunInfo # ()))]
-    collectSymTab (ProcessDefn (MplProcess name _ _)) = undefined
+    collectSymTab (ProcessDefn (MplProcess name _ _)) = 
+        [(name ^. identRIdentP, SymEntry (name ^. uniqueTag) (_Just % _SymProcInfo # ()))]
 
 instance CollectSymTab IdentR where
     collectSymTab = pure <<< view identRIdentP &&& flip SymEntry Nothing . view uniqueTag

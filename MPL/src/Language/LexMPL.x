@@ -29,9 +29,6 @@ $u = [\0-\255]          -- universal: any character
 
 $white+ ;
 @rsyms { tok (\p s -> PT p (eitherResIdent (TV . share) s)) }
-(\# $c | $c)($l | $d | \_)* { tok (\p s -> PT p (eitherResIdent (T_UIdent . share) s)) }
-$l ($l | $d | \_ | \')* { tok (\p s -> PT p (eitherResIdent (T_PIdent . share) s)) }
-($l | $c)($l | $d | \_ | \')* { tok (\p s -> PT p (eitherResIdent (T_UPIdent . share) s)) }
 ([\-]$d | $d)$d * { tok (\p s -> PT p (eitherResIdent (T_PInteger . share) s)) }
 \( \+ \) { tok (\p s -> PT p (eitherResIdent (T_Par . share) s)) }
 \( \* \) { tok (\p s -> PT p (eitherResIdent (T_Tensor . share) s)) }
@@ -59,6 +56,9 @@ s p l i t { tok (\p s -> PT p (eitherResIdent (T_Split . share) s)) }
 f o r k { tok (\p s -> PT p (eitherResIdent (T_Fork . share) s)) }
 \| \= \| { tok (\p s -> PT p (eitherResIdent (T_ChId . share) s)) }
 c a s e { tok (\p s -> PT p (eitherResIdent (T_Case . share) s)) }
+(\# $c | $c)($l | $d | \_)* { tok (\p s -> PT p (eitherResIdent (T_UIdent . share) s)) }
+$l ($l | $d | \_ | \')* { tok (\p s -> PT p (eitherResIdent (T_PIdent . share) s)) }
+($l | $c)($l | $d | \_ | \')* { tok (\p s -> PT p (eitherResIdent (T_UPIdent . share) s)) }
 
 $l $i*   { tok (\p s -> PT p (eitherResIdent (TV . share) s)) }
 \" ([$u # [\" \\ \n]] | (\\ (\" | \\ | \' | n | t)))* \"{ tok (\p s -> PT p (TL $ share $ unescapeInitTail s)) }
@@ -81,9 +81,6 @@ data Tok =
  | TV !String         -- identifiers
  | TD !String         -- double precision float literals
  | TC !String         -- character literals
- | T_UIdent !String
- | T_PIdent !String
- | T_UPIdent !String
  | T_PInteger !String
  | T_Par !String
  | T_Tensor !String
@@ -111,6 +108,9 @@ data Tok =
  | T_Fork !String
  | T_ChId !String
  | T_Case !String
+ | T_UIdent !String
+ | T_PIdent !String
+ | T_UPIdent !String
 
  deriving (Eq,Show,Ord)
 
@@ -145,9 +145,6 @@ prToken t = case t of
   PT _ (TV s)   -> s
   PT _ (TD s)   -> s
   PT _ (TC s)   -> s
-  PT _ (T_UIdent s) -> s
-  PT _ (T_PIdent s) -> s
-  PT _ (T_UPIdent s) -> s
   PT _ (T_PInteger s) -> s
   PT _ (T_Par s) -> s
   PT _ (T_Tensor s) -> s
@@ -175,6 +172,9 @@ prToken t = case t of
   PT _ (T_Fork s) -> s
   PT _ (T_ChId s) -> s
   PT _ (T_Case s) -> s
+  PT _ (T_UIdent s) -> s
+  PT _ (T_PIdent s) -> s
+  PT _ (T_UPIdent s) -> s
 
 
 data BTree = N | B String Tok BTree BTree deriving (Show)

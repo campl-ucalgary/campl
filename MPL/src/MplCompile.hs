@@ -10,12 +10,12 @@ parsebnfc n = runParse' <$> runBnfc n
 
 test = [r|
 
-data 
-    Huh -> C =
-        Huh :: C -> C
-
-fun test =
-    _ -> 334 
+data
+    MyData(A,B) -> C =
+        MyData :: A,B -> C
+fun appwrapper =
+    a -> case a of
+        MyData(a,b) -> a
+        MyData(_,_) -> a
 |]
-
 
