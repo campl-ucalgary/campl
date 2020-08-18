@@ -323,7 +323,7 @@ translateConcurrent (IGet id) = do
     return ret
 
 translateConcurrent (IPut id) = do
-    ret <- emit $ BI B_AM_GET
+    ret <- emit $ BI B_AM_PUT
     emit $ BChID id
     return ret
 
