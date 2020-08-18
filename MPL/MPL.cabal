@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 31d2e471ee0452081b0aa41459716ed3e7018b9d1daa403f68e1c337216c35df
+-- hash: a8bfc998c6cc20cf5a909fb8ed01372be87c1f49f5ce0ff5cbd30f7533c86312
 
 name:           MPL
 version:        0.1.0.0
@@ -52,6 +52,7 @@ library
       MplAST.MplProgUtil
       MplAST.MplRenamed
       MplAST.MplType
+      MplAST.MplTypeChecked
       MplCompile
       MPLMain
       MplPasses.Env
@@ -70,6 +71,7 @@ library
       MplPasses.Renamer.RenameSym
       MplPasses.Renamer.RenameType
       MplPasses.Renamer.RenameUtils
+      MplPasses.TypeChecker.TypeCheck
       MplUtil.Data.Stream
       MplUtil.Data.Tuple.Optics
       MplUtil.UniqueSupply
