@@ -208,11 +208,17 @@ instance Print MplProg where
 
 instance Print MplStmt where
   prt i e = case e of
-    MPL_DEFN_STMS_WHERE mpldefns mplstmts -> prPrec i 0 (concatD [doc (showString "defn"), doc (showString "{"), prt 0 mpldefns, doc (showString "}"), doc (showString "where"), doc (showString "{"), prt 0 mplstmts, doc (showString "}")])
+    MPL_DEFN_STMS_WHERE mpldefns mplwheres -> prPrec i 0 (concatD [doc (showString "defn"), doc (showString "{"), prt 0 mpldefns, doc (showString "}"), doc (showString "where"), doc (showString "{"), prt 0 mplwheres, doc (showString "}")])
     MPL_DEFN_STMS mpldefns -> prPrec i 0 (concatD [doc (showString "defn"), doc (showString "{"), prt 0 mpldefns, doc (showString "}")])
     MPL_STMT mpldefn -> prPrec i 0 (concatD [prt 0 mpldefn])
   prtList _ [] = (concatD [])
   prtList _ (x:xs) = (concatD [prt 0 x, prt 0 xs])
+instance Print MplWhere where
+  prt i e = case e of
+    MPL_WHERE mplstmt -> prPrec i 0 (concatD [prt 0 mplstmt])
+  prtList _ [] = (concatD [])
+  prtList _ [x] = (concatD [prt 0 x])
+  prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ";"), prt 0 xs])
 instance Print MplDefn where
   prt i e = case e of
     MPL_SEQUENTIAL_TYPE_DEFN sequentialtypedefn -> prPrec i 0 (concatD [prt 0 sequentialtypedefn])
@@ -249,7 +255,7 @@ instance Print ForallVarList where
     MPL_SEQ_FUN_TYPE_FORALL_LIST uident -> prPrec i 0 (concatD [prt 0 uident])
   prtList _ [] = (concatD [])
   prtList _ [x] = (concatD [prt 0 x])
-  prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ","), prt 0 xs])
+  prtList _ (x:xs) = (concatD [prt 0 x, doc (showString " "), prt 0 xs])
 instance Print SequentialTypeDefn where
   prt i e = case e of
     DATA_DEFN seqtypeclausedefns -> prPrec i 0 (concatD [doc (showString "data"), prt 0 seqtypeclausedefns])

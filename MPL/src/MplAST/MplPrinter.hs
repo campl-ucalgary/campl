@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeFamilies #-} 
 {-# LANGUAGE FlexibleContexts #-} 
@@ -120,7 +121,7 @@ mplStmtToBnfc :: MplPrintConstraints x =>
 mplStmtToBnfc (MplStmt defns []) = 
     B.MPL_DEFN_STMS $ NE.toList $ fmap mplDefnToBnfc defns
 mplStmtToBnfc (MplStmt defns wheres) = 
-    B.MPL_DEFN_STMS_WHERE (NE.toList $ fmap mplDefnToBnfc defns) (map mplStmtToBnfc wheres)
+    B.MPL_DEFN_STMS_WHERE (NE.toList $ fmap (mplDefnToBnfc) defns) (map (B.MPL_WHERE . mplStmtToBnfc) wheres)
 
 mplDefnToBnfc :: MplPrintConstraints x =>
     MplDefn x -> 
@@ -196,6 +197,9 @@ instance ( PPrint (IdP x) ) => MplPattToBnfc (MplPattern x) where
 class MplTypeToBnfc t where
     mplTypeToBnfc :: t -> B.MplType
 
+instance MplTypeToBnfc IdentR where
+    mplTypeToBnfc i = mplTypeToBnfc (_TypeVar # ((), i) :: MplType MplRenamed)
+
 instance ( PPrint (IdP x), PPrint (TypeP x) ) => MplTypeToBnfc (MplType x) where
     mplTypeToBnfc = f
       where
@@ -203,7 +207,10 @@ instance ( PPrint (IdP x), PPrint (TypeP x) ) => MplTypeToBnfc (MplType x) where
         f (TypeSeqWithArgs cxt tp args) = 
             B.MPL_UIDENT_ARGS_TYPE (toBnfcIdent tp) bnfcKeyword (map f args) bnfcKeyword
         f (TypeSeqVarWithArgs cxt tp args) = 
-            B.MPL_UIDENT_ARGS_TYPE (toBnfcIdent tp) bnfcKeyword (map f args) bnfcKeyword
+            B.MPL_UIDENT_ARGS_TYPE (
+                (\case (B.UIdent (pos, str)) -> B.UIdent (pos, str ++ "TVAR") )
+                (toBnfcIdent tp :: B.UIdent)) 
+                bnfcKeyword (map f args) bnfcKeyword
         f (TypeConcWithArgs cxt tp (seqs, chs)) = 
             B.MPL_UIDENT_SEQ_CONC_ARGS_TYPE (toBnfcIdent tp) bnfcKeyword (map f seqs) (map f chs) bnfcKeyword
         f (TypeConcVarWithArgs cxt tp (seqs, chs)) = 
@@ -267,8 +274,13 @@ instance MplTypesToBnfc [MplType MplRenamed] where
 
 instance MplTypesToBnfc ([MplType MplRenamed], MplType MplRenamed) where
     mplTypesToBnfc (as, a) = map mplTypeToBnfc (as++[a])
+
+instance MplTypesToBnfc ([MplType MplRenamed], IdentR) where
+    mplTypesToBnfc (as, a) = map mplTypeToBnfc (as++ [_TypeVar # ((),a)])
+
     
-    
+instance MplTypesToBnfc IdentR where
+    mplTypesToBnfc a = [mplTypeToBnfc (_TypeVar # ((), a) :: MplType MplRenamed)]
 
 class MplCmdToBnfc t where
     mplCmdToBnfc :: t -> B.ProcessCommand
@@ -332,7 +344,7 @@ mplCmdsToBnfc cmds = B.PROCESS_COMMANDS_DO_BLOCK $ NE.toList $ fmap mplCmdToBnfc
 class MplExprToBnfc t where
     mplExprToBnfc :: t -> B.Expr
 
-instance ( PPrint (IdP x), MplPattToBnfc (XMplPattern x) ) => MplExprToBnfc (MplExpr x) where
+instance MplPrintConstraints x => MplExprToBnfc (MplExpr x) where
     mplExprToBnfc = f
       where
         f (EPOps _ op exp0 exp1) = undefined
@@ -347,7 +359,9 @@ instance ( PPrint (IdP x), MplPattToBnfc (XMplPattern x) ) => MplExprToBnfc (Mpl
             (toBnfcIdent id) bnfcKeyword (map f exprs) bnfcKeyword 
         f (ECall _ id exprs) = B.FUN_EXPR  
             (toBnfcIdent id) bnfcKeyword (map f exprs) bnfcKeyword 
-    
+        f (ELet _ stmts expr) = B.LET_EXPR (NE.toList (fmap g stmts)) (f expr)
+          where
+            g = B.LET_EXPR_PHRASE . mplStmtToBnfc
         {-
         EVar !(XEVar x) (IdP x)
         EInt !(XEInt x) Int

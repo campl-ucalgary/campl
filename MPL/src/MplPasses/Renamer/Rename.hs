@@ -58,32 +58,22 @@ runRename' (top, sup, gbl) =
 runRename ::
     Rename (MplProg MplParsed) (MplProg MplRenamed)
 runRename (MplProg stmts) = 
-    MplProg <$> traverse f stmts
-  where
-    f stmt = do
-        -- get the current symbol table
-        -- symtab <- guse envGbl
-        -- rename the statement (modifies symbol table
-        stmt' <- renameStmt stmt
-        -- reset the symbol table
-        -- envLcl .= symtab
-        -- modify the symbol table to include the context 
-        -- of the statement
-        -- envLcl %= (collectSymTab stmt'<>)
-        -- return the statement
-        return stmt'
+    MplProg <$> traverse renameStmt stmts
 
 renameStmt ::   
     Rename (MplStmt MplParsed) (MplStmt MplRenamed)
 renameStmt (MplStmt defns wheres) = do
     tell $ overlappingDeclarations 
         $ foldMap (NE.toList .  mplStmtTopLevelIdents) wheres 
-            -- ++ foldMap (NE.toList . mplDefnIdents) defns
+    gbl <- guse envGbl 
 
     wheres' <- traverse renameStmt wheres
-    let entries = concatMap collectSymTab wheres'
-    supply <- freshUniqueSupply
+
+    envGbl .= collectSymTab wheres'<> gbl
+
     defns' <- NE.fromList <$> renameDefns (NE.toList defns)
+
+    envGbl .= collectSymTab defns' <> gbl
 
     return $ MplStmt defns' wheres'
 
@@ -91,19 +81,17 @@ renameDefns ::
     Rename 
         [MplDefn MplParsed]
         [MplDefn MplRenamed]
-renameDefns [] = return []
 renameDefns (defn : defns) = do
     uniqsup <- freshUniqueSupply
 
     --rec defn' <- (`evalStateT` (_RenameEnv # (uniqsup, symtab)))
-    rec defn' <- splitUniqueSupply $ do
-            envLcl .= symtab
-            renameDefn defn
+    rec defn' <- envLcl .= symtab >> renameDefn defn
         envGbl %= (collectSymTab defn' <>)
         defns' <- renameDefns defns
         symtab <- guse envGbl
 
     return (defn' : defns')
+renameDefns [] = return []
 
 renameDefn ::
     Rename (MplDefn MplParsed) (MplDefn MplRenamed)
@@ -117,12 +105,12 @@ renameDefn (FunctionDefn (MplFunction name funtype defn)) = do
 
     funtype' <- flip (maybe (return Nothing)) funtype $ \(froms, to) -> do
         lcl <- guse envLcl
-        (bds, froms') <- unzip <$> traverse (splitUniqueSupply . renameType) froms
-        (bd, to') <- splitUniqueSupply $ renameType to 
+        (bds, froms') <- unzip <$> traverse renameType froms
+        (bd, to') <- renameType to 
         envLcl .= lcl
         return $ Just (bd ++ fold bds, froms', to')
     
-    defn' <- traverse (splitUniqueSupply . renamePattsExpr) defn
+    defn' <- traverse renamePattsExpr defn
 
     return $ FunctionDefn $ _MplFunction # (name', funtype', defn')
 
@@ -130,9 +118,9 @@ renameDefn (ProcessDefn (MplProcess name proctype defn)) = do
     name' <- tagIdentP name
     proctype' <- flip (maybe (return Nothing)) proctype $ \(seqs, ins, outs) -> do
         lcl <- guse envLcl
-        (bds0, seqs') <- unzip <$> traverse (splitUniqueSupply . renameType) seqs
-        (bds1, ins') <- unzip <$> traverse (splitUniqueSupply . renameType) ins
-        (bds2, outs') <- unzip <$> traverse (splitUniqueSupply . renameType) outs
+        (bds0, seqs') <- unzip <$> traverse renameType seqs
+        (bds1, ins') <- unzip <$> traverse renameType ins
+        (bds2, outs') <- unzip <$> traverse renameType outs
         envLcl .= lcl
         return $ Just (fold (bds0 <> bds1 <> bds2), seqs', ins', outs')
 
@@ -196,8 +184,9 @@ renameExpr = cata f
         
     f (EVarF cxt ident) = do
         symtab <- guse envLcl
-        let ident' = fromJust $ lookupSymAny ident symtab
-        tell $ outOfScopeWith lookupSymAny symtab ident 
+        let ident' = fromJust $ lookupSymAny ident $  symtab
+        -- tell $ outOfScopeWith lookupSymAny (trace ("SYMYAB" ++ show symtab) symtab) $ trace ("vAR"++ show ident ) ident
+        tell $ outOfScopeWith lookupSymAny symtab $ ident
         return $ _EVar # (cxt, _IdentR # (ident, ident' ^. uniqueTag))
 
     f (EIntF cxt n) = return $ _EInt # (cxt, n)
@@ -229,7 +218,7 @@ renameExpr = cata f
     f (ECallF cxt ident args) = do
         symtab <- guse envLcl 
         let ident' = fromJust $ lookupSymAny ident symtab
-        tell $ outOfScopeWith lookupSymAny symtab ident 
+        tell $ outOfScopeWith lookupSymAny symtab $ ident 
 
         args' <- sequenceA args
 
@@ -255,6 +244,19 @@ renameExpr = cata f
                 , _IdentR # (ident, ident' ^. uniqueTag)
                 , (patts', expr')
                 )
+    f (ELetF cxt stmts expr) = do
+        stmts' <- traverse f stmts
+        envLcl %= (collectSymTab stmts' <>)
+        expr' <- expr 
+        return $ ELet cxt stmts' expr'
+      where
+        f :: MplStmt MplParsed -> _ (MplStmt MplRenamed)
+        f stmt = do
+            st <- guse equality
+            lcl <- guse envLcl
+            sup <- freshUniqueSupply
+            evalStateT (renameStmt stmt) (st & uniqueSupply .~ sup & envGbl .~ lcl)
+            
 
 -- Renaming commands...
 renameCmds ::

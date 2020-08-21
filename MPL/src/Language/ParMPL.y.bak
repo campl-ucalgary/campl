@@ -56,9 +56,6 @@ import Language.ErrM
 L_quoted { PT _ (TL $$) }
 L_charac { PT _ (TC $$) }
 L_doubl  { PT _ (TD $$) }
-L_UIdent { PT _ (T_UIdent _) }
-L_PIdent { PT _ (T_PIdent _) }
-L_UPIdent { PT _ (T_UPIdent _) }
 L_PInteger { PT _ (T_PInteger _) }
 L_Par { PT _ (T_Par _) }
 L_Tensor { PT _ (T_Tensor _) }
@@ -86,6 +83,9 @@ L_Split { PT _ (T_Split _) }
 L_Fork { PT _ (T_Fork _) }
 L_ChId { PT _ (T_ChId _) }
 L_Case { PT _ (T_Case _) }
+L_UIdent { PT _ (T_UIdent _) }
+L_PIdent { PT _ (T_PIdent _) }
+L_UPIdent { PT _ (T_UPIdent _) }
 
 
 %%
@@ -93,9 +93,6 @@ L_Case { PT _ (T_Case _) }
 String  :: { String }  : L_quoted {  $1 }
 Char    :: { Char }    : L_charac { (read ( $1)) :: Char }
 Double  :: { Double }  : L_doubl  { (read ( $1)) :: Double }
-UIdent    :: { UIdent} : L_UIdent { UIdent (mkPosToken $1)}
-PIdent    :: { PIdent} : L_PIdent { PIdent (mkPosToken $1)}
-UPIdent    :: { UPIdent} : L_UPIdent { UPIdent (mkPosToken $1)}
 PInteger    :: { PInteger} : L_PInteger { PInteger (mkPosToken $1)}
 Par    :: { Par} : L_Par { Par (mkPosToken $1)}
 Tensor    :: { Tensor} : L_Tensor { Tensor (mkPosToken $1)}
@@ -123,6 +120,9 @@ Split    :: { Split} : L_Split { Split (mkPosToken $1)}
 Fork    :: { Fork} : L_Fork { Fork (mkPosToken $1)}
 ChId    :: { ChId} : L_ChId { ChId (mkPosToken $1)}
 Case    :: { Case} : L_Case { Case (mkPosToken $1)}
+UIdent    :: { UIdent} : L_UIdent { UIdent (mkPosToken $1)}
+PIdent    :: { PIdent} : L_PIdent { PIdent (mkPosToken $1)}
+UPIdent    :: { UPIdent} : L_UPIdent { UPIdent (mkPosToken $1)}
 
 ListPIdent :: { [PIdent] }
 ListPIdent : {- empty -} { [] }
@@ -131,7 +131,7 @@ ListPIdent : {- empty -} { [] }
 MplProg :: { MplProg }
 MplProg : ListMplStmt { Language.AbsMPL.MPL_PROG (reverse $1) }
 MplStmt :: { MplStmt }
-MplStmt : 'defn' '{' ListMplDefn '}' 'where' '{' ListMplStmt '}' { Language.AbsMPL.MPL_DEFN_STMS_WHERE $3 (reverse $7) }
+MplStmt : 'defn' '{' ListMplDefn '}' 'where' '{' ListMplWhere '}' { Language.AbsMPL.MPL_DEFN_STMS_WHERE $3 $7 }
         | 'defn' '{' ListMplDefn '}' { Language.AbsMPL.MPL_DEFN_STMS $3 }
         | MplDefn { Language.AbsMPL.MPL_STMT $1 }
 ListMplDefn :: { [MplDefn] }
@@ -140,6 +140,12 @@ ListMplDefn : MplDefn { (:[]) $1 }
 ListMplStmt :: { [MplStmt] }
 ListMplStmt : {- empty -} { [] }
             | ListMplStmt MplStmt { flip (:) $1 $2 }
+MplWhere :: { MplWhere }
+MplWhere : MplStmt { Language.AbsMPL.MPL_WHERE $1 }
+ListMplWhere :: { [MplWhere] }
+ListMplWhere : {- empty -} { [] }
+             | MplWhere { (:[]) $1 }
+             | MplWhere ';' ListMplWhere { (:) $1 $3 }
 MplDefn :: { MplDefn }
 MplDefn : SequentialTypeDefn { Language.AbsMPL.MPL_SEQUENTIAL_TYPE_DEFN $1 }
         | ConcurrentTypeDefn { Language.AbsMPL.MPL_CONCURRENT_TYPE_DEFN $1 }

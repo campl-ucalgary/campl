@@ -68,9 +68,12 @@ data MplProg = MPL_PROG [MplStmt]
   deriving (Eq, Ord, Show, Read)
 
 data MplStmt
-    = MPL_DEFN_STMS_WHERE [MplDefn] [MplStmt]
+    = MPL_DEFN_STMS_WHERE [MplDefn] [MplWhere]
     | MPL_DEFN_STMS [MplDefn]
     | MPL_STMT MplDefn
+  deriving (Eq, Ord, Show, Read)
+
+data MplWhere = MPL_WHERE MplStmt
   deriving (Eq, Ord, Show, Read)
 
 data MplDefn

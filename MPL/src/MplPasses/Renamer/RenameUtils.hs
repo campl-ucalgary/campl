@@ -42,13 +42,3 @@ type Rename parsed renamed =
     , MonadFix m ) =>
     parsed -> m renamed
 
-type RenameConst parsed renamed = 
-    forall e m.
-    ( AsRenameErrors e
-    , MonadReader RenameEnv m
-    , MonadWriter [e] m ) =>
-    parsed -> m renamed
-
-newtype RenameM a = RenameM {
-        unRenameM :: StateT RenameEnv (Writer [RenameErrors]) a
-    }

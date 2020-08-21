@@ -40,8 +40,6 @@ import Data.Kind
 
 import Data.Void
 
-import Text.PrettyPrint.GenericPretty
-
 --------------------------
 -- Expr definition
 --------------------------

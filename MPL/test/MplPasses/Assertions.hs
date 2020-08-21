@@ -22,7 +22,7 @@ import MplPasses.Env
 import Control.Monad
 
 describeValidRename prog rst = do
-    describe ("Testing the valid program: \n" ++ prog)$ do
+    describe ("Testing the valid program: \n" ++ prog) $ do
         mplpassesenv <- runIO mplPassesEnv
         let prog' = runRename' 
                 ( TopLevel
@@ -50,4 +50,3 @@ describeErrors prog (errmsg, pred) = do
 
 describeAllErrors prog (errmsg, prism) = describeErrors prog (errmsg, allOf folded (has prism))
 describeAnyErrors prog (errmsg, prism) = describeErrors prog (errmsg, anyOf folded (has prism))
-

@@ -58,15 +58,6 @@ followed by an unsigned or negative exponent.
 
 
 
-UIdent literals are recognized by the regular expression
-`````('#' upper | upper) (letter | digit | '_')*`````
-
-PIdent literals are recognized by the regular expression
-`````letter (letter | digit | '_' | ''')*`````
-
-UPIdent literals are recognized by the regular expression
-`````(letter | upper) (letter | digit | '_' | ''')*`````
-
 PInteger literals are recognized by the regular expression
 `````(["-"] digit | digit) digit*`````
 
@@ -148,6 +139,15 @@ ChId literals are recognized by the regular expression
 Case literals are recognized by the regular expression
 `````{"case"}`````
 
+UIdent literals are recognized by the regular expression
+`````('#' upper | upper) (letter | digit | '_')*`````
+
+PIdent literals are recognized by the regular expression
+`````letter (letter | digit | '_' | ''')*`````
+
+UPIdent literals are recognized by the regular expression
+`````(letter | upper) (letter | digit | '_' | ''')*`````
+
 
 ===Reserved words and symbols===
 The set of reserved words is the set of terminals appearing in the grammar. Those reserved words that consist of non-letter characters are called symbols, and they are treated in a different way from those that are similar to identifiers. The lexer follows rules familiar from languages like Haskell, C, and Java, including longest match and spacing conventions.
@@ -179,13 +179,17 @@ All other symbols are terminals.
   |  |  **|**  | //PIdent// 
   |  |  **|**  | //PIdent// ``,`` //[PIdent]// 
   | //MplProg// | -> | //[MplStmt]// 
-  | //MplStmt// | -> | ``defn`` ``{`` //[MplDefn]// ``}`` ``where`` ``{`` //[MplStmt]// ``}`` 
+  | //MplStmt// | -> | ``defn`` ``{`` //[MplDefn]// ``}`` ``where`` ``{`` //[MplWhere]// ``}`` 
   |  |  **|**  | ``defn`` ``{`` //[MplDefn]// ``}`` 
   |  |  **|**  | //MplDefn// 
   | //[MplDefn]// | -> | //MplDefn// 
   |  |  **|**  | //MplDefn// ``;`` //[MplDefn]// 
   | //[MplStmt]// | -> | **eps**
   |  |  **|**  | //MplStmt// //[MplStmt]// 
+  | //MplWhere// | -> | //MplStmt// 
+  | //[MplWhere]// | -> | **eps**
+  |  |  **|**  | //MplWhere// 
+  |  |  **|**  | //MplWhere// ``;`` //[MplWhere]// 
   | //MplDefn// | -> | //SequentialTypeDefn// 
   |  |  **|**  | //ConcurrentTypeDefn// 
   |  |  **|**  | //FunctionDefn// 

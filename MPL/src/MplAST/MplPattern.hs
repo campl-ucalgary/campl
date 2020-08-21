@@ -35,7 +35,6 @@ import GHC.Generics
 import Data.Data
 import Data.Typeable
 
-import Text.PrettyPrint.GenericPretty
 
 #define Mpl_TYPE_AST_PLAIN_DATA_DERIVING_CLAUSE ( Eq, Ord, Read, Show, Generic, Out, Data, Typeable )
 --------------------------

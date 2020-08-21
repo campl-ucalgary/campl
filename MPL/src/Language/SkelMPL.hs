@@ -104,9 +104,12 @@ transMplProg x = case x of
   MPL_PROG mplstmts -> failure x
 transMplStmt :: MplStmt -> Result
 transMplStmt x = case x of
-  MPL_DEFN_STMS_WHERE mpldefns mplstmts -> failure x
+  MPL_DEFN_STMS_WHERE mpldefns mplwheres -> failure x
   MPL_DEFN_STMS mpldefns -> failure x
   MPL_STMT mpldefn -> failure x
+transMplWhere :: MplWhere -> Result
+transMplWhere x = case x of
+  MPL_WHERE mplstmt -> failure x
 transMplDefn :: MplDefn -> Result
 transMplDefn x = case x of
   MPL_SEQUENTIAL_TYPE_DEFN sequentialtypedefn -> failure x

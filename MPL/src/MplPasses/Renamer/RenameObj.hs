@@ -58,6 +58,10 @@ renameTypeClauseSpine spine = do
     -- arguments and the state vars
     tell $ overlappingDeclarations spine
 
+    -- TODO: This should all be moved into 1 traverse call, so it puts things
+    -- in the symbol table (but does not duplicate additions in the symbol) 
+    -- table as it goes along!
+    --
     -- get the type variable symbol table declarations // add to the symbol table.
     -- Note that all type clauses SHOULD share the same type variables! So we only include
     -- the variables in common -- hence the nubBy call... 
@@ -68,7 +72,7 @@ renameTypeClauseSpine spine = do
 
     -- rename the type clauses
     spine' <- traverse renameTypeClause (spine ^. typeClauseSpineClauses)
-    return $ UMplTypeClauseSpine spine'
+    return $ MplTypeClauseSpine spine' ()
 
 class TypeClauseVarsSymTab t where
     typeClauseVarsSymTab :: 
@@ -95,7 +99,7 @@ instance TypeClauseVarsSymTab (ConcObjTag t) where
         args = clause ^. typeClauseArgs % to (uncurry mappend)
         st = clause ^. typeClauseStateVar
 
-class  RenameTypeClause t where
+class RenameTypeClause t where
     renameTypeClause :: RenameTypePhrase t =>
         Rename (MplTypeClause MplParsed t) (MplTypeClause MplRenamed t)
 
@@ -184,7 +188,7 @@ instance RenameTypePhrase (SeqObjTag DataDefnTag) where
         return $ _MplTypePhrase # 
             ( name'
             , vfroms'
-            , _TypeVar # ((), vto')
+            , vto'
             , ()
             )
 
@@ -204,7 +208,7 @@ instance RenameTypePhrase (SeqObjTag CodataDefnTag) where
 
         return $ _MplTypePhrase # 
             ( name'
-            , (vfroms', _TypeVar # ((), vst'))
+            , (vfroms', vst')
             , vto'
             , ()
             )
@@ -224,7 +228,7 @@ instance RenameTypePhrase (ConcObjTag ProtocolDefnTag) where
         return $ _MplTypePhrase # 
             ( name'
             , vfrom'
-            , (_TypeVar # ((), vto'))
+            , vto'
             , ()
             )
 
@@ -242,7 +246,7 @@ instance RenameTypePhrase (ConcObjTag CoprotocolDefnTag) where
 
         return $ _MplTypePhrase # 
             ( name'
-            , _TypeVar # ((), vfrom')
+            , vfrom'
             , vto'
             , ()
             )

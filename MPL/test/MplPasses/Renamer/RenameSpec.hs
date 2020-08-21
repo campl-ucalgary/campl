@@ -37,6 +37,11 @@ spec = do
         , v4 
         , v5 
         , v6 
+        , v7 
+        , v8 
+        , v9 
+        , v10 
+        , v11 
         ]
 
     mapM_ (`describeAllErrors` ("out of scope", _MplRenameErrors % _OutOfScope))
@@ -45,6 +50,10 @@ spec = do
         , n3 
         , n4 
         , n5 
+        , n6 
+        , n7 
+        , n8 
+        , n9 
         ]
 
 
@@ -113,6 +122,52 @@ fun appwrapper =
 |]
 
 
+v7 = [r|
+data
+    MyData(A,B) -> C =
+        MyData :: A,B -> C
+
+fun v7 :: B,MyData(A,A) -> A =
+    b, a -> case a of
+        MyData(a,b) -> a
+        MyData(_,_) -> a
+|]
+
+v8 = [r|
+data
+    MyData(A,B,D) -> C =
+        MyData1 :: A,B,D -> C
+        MyData2 :: A,B,E -> C
+
+    and 
+    Other(A,B,D) -> E =
+        Other :: A,B,C -> E
+|]
+
+v9 = [r|
+fun testing =
+    a -> testing(a)
+|]
+
+v10 = [r|
+fun testing =
+    a -> 
+        let fun wow =
+                b -> a
+        in wow(a)
+|]
+
+v11 = [r|
+defn 
+    fun v11 =
+        a -> pow(a)
+where
+    fun wow =
+        a -> a
+
+    fun pow =
+        a -> wow(a)
+|]
 
 
 -- Invalid tests  
@@ -166,4 +221,47 @@ n5 = [r|
 fun n5 =
     a -> a
     b -> a
+|]
+
+n6 = [r|
+data
+    MyData(A,B) -> C =
+        MyData1 :: A,B,D -> C
+        MyData2 :: A,B,D -> C
+|]
+
+n7 = [r|
+defn 
+    fun n7 =
+        a -> pow(a)
+where
+    fun pow =
+        a -> wow(a)
+    fun wow =
+        a -> a
+|]
+
+n8 = [r|
+defn 
+    fun n8 =
+        a -> pow(a)
+where
+    fun pow =
+        a -> pow(a)
+
+fun whereoutofscope =
+    a -> pow(a)
+|]
+
+n9 = [r|
+defn 
+    fun n9 =
+        a -> 
+            let
+                fun pow =
+                    a,b -> a
+            in pow(a)
+
+fun testing =
+    a -> pow(a)
 |]

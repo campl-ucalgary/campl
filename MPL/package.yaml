@@ -29,8 +29,7 @@ dependencies:
     - containers
     - mtl
 
-    - pretty
-    - GenericPretty
+    - prettyprinter
     - array
     - optics
     - recursion-schemes

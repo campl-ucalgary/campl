@@ -72,12 +72,15 @@ separator PIdent "," ;
 MPL_PROG . MplProg ::= [MplStmt] ;
 
 
-MPL_DEFN_STMS_WHERE . MplStmt ::= "defn" "{" [MplDefn] "}" "where" "{" [MplStmt] "}" ;
+MPL_DEFN_STMS_WHERE . MplStmt ::= "defn" "{" [MplDefn] "}" "where" "{" [MplWhere] "}" ;
 MPL_DEFN_STMS       . MplStmt ::= "defn" "{" [MplDefn] "}"  ;
 MPL_STMT            . MplStmt ::= MplDefn ;
 
 separator nonempty MplDefn ";" ;
 separator MplStmt "" ;
+
+MPL_WHERE  . MplWhere ::= MplStmt ;
+separator MplWhere ";" ;
 
 -- ====================================================================
 --  MPL definitions
@@ -120,7 +123,7 @@ internal MPL_CONC_ARROW_TYPE . MplType2 ::= "forall" [ForallVarList] "." [MplTyp
 TUPLE_LIST_TYPE . TupleListType ::= MplType ;
 
 MPL_SEQ_FUN_TYPE_FORALL_LIST . ForallVarList ::= UIdent ;
-separator ForallVarList "," ;
+separator ForallVarList " " ;
 
 separator nonempty TupleListType "," ;
 

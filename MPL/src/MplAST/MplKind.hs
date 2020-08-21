@@ -35,13 +35,17 @@ import GHC.Generics
 import Data.Data
 import Data.Typeable
 
-import Text.PrettyPrint.GenericPretty
 
 type family XMplKind x
 
 type family XSeqKind x
 type family XConcKind x
 type family XArrKind x
+type family XSeqArrKind x
+type family XConcArrKind x
+type family XKindVar x
+
+type family KindP x
 
 type family XXKind x
 
@@ -51,7 +55,10 @@ data MplPrimitiveKind x =
 
 data MplKind x =
     PrimitiveKind !(MplPrimitiveKind x)
-    | ArrKind !(XArrKind x) (MplKind x) (MplKind x)
+    -- | SeqArrKind !(XSeqArrKind x) ([MplKind x], MplKind x)
+    -- | ConcArrKind !(XConcArrKind x) ([MplKind x], [MplKind x])
+    | ArrKind !(XArrKind x) ([MplKind x], [MplKind x])
+    | KindVar !(XKindVar x) (KindP x)
     | XKind !(XXKind x)
 
 $(concat <$> traverse makeClassyPrisms 
@@ -66,9 +73,11 @@ instance AsMplPrimitiveKind (MplKind x) x where
 type ForallMplKind (c :: Type -> Constraint) x =
     ( c (XMplKind x)
 
+    , c (XArrKind x)
     , c (XSeqKind x)
     , c (XConcKind x)
-    , c (XArrKind x)
+    , c (XSeqArrKind x)
+    , c (XConcArrKind x)
 
     , c (XXKind x)
     )

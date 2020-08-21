@@ -21,7 +21,7 @@ $i = [$l $d _ ']          -- identifier character
 $u = [\0-\255]          -- universal: any character
 
 @rsyms =    -- symbols and non-identifier-like reserved words
-   \, | \{ | \} | \; | \| | \. | \- \> | \= \> | \= | \: \: | \: \=
+   \, | \{ | \} | \; | \| | \. | \- \> | \= \> | \  | \= | \: \: | \: \=
 
 :-
 "--" [.]* ; -- Toss single line comments
@@ -188,7 +188,7 @@ eitherResIdent tv s = treeFind resWords
                               | s == a = t
 
 resWords :: BTree
-resWords = b "if" 20 (b "as" 10 (b ":=" 5 (b "." 3 (b "->" 2 (b "," 1 N N) N) (b "::" 4 N N)) (b "=>" 8 (b "=" 7 (b ";" 6 N N) N) (b "and" 9 N N))) (b "do" 15 (b "data" 13 (b "coprotocol" 12 (b "codata" 11 N N) N) (b "defn" 14 N N)) (b "forall" 18 (b "fold" 17 (b "else" 16 N N) N) (b "fun" 19 N N)))) (b "protocol" 30 (b "of" 25 (b "let" 23 (b "into" 22 (b "in" 21 N N) N) (b "neg" 24 N N)) (b "potato" 28 (b "plug" 27 (b "on" 26 N N) N) (b "proc" 29 N N))) (b "where" 35 (b "then" 33 (b "switch" 32 (b "race" 31 N N) N) (b "unfold" 34 N N)) (b "|" 38 (b "{" 37 (b "with" 36 N N) N) (b "}" 39 N N))))
+resWords = b "if" 21 (b "as" 11 (b ":=" 6 (b "->" 3 (b "," 2 (b " " 1 N N) N) (b "::" 5 (b "." 4 N N) N)) (b "=>" 9 (b "=" 8 (b ";" 7 N N) N) (b "and" 10 N N))) (b "do" 16 (b "data" 14 (b "coprotocol" 13 (b "codata" 12 N N) N) (b "defn" 15 N N)) (b "forall" 19 (b "fold" 18 (b "else" 17 N N) N) (b "fun" 20 N N)))) (b "protocol" 31 (b "of" 26 (b "let" 24 (b "into" 23 (b "in" 22 N N) N) (b "neg" 25 N N)) (b "potato" 29 (b "plug" 28 (b "on" 27 N N) N) (b "proc" 30 N N))) (b "where" 36 (b "then" 34 (b "switch" 33 (b "race" 32 N N) N) (b "unfold" 35 N N)) (b "|" 39 (b "{" 38 (b "with" 37 N N) N) (b "}" 40 N N))))
    where b s n = let bs = id s
                   in B bs (TS bs n)
 
