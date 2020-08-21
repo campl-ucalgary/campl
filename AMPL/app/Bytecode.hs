@@ -36,14 +36,6 @@ import System.IO
 import Data.Word
 import Data.Int
 
-
-data BytecodeLabel = 
-    Label Int
-    | NoLabel
-    | Placeholder
-    deriving (Show, Eq)
-
-
 -- Definition of the byte code commands
 -- DO NOT CHANGE THE ORDER, THIS MUST MATCH THE C++ ENUM DECLARATION
 data BytecodeCommand = 
@@ -214,7 +206,7 @@ translateSequential (IStore) = emit $ BI B_AM_STOR
 
 translateSequential (IAccess location) = do 
     ret <- emit $ BI B_AM_LOAD
-    emit $ BIdx $ (fromIntegral location) + 1 -- load starts at 1
+    emit $ BIdx $ (fromIntegral location)
     return ret
 
 translateSequential (IRet) = emit $ BI B_AM_RET
@@ -617,3 +609,11 @@ externalCharMach = InitAMPLMachState {
             (Output,(LocalChanID 1,GlobalChanID (-1)))
         ]), 
     initAmplMachFuns = [] }
+
+formatBytecodeString :: String -> [BytecodeEntry] -> String
+formatBytecodeString sep list = formatBytecodeString' sep list 0
+
+formatBytecodeString' :: String -> [BytecodeEntry] -> Int -> String
+formatBytecodeString' _ [] _ = ""
+formatBytecodeString' sep (head:[]) count =  (show count) ++ ":\t" ++ (show head)
+formatBytecodeString' sep (head:rest) count = (show count) ++ ":\t" ++ (show head) ++ sep ++ (formatBytecodeString' sep rest (count + 1))
