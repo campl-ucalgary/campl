@@ -570,13 +570,14 @@ translateMachineState state = let
         channelOffset = -(getLowestChannelId bytecode) + 1
     in map ((patchFunctionLocations fs).(incrementBytecodeIndex 1).(incrementChannelId channelOffset)) bytecode
 
-
 printInitMachineStateToBytecodeFile :: String -> InitAMPLMachState -> IO ()
-printInitMachineStateToBytecodeFile filename state = let
-        translateToByteString = translateBytecodeToByteString . translateMachineState
-    in do
-        handle <-  openFile filename (WriteMode)
-        B.hPut handle $ BL.toStrict $ toLazyByteString $ translateToByteString state
+printInitMachineStateToBytecodeFile filename state = do
+        let translatedMachine = translateMachineState state
+        putStrLn $ formatBytecodeString "\n" translatedMachine
+
+        handle <- openFile filename (WriteMode)
+        let translatedByteString = translateBytecodeToByteString translatedMachine
+        B.hPut handle $ BL.toStrict $ toLazyByteString $ translatedByteString
 
 
 externalCharMach = InitAMPLMachState {
@@ -605,9 +606,11 @@ externalCharMach = InitAMPLMachState {
     initAmplMachFuns = [] }
 
 formatBytecodeString :: String -> [BytecodeEntry] -> String
-formatBytecodeString sep list = formatBytecodeString' sep list 0
+formatBytecodeString sep list = let
+        formatBytecodeString' :: String -> [BytecodeEntry] -> Int -> String
+        formatBytecodeString' _ [] _ = ""
+        formatBytecodeString' sep (head:[]) count =  (show count) ++ ":\t" ++ (show head)
+        formatBytecodeString' sep (head:rest) count = (show count) ++ ":\t" ++ (show head) ++ sep ++ (formatBytecodeString' sep rest (count + 1))
+    in formatBytecodeString' sep list 0
 
-formatBytecodeString' :: String -> [BytecodeEntry] -> Int -> String
-formatBytecodeString' _ [] _ = ""
-formatBytecodeString' sep (head:[]) count =  (show count) ++ ":\t" ++ (show head)
-formatBytecodeString' sep (head:rest) count = (show count) ++ ":\t" ++ (show head) ++ sep ++ (formatBytecodeString' sep rest (count + 1))
+

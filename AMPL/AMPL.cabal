@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: adf62eb43312f01a4b0356fc4b20903fa6df5e96d28b657f5c0e4270b463256e
+-- hash: 8201f00a57dbef0ea0bbea54f0cfad5fcb063bea8b8ea73d0b1ec1365ccf9cc1
 
 name:           AMPL
 version:        0.1.0.0
@@ -56,11 +56,33 @@ library
 executable ampl
   main-is: Main.hs
   other-modules:
-      Bytecode
       InteractiveTests
       Paths_AMPL
   hs-source-dirs:
       app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      AMPL
+    , GenericPretty
+    , array
+    , base
+    , bytestring
+    , containers
+    , mpl-lib
+    , mtl
+    , network
+    , pretty
+    , process
+    , time
+  default-language: Haskell2010
+
+executable amplm2amplb
+  main-is: Main.hs
+  other-modules:
+      Bytecode
+      Paths_AMPL
+  hs-source-dirs:
+      amplm2amplb
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       AMPL
