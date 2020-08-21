@@ -15,7 +15,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ViewPatterns #-}
-module MplAST.MplRenamed where
+module MplAST.MplTypeChecked where
 
 import Optics
 import Optics.State.Operators
@@ -27,6 +27,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE 
 
 import MplAST.MplParsed
+import MplAST.MplRenamed
 import MplAST.MplExpr
 import MplAST.MplPattern
 import MplAST.MplType
@@ -37,30 +38,9 @@ import MplAST.MplExt
 import MplUtil.UniqueSupply 
 
 
-data IdentR = IdentR { 
-    _identRIdentP :: IdentP
-    , _identRUniqueTag :: UniqueTag
- }
-  deriving Show
+type IdentT = IdentR
 
-$(makeClassy ''IdentR)
-$(makePrisms ''IdentR)
-
-instance HasUniqueTag IdentR where
-    uniqueTag = identRUniqueTag 
-
-instance HasIdentP IdentR where
-    identP = identRIdentP 
-
-instance HasName IdentR where
-    name = identP % name
-
-instance HasLocation IdentR where
-    location = identP % location
-
-instance HasNamespace IdentR where
-    namespace = identP % namespace
-
+{-
 data ChIdentR = ChIdentR {
     _chIdentRIdentR :: IdentR
     , _chIdentRPolarity :: Polarity
@@ -217,3 +197,4 @@ type instance XTypeSeqArrF MplRenamed = Void
 type instance XTypeConcArrF MplRenamed = Void
 
 type instance XXMplBuiltInTypesF MplRenamed = Void
+-}

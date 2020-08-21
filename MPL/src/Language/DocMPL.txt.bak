@@ -196,9 +196,7 @@ All other symbols are terminals.
   |  |  **|**  | //MplType1// 
   | //MplType1// | -> | //MplType2// //Tensor// //MplType2// 
   |  |  **|**  | //MplType2// 
-  | //MplType2// | -> | //UIdent// //LBracket// //MplType// ``|`` //MplType// //RBracket// 
-  |  |  **|**  | //MplType3// 
-  | //MplType3// | -> | //UIdent// //LBracket// //[MplType]// //RBracket// 
+  | //MplType2// | -> | //UIdent// //LBracket// //[MplType]// //RBracket// 
   |  |  **|**  | //UIdent// //LBracket// //[MplType]// ``|`` //[MplType]// //RBracket// 
   |  |  **|**  | //UIdent// 
   |  |  **|**  | //LBracket// //RBracket// 
@@ -330,8 +328,7 @@ All other symbols are terminals.
   |  |  **|**  | //ProcessPhrase// ``;`` //[ProcessPhrase]// 
   | //ProcessCommandsBlock// | -> | ``do`` ``{`` //[ProcessCommand]// ``}`` 
   |  |  **|**  | //ProcessCommand// 
-  | //[ProcessCommand]// | -> | **eps**
-  |  |  **|**  | //ProcessCommand// 
+  | //[ProcessCommand]// | -> | //ProcessCommand// 
   |  |  **|**  | //ProcessCommand// ``;`` //[ProcessCommand]// 
   | //ProcessCommand// | -> | //PIdent// //LBracket// //[Expr]// ``|`` //[PIdent]// ``=>`` //[PIdent]// //RBracket// 
   |  |  **|**  | //Close// //PIdent// 
@@ -368,7 +365,7 @@ All other symbols are terminals.
   |  |  **|**  | //RacePhrase// 
   |  |  **|**  | //RacePhrase// ``;`` //[RacePhrase]// 
   | //PlugPhrase// | -> | //ProcessCommandsBlock// 
-  |  |  **|**  | ``with`` //[PIdent]// ``->`` //ProcessCommandsBlock// 
+  |  |  **|**  | //[PIdent]// ``=>`` //[PIdent]// ``->`` //ProcessCommandsBlock// 
   | //[PlugPhrase]// | -> | //PlugPhrase// 
   |  |  **|**  | //PlugPhrase// ``;`` //[PlugPhrase]// 
   | //ProcessCasePhrase// | -> | //Pattern// ``->`` //ProcessCommandsBlock// 

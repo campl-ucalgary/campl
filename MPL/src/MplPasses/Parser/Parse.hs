@@ -370,14 +370,27 @@ parseBnfcCmd (B.PROCESS_PLUG phrases) = do
                 -- as the layout word instead of plug.
                 --
                 -- TODO: currently, with the grammar given, it is impossible to explictly provide channels to
-                -- be plugged against, but this system should support this first class in the future.
+                -- be plugged against, but this system should support this in the future.
                 )
             , (a, b, cs))
         as -> tell [_PlugExpectedTwoOrMorePhrasesButGot # listToMaybe as] >> throwError ()
         -- <=1
   where
-    f (B.PLUG_PHRASE cmds) = (Nothing,) <$> parseBnfcCmdBlock cmds
-    f (B.PLUG_PHRASE_AS cxt cmds) = (Just (map toChIdentP cxt),) <$> parseBnfcCmdBlock cmds
+    -- TODO
+    -- f :: B.PlugPhrase -> m (XCPlugPhrase x, ([ChP x], [ChP x]), NonEmpty (MplCmd x))
+    f (B.PLUG_PHRASE (B.PROCESS_COMMANDS_SINGLE_COMMAND_BLOCK (B.PROCESS_RUN ident _ seqs inchs outchs _))) = do
+        seqs' <- traverseTryEach parseBnfcExpr seqs
+        let inchs' = map toChIdentP inchs
+            outchs' = map toChIdentP outchs
+            cmd = _CRun # (() , toTermIdentP ident , seqs' , inchs' , outchs') 
+        return ((), (inchs', outchs'), cmd :| [])
+    f (B.PLUG_PHRASE cmds) = do
+        cmds' <- parseBnfcCmdBlock cmds
+        tell $ [_PlugExpectedARunProcessCallButGot # cmds']
+        throwError ()
+    f (B.PLUG_PHRASE_AS ins outs cmds) = do
+        cmds' <- parseBnfcCmdBlock cmds
+        return ((), (map toChIdentP ins, map toChIdentP outs), cmds')
 
 parseBnfcCmd (B.PROCESS_CASE cxt expr pcases) = do
     expr' <- parseBnfcExpr expr

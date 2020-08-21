@@ -9,15 +9,6 @@ type Result = Err String
 failure :: Show a => a -> Result
 failure x = Bad $ "Undefined case: " ++ show x
 
-transUIdent :: UIdent -> Result
-transUIdent x = case x of
-  UIdent string -> failure x
-transPIdent :: PIdent -> Result
-transPIdent x = case x of
-  PIdent string -> failure x
-transUPIdent :: UPIdent -> Result
-transUPIdent x = case x of
-  UPIdent string -> failure x
 transPInteger :: PInteger -> Result
 transPInteger x = case x of
   PInteger string -> failure x
@@ -99,6 +90,15 @@ transChId x = case x of
 transCase :: Case -> Result
 transCase x = case x of
   Case string -> failure x
+transUIdent :: UIdent -> Result
+transUIdent x = case x of
+  UIdent string -> failure x
+transPIdent :: PIdent -> Result
+transPIdent x = case x of
+  PIdent string -> failure x
+transUPIdent :: UPIdent -> Result
+transUPIdent x = case x of
+  UPIdent string -> failure x
 transMplProg :: MplProg -> Result
 transMplProg x = case x of
   MPL_PROG mplstmts -> failure x
@@ -286,7 +286,7 @@ transRacePhrase x = case x of
 transPlugPhrase :: PlugPhrase -> Result
 transPlugPhrase x = case x of
   PLUG_PHRASE processcommandsblock -> failure x
-  PLUG_PHRASE_AS pidents processcommandsblock -> failure x
+  PLUG_PHRASE_AS pidents1 pidents2 processcommandsblock -> failure x
 transProcessCasePhrase :: ProcessCasePhrase -> Result
 transProcessCasePhrase x = case x of
   PROCESS_CASE_PHRASE pattern processcommandsblock -> failure x

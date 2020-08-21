@@ -1,4 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE NamedWildCards #-}
+{-# OPTIONS_GHC -Wno-partial-type-signatures #-}
 module MplPasses.Passes where
 
 import Optics
@@ -18,6 +21,8 @@ import Control.Monad
 
 import Data.Word
 import Data.Void
+
+import Debug.Trace
 
 data MplPassesErrors =
     MplBnfcErrors B.BnfcErrors
@@ -50,14 +55,19 @@ mplPassesEnv = do
 runPasses :: 
     MplPassesEnv -> 
     String -> 
-    Either [MplPassesErrors] (MplProg MplRenamed)
+    Either [MplPassesErrors] _
 runPasses MplPassesEnv{mplPassesEnvUniqueSupply = supply, mplPassesContext = rsymtab} = 
     let (ls, rs) = split supply
-    in runRename' (TopLevel, ls, rsymtab) <=< runParse' <=< B.runBnfc
+    -- in runRename' (TopLevel, ls, rsymtab) <=< runParse' <=< B.runBnfc
+    in runRename' (TopLevel, ls, rsymtab) 
+        <=< runParse' 
+        <=< B.runBnfc
 
 runPassesTester ::
     String -> 
     IO ()
 runPassesTester str = do
     env <- mplPassesEnv
-    print $ runPasses env str
+    case runPasses env str of
+        Right v -> putStrLn $ pprint v
+        Left v -> print v

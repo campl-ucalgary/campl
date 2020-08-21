@@ -5,16 +5,17 @@ import Text.RawString.QQ
 
 import MplPasses.Parser.Parse
 import MplPasses.Parser.BnfcParse
+
 parsebnfc n = runParse' <$> runBnfc n
 
 test = [r|
 
-data 
-    Huh -> C =
-        Huh :: C -> C
-
-fun test :: Huh(Int| Int) -> Int =
-    _ -> 3 
+data
+    MyData(A,B) -> C =
+        MyData :: A,B -> C
+fun appwrapper =
+    a -> case a of
+        MyData(a,b) -> a
+        MyData(_,_) -> a
 |]
-
 

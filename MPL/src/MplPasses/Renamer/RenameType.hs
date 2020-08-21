@@ -102,6 +102,7 @@ renameType ::
         ([IdentR], MplType MplRenamed)
         -- explictly declared type variables, renamed type
 renameType = cata f
+-- THIS LOOPS! Remember the whacky order of sequencing effects
   where
     f :: Base (MplType MplParsed) (_ ([IdentR], MplType MplRenamed)) -> 
         _ ([IdentR], MplType MplRenamed)
@@ -130,7 +131,7 @@ renameType = cata f
 
     -- more or less duplciated code..
     f (TypeConcVarWithArgsF () ident args) = do
-        (seqs', concs') <- sequenceOf (each % traversed) args
+        ~(seqs', concs') <- sequenceOf (each % traversed) args
         ~lkup <- guses envLcl $ lookupSym ident (_Just % _SymTypeInfo)
 
         case lkup of
@@ -151,6 +152,7 @@ renameType = cata f
                     ( ident' : concatMap fst seqs' <> concatMap fst concs'
                     , _TypeConcVarWithArgs # ( (), ident', (fmap snd seqs', fmap snd concs'))
                     )
+
     f (TypeVarF () ident) = do
         ~lkup <- guses envLcl $ lookupSym ident (_Just % _SymTypeInfo)
         case lkup of 

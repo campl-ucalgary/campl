@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a830b5066c718240047401b3544cd6db636b71181a6c1d9b882ed6b07609e4af
+-- hash: a8bfc998c6cc20cf5a909fb8ed01372be87c1f49f5ce0ff5cbd30f7533c86312
 
 name:           MPL
 version:        0.1.0.0
@@ -39,11 +39,11 @@ library
       Language.PrintMPL
       Language.SkelMPL
       MplAST.MplCmd
-      MplAST.MplCmdContext
       MplAST.MplCore
       MplAST.MplExpr
       MplAST.MplExt
       MplAST.MplIdent
+      MplAST.MplKind
       MplAST.MplParsed
       MplAST.MplPattern
       MplAST.MplPrinter
@@ -52,21 +52,26 @@ library
       MplAST.MplProgUtil
       MplAST.MplRenamed
       MplAST.MplType
+      MplAST.MplTypeChecked
       MplCompile
       MPLMain
+      MplPasses.Env
       MplPasses.Parser.BnfcParse
       MplPasses.Parser.Parse
       MplPasses.Parser.ParseErrors
       MplPasses.Parser.ParseMplPattern
       MplPasses.Parser.ParseMplType
       MplPasses.Parser.ParseUtils
+      MplPasses.Passes
       MplPasses.Renamer.Rename
+      MplPasses.Renamer.RenameCmdFreeVars
       MplPasses.Renamer.RenameErrors
       MplPasses.Renamer.RenameObj
       MplPasses.Renamer.RenamePatt
       MplPasses.Renamer.RenameSym
       MplPasses.Renamer.RenameType
       MplPasses.Renamer.RenameUtils
+      MplPasses.TypeChecker.TypeCheck
       MplUtil.Data.Stream
       MplUtil.Data.Tuple.Optics
       MplUtil.UniqueSupply
@@ -110,17 +115,8 @@ test-suite MPL-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      MPLAST.MPLASTTranslateSpec
-      MPLPasses.TieTypeClauseSpec
-      MPLPasses.UnificationSpec
-      TypeInference.AnnotatedEx1Spec
-      TypeInference.ForallMatchFailuresSpec
-      TypeInference.GraphAssertions
-      TypeInference.HigherKindMatchFailureSpec
-      TypeInference.MatchFailuresSpec
-      TypeInference.OutOfScopeErrorSpec
-      TypeInference.ProcessErrorsSpec
-      TypeInference.UnannotatedNatNatToNatExSpec
+      MplPasses.Assertions
+      MplPasses.Renamer.RenameSpec
       Paths_MPL
   hs-source-dirs:
       test

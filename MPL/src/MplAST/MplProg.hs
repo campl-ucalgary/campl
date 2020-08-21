@@ -167,7 +167,6 @@ data MplTypePhrase x (t :: ObjectDefnTag) = MplTypePhrase {
 
 deriving instance (Show (IdP x), ForallTypePhrase Show x t) => Show (MplTypePhrase x t)
 
-
 type family XFunType x 
 
 data MplFunction x = MplFunction { 

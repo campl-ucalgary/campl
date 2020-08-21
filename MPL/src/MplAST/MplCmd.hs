@@ -65,13 +65,15 @@ type family XCSwitch x
 type family XXCmd x
 
 
--- extensions for phrases
+-- extensions for phrases. We need the type family
+-- dependency to write a type class to get the context 
+-- out of the extension for printing the context
 type family XCHCasePhrase x 
-type family XCForkPhrase x 
-type family XCPlugPhrase x 
+type family XCForkPhrase x = res
+type family XCPlugPhrase x = res
 
 -- aliases for some of the phrases
-type CPlugPhrase x = (XCPlugPhrase x, NonEmpty (MplCmd x))
+type CPlugPhrase x = (XCPlugPhrase x, ([ChP x], [ChP x]), NonEmpty (MplCmd x))
 
 -- aliases for some of the phrases
 type ForallProcessCommand (c :: Type -> Constraint) x =
@@ -105,6 +107,8 @@ type ForallProcessCommand (c :: Type -> Constraint) x =
     , c (XCForkPhrase x)
     , c (XCPlugPhrase x)
     )
+type CForkPhrase x = 
+    (ChP x, XCForkPhrase x, NonEmpty (MplCmd x))
 
 -- data ProcessCommand pattern letdef typedef seqcalleddef conccalleddef ident chident =
 data MplCmd x =
@@ -136,9 +140,7 @@ data MplCmd x =
     -- { _cSplit :: chident, _cSplitInto :: (chident, chident) }
     | CFork !(XCFork x) 
         (ChP x) 
-            ( (ChP x, XCForkPhrase x, NonEmpty (MplCmd x))
-            , (ChP x, XCForkPhrase x, NonEmpty (MplCmd x))
-            )
+            ( CForkPhrase x , CForkPhrase x )
         {-
         { 
         _cFork :: chident
@@ -203,9 +205,11 @@ pattern UCIdNeg ab = CIdNeg () ab
 
 pattern UCRace phrases = CRace () phrases
 
+{-
 pattern UCPlugs abcs <- CPlugs () ( (\(((), a), ((), b), cs) -> (a,b, map snd cs)) -> abcs)
   where
     UCPlugs (a,b,cs) = CPlugs () (((),a), ((),b), fmap ((),) cs)
+    -}
 
 pattern UCCase expr phrases = CCase () expr phrases
 pattern UCSwitch phrases = CSwitch () phrases

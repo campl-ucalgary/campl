@@ -1,5 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
 module MplPasses.Renamer.RenameErrors where
 
 import Optics
@@ -24,6 +26,7 @@ data RenameErrors =
     OverlappingDeclarations [IdentP]
     | OutOfScope IdentP
 
+    {-
     | SeqTypeClauseArgsMustContainTheSameTypeVariables 
         [NonEmpty [IdentP]]
         -- list of equivalence classes of the arguments on (==)
@@ -52,7 +55,7 @@ data RenameErrors =
 
     | IllegalLastCommand KeyWordNameOcc 
     | IllegalNonLastCommand KeyWordNameOcc 
-
+    -}
   deriving Show
 
 $(makeClassyPrisms ''RenameErrors)
@@ -95,20 +98,6 @@ instance OverlappingDeclarations (MplTypeClauseSpine MplParsed (ConcObjTag t)) w
         allstatevars = fmap (view typeClauseStateVar) spine 
 
 -- default out of scope lookup
-outOfScope :: 
-    AsRenameErrors e =>
-    SymTab -> 
-    IdentP -> 
-    [e]
-outOfScope symtab identp = 
-    maybe [_OutOfScope # identp] (const []) 
-        (lookupSym identp _Nothing symtab)
-
-outOfScopes ::
-    ( Foldable t 
-    , AsRenameErrors e) =>
-    SymTab -> t IdentP -> [e]
-outOfScopes symtab = foldMap (outOfScope symtab)
 
 outOfScopeWith f symtab identp = 
     maybe [_OutOfScope # identp] (const []) 
@@ -117,21 +106,8 @@ outOfScopeWith f symtab identp =
 outOfScopesWith f symtab = 
     foldMap (outOfScopeWith f symtab)
 
-expectedInputPolarity ::
-    AsRenameErrors e =>
-    (IdentP, SymEntry Polarity) -> 
-    [e]
-expectedInputPolarity ch@(ident, SymEntry _ Output) = [_ExpectedOppositePolarity # (ident, Output)]
-expectedInputPolarity _ = []
 
-expectedOutputPolarity ::
-    AsRenameErrors e =>
-    (IdentP, SymEntry Polarity) -> 
-    [e]
-expectedOutputPolarity ch@(ident, SymEntry _ Input) = [_ExpectedOppositePolarity # (ident, Input)]
-expectedOutputPolarity _ = []
-
-
+{-
 class TypeClauseSpineSameVarError (t :: ObjectDefnTag) where
     typeClauseSpineSameVarError :: 
         AsRenameErrors e => 
@@ -194,5 +170,22 @@ forkExpectedDisjointChannelsButHasSharedChannels a b =
     bool [_ForkExpectedDisjointChannelsButHasSharedChannels # common ] [] (null common)
   where
     common = a `intersect` b
+
+
+expectedInputPolarity ::
+    AsRenameErrors e =>
+    (IdentP, SymEntry Polarity) -> 
+    [e]
+expectedInputPolarity ch@(ident, SymEntry _ Output) = [_ExpectedOppositePolarity # (ident, Output)]
+expectedInputPolarity _ = []
+
+expectedOutputPolarity ::
+    AsRenameErrors e =>
+    (IdentP, SymEntry Polarity) -> 
+    [e]
+expectedOutputPolarity ch@(ident, SymEntry _ Input) = [_ExpectedOppositePolarity # (ident, Input)]
+expectedOutputPolarity _ = []
+-}
+
     
 
