@@ -16,7 +16,7 @@
     hput Intterm.Put on intterm  ;
     put val on intterm ;
 
-    hput Intterm.Get; on intterm 
+    hput Intterm.Get on intterm ;
     get vval on intterm ;
 
     hput ConsoleInt.Put on console  ;
