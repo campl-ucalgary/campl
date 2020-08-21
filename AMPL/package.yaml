@@ -54,7 +54,17 @@ executables:
         - -with-rtsopts=-N
     dependencies:
         - AMPL 
-
+  amplm2amplb:
+      main: Main.hs
+      source-dirs:
+          - amplm2amplb
+      ghc-options:
+          - -threaded
+          - -rtsopts
+          - -with-rtsopts=-N
+      dependencies:
+          - AMPL 
+      
 tests: 
     spec:
         defaults: hspec/hspec@master

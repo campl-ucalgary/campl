@@ -36,14 +36,6 @@ import System.IO
 import Data.Word
 import Data.Int
 
-
-data BytecodeLabel = 
-    Label Int
-    | NoLabel
-    | Placeholder
-    deriving (Show, Eq)
-
-
 -- Definition of the byte code commands
 -- DO NOT CHANGE THE ORDER, THIS MUST MATCH THE C++ ENUM DECLARATION
 data BytecodeCommand = 
@@ -107,16 +99,11 @@ data BytecodeEntry =
     | BHeader Word64
     deriving (Show)
 
+
 bytecodeEntryToByteString :: BytecodeEntry -> Builder
 bytecodeEntryToByteString (BI cmd) = word64LE $ fromIntegral $ fromEnum cmd
-bytecodeEntryToByteString (BChID (LocalChanID id)) = 
-    if (id + 1000) < 0  then error "LocalChanID must be >= 0"
-                        else int64LE $ fromIntegral $ (id + 1000) -- Update channel ids to start at 1
-    
-bytecodeEntryToByteString (BGlobalChID (GlobalChanID id)) = 
-    if (id + 1000) < 0  then error "GlobalChanID must be >= 0"
-                        else int64LE $ fromIntegral $ (id + 1000) -- Update channel ids to start at 1
-
+bytecodeEntryToByteString (BChID (LocalChanID id)) = int64LE $ fromIntegral $ id
+bytecodeEntryToByteString (BGlobalChID (GlobalChanID id)) = int64LE $ fromIntegral $ id
 bytecodeEntryToByteString (BServiceDataType IntService) = word64LE $ fromIntegral 0
 bytecodeEntryToByteString (BServiceDataType CharService) = word64LE $ fromIntegral 1
 bytecodeEntryToByteString (BServiceType StdService) = word64LE $ fromIntegral 0
@@ -125,7 +112,7 @@ bytecodeEntryToByteString (BServiceType (TerminalNetworkedService _ _)) = word64
 bytecodeEntryToByteString (BPolarity Output) = word64LE $ fromIntegral 0
 bytecodeEntryToByteString (BPolarity Input) = word64LE $ fromIntegral 1
 bytecodeEntryToByteString (BU v) =  word64LE v
-bytecodeEntryToByteString (BIdx v) =  word64LE $ v + (fromIntegral 1)
+bytecodeEntryToByteString (BIdx v) =  word64LE $ v
 bytecodeEntryToByteString (BCellU cell) = word64LE $ (cell .&. (0x8 `shiftR` 60))
 bytecodeEntryToByteString (BCellS cell) = int64LE (cell .&. (0x8 `shiftR` 60))
 bytecodeEntryToByteString (BFunID (FunID _)) = error "FunID cannot be converted to bytestrings (translate to jumps)"
@@ -140,6 +127,7 @@ translateBytecodeToByteString [] = mempty
 type BytecodeState = ([(Int, BytecodeEntry)], Int, [(Int, FunID)])
 
 -- start locations at 1
+initBytecodeState :: BytecodeState
 initBytecodeState = ([], 0, [])
 
 
@@ -148,8 +136,6 @@ valToBytecodeEntry (VInt v)  = BCellS (fromIntegral v)
 valToBytecodeEntry (VBool v) = BCellU (if v then 1 else 0)
 valToBytecodeEntry (VChar v) = BCellU (fromIntegral $ fromEnum v)
 valToBytecodeEntry _ = undefined
-
-
 
 -- Location to emit to -> Entry -> Emitted location
 emitAt :: Int -> BytecodeEntry -> State BytecodeState Int
@@ -184,19 +170,26 @@ skipk k = do
     modify (\(c, l, f) -> (c, l + k, f))
     return l
 
-
-lookupFunction :: FunID -> State BytecodeState Int
-lookupFunction funID = do
-    (_, _, fs) <- get
-    let res = find (\(_, id) -> id == funID) fs
-    return (
+lookupFunction :: [(Int, FunID)] -> FunID -> Int
+lookupFunction fs funID = let 
+        res = find (\(_, id) -> id == funID) fs
+    in
         case res of Just (loc, _)  -> loc
-                    Nothing -> error "funID not found")
+                    Nothing -> error "funID not found"
 
 insertFunction :: Int -> FunID -> State BytecodeState ()
 insertFunction loc funID = 
     modify (\(c, l, fs) -> (c, l, (loc, funID):fs))
 
+getBytecode :: State BytecodeState [BytecodeEntry]
+getBytecode = do
+    (bytecode, _, _) <- get
+    return $ map snd $ sortBy (compare `on` fst) bytecode
+
+getFunctionTable :: State BytecodeState [(Int, FunID)]
+getFunctionTable = do
+    (_, _, fs) <- get
+    return fs
 
 translateBlock :: [Instr] -> State BytecodeState Int
 translateBlock [] = location
@@ -214,7 +207,7 @@ translateSequential (IStore) = emit $ BI B_AM_STOR
 
 translateSequential (IAccess location) = do 
     ret <- emit $ BI B_AM_LOAD
-    emit $ BIdx $ (fromIntegral location) + 1 -- load starts at 1
+    emit $ BIdx $ (fromIntegral location)
     return ret
 
 translateSequential (IRet) = emit $ BI B_AM_RET
@@ -235,7 +228,7 @@ translateSequential (IAddInt)  = emit $ BI B_AM_ADD
 translateSequential (ISubInt)  = emit $ BI B_AM_SUB
 translateSequential (IMulInt)  = emit $ BI B_AM_MUL
 translateSequential (IDivInt)  = emit $ BI B_AM_DIV
-translateSequential (IModInt)  = error "unimplemented instruction"
+translateSequential v@(IModInt)  = error $ "Unimplemented instruction: " ++ (show v)
 translateSequential (IOrBool)  = emit $ BI B_AM_LOR
 translateSequential (IAndBool) = emit $ BI B_AM_LAND
 
@@ -299,14 +292,14 @@ translateSequential (IDest (DesIx idx) nargs) = do
 
 translateSequential (IErrorMsg _) = emit $ BI B_AM_ERROR
 
-translateSequential (IUnstring)    = error "unimplemented instruction"
-translateSequential (IConcat)      = error "unimplemented instruction"
-translateSequential (IConcats _)   = error "unimplemented instruction"
-translateSequential (IToString)    = error "unimplemented instruction"
-translateSequential (IToInt)       = error "unimplemented instruction"
-translateSequential (IAppend)      = error "unimplemented instruction"
-translateSequential (ITuple _)     = error "unimplemented instruction"
-translateSequential (ITupleElem _) = error "unimplemented instruction"
+translateSequential v@(IUnstring)    = error $ "Unimplemented instruction: " ++ (show v)
+translateSequential v@(IConcat)      = error $ "Unimplemented instruction: " ++ (show v)
+translateSequential v@(IConcats _)   = error $ "Unimplemented instruction: " ++ (show v)
+translateSequential v@(IToString)    = error $ "Unimplemented instruction: " ++ (show v)
+translateSequential v@(IToInt)       = error $ "Unimplemented instruction: " ++ (show v)
+translateSequential v@(IAppend)      = error $ "Unimplemented instruction: " ++ (show v)
+translateSequential v@(ITuple _)     = error $ "Unimplemented instruction: " ++ (show v)
+translateSequential v@(ITupleElem _) = error $ "Unimplemented instruction: " ++ (show v)
 
 genCaseList :: Int -> [[Instr]] -> State BytecodeState ()
 genCaseList idx (instBlk:rest) = do
@@ -323,7 +316,7 @@ translateConcurrent (IGet id) = do
     return ret
 
 translateConcurrent (IPut id) = do
-    ret <- emit $ BI B_AM_GET
+    ret <- emit $ BI B_AM_PUT
     emit $ BChID id
     return ret
 
@@ -449,7 +442,7 @@ translateConcurrent (IRace ((a, ac):(b, bc):[])) = do
     emitAt bLoc $ BJ bBlockLoc
     return ret
 
-translateConcurrent (IRace _) = error "none 2 way races not supported"
+translateConcurrent (IRace _) = error "Only 2 way races are supported"
 
 
 translateChannelList :: [LocalChanID] -> State BytecodeState ()
@@ -465,10 +458,6 @@ translateFun instr = do
     ret <- translateBlock instr
     emit $ BI B_AM_DONE
     return ret
-
-
-
-
 
 translateServiceTable :: ([GlobalChanID], [(GlobalChanID, (ServiceDataType, ServiceType))]) -> State BytecodeState (Int, Int)
 translateServiceTable (internalServices, externalServices) = let
@@ -509,88 +498,86 @@ translateMainTranslation list = let
         return ret
 
 
-translateMachineState' :: InitAMPLMachState -> State BytecodeState ()
-translateMachineState' state = let 
-        services = initAmplMachStateServices state
-        (mainFun, mainTrans) = initAmplMachMainFun state
-        funs = initAmplMachFuns state
 
-        translateFunList ((id, (_, instr)):rest) = do
-            blockStart <- translateFun instr
-            insertFunction blockStart id
-            translateFunList rest
-        translateFunList [] = return ()
-    in do 
-        -- ampl encoded in hex, padded to a word64
-        emit $ BHeader 0x616d706c00000000 
 
-        -- first for Cells describe the location of each of the parts of the program
-        defaultChannelsJumpLoc <- skip 
-        serviceChannelsJumpLoc <- skip
-        mainFunctionTranslationLoc <- skip
-        mainFunctionJumpLoc <- skip
 
-        (defaultTarget, serviceTarget) <- translateServiceTable services
-        emitAt defaultChannelsJumpLoc $ BJ defaultTarget
-        emitAt serviceChannelsJumpLoc $ BJ serviceTarget
-        
-        mainFunctionTranslationTarget <- translateMainTranslation mainTrans
-        emitAt mainFunctionTranslationLoc $ BJ mainFunctionTranslationTarget
-
-        mainFunctionJumpTarget <- translateFun mainFun
-        emitAt mainFunctionJumpLoc $ BJ mainFunctionJumpTarget
-
-        translateFunList funs
-
+-- TODO increment BIdx
+-- TODO increment LocalChanID
+-- TODO increment GlobalChanID
 
 translateMachineState :: InitAMPLMachState -> [BytecodeEntry]
 translateMachineState state = let
-        patch :: State BytecodeState [BytecodeEntry]
-        patch = let
-                -- patch functionID with locations
-                patchEntry ((BFunID id):rest) = do
-                    location <- lookupFunction id
-                    let head = BJ location
-                    next <- patchEntry rest
-                    return $ head:next
+        patchFunctionLocations :: [(Int, FunID)] -> BytecodeEntry -> BytecodeEntry
+        patchFunctionLocations fs (BFunID id) = BJ $ lookupFunction fs id
+        patchFunctionLocations _ v = v
 
-                patchEntry ((BGlobalChID (GlobalChanID id)):rest) = do
-                    next <- patchEntry rest
-                    -- TODO make this not garbage
-                    if (id + 1000) >= 0  then return ((BGlobalChID (GlobalChanID id)):next)
-                                       else error "global channel id not >= 0"
+        getLowestChannelId :: [BytecodeEntry] -> Int
+        getLowestChannelId bytecode = let
+                lowestChannelId :: BytecodeEntry -> Int -> Int
+                lowestChannelId (BChID (LocalChanID id)) num = min id num
+                lowestChannelId (BGlobalChID (GlobalChanID id)) num = min id num
+                lowestChannelId _  num = num
+            in do
+                foldr lowestChannelId 0 bytecode
 
-                patchEntry ((BChID (LocalChanID id)):rest) = do
-                    next <- patchEntry rest
-                    if (id + 1000) >= 0  then return ((BChID (LocalChanID id)):next)
-                                       else error "local channel id not >= 0"
+        incrementBytecodeIndex :: Int ->  BytecodeEntry -> BytecodeEntry
+        incrementBytecodeIndex amount (BIdx idx) = BIdx $ idx + (fromIntegral amount)
+        incrementBytecodeIndex amount v = v
 
-                -- ignore other entries
-                patchEntry (head:rest) = do 
-                    next <- patchEntry rest
-                    return $ head:next
-                
-                -- base case
-                patchEntry [] = do
-                    return []
+        incrementChannelId :: Int -> BytecodeEntry -> BytecodeEntry
+        incrementChannelId amount (BChID (LocalChanID id)) = BChID $ LocalChanID $ id + amount
+        incrementChannelId amount (BGlobalChID (GlobalChanID id)) = BChID $ LocalChanID $ id + amount
+        incrementChannelId amount v = v
+
+        translate :: InitAMPLMachState -> State BytecodeState ([BytecodeEntry], [(Int, FunID)])
+        translate state = let 
+                services = initAmplMachStateServices state
+                (mainFun, mainTrans) = initAmplMachMainFun state
+                funs = initAmplMachFuns state
+
+                translateFunList ((id, (_, instr)):rest) = do
+                    blockStart <- translateFun instr
+                    insertFunction blockStart id
+                    translateFunList rest
+                translateFunList [] = return ()
             in do 
-                (bytecode, _, _) <- get
-                ret <- patchEntry $ map snd $ sortBy (compare `on` fst) bytecode
-                return ret
+                -- ampl encoded in hex, padded to a word64
+                emit $ BHeader 0x616d706c00000000 
 
-        translate :: InitAMPLMachState -> State BytecodeState [BytecodeEntry]
-        translate state = do
-            translateMachineState' state
-            patch
-    in fst $ runState (translate state) initBytecodeState
+                -- first for Cells describe the location of each of the parts of the program
+                defaultChannelsJumpLoc <- skip 
+                serviceChannelsJumpLoc <- skip
+                mainFunctionTranslationLoc <- skip
+                mainFunctionJumpLoc <- skip
 
+                (defaultTarget, serviceTarget) <- translateServiceTable services
+                emitAt defaultChannelsJumpLoc $ BJ defaultTarget
+                emitAt serviceChannelsJumpLoc $ BJ serviceTarget
+                
+                mainFunctionTranslationTarget <- translateMainTranslation mainTrans
+                emitAt mainFunctionTranslationLoc $ BJ mainFunctionTranslationTarget
+
+                mainFunctionJumpTarget <- translateFun mainFun
+                emitAt mainFunctionJumpLoc $ BJ mainFunctionJumpTarget
+
+                translateFunList funs
+
+                bytecode <- getBytecode
+                fs <- getFunctionTable
+                return (bytecode, fs)
+
+        (bytecode, fs) = fst $ runState (translate state) initBytecodeState
+        channelOffset = -(getLowestChannelId bytecode) + 1
+    in map ((patchFunctionLocations fs).(incrementBytecodeIndex 1).(incrementChannelId channelOffset)) bytecode
 
 printInitMachineStateToBytecodeFile :: String -> InitAMPLMachState -> IO ()
-printInitMachineStateToBytecodeFile filename state = let
-        translateToByteString = translateBytecodeToByteString . translateMachineState
-    in do
-        handle <-  openFile filename (WriteMode)
-        B.hPut handle $ BL.toStrict $ toLazyByteString $ translateToByteString state
+printInitMachineStateToBytecodeFile filename state = do
+        let translatedMachine = translateMachineState state
+        putStrLn $ formatBytecodeString "\n" translatedMachine
+
+        handle <- openFile filename (WriteMode)
+        let translatedByteString = translateBytecodeToByteString translatedMachine
+        B.hPut handle $ BL.toStrict $ toLazyByteString $ translatedByteString
 
 
 externalCharMach = InitAMPLMachState {
@@ -617,3 +604,13 @@ externalCharMach = InitAMPLMachState {
             (Output,(LocalChanID 1,GlobalChanID (-1)))
         ]), 
     initAmplMachFuns = [] }
+
+formatBytecodeString :: String -> [BytecodeEntry] -> String
+formatBytecodeString sep list = let
+        formatBytecodeString' :: String -> [BytecodeEntry] -> Int -> String
+        formatBytecodeString' _ [] _ = ""
+        formatBytecodeString' sep (head:[]) count =  (show count) ++ ":\t" ++ (show head)
+        formatBytecodeString' sep (head:rest) count = (show count) ++ ":\t" ++ (show head) ++ sep ++ (formatBytecodeString' sep rest (count + 1))
+    in formatBytecodeString' sep list 0
+
+
