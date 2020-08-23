@@ -10,6 +10,7 @@ import Optics
 import MplAST.MplCore
 import MplAST.MplParsed
 import MplAST.MplRenamed
+import MplAST.MplTypeChecked
 
 import Data.Foldable
 import Data.Function
@@ -22,30 +23,30 @@ import Control.Arrow
 
 data TypeCheckErrors = 
     SeqTypeClauseArgsMustContainTheSameTypeVariables 
-        [NonEmpty [IdentP]]
+        [NonEmpty [IdentR]]
         -- list of equivalence classes of the arguments on (==)
     | ConcTypeClauseArgsMustContainTheSameTypeVariables 
-        [NonEmpty ([IdentP], [IdentP])]
+        [NonEmpty ([IdentR], [IdentR])]
         -- list of equivalence classes of the arguments on (==)
         --
-    | ExpectedStateVarButGot IdentP IdentP 
+    | ExpectedStateVarButGot IdentR IdentR 
         -- expected, actual
-    | ExpectedOppositePolarity (IdentP, Polarity)
+    | ExpectedOppositePolarity (IdentR, Polarity)
         -- channel, polarity of channel. 
 
     | HCaseExpectedInputPolarityChToHaveProtocolButGotCoprotocol 
         -- channel, phrase ident
-        IdentP IdentP
+        IdentR IdentR
     | HCaseExpectedOutputPolarityChToHaveCoprotocolButGotProtocol 
         -- channel, phrase ident
-        IdentP IdentP
+        IdentR IdentR
 
     | HPutExpectedInputPolarityChToHaveCoprotocolButGotProtocol
-        IdentP IdentP
+        IdentR IdentR
     | HPutExpectedOutputPolarityChToHaveProtocolButGotCoprotocol
-        IdentP IdentP
+        IdentR IdentR
 
-    | ForkExpectedDisjointChannelsButHasSharedChannels [IdentP]
+    | ForkExpectedDisjointChannelsButHasSharedChannels [IdentR]
 
     | IllegalLastCommand KeyWordNameOcc 
     | IllegalNonLastCommand KeyWordNameOcc 
@@ -59,13 +60,14 @@ class TypeClauseSpineSameVarError (t :: ObjectDefnTag) where
         AsTypeCheckErrors e => 
         MplTypeClauseSpine MplRenamed t -> 
         [e]
+{-
 
 instance TypeClauseSpineSameVarError (SeqObjTag t) where
     typeClauseSpineSameVarError spine = bool [] 
         [_SeqTypeClauseArgsMustContainTheSameTypeVariables # eqclasses]
         shoulderror
       where
-        eqclasses :: [NonEmpty [IdentP]]
+        eqclasses :: [NonEmpty [IdentR]]
         eqclasses = NE.group 
             $ fmap (fmap (view identRIdentP) <<< view typeClauseArgs) 
             $ spine ^. typeClauseSpineClauses 
@@ -77,7 +79,7 @@ instance TypeClauseSpineSameVarError (ConcObjTag t) where
         [_ConcTypeClauseArgsMustContainTheSameTypeVariables # eqclasses]
         shoulderror
       where
-        eqclasses :: [NonEmpty ([IdentP], [IdentP])]
+        eqclasses :: [NonEmpty ([IdentR], [IdentR])]
         eqclasses = NE.group 
             $ fmap (fmap (view identRIdentP) *** fmap (view identRIdentP)
                 <<< view typeClauseArgs) 
@@ -87,8 +89,8 @@ instance TypeClauseSpineSameVarError (ConcObjTag t) where
 
 hCaseError :: 
     AsTypeCheckErrors e =>
-    (IdentP, Polarity) ->
-    (IdentP, ConcObjDefnTag) ->
+    (IdentR, Polarity) ->
+    (IdentR, ConcObjDefnTag) ->
     [e]
 hCaseError (ch, Input) (ident, CoprotocolDefnTag) = 
     [_HCaseExpectedInputPolarityChToHaveProtocolButGotCoprotocol # (ch,ident) ]
@@ -98,8 +100,8 @@ hCaseError _ _ = []
 
 hPutError :: 
     AsTypeCheckErrors e =>
-    (IdentP, Polarity) ->
-    (IdentP, ConcObjDefnTag) ->
+    (IdentR, Polarity) ->
+    (IdentR, ConcObjDefnTag) ->
     [e]
 hPutError (ch, Input) (ident, ProtocolDefnTag) = 
     [ _HPutExpectedInputPolarityChToHaveCoprotocolButGotProtocol # (ch,ident) ]
@@ -110,8 +112,8 @@ hPutError _ _ = []
 
 forkExpectedDisjointChannelsButHasSharedChannels ::
     AsTypeCheckErrors e =>
-    [IdentP] ->
-    [IdentP] ->
+    [IdentR] ->
+    [IdentR] ->
     [e]
 forkExpectedDisjointChannelsButHasSharedChannels a b =
     bool [_ForkExpectedDisjointChannelsButHasSharedChannels # common ] [] (null common)
@@ -119,17 +121,16 @@ forkExpectedDisjointChannelsButHasSharedChannels a b =
     common = a `intersect` b
 
 
-{-
 expectedInputPolarity ::
     AsTypeCheckErrors e =>
-    (IdentP, SymEntry Polarity) -> 
+    (IdentR, SymEntry Polarity) -> 
     [e]
 expectedInputPolarity ch@(ident, SymEntry _ Output) = [_ExpectedOppositePolarity # (ident, Output)]
 expectedInputPolarity _ = []
 
 expectedOutputPolarity ::
     AsTypeCheckErrors e =>
-    (IdentP, SymEntry Polarity) -> 
+    (IdentR, SymEntry Polarity) -> 
     [e]
 expectedOutputPolarity ch@(ident, SymEntry _ Input) = [_ExpectedOppositePolarity # (ident, Input)]
 expectedOutputPolarity _ = []

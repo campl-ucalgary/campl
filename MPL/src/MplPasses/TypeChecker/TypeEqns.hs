@@ -111,8 +111,8 @@ substitute (v, sub) = cata f
         | otherwise = TypeVar cxt v'
     f (TypeSeqVarWithArgsF cxt v' []) 
         | v == v' = sub
-        | otherwise = TypeSeqVarWithArgs cxt v' []
-    f (TypeConcVarWithArgsF cxt v' ([], [])) 
+        | otherwise = TypeSeqVarWithArgs cxt v' mempty
+    f (TypeConcVarWithArgsF cxt v' ([],[])) 
         | v == v' = sub
         | otherwise = TypeConcVarWithArgs cxt v' mempty
     f n = embed n
@@ -128,6 +128,7 @@ match = f
     f (TypeVar cxt0 a) (TypeVar cxt1 b) = 
      return [(a, TypeVar cxt1 b)]
 
+    {-
     f type0@(TypeSeqWithArgs cxt0 a args) type1@(TypeSeqWithArgs cxt1 b brgs) 
         | a == b && length args == length brgs =
             concat <$> traverse (uncurry f) (zip args brgs)
@@ -139,6 +140,7 @@ match = f
         | a == b && length args0 == length brgs0 && length args1 == length brgs1 =
             concat <$> traverse (uncurry f) (zip (args0 <> args1) (brgs0 <> brgs1))
         | otherwise = throwError $  _TypeMatchFailure # (type0, type1)
+        -}
     -- TypeConcVarWithArgs !(XTypeConcVarWithArgs x) (TypeP x) ([MplType x], [MplType x])
     {-
      -
@@ -177,7 +179,7 @@ failsOccursCheck ::
     Bool
 failsOccursCheck _ (TypeVar _ _) = False
 failsOccursCheck _ (TypeSeqVarWithArgs _ _ []) = False
-failsOccursCheck _ (TypeConcVarWithArgs _ _ ([], [])) = False
+failsOccursCheck _ (TypeConcVarWithArgs _ _ ([],[])) = False
 failsOccursCheck n rst = n `elem` mplTypeCollectTypeP rst
 
 
@@ -250,7 +252,7 @@ isTrivialSub ::
 isTrivialSub (PlainSubTag, (s, expr)) = case expr of
     TypeVar _ t -> s == t
     TypeSeqVarWithArgs _ t [] -> s == t
-    TypeConcVarWithArgs _ t ([], []) -> s == t
+    TypeConcVarWithArgs _ t ([],[]) -> s == t
     _ -> False
 isTrivialSub _ = False
 
@@ -265,10 +267,10 @@ alignSubs k = map f
         | k == b = (PlainSubTag, (b, TypeVar cxt a))
         | otherwise = t
     f t@(PlainSubTag, (a, TypeConcVarWithArgs cxt b ([],[])))
-        | k == b = (PlainSubTag, (b, TypeConcVarWithArgs cxt a ([],[])))
+        | k == b = (PlainSubTag, (b, TypeConcVarWithArgs cxt a mempty))
         | otherwise = t
     f t@(PlainSubTag, (a, TypeSeqVarWithArgs cxt b []))
-        | k == b = (PlainSubTag, (b, TypeSeqVarWithArgs cxt a []))
+        | k == b = (PlainSubTag, (b, TypeSeqVarWithArgs cxt a mempty))
         | otherwise = t
     f n = n
 

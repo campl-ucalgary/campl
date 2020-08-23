@@ -89,9 +89,11 @@ substituteType sublist = cata f
     f :: Base (MplType MplTypeChecked) 
         (Maybe (MplType MplTypeSub)) -> Maybe (MplType MplTypeSub)
     f (TypeVarF cxt typep) = TypeVar Nothing <$> lookup typep sublist
+    {-
     f (TypeSeqWithArgsF cxt id args) =
         TypeSeqWithArgs cxt id <$> sequenceA args 
     f (TypeConcWithArgsF cxt id args) =
         TypeConcWithArgs cxt id <$> traverseOf each sequenceA args 
     f (TypeBuiltInF rst) = TypeBuiltIn . embedBuiltInTypes 
         <$> sequenceA rst 
+    -}

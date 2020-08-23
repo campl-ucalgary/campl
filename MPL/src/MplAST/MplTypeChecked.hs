@@ -35,6 +35,7 @@ import MplAST.MplCmd
 import MplAST.MplIdent
 import MplAST.MplProg
 import MplAST.MplExt
+import MplAST.MplKind 
 import MplUtil.UniqueSupply 
 
 type IdentT = IdentR
@@ -66,8 +67,6 @@ instance HasLocation ChIdentT where
 
 instance HasNamespace ChIdentT where
     namespace = identR % namespace
-
-
 
 type instance IdP MplTypeChecked = IdentT
 type instance ChP MplTypeChecked = ChIdentT
@@ -172,11 +171,11 @@ type instance XProcType MplTypeChecked =
 
 type instance XMplType MplTypeChecked = MplType MplTypeChecked
 type instance XTypeSeqWithArgs MplTypeChecked = ()
-type instance XTypeSeqVarWithArgs MplTypeChecked = ()
+type instance XTypeSeqVarWithArgs MplTypeChecked = Void -- higher kinded types are not allowed (for now)
 type instance XTypeConcWithArgs MplTypeChecked = ()
-type instance XTypeConcVarWithArgs  MplTypeChecked = ()
+type instance XTypeConcVarWithArgs  MplTypeChecked = Void -- higher kinded types are not allowed (for now)
 
-type instance XTypeVar MplTypeChecked = () 
+type instance XTypeVar MplTypeChecked = XMplKind MplTypeChecked 
 type instance XXType MplTypeChecked = Void
 type instance XTypeIntF MplTypeChecked = NameOcc
 type instance XTypeCharF MplTypeChecked = NameOcc
@@ -197,3 +196,18 @@ type instance XTypeSeqArrF MplTypeChecked = ()
 type instance XTypeConcArrF MplTypeChecked = ()
 
 type instance XXMplBuiltInTypesF MplTypeChecked = Void
+
+
+-- Kind info..
+-------------------------
+type instance XMplKind MplTypeChecked = MplPrimitiveKind MplTypeChecked
+type instance XSeqKind MplTypeChecked = ()
+type instance XConcKind MplTypeChecked = ()
+type instance XArrKind MplTypeChecked = Void
+type instance XSeqArgKind MplTypeChecked = Void
+type instance XConcArgKind MplTypeChecked = Void
+type instance XKindVar MplTypeChecked = Void
+
+type instance KindP MplTypeChecked = Void
+
+type instance XXKind MplTypeChecked = Void

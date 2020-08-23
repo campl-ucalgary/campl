@@ -86,7 +86,6 @@ data MplType x  =
 
     | XType !(XXType x)
 
-
 data MplBuiltInTypesF x r =
     -- primitive sequential types
     TypeIntF !(XTypeIntF x)

@@ -41,6 +41,7 @@ import Data.Kind
 
 import Data.Foldable
 import Data.Functor.Foldable (Base, cata)
+import Data.Function
 
 class MplProgUtil x where
     mplStmtTopLevelIdents :: MplStmt x -> NonEmpty (IdP x)

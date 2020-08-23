@@ -23,6 +23,7 @@ type SymTab = Map UniqueTag SymInfo
 data SymInfo = 
     SymRunInfo (Maybe (MplType MplTypeSub)) (MplProcess MplTypeChecked)
     | SymSeqPattVar (Maybe (MplType MplTypeSub)) 
+    | SymTypeClause (Maybe (MplObjectDefn MplTypeChecked))
 
 $(makePrisms ''SymInfo)
 

@@ -99,12 +99,14 @@ typeCheckDefn (FunctionDefn (MplFunction name funtype defn)) = do
 
 typeCheckDefn (ProcessDefn proc@(MplProcess name proctype defn)) = do
     mproctype <- sequenceA 
-        $ listen . kindCheckProcessType <$> proctype
+        -- $ listen . kindCheckProcessType <$> proctype
+        $ listen . undefined <$> proctype
 
     sup <- freshUniqueSupply
     let symtp = flip evalState sup $ case mproctype of
             Just (tp, lg)
-                | null lg -> Just <$> instantiateType tp
+                -- | null lg -> Just <$> instantiateType tp
+                | null lg -> undefined
                 | otherwise -> return Nothing
             Nothing -> do
                 tag <- freshTypeTag
