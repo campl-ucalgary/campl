@@ -573,11 +573,13 @@ translateMachineState state = let
 printInitMachineStateToBytecodeFile :: String -> InitAMPLMachState -> IO ()
 printInitMachineStateToBytecodeFile filename state = do
         let translatedMachine = translateMachineState state
-        putStrLn $ formatBytecodeString "\n" translatedMachine
+        -- putStrLn $ formatBytecodeString "\n" translatedMachine
 
         handle <- openFile filename (WriteMode)
         let translatedByteString = translateBytecodeToByteString translatedMachine
         B.hPut handle $ BL.toStrict $ toLazyByteString $ translatedByteString
+        hClose handle
+        return ()
 
 
 externalCharMach = InitAMPLMachState {
