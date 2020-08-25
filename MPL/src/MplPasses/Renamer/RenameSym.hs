@@ -95,6 +95,9 @@ lookupTypeVar ident =
 lookupTypeClause ident = 
     lookupSym ident (_Just % _SymTypeInfo % _SymTypeClause)
 
+lookupSymTypeInfo ident = 
+    lookupSym ident (_Just % _SymTypeInfo)
+
 lookupSymSeqPhrase ident = 
     lookupSym ident (_Just % _SymSeqPhraseInfo)
 
@@ -131,7 +134,7 @@ instance CollectSymTab a => CollectSymTab (NonEmpty a) where
     collectSymTab = concatMap collectSymTab
 
 instance CollectSymTab (MplStmt MplRenamed) where
-    collectSymTab = undefined
+    collectSymTab stmt = foldOf (stmtDefns % folded % to collectSymTab) stmt
 
 instance CollectSymTab (MplDefn MplRenamed) where
     collectSymTab (ObjectDefn n) = case n of

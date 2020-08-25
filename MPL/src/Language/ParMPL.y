@@ -13,45 +13,46 @@ import Language.ErrM
 %monad { Err } { thenM } { returnM }
 %tokentype {Token}
 %token
-  ',' { PT _ (TS _ 1) }
-  '->' { PT _ (TS _ 2) }
-  '.' { PT _ (TS _ 3) }
-  '::' { PT _ (TS _ 4) }
-  ':=' { PT _ (TS _ 5) }
-  ';' { PT _ (TS _ 6) }
-  '=' { PT _ (TS _ 7) }
-  '=>' { PT _ (TS _ 8) }
-  'and' { PT _ (TS _ 9) }
-  'as' { PT _ (TS _ 10) }
-  'codata' { PT _ (TS _ 11) }
-  'coprotocol' { PT _ (TS _ 12) }
-  'data' { PT _ (TS _ 13) }
-  'defn' { PT _ (TS _ 14) }
-  'do' { PT _ (TS _ 15) }
-  'else' { PT _ (TS _ 16) }
-  'fold' { PT _ (TS _ 17) }
-  'forall' { PT _ (TS _ 18) }
-  'fun' { PT _ (TS _ 19) }
-  'if' { PT _ (TS _ 20) }
-  'in' { PT _ (TS _ 21) }
-  'into' { PT _ (TS _ 22) }
-  'let' { PT _ (TS _ 23) }
-  'neg' { PT _ (TS _ 24) }
-  'of' { PT _ (TS _ 25) }
-  'on' { PT _ (TS _ 26) }
-  'plug' { PT _ (TS _ 27) }
-  'potato' { PT _ (TS _ 28) }
-  'proc' { PT _ (TS _ 29) }
-  'protocol' { PT _ (TS _ 30) }
-  'race' { PT _ (TS _ 31) }
-  'switch' { PT _ (TS _ 32) }
-  'then' { PT _ (TS _ 33) }
-  'unfold' { PT _ (TS _ 34) }
-  'where' { PT _ (TS _ 35) }
-  'with' { PT _ (TS _ 36) }
-  '{' { PT _ (TS _ 37) }
-  '|' { PT _ (TS _ 38) }
-  '}' { PT _ (TS _ 39) }
+  ' ' { PT _ (TS _ 1) }
+  ',' { PT _ (TS _ 2) }
+  '->' { PT _ (TS _ 3) }
+  '.' { PT _ (TS _ 4) }
+  '::' { PT _ (TS _ 5) }
+  ':=' { PT _ (TS _ 6) }
+  ';' { PT _ (TS _ 7) }
+  '=' { PT _ (TS _ 8) }
+  '=>' { PT _ (TS _ 9) }
+  'and' { PT _ (TS _ 10) }
+  'as' { PT _ (TS _ 11) }
+  'codata' { PT _ (TS _ 12) }
+  'coprotocol' { PT _ (TS _ 13) }
+  'data' { PT _ (TS _ 14) }
+  'defn' { PT _ (TS _ 15) }
+  'do' { PT _ (TS _ 16) }
+  'else' { PT _ (TS _ 17) }
+  'fold' { PT _ (TS _ 18) }
+  'forall' { PT _ (TS _ 19) }
+  'fun' { PT _ (TS _ 20) }
+  'if' { PT _ (TS _ 21) }
+  'in' { PT _ (TS _ 22) }
+  'into' { PT _ (TS _ 23) }
+  'let' { PT _ (TS _ 24) }
+  'neg' { PT _ (TS _ 25) }
+  'of' { PT _ (TS _ 26) }
+  'on' { PT _ (TS _ 27) }
+  'plug' { PT _ (TS _ 28) }
+  'potato' { PT _ (TS _ 29) }
+  'proc' { PT _ (TS _ 30) }
+  'protocol' { PT _ (TS _ 31) }
+  'race' { PT _ (TS _ 32) }
+  'switch' { PT _ (TS _ 33) }
+  'then' { PT _ (TS _ 34) }
+  'unfold' { PT _ (TS _ 35) }
+  'where' { PT _ (TS _ 36) }
+  'with' { PT _ (TS _ 37) }
+  '{' { PT _ (TS _ 38) }
+  '|' { PT _ (TS _ 39) }
+  '}' { PT _ (TS _ 40) }
 
 L_quoted { PT _ (TL $$) }
 L_charac { PT _ (TC $$) }
@@ -131,7 +132,7 @@ ListPIdent : {- empty -} { [] }
 MplProg :: { MplProg }
 MplProg : ListMplStmt { Language.AbsMPL.MPL_PROG (reverse $1) }
 MplStmt :: { MplStmt }
-MplStmt : 'defn' '{' ListMplDefn '}' 'where' '{' ListMplStmt '}' { Language.AbsMPL.MPL_DEFN_STMS_WHERE $3 (reverse $7) }
+MplStmt : 'defn' '{' ListMplDefn '}' 'where' '{' ListMplWhere '}' { Language.AbsMPL.MPL_DEFN_STMS_WHERE $3 $7 }
         | 'defn' '{' ListMplDefn '}' { Language.AbsMPL.MPL_DEFN_STMS $3 }
         | MplDefn { Language.AbsMPL.MPL_STMT $1 }
 ListMplDefn :: { [MplDefn] }
@@ -140,6 +141,12 @@ ListMplDefn : MplDefn { (:[]) $1 }
 ListMplStmt :: { [MplStmt] }
 ListMplStmt : {- empty -} { [] }
             | ListMplStmt MplStmt { flip (:) $1 $2 }
+MplWhere :: { MplWhere }
+MplWhere : MplStmt { Language.AbsMPL.MPL_WHERE $1 }
+ListMplWhere :: { [MplWhere] }
+ListMplWhere : {- empty -} { [] }
+             | MplWhere { (:[]) $1 }
+             | MplWhere ';' ListMplWhere { (:) $1 $3 }
 MplDefn :: { MplDefn }
 MplDefn : SequentialTypeDefn { Language.AbsMPL.MPL_SEQUENTIAL_TYPE_DEFN $1 }
         | ConcurrentTypeDefn { Language.AbsMPL.MPL_CONCURRENT_TYPE_DEFN $1 }
@@ -169,7 +176,7 @@ ForallVarList : UIdent { Language.AbsMPL.MPL_SEQ_FUN_TYPE_FORALL_LIST $1 }
 ListForallVarList :: { [ForallVarList] }
 ListForallVarList : {- empty -} { [] }
                   | ForallVarList { (:[]) $1 }
-                  | ForallVarList ',' ListForallVarList { (:) $1 $3 }
+                  | ForallVarList ' ' ListForallVarList { (:) $1 $3 }
 ListTupleListType :: { [TupleListType] }
 ListTupleListType : TupleListType { (:[]) $1 }
                   | TupleListType ',' ListTupleListType { (:) $1 $3 }

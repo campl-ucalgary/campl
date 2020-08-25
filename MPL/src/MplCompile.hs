@@ -9,13 +9,12 @@ import MplPasses.Parser.BnfcParse
 parsebnfc n = runParse' <$> runBnfc n
 
 test = [r|
-
-data
-    MyData(A,B) -> C =
-        MyData :: A,B -> C
-fun appwrapper =
-    a -> case a of
-        MyData(a,b) -> a
-        MyData(_,_) -> a
+data 
+    Test(A,B) -> C =
+        Testt :: A,B -> C
+        Testtt :: A,D,G -> C
+    and
+    Other(A,B,G) -> D =
+        Otherr :: A,B,G -> D
+        Otherrr :: A,D -> D
 |]
-

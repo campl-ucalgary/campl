@@ -41,6 +41,7 @@ import Data.Kind
 
 import Data.Foldable
 import Data.Functor.Foldable (Base, cata)
+import Data.Function
 
 class MplProgUtil x where
     mplStmtTopLevelIdents :: MplStmt x -> NonEmpty (IdP x)
@@ -67,10 +68,17 @@ instance MplProgUtil MplParsed where
             h n = n ^. typeClauseName : map (view typePhraseName) (n ^. typeClausePhrases)
 
 
-mplTypeCollectTypeVars :: MplType x -> [(XTypeVar x, TypeP x, [MplType x])]
-mplTypeCollectTypeVars = cata f
+mplTypeCollectTypeP :: MplType x -> [TypeP x]
+mplTypeCollectTypeP = cata f
   where
-    f = undefined
+    f (TypeVarF _ n) = [n]
 
+    f (TypeSeqWithArgsF _ n acc) = concat acc
+    f (TypeSeqVarWithArgsF _ n acc) = n : concat acc
 
+    f (TypeConcWithArgsF _ n (acc0, acc1)) = concat acc0 ++ concat acc1
+    f (TypeConcVarWithArgsF _ n (acc0, acc1)) = n : concat acc0 ++ concat acc1
 
+    f (TypeBuiltInF n) = fold n
+
+    f (XTypeF _) = mempty

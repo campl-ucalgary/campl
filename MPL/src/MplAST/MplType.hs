@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE DeriveDataTypeable #-}
@@ -35,7 +36,6 @@ import GHC.Generics
 import Data.Data
 import Data.Typeable
 
-import Text.PrettyPrint.GenericPretty
 
 type family XMplType x
 type family TypeP x
@@ -112,6 +112,23 @@ data MplBuiltInTypesF x r =
 
     | XTypeBuiltIn !(XXMplBuiltInTypesF x)
   deriving (Functor, Foldable, Traversable)
+
+embedBuiltInTypes (TypeIntF cxt) = TypeIntF cxt
+embedBuiltInTypes (TypeCharF cxt) = TypeCharF cxt
+embedBuiltInTypes (TypeDoubleF cxt) = TypeDoubleF cxt
+embedBuiltInTypes (TypeGetF cxt a b) = TypeGetF cxt a b
+embedBuiltInTypes (TypePutF cxt a b) = TypePutF cxt a b
+embedBuiltInTypes (TypeTensorF cxt a b) = TypeTensorF cxt a b
+embedBuiltInTypes (TypeParF cxt a b) = TypeParF cxt a b
+embedBuiltInTypes (TypeNegF cxt a) = TypeNegF cxt a
+embedBuiltInTypes (TypeTopBotF cxt) = TypeTopBotF cxt
+embedBuiltInTypes (TypeStringF cxt) = TypeStringF cxt
+embedBuiltInTypes (TypeUnitF cxt) = TypeUnitF cxt
+embedBuiltInTypes (TypeBoolF cxt) = TypeBoolF cxt
+embedBuiltInTypes (TypeListF cxt a) = TypeListF cxt a
+embedBuiltInTypes (TypeTupleF cxt (a, b, c)) = TypeTupleF cxt (a, b, c)
+embedBuiltInTypes (TypeSeqArrF cxt args to) = TypeSeqArrF cxt args to
+embedBuiltInTypes (TypeConcArrF cxt seqs ins outs) = TypeConcArrF cxt seqs ins outs
 
 
 type ForallMplType (c :: Type -> Constraint) x =

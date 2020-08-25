@@ -46,7 +46,7 @@ parseBnfcStmt :: BnfcParse B.MplStmt (MplStmt MplParsed)
 parseBnfcStmt (B.MPL_DEFN_STMS_WHERE defs wheres) = do
     MplStmt 
         <$> traverseTryEach parseBnfcDefn (NE.fromList defs) 
-        <*> traverseTryEach parseBnfcStmt wheres
+        <*> traverseTryEach (\case (B.MPL_WHERE stmt) -> parseBnfcStmt stmt) wheres
 
 parseBnfcStmt (B.MPL_DEFN_STMS defs) = 
     parseBnfcStmt (B.MPL_DEFN_STMS_WHERE defs [])

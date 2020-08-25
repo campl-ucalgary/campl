@@ -38,8 +38,6 @@ import Data.Data
 import Data.Typeable
 import Data.Kind
 
-import Text.PrettyPrint.GenericPretty
-
 
 type family ChP x
 type family XMplCmd x

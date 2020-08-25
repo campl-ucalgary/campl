@@ -79,20 +79,6 @@ instance Print Double where
 
 
 
-instance Print UIdent where
-  prt _ (UIdent (_,i)) = doc (showString ( i))
-
-
-instance Print PIdent where
-  prt _ (PIdent (_,i)) = doc (showString ( i))
-  prtList _ [] = (concatD [])
-  prtList _ [x] = (concatD [prt 0 x])
-  prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ","), prt 0 xs])
-
-instance Print UPIdent where
-  prt _ (UPIdent (_,i)) = doc (showString ( i))
-
-
 instance Print PInteger where
   prt _ (PInteger (_,i)) = doc (showString ( i))
 
@@ -201,6 +187,20 @@ instance Print Case where
   prt _ (Case (_,i)) = doc (showString ( i))
 
 
+instance Print UIdent where
+  prt _ (UIdent (_,i)) = doc (showString ( i))
+
+
+instance Print PIdent where
+  prt _ (PIdent (_,i)) = doc (showString ( i))
+  prtList _ [] = (concatD [])
+  prtList _ [x] = (concatD [prt 0 x])
+  prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ","), prt 0 xs])
+
+instance Print UPIdent where
+  prt _ (UPIdent (_,i)) = doc (showString ( i))
+
+
 
 instance Print MplProg where
   prt i e = case e of
@@ -208,11 +208,17 @@ instance Print MplProg where
 
 instance Print MplStmt where
   prt i e = case e of
-    MPL_DEFN_STMS_WHERE mpldefns mplstmts -> prPrec i 0 (concatD [doc (showString "defn"), doc (showString "{"), prt 0 mpldefns, doc (showString "}"), doc (showString "where"), doc (showString "{"), prt 0 mplstmts, doc (showString "}")])
+    MPL_DEFN_STMS_WHERE mpldefns mplwheres -> prPrec i 0 (concatD [doc (showString "defn"), doc (showString "{"), prt 0 mpldefns, doc (showString "}"), doc (showString "where"), doc (showString "{"), prt 0 mplwheres, doc (showString "}")])
     MPL_DEFN_STMS mpldefns -> prPrec i 0 (concatD [doc (showString "defn"), doc (showString "{"), prt 0 mpldefns, doc (showString "}")])
     MPL_STMT mpldefn -> prPrec i 0 (concatD [prt 0 mpldefn])
   prtList _ [] = (concatD [])
   prtList _ (x:xs) = (concatD [prt 0 x, prt 0 xs])
+instance Print MplWhere where
+  prt i e = case e of
+    MPL_WHERE mplstmt -> prPrec i 0 (concatD [prt 0 mplstmt])
+  prtList _ [] = (concatD [])
+  prtList _ [x] = (concatD [prt 0 x])
+  prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ";"), prt 0 xs])
 instance Print MplDefn where
   prt i e = case e of
     MPL_SEQUENTIAL_TYPE_DEFN sequentialtypedefn -> prPrec i 0 (concatD [prt 0 sequentialtypedefn])

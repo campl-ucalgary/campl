@@ -37,9 +37,11 @@ import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
 
 import Data.Foldable
-import Data.Functor.Foldable 
+import Data.Functor.Foldable ( cata, Base )
 
 import Data.Void
+
+import Debug.Trace
 
 -- TODO:
 -- We can generalize this all nicely with the continuation monad (ContT)
@@ -101,8 +103,19 @@ renameType ::
         (MplType MplParsed) 
         ([IdentR], MplType MplRenamed)
         -- explictly declared type variables, renamed type
-renameType = cata f
+renameType ptype = do
+    symtab <- guse envLcl
+    sup <- freshUniqueSupply
+    let nvars = typeFreeVariables symtab ptype
+        nvars' = evalState (traverse tagIdentP nvars) sup
+    envLcl %= ((collectSymTab nvars' & mapped % _2 % symEntryInfo 
+                        .~ _Just % _SymTypeVar # () )<>)
+    symtab' <- guse envLcl
+    ptype' <- runReaderT (renameScopedType ptype) symtab'
+    return (nvars', ptype')
+
 -- THIS LOOPS! Remember the whacky order of sequencing effects
+  {-
   where
     f :: Base (MplType MplParsed) (_ ([IdentR], MplType MplRenamed)) -> 
         _ ([IdentR], MplType MplRenamed)
@@ -146,7 +159,7 @@ renameType = cata f
                     )
             _ -> do
                 ident' <- tagIdentP ident
-                envLcl %= ((collectSymTab ident' & mapped % _2 % symEntryInfo 
+                envLcl %= ( (collectSymTab ident' & mapped % _2 % symEntryInfo 
                         .~ _Just % _SymTypeVar # () )<>)
                 return 
                     ( ident' : concatMap fst seqs' <> concatMap fst concs'
@@ -167,6 +180,22 @@ renameType = cata f
                         ( pure ident'
                         , _TypeVar # ( (), ident' )
                         )
+                        -}
+
+typeFreeVariables :: 
+    SymTab ->
+    MplType MplParsed ->
+    [IdentP]
+typeFreeVariables symtab = nub . cata f
+  where
+    f :: Base (MplType (MplParsed)) [IdentP] -> [IdentP]
+    f (TypeSeqVarWithArgsF () ident args) = 
+        maybe [ident] (const []) (lookupSymTypeInfo ident symtab) <> fold args
+
+    f (TypeConcVarWithArgsF () ident args) = 
+        maybe [ident] (const []) (lookupSymTypeInfo ident symtab) <> mconcat (args ^.. each % to mconcat)
+
+    f (TypeVarF () ident) =  maybe [ident] (const []) $ lookupSymTypeInfo ident symtab 
 
 
 {-

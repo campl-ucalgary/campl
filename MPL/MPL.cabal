@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a8bfc998c6cc20cf5a909fb8ed01372be87c1f49f5ce0ff5cbd30f7533c86312
+-- hash: f3180b686c19a2ed1ec4e133bb3276c7e5c3fa6fbdd93c306c0bf8d597121ef2
 
 name:           MPL
 version:        0.1.0.0
@@ -71,7 +71,17 @@ library
       MplPasses.Renamer.RenameSym
       MplPasses.Renamer.RenameType
       MplPasses.Renamer.RenameUtils
+      MplPasses.TypeChecker.KindCheck
+      MplPasses.TypeChecker.KindEqns
       MplPasses.TypeChecker.TypeCheck
+      MplPasses.TypeChecker.TypeCheckErrors
+      MplPasses.TypeChecker.TypeCheckMplTypeSub
+      MplPasses.TypeChecker.TypeCheckMplTypeSubUtil
+      MplPasses.TypeChecker.TypeCheckObj
+      MplPasses.TypeChecker.TypeCheckPatt
+      MplPasses.TypeChecker.TypeCheckSym
+      MplPasses.TypeChecker.TypeCheckUtils
+      MplPasses.TypeChecker.TypeEqns
       MplUtil.Data.Stream
       MplUtil.Data.Tuple.Optics
       MplUtil.UniqueSupply
@@ -80,13 +90,12 @@ library
   hs-source-dirs:
       src
   build-depends:
-      GenericPretty
-    , array
+      array
     , base >=4.7 && <5
     , containers
     , mtl
     , optics
-    , pretty
+    , prettyprinter
     , raw-strings-qq
     , recursion-schemes
   default-language: Haskell2010
@@ -99,14 +108,13 @@ executable mpl
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      GenericPretty
-    , MPL
+      MPL
     , array
     , base >=4.7 && <5
     , containers
     , mtl
     , optics
-    , pretty
+    , prettyprinter
     , raw-strings-qq
     , recursion-schemes
   default-language: Haskell2010
@@ -122,8 +130,7 @@ test-suite MPL-test
       test
   ghc-options: -O0 -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      GenericPretty
-    , HUnit
+      HUnit
     , MPL
     , QuickCheck
     , array
@@ -132,7 +139,7 @@ test-suite MPL-test
     , hspec
     , mtl
     , optics
-    , pretty
+    , prettyprinter
     , raw-strings-qq
     , recursion-schemes
   default-language: Haskell2010

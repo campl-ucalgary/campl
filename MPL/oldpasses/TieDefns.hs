@@ -208,7 +208,6 @@ defnsToGraph (a:as) = case a ^. unDefnI of
             Nothing -> return Nothing
 
 
-        -- splitting is not needed here...
         (forallvars, forallsubs) <- lift . join . fmap writer . splitGraphGenCore $ do
                 mfuntypefreevarsandsubs <- traverse genTypeGSubs funtype'
                 return $ fromMaybe ([],[]) mfuntypefreevarsandsubs 

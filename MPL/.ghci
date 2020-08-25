@@ -19,6 +19,7 @@ import Optics
 import Control.Monad.State
 import Control.Monad.Writer
 import Control.Monad.Reader
+import Control.Monad.Except
 import Control.Monad.RWS
 import Data.Maybe
 import Data.Bifunctor as Bifunctor
@@ -27,6 +28,8 @@ import Data.List
 import qualified Data.List.NonEmpty as NE
 import GHC.Generics hiding ( to )
 import Data.List.NonEmpty (NonEmpty (..))
+
+import Data.Functor.Foldable (Base, cata, para, histo)
 
 import qualified Data.Map as Map
 import Data.Map (Map )

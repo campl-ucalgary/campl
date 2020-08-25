@@ -7,12 +7,6 @@ module Language.AbsMPL where
 
 
 
-newtype UIdent = UIdent ((Int,Int),String)
-  deriving (Eq, Ord, Show, Read)
-newtype PIdent = PIdent ((Int,Int),String)
-  deriving (Eq, Ord, Show, Read)
-newtype UPIdent = UPIdent ((Int,Int),String)
-  deriving (Eq, Ord, Show, Read)
 newtype PInteger = PInteger ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
 newtype Par = Par ((Int,Int),String) deriving (Eq, Ord, Show, Read)
@@ -63,6 +57,12 @@ newtype Fork = Fork ((Int,Int),String)
 newtype ChId = ChId ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
 newtype Case = Case ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype UIdent = UIdent ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype PIdent = PIdent ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype UPIdent = UPIdent ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
 data MplProg = MPL_PROG [MplStmt]
   deriving (Eq, Ord, Show, Read)

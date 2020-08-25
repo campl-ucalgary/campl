@@ -46,6 +46,10 @@ data IdentR = IdentR {
 $(makeClassy ''IdentR)
 $(makePrisms ''IdentR)
 
+instance Eq IdentR where
+    a == b = a ^. identRUniqueTag == b ^. identRUniqueTag
+
+
 instance HasUniqueTag IdentR where
     uniqueTag = identRUniqueTag 
 
@@ -166,23 +170,30 @@ type instance XCForkPhrase MplRenamed  = [ChP MplRenamed]
 type instance XCPlugPhrase MplRenamed  = ()
 type instance XXCmd MplRenamed = Void
 
--- Type clause (note, we tie the knot here so it is easy to compute all 
--- the type phrases and type clauses when doing totality checks of
--- folds and unfolds along with hcase)
-type instance XTypeClauseSpineExt MplRenamed t = ()
+-- Type clause 
+type instance XTypeClauseSpineExt MplRenamed t = () 
 type instance XTypeClauseExt MplRenamed t = () -- MplTypeClauseSpine MplRenamed t
 type instance XTypePhraseExt MplRenamed  t = ()
 
-type instance XTypePhraseTo MplRenamed t = 
-    XMplType MplRenamed
 
 type instance XTypePhraseFrom MplRenamed (SeqObjTag DataDefnTag) = 
     [XMplType MplRenamed]
+type instance XTypePhraseTo MplRenamed (SeqObjTag DataDefnTag) = 
+    TypeP MplRenamed
+
 type instance XTypePhraseFrom MplRenamed (SeqObjTag CodataDefnTag) = 
-    ([XMplType MplRenamed], XMplType MplRenamed) -- args ++ [statevar] State var must be the last variable
+    ([XMplType MplRenamed], TypeP MplRenamed) -- args ++ [statevar] State var must be the last variable
+type instance XTypePhraseTo MplRenamed (SeqObjTag CodataDefnTag) = 
+    XMplType MplRenamed
+
 type instance XTypePhraseFrom MplRenamed (ConcObjTag ProtocolDefnTag) = 
     XMplType MplRenamed
+type instance XTypePhraseTo MplRenamed (ConcObjTag ProtocolDefnTag) = 
+    TypeP MplRenamed
+
 type instance XTypePhraseFrom MplRenamed (ConcObjTag CoprotocolDefnTag) = 
+    TypeP MplRenamed
+type instance XTypePhraseTo MplRenamed (ConcObjTag CoprotocolDefnTag) = 
     XMplType MplRenamed
 
 -- Function / process type
