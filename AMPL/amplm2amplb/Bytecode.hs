@@ -113,8 +113,8 @@ bytecodeEntryToByteString (BPolarity Output) = word64LE $ fromIntegral 0
 bytecodeEntryToByteString (BPolarity Input) = word64LE $ fromIntegral 1
 bytecodeEntryToByteString (BU v) =  word64LE v
 bytecodeEntryToByteString (BIdx v) =  word64LE $ v
-bytecodeEntryToByteString (BCellU cell) = word64LE $ (cell .&. (0x8 `shiftR` 60))
-bytecodeEntryToByteString (BCellS cell) = int64LE (cell .&. (0x8 `shiftR` 60))
+bytecodeEntryToByteString (BCellU cell) = error "Cells cannot be converted to bytestrings (translate to word64)"
+bytecodeEntryToByteString (BCellS cell) = error "Cells cannot be converted to bytestrings (translate to word64)"
 bytecodeEntryToByteString (BFunID (FunID _)) = error "FunID cannot be converted to bytestrings (translate to jumps)"
 bytecodeEntryToByteString (BJ loc) = int64LE $ fromIntegral loc
 bytecodeEntryToByteString (BHeader word) = word64BE word
@@ -237,12 +237,14 @@ translateSequential (IIf trueCase falseCase) = do
     trueLoc <- skip
     falseLoc <- skip
     emit $ BI B_AM_JMP
-    nextLoc <- skip
+    afterInstructionLoc <- skip
     trueTarget <- translateBlock trueCase
     falseTarget <- translateBlock falseCase
     emitAt trueLoc $ BJ trueTarget
     emitAt falseLoc $ BJ falseTarget
-    emitAt nextLoc $ BJ nextLoc
+
+    loc <- location
+    emitAt afterInstructionLoc $ BJ loc
     return ret
 
 translateSequential (IEq ) = emit $ BI B_AM_EQ
@@ -264,9 +266,11 @@ translateSequential (ICase casesArray) = let
         start <- skipk $ caseListLen 
         emit $ BU $ fromIntegral 0
         emit $ BI B_AM_JMP
-        nextInst <- skip
+        afterInstructionLoc <- skip
         genCaseList start caseList
-        emitAt nextInst $ BJ $ fromIntegral nextInst
+
+        loc <- location
+        emitAt afterInstructionLoc $ BJ $ fromIntegral loc
         return ret
 
 
@@ -278,9 +282,11 @@ translateSequential (IRec entryInstructions) = let
         start <- skipk caseListLen
         emit $ BU $ fromIntegral 0
         emit $ BI B_AM_JMP
-        nextInst <- skip
+        afterInstructionLoc <- skip
         genCaseList start caseList
-        emitAt nextInst $ BJ $ fromIntegral nextInst
+
+        loc <- location
+        emitAt afterInstructionLoc $ BJ $ fromIntegral loc
         return ret
 
 
@@ -381,7 +387,7 @@ translateConcurrent (IPlug tChannels ((p1Chs, p1Code), (p2Chs, p2Code))) = do
     -- jump over the cases code blocks
 
     emit $ BI B_AM_JMP
-    nextLoc <- skip
+    afterInstructionLoc <- skip
 
     p1CodeTarget <- translateBlock p1Code
     p2CodeTarget <- translateBlock p2Code
@@ -389,7 +395,8 @@ translateConcurrent (IPlug tChannels ((p1Chs, p1Code), (p2Chs, p2Code))) = do
     emitAt p1CodeLoc $ BJ $ fromIntegral p1CodeTarget
     emitAt p2CodeLoc $ BJ $ fromIntegral p2CodeTarget
 
-    emitAt nextLoc $ BJ $ fromIntegral nextLoc
+    loc <- location
+    emitAt afterInstructionLoc $ BJ $ fromIntegral loc
 
     return ret
 
@@ -425,9 +432,11 @@ translateConcurrent (IHCase chID caseArr) = let
         start <- skipk caseListLen
         emit $ BU $ fromIntegral 0
         emit $ BI B_AM_JMP
-        nextInst <- skip
+        afterInstructionLoc <- skip
         genCaseList start caseList
-        emitAt nextInst $ BJ $ fromIntegral nextInst
+
+        loc <- location
+        emitAt afterInstructionLoc $ BJ loc
         return ret
 
 translateConcurrent (IRace ((a, ac):(b, bc):[])) = do
@@ -529,6 +538,11 @@ translateMachineState state = let
         incrementChannelId amount (BGlobalChID (GlobalChanID id)) = BChID $ LocalChanID $ id + amount
         incrementChannelId amount v = v
 
+        convertCellToIntegers :: BytecodeEntry -> BytecodeEntry 
+        convertCellToIntegers (BCellS value) = BU ((fromIntegral value) .|. ((fromIntegral 0x8) `shiftL` 60))
+        convertCellToIntegers (BCellU value) = BU ((fromIntegral value) .|. ((fromIntegral 0x8) `shiftL` 60))
+        convertCellToIntegers v = v
+
         translate :: InitAMPLMachState -> State BytecodeState ([BytecodeEntry], [(Int, FunID)])
         translate state = let 
                 services = initAmplMachStateServices state
@@ -568,16 +582,18 @@ translateMachineState state = let
 
         (bytecode, fs) = fst $ runState (translate state) initBytecodeState
         channelOffset = -(getLowestChannelId bytecode) + 1
-    in map ((patchFunctionLocations fs).(incrementBytecodeIndex 1).(incrementChannelId channelOffset)) bytecode
+    in map ((patchFunctionLocations fs).(incrementBytecodeIndex 1).(incrementChannelId channelOffset).convertCellToIntegers) bytecode
 
 printInitMachineStateToBytecodeFile :: String -> InitAMPLMachState -> IO ()
 printInitMachineStateToBytecodeFile filename state = do
         let translatedMachine = translateMachineState state
-        putStrLn $ formatBytecodeString "\n" translatedMachine
+        -- putStrLn $ formatBytecodeString "\n" translatedMachine
 
         handle <- openFile filename (WriteMode)
         let translatedByteString = translateBytecodeToByteString translatedMachine
         B.hPut handle $ BL.toStrict $ toLazyByteString $ translatedByteString
+        hClose handle
+        return ()
 
 
 externalCharMach = InitAMPLMachState {

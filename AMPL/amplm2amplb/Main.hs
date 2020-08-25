@@ -44,5 +44,7 @@ main = do
     case args of
         [input, output] -> do
             initmachstate <- read <$> readFile input
+            putStr $ "init machine state: "
+            putStrLn $ show initmachstate
             printInitMachineStateToBytecodeFile output initmachstate
-        _ -> error "Usage: ampla2asmb <input> <output>"
+        _ -> error "Usage: amplm2amplb <input> <output>"
