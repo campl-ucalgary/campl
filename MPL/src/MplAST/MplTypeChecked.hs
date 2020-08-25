@@ -72,6 +72,19 @@ type instance IdP MplTypeChecked = IdentT
 type instance ChP MplTypeChecked = ChIdentT
 type instance TypeP MplTypeChecked = IdentT 
 
+-- definitions.
+type instance XDataDefn MplTypeChecked  = 
+    MplTypeClauseSpine MplTypeChecked (SeqObjTag DataDefnTag)
+type instance XCodataDefn MplTypeChecked  = 
+    MplTypeClauseSpine MplTypeChecked (SeqObjTag CodataDefnTag)
+type instance XProtocolDefn MplTypeChecked  = 
+    MplTypeClauseSpine MplTypeChecked (ConcObjTag ProtocolDefnTag)
+type instance XCoprotocolDefn MplTypeChecked  = 
+    MplTypeClauseSpine MplTypeChecked (ConcObjTag CoprotocolDefnTag)
+
+type instance XFunctionDefn MplTypeChecked = MplFunction MplTypeChecked
+type instance XProcessDefn MplTypeChecked  = MplProcess MplTypeChecked 
+
 -- Expression instances
 type instance XMplExpr MplTypeChecked = MplExpr MplTypeChecked
 type instance XEPOps MplTypeChecked = XMplType MplTypeChecked
@@ -151,7 +164,9 @@ type instance XXCmd MplTypeChecked = Void
 
 type instance XTypeClauseSpineExt MplTypeChecked t = ()
 type instance XTypeClauseExt MplTypeChecked t = MplTypeClauseSpine MplTypeChecked t
+-- type instance XTypeClauseExt MplTypeChecked t = ()
 type instance XTypePhraseExt MplTypeChecked t = MplTypeClause MplTypeChecked t
+-- type instance XTypePhraseExt MplTypeChecked t = ()
 
 type instance XTypePhraseTo MplTypeChecked t = 
     XMplType MplTypeChecked
@@ -165,14 +180,15 @@ type instance XTypePhraseFrom MplTypeChecked (ConcObjTag CoprotocolDefnTag) =
     XMplType MplTypeChecked
 
 -- Function / process type
-type instance XFunType MplTypeChecked  = Maybe ([TypeP MplTypeChecked], XMplType MplTypeChecked)
+type instance XFunType MplTypeChecked  = ([TypeP MplTypeChecked], [XMplType MplTypeChecked], XMplType MplTypeChecked)
 type instance XProcType MplTypeChecked = 
-    Maybe ([TypeP MplTypeChecked], XMplType MplTypeChecked)
+    ([TypeP MplTypeChecked], [XMplType MplTypeChecked], [XMplType MplTypeChecked], [XMplType MplTypeChecked])
 
 type instance XMplType MplTypeChecked = MplType MplTypeChecked
-type instance XTypeSeqWithArgs MplTypeChecked = ()
+type instance XTypeSeqWithArgs MplTypeChecked = MplSeqObjDefn MplTypeCheckedClause
 type instance XTypeSeqVarWithArgs MplTypeChecked = Void -- higher kinded types are not allowed (for now)
-type instance XTypeConcWithArgs MplTypeChecked = ()
+type instance XTypeConcWithArgs MplTypeChecked = 
+    MplConcObjDefn MplTypeCheckedClause
 type instance XTypeConcVarWithArgs  MplTypeChecked = Void -- higher kinded types are not allowed (for now)
 
 type instance XTypeVar MplTypeChecked = XMplKind MplTypeChecked 
@@ -211,3 +227,16 @@ type instance XKindVar MplTypeChecked = Void
 type instance KindP MplTypeChecked = Void
 
 type instance XXKind MplTypeChecked = Void
+
+-- Kind annotation for data
+-------------------------
+data MplTypeCheckedClause
+
+type instance XDataDefn MplTypeCheckedClause  = 
+    MplTypeClause MplTypeChecked (SeqObjTag DataDefnTag)
+type instance XCodataDefn MplTypeCheckedClause  = 
+    MplTypeClause MplTypeChecked (SeqObjTag CodataDefnTag)
+type instance XProtocolDefn MplTypeCheckedClause  = 
+    MplTypeClause MplTypeChecked (ConcObjTag ProtocolDefnTag)
+type instance XCoprotocolDefn MplTypeCheckedClause  = 
+    MplTypeClause MplTypeChecked (ConcObjTag CoprotocolDefnTag)

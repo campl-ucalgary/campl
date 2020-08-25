@@ -37,6 +37,22 @@ describeValidRename prog rst = do
                     return ()
                 Left (errs :: [MplPassesErrors]) -> assertFailure (show errs) >> return () 
 
+describeValidTypeCheck prog rst = do
+    describe ("Testing the valid program: \n" ++ prog) $ do
+        mplpassesenv <- runIO mplPassesEnv
+        let prog' = runRename' 
+                ( TopLevel
+                , mplPassesEnvUniqueSupply mplpassesenv
+                , mplPassesContext mplpassesenv )
+                <=< runParse' 
+                <=< B.runBnfc $ prog
+        it "Should be a valid program.." $ do
+            case prog' of
+                Right prog'' -> do
+                    rst prog''
+                    return ()
+                Left (errs :: [MplPassesErrors]) -> assertFailure (show errs) >> return () 
+
 describeErrors prog (errmsg, pred) = do
     describe ("Testing the invalid program for " ++ errmsg ++ ":\n" ++ prog) $ do
         env <- runIO mplPassesEnv

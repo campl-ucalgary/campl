@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 module MplPasses.TypeChecker.TypeCheckMplTypeSubUtil where
 
 import Optics

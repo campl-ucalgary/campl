@@ -16,13 +16,14 @@
 :set prompt "> "
 
 import Optics
+import Optics.State.Operators
 import Control.Monad.State
 import Control.Monad.Writer
 import Control.Monad.Reader
 import Control.Monad.Except
 import Control.Monad.RWS
 import Data.Maybe
-import Data.Bifunctor as Bifunctor
+import qualified Data.Bifunctor as Bifunctor
 import Control.Arrow
 import Data.List
 import qualified Data.List.NonEmpty as NE

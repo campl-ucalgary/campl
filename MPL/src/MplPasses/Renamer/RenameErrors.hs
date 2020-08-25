@@ -75,5 +75,3 @@ outOfScopeWith f symtab identp =
 
 outOfScopesWith f symtab = 
     foldMap (outOfScopeWith f symtab)
-
-

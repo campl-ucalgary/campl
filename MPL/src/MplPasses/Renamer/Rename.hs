@@ -44,15 +44,15 @@ import Debug.Trace
 
 runRename' ::
     AsRenameErrors err =>
-    (TopLevel, UniqueSupply, SymTab) ->
+    (TopLevel, UniqueSupply) ->
     MplProg MplParsed ->
     Either [err] (MplProg MplRenamed)
-runRename' (top, sup, gbl) = 
+runRename' (top, sup) = 
     \case 
         (res, []) -> Right res
         (_, errs) -> Left errs
     . runWriter 
-    . (`evalStateT` (_Env # (top, sup, gbl, [])))
+    . (`evalStateT` (_Env # (top, sup, mempty, mempty)))
     . runRename
 
 runRename ::
@@ -96,10 +96,12 @@ renameDefns [] = return []
 renameDefn ::
     Rename (MplDefn MplParsed) (MplDefn MplRenamed)
 renameDefn (ObjectDefn obj) = ObjectDefn <$> case obj of
-    DataDefn n -> DataDefn <$> renameTypeClauseSpine n
-    CodataDefn n -> CodataDefn <$> renameTypeClauseSpine n
-    ProtocolDefn n -> ProtocolDefn <$> renameTypeClauseSpine n
-    CoprotocolDefn n -> CoprotocolDefn <$> renameTypeClauseSpine n
+    SeqObjDefn obj -> SeqObjDefn <$> case obj of
+        DataDefn n -> DataDefn <$> renameTypeClauseSpine n
+        CodataDefn n -> CodataDefn <$> renameTypeClauseSpine n
+    ConcObjDefn obj -> ConcObjDefn <$> case obj of
+        ProtocolDefn n -> ProtocolDefn <$> renameTypeClauseSpine n
+        CoprotocolDefn n -> CoprotocolDefn <$> renameTypeClauseSpine n
 renameDefn (FunctionDefn (MplFunction name funtype defn)) = do
     name' <- tagIdentP name
 

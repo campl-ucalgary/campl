@@ -138,14 +138,16 @@ instance CollectSymTab (MplStmt MplRenamed) where
 
 instance CollectSymTab (MplDefn MplRenamed) where
     collectSymTab (ObjectDefn n) = case n of
-        DataDefn n -> querySpines n (_DataDefnTag # ()) 
-            (_SymSeqPhraseInfo % _DataDefnTag # ())
-        CodataDefn n -> querySpines n (_CodataDefnTag # ()) 
-            (_SymSeqPhraseInfo % _CodataDefnTag # ())
-        ProtocolDefn n -> querySpines n (_ProtocolDefnTag # ()) 
-            (_SymConcPhraseInfo % _ProtocolDefnTag # ())
-        CoprotocolDefn n -> querySpines n (_CoprotocolDefnTag # ()) 
-            (_SymConcPhraseInfo % _CoprotocolDefnTag # ())
+        SeqObjDefn n -> case n of
+            DataDefn n -> querySpines n (_DataDefnTag # ()) 
+                (_SymSeqPhraseInfo % _DataDefnTag # ())
+            CodataDefn n -> querySpines n (_CodataDefnTag # ()) 
+                (_SymSeqPhraseInfo % _CodataDefnTag # ())
+        ConcObjDefn n -> case n of 
+            ProtocolDefn n -> querySpines n (_ProtocolDefnTag # ()) 
+                (_SymConcPhraseInfo % _ProtocolDefnTag # ())
+            CoprotocolDefn n -> querySpines n (_CoprotocolDefnTag # ()) 
+                (_SymConcPhraseInfo % _CoprotocolDefnTag # ())
       where
         querySpines spine tp tpphrase = 
             foldMapOf (typeClauseSpineClauses % folded)

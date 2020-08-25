@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE RecursiveDo #-}
@@ -18,11 +19,11 @@ import MplAST.MplTypeChecked
 import MplPasses.TypeChecker.TypeCheckErrors 
 import MplPasses.TypeChecker.TypeCheckUtils 
 import MplPasses.TypeChecker.TypeCheckSym 
-import MplPasses.TypeChecker.TypeCheckObj 
-import MplPasses.TypeChecker.KindCheck 
 import MplPasses.TypeChecker.TypeCheckMplTypeSub 
 import MplPasses.TypeChecker.TypeCheckMplTypeSubUtil
 import MplPasses.TypeChecker.TypeEqns
+import MplPasses.TypeChecker.TypeCheckObj 
+import MplPasses.TypeChecker.KindCheck 
 import MplPasses.Env
 
 import MplUtil.UniqueSupply
@@ -32,6 +33,7 @@ import Control.Monad.State
 import Control.Monad.Reader
 
 import Control.Arrow
+import Control.Applicative
 import Data.Maybe
 import Data.Bool
 
@@ -39,6 +41,28 @@ import Data.Bool
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
 
+runTypeCheck' ::
+    ( AsTypeCheckErrors err 
+    , AsKindCheckErrors err ) =>
+    (TopLevel, UniqueSupply) ->
+    MplProg MplRenamed ->
+    Either [err] (MplProg MplTypeChecked)
+runTypeCheck' ~(top, sup) = 
+    \case 
+        (res, []) -> Right res
+        (_, errs) -> Left errs
+    . runWriter 
+    . (`evalStateT` ( _Env # 
+            ( top
+            , lsup
+            , mempty
+            , TypeInfoEnv mempty tag mempty)
+        )
+      )
+    . runTypeCheck
+  where
+    ~(lsup, rsup) = split sup
+    tag = evalState freshTypeTag rsup
 
 runTypeCheck ::
     TypeCheck (MplProg MplRenamed) (MplProg MplTypeChecked)
@@ -49,42 +73,67 @@ typeCheckStmts ::
     TypeCheck (MplStmt MplRenamed) (MplStmt MplTypeChecked)
 typeCheckStmts (MplStmt defns wheres) = do
     wheres' <- traverse typeCheckStmts wheres
-    (defns', eqns) <- fmap (NE.unzip . NE.fromList) 
-            $ typeCheckDefns 
-            $ NE.toList defns
-    -- defns' <- fmap NE.fromList $ undefined $ NE.toList defns
-    return $ MplStmt defns' wheres'
+  
+    -- (defns', eqns) <- fmap (NE.unzip . NE.fromList) 
+    
+    (defns, eqns) <- fmap (NE.unzip . NE.fromList) $ typeCheckDefns $ NE.toList defns
+
+    return $ MplStmt defns wheres'
 
 typeCheckDefns ::
     TypeCheck
         [MplDefn MplRenamed] 
         [ ( MplDefn MplTypeChecked
-          , Maybe ([TypeP MplTypeSub], [TypeP MplTypeSub], [TypeEqns MplTypeSub]))
+            , ([TypeP MplTypeSub], [TypeP MplTypeSub], [TypeEqns MplTypeSub]))
         ]
 -- same as the rename step.. need to do the magic recursive do in order
 -- to get the recursive declarations together properly.
 typeCheckDefns (defn : defns) = do
-    rec defn' <- envLcl % typeInfoSymTab .= symtab >> typeCheckDefn defn
-        envGbl %= (collectSymTab (fst defn')<>)
-        defns' <- typeCheckDefns defns
+    rec defn' <- collectSymTabDefn $ envLcl % typeInfoSymTab .= symtab >> typeCheckDefn defn
+        -- envGbl %= (collectSymTab (fmap fst defn')<>)
+        ~defns' <- typeCheckDefns defns
         symtab <- guse envGbl
     return $ defn' : defns'
 typeCheckDefns [] = return []
 
+collectSymTabDefn ::
+    ( AsTypeCheckErrors e 
+    , AsKindCheckErrors e
+    , MonadWriter [e] m 
+    , MonadState TypeCheckEnv m ) => 
+    m (MplDefn MplTypeChecked, ([TypeP MplTypeSub], [TypeP MplTypeSub], [TypeEqns MplTypeSub])) -> 
+    m (MplDefn MplTypeChecked, ([TypeP MplTypeSub], [TypeP MplTypeSub], [TypeEqns MplTypeSub]))
+collectSymTabDefn act = do
+    (res, errs) <- listen act
+    let syms = SymTab symterms symtypes
+
+        symterms = undefined
+        symtypes = undefined
+
+    envLcl % typeInfoSymTab %= (syms<>)
+    return res
+    
+
 typeCheckDefn ::
     TypeCheck (MplDefn MplRenamed) 
-        ( MplDefn MplTypeChecked
-        , Maybe ([TypeP MplTypeSub], [TypeP MplTypeSub], [TypeEqns MplTypeSub]))
-typeCheckDefn (ObjectDefn obj) = undefined -- ObjectDefn <$> case obj of
+            ( (MplDefn MplTypeChecked), ([TypeP MplTypeSub], [TypeP MplTypeSub], [TypeEqns MplTypeSub]))
+typeCheckDefn (ObjectDefn obj) = (((,mempty) . ObjectDefn)) <$> case obj of
+        SeqObjDefn obj -> SeqObjDefn <$> case obj of
+            DataDefn n -> DataDefn <$> typeCheckTypeClauseSpine n
+        {-
+        SeqObjDefn obj -> (fmap SeqObjDefn &&& const (Just mempty)) <$> case obj of
+            DataDefn n -> undefined -- fmap DataDefn <$> kindCheckClauseSpine n
+            -}
+        -- ConcObjDefn obj -> (fmap ConcObjDefn &&& const (Just mempty)) <$> case obj of
+            -- ProtocolDefn n -> undefined
     {-
-    DataDefn n -> DataDefn <$> typeCheckClauseSpine n
     CodataDefn n -> CodataDefn <$> typeCheckTypeClauseSpine n
     ProtocolDefn n -> ProtocolDefn <$> typeCheckTypeClauseSpine n
     CoprotocolDefn n -> CoprotocolDefn <$> typeCheckTypeClauseSpine n
     -}
+    {-
 typeCheckDefn (FunctionDefn (MplFunction name funtype defn)) = do
     undefined
-    {-
     funtype' <- flip (maybe (return Nothing)) funtype $ \(froms, to) -> do
         lcl <- guse envLcl
         (bds, froms') <- unzip <$> traverse typeCheckType froms
@@ -95,7 +144,6 @@ typeCheckDefn (FunctionDefn (MplFunction name funtype defn)) = do
     defn' <- traverse typeCheckPattsExpr defn
 
     return $ FunctionDefn $ _MplFunction # (name', funtype', defn')
-    -}
 
 typeCheckDefn (ProcessDefn proc@(MplProcess name proctype defn)) = do
     mproctype <- sequenceA 
@@ -127,6 +175,7 @@ typeCheckDefn (ProcessDefn proc@(MplProcess name proctype defn)) = do
     -- return $ ProcessDefn proc'
     -}
 
+    -}
 {-
 ( MplDefn MplTypeChecked
 , Maybe ([TypeP MplTypeSub], [TypeP MplTypeSub], TypeEqns MplTypeSub))

@@ -1,13 +1,19 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE NamedWildCards #-}
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
 module MplPasses.TypeChecker.TypeEqns where
@@ -20,8 +26,6 @@ import MplAST.MplParsed
 import MplAST.MplRenamed
 
 import MplPasses.Env
-import MplPasses.TypeChecker.TypeCheckErrors 
-import MplPasses.TypeChecker.TypeCheckUtils 
 import MplPasses.TypeChecker.TypeCheckSym 
 import MplPasses.TypeChecker.TypeCheckMplTypeSub 
 import MplPasses.TypeChecker.TypeCheckMplTypeSubUtil 

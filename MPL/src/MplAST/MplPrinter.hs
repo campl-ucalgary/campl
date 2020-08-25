@@ -31,6 +31,7 @@ import MplAST.MplProg
 import MplAST.MplIdent
 import MplAST.MplRenamed
 import MplAST.MplParsed
+import MplAST.MplTypeChecked
 import MplAST.MplExt
 
 import MplUtil.UniqueSupply
@@ -81,6 +82,9 @@ instance PPrint IdentR where
 instance PPrint ChIdentR where
     pprint n = n ^. chIdentRIdentR % to pprint ++ "__" ++ n ^. polarity % to pprint
 
+instance PPrint ChIdentT where
+    pprint n = n ^. chIdentTChIdentR % to pprint 
+
 instance MplPrintConstraints x => PPrint (MplProg x) where
     pprint = mplPprint
 
@@ -102,6 +106,14 @@ type MplPrintConstraints x =
     , MplTypeToBnfc (XTypePhraseTo x (ConcObjTag ProtocolDefnTag))
     , MplTypesToBnfc (XTypePhraseFrom x (ConcObjTag CoprotocolDefnTag))
     , MplTypeToBnfc (XTypePhraseTo x (ConcObjTag CoprotocolDefnTag))
+
+    , XDataDefn x ~ MplTypeClauseSpine x (SeqObjTag DataDefnTag)
+    , XCodataDefn x ~ MplTypeClauseSpine x (SeqObjTag CodataDefnTag)
+    , XProtocolDefn x ~ MplTypeClauseSpine x (ConcObjTag ProtocolDefnTag)
+    , XCoprotocolDefn x ~ MplTypeClauseSpine x (ConcObjTag CoprotocolDefnTag)
+
+    , XFunctionDefn x ~ MplFunction x
+    , XProcessDefn x ~ MplProcess x
     , PPrint (IdP x)
     , PPrint (ChP x)) 
 
@@ -147,19 +159,19 @@ mplDefnToBnfc (ProcessDefn (MplProcess id tp body)) = B.MPL_PROCESS_DEFN $ case 
 mplObjDefnToBnfc :: 
     MplPrintConstraints x =>
     MplObjectDefn x -> B.MplDefn
-mplObjDefnToBnfc (DataDefn x) = 
+mplObjDefnToBnfc (SeqObjDefn (DataDefn x)) = 
     B.MPL_SEQUENTIAL_TYPE_DEFN 
         $ B.DATA_DEFN 
         $ (x ^. typeClauseSpineClauses % to (NE.toList . fmap mplClauseToBnfc ))
-mplObjDefnToBnfc (CodataDefn x) = 
+mplObjDefnToBnfc (SeqObjDefn (CodataDefn x)) = 
     B.MPL_SEQUENTIAL_TYPE_DEFN 
         $ B.CODATA_DEFN 
         $ (x ^. typeClauseSpineClauses % to (NE.toList . fmap mplClauseToBnfc ))
-mplObjDefnToBnfc (ProtocolDefn x) = 
+mplObjDefnToBnfc (ConcObjDefn (ProtocolDefn x)) = 
     B.MPL_CONCURRENT_TYPE_DEFN 
         $ B.PROTOCOL_DEFN 
         $ (x ^. typeClauseSpineClauses % to (NE.toList . fmap mplClauseToBnfc ))
-mplObjDefnToBnfc (CoprotocolDefn x) = 
+mplObjDefnToBnfc (ConcObjDefn (CoprotocolDefn x)) = 
     B.MPL_CONCURRENT_TYPE_DEFN 
         $ B.COPROTOCOL_DEFN 
         $ (x ^. typeClauseSpineClauses % to (NE.toList . fmap mplClauseToBnfc ))
@@ -174,10 +186,19 @@ instance UserProvidedTypeToBnfc (Maybe ([IdentR], [MplType MplRenamed], [MplType
         B.MPL_CONC_ARROW_TYPE (map toBnfcIdent foralls) (map mplTypeToBnfc seqs) (map mplTypeToBnfc ins) (map mplTypeToBnfc outs)
         
 instance UserProvidedTypeToBnfc (Maybe ([IdentR], [MplType MplRenamed], MplType MplRenamed)) where
-
     userProvidedTypeToBnfc Nothing = Nothing
     userProvidedTypeToBnfc (Just (foralls, froms, to)) = Just $ 
         B.MPL_SEQ_ARROW_TYPE (map toBnfcIdent foralls) (map mplTypeToBnfc froms) (mplTypeToBnfc to) 
+
+
+instance UserProvidedTypeToBnfc ([IdentT], [MplType MplTypeChecked], MplType MplTypeChecked) where
+    userProvidedTypeToBnfc (foralls, froms, to) = Just $
+        B.MPL_SEQ_ARROW_TYPE (map toBnfcIdent foralls) (map mplTypeToBnfc froms) (mplTypeToBnfc to) 
+
+instance UserProvidedTypeToBnfc ([IdentT], [MplType MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked]) where
+    userProvidedTypeToBnfc (foralls, seqs, ins, outs) = Just $ 
+        B.MPL_CONC_ARROW_TYPE (map toBnfcIdent foralls) (map mplTypeToBnfc seqs) (map mplTypeToBnfc ins) (map mplTypeToBnfc outs)
+
 
 class MplPattToBnfc t where
     mplPattToBnfc ::  t -> B.Pattern
@@ -269,10 +290,19 @@ class MplTypesToBnfc t where
 instance MplTypesToBnfc (MplType MplRenamed) where
     mplTypesToBnfc = pure . mplTypeToBnfc 
 
+instance MplTypesToBnfc (MplType MplTypeChecked) where
+    mplTypesToBnfc = pure . mplTypeToBnfc 
+
 instance MplTypesToBnfc [MplType MplRenamed] where
     mplTypesToBnfc = map mplTypeToBnfc 
 
+instance MplTypesToBnfc [MplType MplTypeChecked] where
+    mplTypesToBnfc = map mplTypeToBnfc 
+
 instance MplTypesToBnfc ([MplType MplRenamed], MplType MplRenamed) where
+    mplTypesToBnfc (as, a) = map mplTypeToBnfc (as++[a])
+
+instance MplTypesToBnfc ([MplType MplTypeChecked], MplType MplTypeChecked) where
     mplTypesToBnfc (as, a) = map mplTypeToBnfc (as++[a])
 
 instance MplTypesToBnfc ([MplType MplRenamed], IdentR) where
@@ -321,7 +351,7 @@ class MplToForkPhrase t where
                 -- Just cxt -> B.FORK_WITH_PHRASE (toBnfcIdent a) (map toBnfcIdent cxt) $ mplCmdsToBnfc cmds
                 -- Nothing -> B.FORK_PHRASE (toBnfcIdent a) $ mplCmdsToBnfc cmds
            -}
-instance MplToForkPhrase (ChIdentR, [ChIdentR], NonEmpty (MplCmd MplRenamed)) where
+instance ( PPrint ident, MplCmdToBnfc t) => MplToForkPhrase (ident, [ident], NonEmpty t) where
     mplToForkPhrase (ch, cxt, cmds) = B.FORK_WITH_PHRASE 
         (toBnfcIdent ch) (map toBnfcIdent cxt) $ mplCmdsToBnfc cmds
 
@@ -332,7 +362,7 @@ class MplToPlugPhrase t where
             g (_, (a,b), cmds) = B.PLUG_PHRASE_AS 
                 (map toBnfcIdent a) (map toBnfcIdent b) (mplCmdsToBnfc cmds)
             -}
-instance MplToPlugPhrase ((), ([ChIdentR], [ChIdentR]), NonEmpty (MplCmd MplRenamed)) where
+instance ( PPrint ident, MplCmdToBnfc cmd) => MplToPlugPhrase ((), ([ident], [ident]), NonEmpty cmd) where
     mplToPlugPhrase (cxt, (ins, outs), cmds) = B.PLUG_PHRASE_AS 
         (map toBnfcIdent ins) (map toBnfcIdent outs) $ mplCmdsToBnfc cmds
 

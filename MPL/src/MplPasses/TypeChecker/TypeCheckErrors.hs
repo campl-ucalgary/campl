@@ -12,6 +12,9 @@ import MplAST.MplParsed
 import MplAST.MplRenamed
 import MplAST.MplTypeChecked
 
+import MplPasses.TypeChecker.KindCheck 
+import MplPasses.TypeChecker.TypeEqns 
+
 import Data.Foldable
 import Data.Function
 import Data.List
@@ -22,7 +25,10 @@ import Data.Bool
 import Control.Arrow
 
 data TypeCheckErrors = 
-    SeqTypeClauseArgsMustContainTheSameTypeVariables 
+    TypeCheckKindErrors KindCheckErrors
+    -- | TypeCheckUnificationError TypeUnificationError
+
+    | SeqTypeClauseArgsMustContainTheSameTypeVariables 
         [NonEmpty [IdentR]]
         -- list of equivalence classes of the arguments on (==)
     | ConcTypeClauseArgsMustContainTheSameTypeVariables 
@@ -31,9 +37,10 @@ data TypeCheckErrors =
         --
     | ExpectedStateVarButGot IdentR IdentR 
         -- expected, actual
+
+
     | ExpectedOppositePolarity (IdentR, Polarity)
         -- channel, polarity of channel. 
-
     | HCaseExpectedInputPolarityChToHaveProtocolButGotCoprotocol 
         -- channel, phrase ident
         IdentR IdentR
@@ -55,38 +62,10 @@ data TypeCheckErrors =
 
 $(makeClassyPrisms ''TypeCheckErrors)
 
-class TypeClauseSpineSameVarError (t :: ObjectDefnTag) where
-    typeClauseSpineSameVarError :: 
-        AsTypeCheckErrors e => 
-        MplTypeClauseSpine MplRenamed t -> 
-        [e]
+instance AsKindCheckErrors TypeCheckErrors where
+    _KindCheckErrors = _TypeCheckKindErrors  
+
 {-
-
-instance TypeClauseSpineSameVarError (SeqObjTag t) where
-    typeClauseSpineSameVarError spine = bool [] 
-        [_SeqTypeClauseArgsMustContainTheSameTypeVariables # eqclasses]
-        shoulderror
-      where
-        eqclasses :: [NonEmpty [IdentR]]
-        eqclasses = NE.group 
-            $ fmap (fmap (view identRIdentP) <<< view typeClauseArgs) 
-            $ spine ^. typeClauseSpineClauses 
-
-        shoulderror = length eqclasses >= 2
-
-instance TypeClauseSpineSameVarError (ConcObjTag t) where
-    typeClauseSpineSameVarError spine = bool [] 
-        [_ConcTypeClauseArgsMustContainTheSameTypeVariables # eqclasses]
-        shoulderror
-      where
-        eqclasses :: [NonEmpty ([IdentR], [IdentR])]
-        eqclasses = NE.group 
-            $ fmap (fmap (view identRIdentP) *** fmap (view identRIdentP)
-                <<< view typeClauseArgs) 
-            $ spine ^. typeClauseSpineClauses 
-
-        shoulderror = length eqclasses >= 2
-
 hCaseError :: 
     AsTypeCheckErrors e =>
     (IdentR, Polarity) ->

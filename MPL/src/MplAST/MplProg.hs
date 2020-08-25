@@ -65,17 +65,26 @@ type ForallDefn (c :: Type -> Constraint) x =
     , c (XProtocolDefn x)
     , c (XProcessDefn x)
     , c (XFunctionDefn x)
+
+    , c (MplSeqObjDefn x)
+    , c (MplConcObjDefn x)
     )
 
 data MplDefn x =
-    ObjectDefn (MplObjectDefn x)
+    ObjectDefn !(MplObjectDefn x)
     | FunctionDefn !(XFunctionDefn x)
     | ProcessDefn !(XProcessDefn x)
 
 data MplObjectDefn x =
+    SeqObjDefn !(MplSeqObjDefn x)
+    | ConcObjDefn !(MplConcObjDefn x)
+    
+data MplSeqObjDefn x =
     DataDefn !(XDataDefn x) 
     | CodataDefn !(XCodataDefn x) 
-    | ProtocolDefn !(XProtocolDefn x)
+
+data MplConcObjDefn x = 
+    ProtocolDefn !(XProtocolDefn x)
     | CoprotocolDefn !(XCoprotocolDefn x)
 
 data ObjectDefnTag =
@@ -96,7 +105,11 @@ data ConcObjDefnTag =
 $(concat <$> traverse makeClassyPrisms 
     [ ''ObjectDefnTag
     , ''SeqObjDefnTag
-    , ''ConcObjDefnTag ]
+    , ''ConcObjDefnTag 
+    , ''MplObjectDefn
+    , ''MplSeqObjDefn 
+    , ''MplConcObjDefn 
+    ]
  )
 
 instance AsSeqObjDefnTag ObjectDefnTag where
@@ -105,8 +118,16 @@ instance AsSeqObjDefnTag ObjectDefnTag where
 instance AsConcObjDefnTag ObjectDefnTag where
     _ConcObjDefnTag = _ConcObjTag
 
+instance AsMplSeqObjDefn (MplObjectDefn x) x where
+    _MplSeqObjDefn = _SeqObjDefn 
+
+instance AsMplConcObjDefn (MplObjectDefn x) x where
+    _MplConcObjDefn = _ConcObjDefn 
+
 deriving instance (ForallDefn Show x) => Show (MplDefn x)
 deriving instance (ForallDefn Show x) => Show (MplObjectDefn x) 
+deriving instance (ForallDefn Show x) => Show (MplSeqObjDefn x)
+deriving instance (ForallDefn Show x) => Show (MplConcObjDefn x)
 
 type family XTypeClauseSpineExt x (t :: ObjectDefnTag)
 
@@ -208,19 +229,6 @@ deriving instance
     , Show (ChP x)
     , ForallProcess Show x) => Show (MplProcess x)
 
--- mapping for all the definitions (note that these defintiions are completely
--- determined by other type families specified)
-type instance XDataDefn k  = 
-    MplTypeClauseSpine k (SeqObjTag DataDefnTag)
-type instance XCodataDefn k  = 
-    MplTypeClauseSpine k (SeqObjTag CodataDefnTag)
-type instance XProtocolDefn k  = 
-    MplTypeClauseSpine k (ConcObjTag ProtocolDefnTag)
-type instance XCoprotocolDefn k  = 
-    MplTypeClauseSpine k (ConcObjTag CoprotocolDefnTag)
-
-type instance XFunctionDefn k = MplFunction k
-type instance XProcessDefn k  = MplProcess k
 
 
 $(concat <$> traverse makeLenses 
@@ -242,9 +250,6 @@ $(concat <$> traverse makePrisms
     , ''MplFunction
     , ''MplProcess
     ]
- )
-$(concat <$> traverse makeClassyPrisms
-    [ ''MplObjectDefn ]
  )
 
 instance AsMplObjectDefn (MplDefn x) x where

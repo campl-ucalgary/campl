@@ -11,10 +11,6 @@ parsebnfc n = runParse' <$> runBnfc n
 test = [r|
 data 
     Test(A,B) -> C =
-        Testt :: A,B -> C
-        Testtt :: A,D,G -> C
-    and
-    Other(A,B,G) -> D =
-        Otherr :: A,B,G -> D
-        Otherrr :: A,D -> D
+        -- Testt :: A,B -> C
+        Testtt :: A(B) -> C
 |]

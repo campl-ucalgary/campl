@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f3180b686c19a2ed1ec4e133bb3276c7e5c3fa6fbdd93c306c0bf8d597121ef2
+-- hash: 6aa7428637b4f14fbd13ed23b9210523254a6047ec779523b5adcaf4107c6d72
 
 name:           MPL
 version:        0.1.0.0
@@ -125,6 +125,7 @@ test-suite MPL-test
   other-modules:
       MplPasses.Assertions
       MplPasses.Renamer.RenameSpec
+      MplPasses.TypeChecker.KindCheckSpec
       Paths_MPL
   hs-source-dirs:
       test

@@ -55,7 +55,7 @@ parseBnfcStmt (B.MPL_STMT def) =
 
 parseBnfcDefn :: BnfcParse B.MplDefn (MplDefn MplParsed)
 parseBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.DATA_DEFN clauses)) =  
-    review _DataDefn . UMplTypeClauseSpine . NE.fromList 
+    review (_SeqObjDefn % _DataDefn) . UMplTypeClauseSpine . NE.fromList 
         <$> traverseTryEach f clauses
  where
     f (B.SEQ_TYPE_CLAUSE from to handles) = do
@@ -71,9 +71,8 @@ parseBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.DATA_DEFN clauses)) =
             . (,fromtypes', totype',()) 
             . toTermIdentP
             ) handles
-
 parseBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.CODATA_DEFN clauses)) =  
-    review _CodataDefn . UMplTypeClauseSpine . NE.fromList 
+    review (_SeqObjDefn % _CodataDefn) . UMplTypeClauseSpine . NE.fromList 
         <$> traverseTryEach f clauses
  where
     f (B.SEQ_TYPE_CLAUSE from to handles) = do
@@ -94,7 +93,7 @@ parseBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.CODATA_DEFN clauses)) =
                     ) handles
 
 parseBnfcDefn (B.MPL_CONCURRENT_TYPE_DEFN (B.PROTOCOL_DEFN clauses)) =  
-    review _ProtocolDefn . UMplTypeClauseSpine . NE.fromList 
+    review (_ConcObjDefn % _ProtocolDefn) . UMplTypeClauseSpine . NE.fromList 
         <$> traverseTryEach f clauses
  where
     f (B.CONCURRENT_TYPE_CLAUSE from to handles) = do
@@ -113,7 +112,7 @@ parseBnfcDefn (B.MPL_CONCURRENT_TYPE_DEFN (B.PROTOCOL_DEFN clauses)) =
 
 -- duplciated code
 parseBnfcDefn (B.MPL_CONCURRENT_TYPE_DEFN (B.COPROTOCOL_DEFN clauses)) =  
-    review _CoprotocolDefn . UMplTypeClauseSpine . NE.fromList 
+    review (_ConcObjDefn % _CoprotocolDefn) . UMplTypeClauseSpine . NE.fromList 
         <$> traverseTryEach f clauses
  where
     f (B.CONCURRENT_TYPE_CLAUSE from to handles) = do

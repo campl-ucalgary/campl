@@ -1,5 +1,6 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ConstraintKinds #-}
@@ -18,6 +19,7 @@ import MplUtil.UniqueSupply
 import MplPasses.TypeChecker.TypeCheckSym 
 import MplPasses.TypeChecker.TypeCheckErrors
 import MplPasses.TypeChecker.TypeCheckMplTypeSubUtil
+import MplPasses.TypeChecker.KindCheck
 import MplPasses.Env
 
 import Control.Monad.Writer
@@ -39,7 +41,9 @@ data TypeInfoEnv = TypeInfoEnv {
     , _typeInfoEnvMap :: Map TypeTag (MplType MplTypeChecked)
 }
 
-$(makeLenses ''TypeInfoEnv)
+$(concat <$> traverse makeLenses 
+    [ ''TypeInfoEnv ]
+ )
 
 freshTypeInfoEnv :: 
     ( HasUniqueSupply s
@@ -66,6 +70,7 @@ withFreshTypeTag act = do
 type TypeCheck renamed typechecked =
     forall e m. 
     ( AsTypeCheckErrors e 
+    , AsKindCheckErrors e
     , MonadWriter [e] m 
     , MonadState TypeCheckEnv m
     , MonadFix m ) =>

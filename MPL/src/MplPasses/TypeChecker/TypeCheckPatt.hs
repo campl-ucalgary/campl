@@ -56,8 +56,8 @@ typeCheckPattern = para f
             mplttype =  _TypeVar # (Just ann, ttype)
             eqns = [ TypeEqnsEqStable (ttype & typeIdentTUniqueTag .~ ttypetagstable, mplttype ) ]
 
-        envLcl % typeInfoSymTab % at (v ^. uniqueTag) ?=  
-                _SymSeqPattVar % _Just # mplttype
+        envLcl % typeInfoSymTab % symTabTerm % at (v ^. uniqueTag) ?=  undefined
+                -- _SymSeqPattVar % _Just # mplttype
 
         return ( PVar (fromJust $ Map.lookup ttypetagstable ttypemap) v
             , Just eqns)
