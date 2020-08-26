@@ -1,6 +1,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TupleSections #-}
@@ -47,9 +50,12 @@ import Control.Arrow
 import Debug.Trace
 
 typeCheckTypeClauseSpine ::
+    forall t. 
     ( TypeClauseSpineSameVarError t 
     , TypePhraseStateVarError t
-    , KindCheckClauseSpine t ) =>
+    , KindCheckObjArgsKindEnv t 
+    , KindCheckPhrase t
+    , TypeClauseArgs MplRenamed t ~ TypeClauseArgs MplTypeChecked t ) =>
     TypeCheck (MplTypeClauseSpine MplRenamed t) (MplTypeClauseSpine MplTypeChecked t)
 typeCheckTypeClauseSpine spine = do
     -- first, check if all the args are the same 
@@ -65,67 +71,132 @@ typeCheckTypeClauseSpine spine = do
         spine
 
     -- kindchecking
-    kindCheckClauseSpine spine
+    let kenv = kindCheckObjArgsKindEnv spine
 
-class KindCheckClauseSpine (t :: ObjectDefnTag) where
-    kindCheckClauseSpine :: TypeCheck (MplTypeClauseSpine MplRenamed t) (MplTypeClauseSpine MplTypeChecked t)
+    symtab <- guse $ envLcl % typeInfoSymTab % symTabType
 
-instance KindCheckClauseSpine (SeqObjTag DataDefnTag) where
-    kindCheckClauseSpine spine = do
-        let args = Set.toList $ foldMapOf 
+    nspine <- (`evalStateT` kenv) . (`runReaderT` symtab) $ mdo
+        spine' <- spine ^. typeClauseSpineClauses % to (traverse (f nspine))
+        let ~nspine = MplTypeClauseSpine spine' (spine ^. typeClauseSpineExt)
+        return nspine 
+
+    return nspine
+  where
+    f :: _ -> MplTypeClause MplRenamed t -> _ (MplTypeClause MplTypeChecked t)
+    f spine clause = do
+        rec ~mphrases <- clause ^. typeClausePhrases % to (g clause')
+            let clause' = MplTypeClause 
+                        (clause ^. typeClauseName)
+                        (clause ^. typeClauseArgs)
+                        (clause ^. typeClauseStateVar)
+                        mphrases
+                        spine
+        return $ clause' 
+    g :: (MplTypeClause MplTypeChecked t) -> [MplTypePhrase MplRenamed t] ->
+        _ ([MplTypePhrase MplTypeChecked t])
+    g clause phrases = traverse (kindCheckPhrase . (clause,)) phrases 
+
+
+class KindCheckObjArgsKindEnv (t :: ObjectDefnTag) where
+    kindCheckObjArgsKindEnv :: MplTypeClauseSpine MplRenamed t -> KindCheckEnv
+
+instance KindCheckObjArgsKindEnv (SeqObjTag t) where
+    kindCheckObjArgsKindEnv spine = KindCheckEnv (_SeqKind # ()) $ collectKindCheckEnvSeqs args
+      where
+        args = Set.toList $ foldMapOf 
                 (typeClauseSpineClauses % folded) (\clause -> 
                     clause ^. typeClauseArgs % to Set.fromList
                     <> clause ^. typeClauseStateVar % to Set.singleton) 
                 spine 
-            kenv = KindCheckEnv (SeqKind ()) $ collectKindCheckEnvSeqs args
 
-        symtab <- guse $ envLcl % typeInfoSymTab % symTabType
-
-        nspine <- (`evalStateT` kenv) . (`runReaderT` symtab) $ mdo
-            spine' <- spine ^. typeClauseSpineClauses % to (traverse (f nspine))
-            let ~nspine = MplTypeClauseSpine spine' (spine ^. typeClauseSpineExt)
-            return nspine 
-
-        return nspine
+instance KindCheckObjArgsKindEnv (ConcObjTag t) where
+    kindCheckObjArgsKindEnv spine = KindCheckEnv (_ConcKind # ()) 
+        $ collectKindCheckEnvSeqs seqargs <> collectKindCheckEnvConcs concargs
       where
-        f :: _ -> MplTypeClause MplRenamed (SeqObjTag DataDefnTag) -> 
-            _ (MplTypeClause MplTypeChecked (SeqObjTag DataDefnTag))
-        f spine clause = do
-            rec ~mphrases <- clause ^. typeClausePhrases % to (g clause')
-                let clause' = MplTypeClause 
-                            (clause ^. typeClauseName)
-                            (clause ^. typeClauseArgs)
-                            (clause ^. typeClauseStateVar)
-                            mphrases
-                            spine
-            return $ clause' 
-        g :: (MplTypeClause MplTypeChecked (SeqObjTag DataDefnTag)) -> 
-            [MplTypePhrase MplRenamed (SeqObjTag DataDefnTag)] ->
-            _ ([MplTypePhrase MplTypeChecked (SeqObjTag DataDefnTag)])
-        g clause phrases =  traverse (h clause) phrases 
-
-        h :: _ -> MplTypePhrase MplRenamed (SeqObjTag DataDefnTag) ->
-            _ (MplTypePhrase MplTypeChecked (SeqObjTag DataDefnTag))
-        h clause phrase = do
-            froms' <- phrase ^. typePhraseFrom 
-                        % to ( traverse (\tp -> do 
-                                kindCheckExpectedPrimitiveKind .= SeqKind () 
-                                primitiveKindCheck tp
-                            )
-                        )
-
-            kindCheckExpectedPrimitiveKind .= SeqKind () 
-            to' <- phrase ^. typePhraseTo % to (primitiveKindCheck . review _TypeVar . ((),))
-            return $ MplTypePhrase 
-                (phrase ^. typePhraseName) 
-                (fromJust $ sequenceA froms')
-                (fromJust to')
-                clause
-
+        seqargs = Set.toList $ foldMapOf 
+                (typeClauseSpineClauses % folded) (\clause -> 
+                    clause ^. typeClauseArgs % _1 % to Set.fromList
+                    <> clause ^. typeClauseStateVar % to Set.singleton) 
+                spine 
+        concargs = Set.toList $ foldMapOf 
+                (typeClauseSpineClauses % folded) (\clause -> 
+                    clause ^. typeClauseArgs % _2 % to Set.fromList
+                    <> clause ^. typeClauseStateVar % to Set.singleton) 
+                spine 
 
 class KindCheckPhrase (t :: ObjectDefnTag) where
-    kindCheckPhrase :: TypeCheck (MplTypePhrase MplRenamed t) (MplTypePhrase MplTypeChecked t)
+    kindCheckPhrase :: 
+        ( AsKindCheckErrors e
+        , MonadState KindCheckEnv m
+        , MonadReader SymTabType m
+        , MonadWriter [e] m ) => (MplTypeClause MplTypeChecked t, MplTypePhrase MplRenamed t) ->
+            m (MplTypePhrase MplTypeChecked t)
 
+instance KindCheckPhrase (SeqObjTag DataDefnTag) where
+    kindCheckPhrase (clause, phrase) = do
+        froms' <- phrase ^. typePhraseFrom 
+                    % to ( traverse (\tp -> do 
+                            kindCheckExpectedPrimitiveKind .= SeqKind () 
+                            primitiveKindCheck tp
+                        )
+                    )
+
+        kindCheckExpectedPrimitiveKind .= SeqKind () 
+        to' <- phrase ^. typePhraseTo % to (primitiveKindCheck . review _TypeVar . ((),))
+        return $ MplTypePhrase 
+            (phrase ^. typePhraseName) 
+            (fromJust $ sequenceA froms')
+            (fromJust to')
+            clause
+
+instance KindCheckPhrase (SeqObjTag CodataDefnTag) where
+    kindCheckPhrase (clause, phrase) = do
+        froms' <- phrase ^. typePhraseFrom %  _1
+                    % to ( traverse (\tp -> do 
+                            kindCheckExpectedPrimitiveKind .= SeqKind () 
+                            primitiveKindCheck tp
+                        )
+                    )
+
+        kindCheckExpectedPrimitiveKind .= SeqKind () 
+        fromst' <- phrase ^. typePhraseFrom % _2 % to (primitiveKindCheck . review _TypeVar . ((),))
+
+        kindCheckExpectedPrimitiveKind .= SeqKind () 
+        to' <- phrase ^. typePhraseTo % to primitiveKindCheck
+
+        return $ MplTypePhrase 
+            (phrase ^. typePhraseName) 
+            (fromJust $ sequenceA froms', fromJust fromst')
+            (fromJust to')
+            clause
+
+instance KindCheckPhrase (ConcObjTag ProtocolDefnTag) where
+    kindCheckPhrase (clause, phrase) = do
+        kindCheckExpectedPrimitiveKind .= ConcKind () 
+        from' <- phrase ^. typePhraseFrom % to primitiveKindCheck
+
+        kindCheckExpectedPrimitiveKind .= ConcKind () 
+        to' <- phrase ^. typePhraseTo % to (primitiveKindCheck . review _TypeVar . ((),))
+
+        return $ MplTypePhrase 
+            (phrase ^. typePhraseName) 
+            (fromJust from')
+            (fromJust to')
+            clause
+
+instance KindCheckPhrase (ConcObjTag CoprotocolDefnTag) where
+    kindCheckPhrase (clause, phrase) = do
+        kindCheckExpectedPrimitiveKind .= ConcKind () 
+        from' <- phrase ^. typePhraseFrom % to (primitiveKindCheck . review _TypeVar . ((),))
+
+        kindCheckExpectedPrimitiveKind .= ConcKind () 
+        to' <- phrase ^. typePhraseTo % to primitiveKindCheck
+
+        return $ MplTypePhrase 
+            (phrase ^. typePhraseName) 
+            (fromJust from')
+            (fromJust to')
+            clause
 
 class TypeClauseSpineSameVarError (t :: ObjectDefnTag) where
     typeClauseSpineSameVarError :: 

@@ -38,7 +38,7 @@ data TypeInfoEnv = TypeInfoEnv {
     -- the expression
     , _typeInfoEnvTypeTag :: TypeTag
     -- | this should not change...
-    , _typeInfoEnvMap :: Map TypeTag (MplType MplTypeChecked)
+    , _typeInfoEnvMap :: TypeTagMap 
 }
 
 $(concat <$> traverse makeLenses 

@@ -223,6 +223,7 @@ type instance XTypeConcWithArgs MplRenamed = ()
 type instance XTypeConcVarWithArgs  MplRenamed = ()
 
 type instance XTypeVar MplRenamed = () 
+type instance XTypeWithNoArgs MplRenamed = () 
 type instance XXType MplRenamed = Void
 type instance XTypeIntF MplRenamed = NameOcc
 type instance XTypeCharF MplRenamed = NameOcc

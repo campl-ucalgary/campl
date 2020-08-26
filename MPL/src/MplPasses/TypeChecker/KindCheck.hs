@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RecursiveDo #-}
@@ -49,8 +50,7 @@ data KindCheckEnv = KindCheckEnv {
     _kindCheckExpectedPrimitiveKind :: 
         MplPrimitiveKind MplTypeChecked
     , _kindCheckEnvMap :: KindCheckEnvMap
-}
-
+} 
 
 collectKindCheckEnvSeqs :: [IdentR] -> KindCheckEnvMap
 collectKindCheckEnvSeqs = Map.fromList . map f
@@ -79,61 +79,29 @@ data KindCheckErrors =
     | KindGivenASequentialClauseButGotAConcurrentClause
         (IdP MplRenamed, [MplType MplRenamed]) (IdP MplRenamed, ([IdP MplRenamed], [IdP MplRenamed]))
 
-    | KindBadLookup
   deriving Show
 
 $(makeLenses ''KindCheckEnv)
 $(makePrisms ''KindCheckEnv) 
 $(makeClassyPrisms ''KindCheckErrors) 
 
-    {-
-kindCheckProcessType :: 
-    TypeCheck 
-        ([TypeP MplRenamed], [MplType MplRenamed], [MplType MplRenamed], [MplType MplRenamed]) 
-        (Maybe ([TypeP MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked]))
-kindCheckProcessType proctype@(varsyms, seqs, ins, outs) = do
-    symtab <- guse (envLcl % typeInfoSymTab)
-    
-    ~(res, st) <- (`runStateT` KindCheckEnv (SeqKind ()) mempty) 
-        . (`runReaderT` ((Map.fromList (undefined varsyms)) <> symtab)) $ do
-            seqs' <- traverse 
-                (\mpltype -> do
-                    kindCheckExpectedPrimitiveKind .= SeqKind ()
-                    primitiveKindCheck mpltype) seqs
-            ins' <- traverse 
-                (\mpltype -> do
-                    kindCheckExpectedPrimitiveKind .= ConcKind ()
-                    primitiveKindCheck mpltype) ins
-            outs' <- traverse 
-                (\mpltype -> do
-                    kindCheckExpectedPrimitiveKind .= ConcKind ()
-                    primitiveKindCheck mpltype) outs
-            return $ (,,) <$> sequenceA seqs' <*> sequenceA ins' <*> sequenceA outs'
 
-    return $ do
-        ~(seqs',ins',outs') <- res
-        return ( st ^. kindCheckEnvMap % to (collectTypePs . Map.toList)
-               , seqs', ins', outs')
-    undefined
-
-
-  where
-    collectTypePs = undefined
-    -}
-
-primitiveKindCheck ::
+type KindCheck from to = 
     forall e m .
     ( AsKindCheckErrors e
     , MonadState KindCheckEnv m
     , MonadReader SymTabType m
     , MonadWriter [e] m ) => 
-    MplType MplRenamed ->
-    m (Maybe (MplType MplTypeChecked))
+    from ->
+    m to
+
+primitiveKindCheck ::
+    KindCheck (MplType MplRenamed) (Maybe (MplType MplTypeChecked))
 primitiveKindCheck = para f 
   where
     f :: Base (MplType MplRenamed) 
-        (MplType MplRenamed, m (Maybe (MplType MplTypeChecked))) -> 
-            m (Maybe (MplType MplTypeChecked))
+        (MplType MplRenamed, _ (Maybe (MplType MplTypeChecked))) -> 
+            _ (Maybe (MplType MplTypeChecked))
     f (TypeVarF cxt n) = do
         ekd <- guse kindCheckExpectedPrimitiveKind 
         klkup <- guses (kindCheckEnvMap % at (n ^. uniqueTag)) fromJust
@@ -152,11 +120,11 @@ primitiveKindCheck = para f
 
     f (TypeSeqWithArgsF cxt tp args) = do
         ekd <- guse kindCheckExpectedPrimitiveKind 
-        clauselkup <- gview $ ix (tp ^. uniqueTag)
+        ~clauselkup <- fmap fromJust $ gview (ix (tp ^. uniqueTag))
 
         let rargs = map fst args
-        noerrs <- fmap (null . snd) $ listen $ do 
-            tell $ flip (maybe [ _KindBadLookup # () ]) clauselkup $ \case
+        ~noerrs <- fmap (null . snd) $ listen $ do 
+            tell $ case clauselkup of
                 SeqObjDefn seqclause -> 
                     let (clausename, clauseargs) = case seqclause of
                             DataDefn clause -> 
@@ -167,7 +135,7 @@ primitiveKindCheck = para f
                                 , clause ^. typeClauseArgs)
                     in bool [] [_KindAritySeqMismatchExpectedButGot # 
                         ( (clausename, clauseargs), (tp, rargs) )
-                        ] $ length clauseargs /= length rargs 
+                        ] $ length clauseargs /= length rargs
                 ConcObjDefn concclause ->
                     let (clausename, clauseargs) = case concclause of
                             ProtocolDefn clause -> 
@@ -193,10 +161,9 @@ primitiveKindCheck = para f
                 snd n) args
 
         return $ flip (bool Nothing) noerrs $ do
-            clause <- clauselkup ^? _Just % _SeqObjDefn 
+            ~clause <- clauselkup ^? _SeqObjDefn 
             rargs' <- sequenceA rargs
-            return $ _TypeSeqWithArgs # 
-                ( clause, tp, rargs' )
+            return $ _TypeSeqWithArgs # ( clause, tp, rargs' )
 
     f (TypeSeqVarWithArgsF cxt tp args) = do
         tell [ _KindHigherKindedTypesAreNotAllowed #
@@ -205,7 +172,8 @@ primitiveKindCheck = para f
 
     f (TypeConcWithArgsF cxt tp (seqs,concs)) = do
         ekd <- guse kindCheckExpectedPrimitiveKind 
-        clauselkup <- gview $ ix (tp ^. uniqueTag)
+        -- clauselkup <- gview $ ix (tp ^. uniqueTag)
+        clauselkup <- undefined
 
         let rseqs = map fst seqs
             rconcs = map fst concs
@@ -262,3 +230,159 @@ primitiveKindCheck = para f
         tell [ _KindHigherKindedTypesAreNotAllowed #
             _TypeConcVarWithArgs # (cxt, tp, map fst *** map fst $ args) ]
         return Nothing
+
+    f (TypeBuiltInF n) = case n of
+        TypeIntF cxt -> do
+            ekd <- guse kindCheckExpectedPrimitiveKind 
+            let noerr = SeqKind () == ekd
+            -- checking if this should be a sequential kind
+            tell $ bool 
+                [_KindPrimtiveMismatchExpectedButGot # 
+                    ( ekd
+                    , SeqKind ()
+                    , _TypeIntF # cxt)
+                ] [] $ noerr
+
+            return $ bool Nothing (_Just % _TypeIntF # cxt) noerr
+
+        -- duplciated code..
+        TypeCharF cxt -> do
+            ekd <- guse kindCheckExpectedPrimitiveKind 
+            let noerr = SeqKind () == ekd
+            -- checking if this should be a sequential kind
+            tell $ bool 
+                [_KindPrimtiveMismatchExpectedButGot # 
+                    ( ekd
+                    , SeqKind ()
+                    , _TypeCharF # cxt)
+                ] [] $ noerr
+
+            return $ bool Nothing (_Just % _TypeCharF # cxt) noerr
+
+        -- duplciated code
+        TypeDoubleF cxt -> do
+            ekd <- guse kindCheckExpectedPrimitiveKind 
+            let noerr = SeqKind () == ekd
+            -- checking if this should be a sequential kind
+            tell $ bool 
+                [_KindPrimtiveMismatchExpectedButGot # 
+                    ( ekd
+                    , SeqKind ()
+                    , _TypeDoubleF # cxt)
+                ] [] $ noerr
+
+            return $ bool Nothing (_Just % _TypeDoubleF # cxt) noerr
+
+        TypeGetF ann (lr, l) (rr, r) -> do
+            ekd <- guse kindCheckExpectedPrimitiveKind 
+            let noerr = ekd == _ConcKind # ()
+            tell $ bool 
+                [_KindPrimtiveMismatchExpectedButGot # 
+                    ( ekd
+                    , _ConcKind # ()
+                    , _TypeGetF # (ann, lr, rr))
+                ] [] $ noerr
+
+            kindCheckExpectedPrimitiveKind .= _SeqKind # ()
+            (l', llg) <- listen l
+
+            kindCheckExpectedPrimitiveKind .= _ConcKind # ()
+            (r', rlg) <- listen r
+
+            return $ bool Nothing
+                (review _TypeGetF <$> ((ann,,) <$> l' <*> r'))
+                $ noerr && null llg && null rlg 
+
+        -- duplciated code
+        TypePutF ann (lr, l) (rr, r) -> do
+            ekd <- guse kindCheckExpectedPrimitiveKind 
+            let noerr = ekd == _ConcKind # ()
+            tell $ bool 
+                [_KindPrimtiveMismatchExpectedButGot # 
+                    ( ekd
+                    , _ConcKind # ()
+                    , _TypePutF # (ann, lr, rr))
+                ] [] $ noerr
+
+            kindCheckExpectedPrimitiveKind .= _SeqKind # ()
+            (l', llg) <- listen l
+
+            kindCheckExpectedPrimitiveKind .= _ConcKind # ()
+            (r', rlg) <- listen r
+
+            return $ bool Nothing
+                (review _TypePutF <$> ((ann,,) <$> l' <*> r'))
+                $ noerr && null llg && null rlg 
+
+        TypeTensorF ann (lr, l) (rr, r) -> do
+            ekd <- guse kindCheckExpectedPrimitiveKind 
+            let noerr = ekd == _ConcKind # ()
+            tell $ bool 
+                [_KindPrimtiveMismatchExpectedButGot # 
+                    ( ekd
+                    , _ConcKind # ()
+                    , _TypeTensorF # (ann, lr, rr))
+                ] [] $ noerr
+
+            kindCheckExpectedPrimitiveKind .= _ConcKind # ()
+            (l', llg) <- listen l
+
+            kindCheckExpectedPrimitiveKind .= _ConcKind # ()
+            (r', rlg) <- listen r
+
+            return $ bool Nothing
+                (review _TypeTensorF <$> ((ann,,) <$> l' <*> r'))
+                $ noerr && null llg && null rlg 
+
+        -- duplicated code
+        TypeParF ann (lr, l) (rr, r) -> do
+            ekd <- guse kindCheckExpectedPrimitiveKind 
+            let noerr = ekd == _ConcKind # ()
+            tell $ bool 
+                [_KindPrimtiveMismatchExpectedButGot # 
+                    ( ekd
+                    , _ConcKind # ()
+                    , _TypeParF # (ann, lr, rr))
+                ] [] $ noerr
+
+            kindCheckExpectedPrimitiveKind .= _ConcKind # ()
+            (l', llg) <- listen l
+
+            kindCheckExpectedPrimitiveKind .= _ConcKind # ()
+            (r', rlg) <- listen r
+
+            return $ bool Nothing
+                (review _TypeParF <$> ((ann,,) <$> l' <*> r'))
+                $ noerr && null llg && null rlg 
+                
+        TypeNegF ann (lr, l)  -> do
+            ekd <- guse kindCheckExpectedPrimitiveKind 
+            let noerr = ekd == _ConcKind # ()
+            tell $ bool 
+                [_KindPrimtiveMismatchExpectedButGot # 
+                    ( ekd
+                    , _ConcKind # ()
+                    , _TypeNegF # (ann, lr))
+                ] [] $ noerr
+
+            kindCheckExpectedPrimitiveKind .= _ConcKind # ()
+            (l', llg) <- listen l
+
+            return $ bool Nothing
+                (review _TypeNegF <$> ((ann,) <$> l'))
+                $ noerr && null llg 
+                
+        TypeTopBotF cxt  -> do
+            ekd <- guse kindCheckExpectedPrimitiveKind 
+            let noerr = ekd == _ConcKind # ()
+            tell $ bool 
+                [_KindPrimtiveMismatchExpectedButGot # 
+                    ( ekd
+                    , _ConcKind # ()
+                    , _TypeTopBotF # cxt)
+                ] [] $ noerr
+
+            return $ bool Nothing
+                (_Just % _TypeTopBotF # cxt)
+                $ noerr 
+

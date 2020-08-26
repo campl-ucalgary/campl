@@ -11,6 +11,8 @@ import MplAST.MplTypeChecked
 import Control.Monad.State
 import MplUtil.UniqueSupply
 
+import Data.List.NonEmpty
+
 newtype TypeTag = TypeTag UniqueTag
   deriving (Show, Eq, Ord)
 
@@ -24,6 +26,10 @@ data TypeAnn =
     TypeAnnFun (MplFunction MplRenamed)
     -- Process
     | TypeAnnProc (MplProcess MplRenamed)
+
+    | TypeAnnProcPhrase 
+        (([MplPattern MplRenamed], [ChIdentR], [ChIdentR]), NonEmpty (MplCmd MplRenamed) )
+
     -- Expression
     | TypeAnnExpr (MplExpr MplRenamed)
     -- Type pattern..
@@ -59,6 +65,6 @@ freshTypeTag ::
     ( MonadState s m
     , HasUniqueSupply s ) => 
     m TypeTag
-freshTypeTag = 
-    undefined
-    -- TypeTag . UniqueTag . uniqueFromSupply <$> freshUniqueSupply
+freshTypeTag = TypeTag . UniqueTag . uniqueFromSupply <$> freshUniqueSupply
+
+

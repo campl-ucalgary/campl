@@ -30,20 +30,14 @@ import Data.Functor.Foldable (Base, cata, para)
 import Data.Map (Map)
 import qualified Data.Map as Map
 
-typeCheckPatterns ::
-    TypeCheck
-        [MplPattern MplRenamed]
-        [MplPattern MplTypeChecked]
-typeCheckPatterns = undefined
-
 typeCheckPattern ::
     TypeCheck
         (MplPattern MplRenamed)
-        (MplPattern MplTypeChecked, Maybe [TypeEqns MplTypeSub])
+        (MplPattern MplTypeChecked, [TypeEqns MplTypeSub])
 typeCheckPattern = para f
   where
-    f :: Base (MplPattern MplRenamed) (MplPattern MplRenamed, _ (MplPattern MplTypeChecked, Maybe [TypeEqns MplTypeSub]))
-        -> _ (MplPattern MplTypeChecked, Maybe [TypeEqns MplTypeSub])
+    f :: Base (MplPattern MplRenamed) (MplPattern MplRenamed, _ (MplPattern MplTypeChecked, [TypeEqns MplTypeSub]))
+        -> _ (MplPattern MplTypeChecked, [TypeEqns MplTypeSub])
     f (PConstructorF cxt id patts) = error "pat not implemented"
     f (PRecordF cxt phrases) = error "pat not implemented"
     f (PVarF cxt v) = do
@@ -56,12 +50,13 @@ typeCheckPattern = para f
             mplttype =  _TypeVar # (Just ann, ttype)
             eqns = [ TypeEqnsEqStable (ttype & typeIdentTUniqueTag .~ ttypetagstable, mplttype ) ]
 
-        envLcl % typeInfoSymTab % symTabTerm % at (v ^. uniqueTag) ?=  undefined
-                -- _SymSeqPattVar % _Just # mplttype
+            res = PVar (fromJust $ ttypemap ^? at ttypetagstable % _Just % _SymType) v 
 
-        return ( PVar (fromJust $ Map.lookup ttypetagstable ttypemap) v
-            , Just eqns)
-        -- error "pat not implemented"
+        envLcl % typeInfoSymTab % symTabTerm % at (v ^. uniqueTag) ?= 
+            _SymEntry # (_SymSub # mplttype, _SymSeqCall % _ExprCallPattern # res )
+
+        return (res, eqns)
+
     f (PNullF cxt) = error "pat not implemented"
 {-
     PConstructor !(XPConstructor x) (IdP x) [MplPattern x]

@@ -58,6 +58,8 @@ data TypeCheckErrors =
     | IllegalLastCommand KeyWordNameOcc 
     | IllegalNonLastCommand KeyWordNameOcc 
 
+    | TypeCheckBadLookup 
+
   deriving Show
 
 $(makeClassyPrisms ''TypeCheckErrors)

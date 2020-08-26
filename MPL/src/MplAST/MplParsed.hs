@@ -183,6 +183,7 @@ type instance XTypeConcWithArgs MplParsed = Void
 type instance XTypeConcVarWithArgs  MplParsed = ()
 
 type instance XTypeVar MplParsed = ()
+type instance XTypeWithNoArgs MplParsed = Void
 type instance XXType MplParsed = Void
 type instance XTypeIntF MplParsed = NameOcc
 type instance XTypeCharF MplParsed = NameOcc

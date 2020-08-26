@@ -9,8 +9,13 @@ import MplPasses.Parser.BnfcParse
 parsebnfc n = runParse' <$> runBnfc n
 
 test = [r|
-data 
-    Test(A,B) -> C =
-        -- Testt :: A,B -> C
-        Testtt :: A(B) -> C
+
+fun myfun =
+    a ->( 
+        let fun c =
+                d -> d
+        in c(a))
+
 |]
+
+-- runPassesTester

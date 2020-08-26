@@ -23,6 +23,8 @@ import Data.Functor.Foldable (Base, cata, embed)
 import Data.Void
 import Data.Maybe
 
+import Data.List.NonEmpty (NonEmpty)
+
 data MplTypeSub 
 
 type instance IdP MplTypeSub = IdP MplTypeChecked
@@ -93,11 +95,63 @@ substituteType sublist = cata f
     f :: Base (MplType MplTypeChecked) 
         (Maybe (MplType MplTypeSub)) -> Maybe (MplType MplTypeSub)
     f (TypeVarF cxt typep) = TypeVar Nothing <$> lookup typep sublist
-    {-
     f (TypeSeqWithArgsF cxt id args) =
-        TypeSeqWithArgs cxt id <$> sequenceA args 
+        TypeSeqWithArgs () id <$> sequenceA args 
     f (TypeConcWithArgsF cxt id args) =
-        TypeConcWithArgs cxt id <$> traverseOf each sequenceA args 
-    f (TypeBuiltInF rst) = TypeBuiltIn . embedBuiltInTypes 
-        <$> sequenceA rst 
-    -}
+        TypeConcWithArgs () id <$> traverseOf each sequenceA args 
+    f (TypeBuiltInF rst) = TypeBuiltIn . embedBuiltInTypes <$> sequenceA rst 
+
+class AnnotateTypeTag t where
+    annotateTypeTag :: TypeTag -> t -> MplType MplTypeSub
+
+
+instance AnnotateTypeTag (MplProcess MplRenamed) where
+    annotateTypeTag tag res = _TypeVar # (Just ann, _TypeIdentT # (tag, TypeIdentTInfoTypeAnn ann))
+      where
+        ann = TypeAnnProc res
+
+instance AnnotateTypeTag ChIdentR where
+    annotateTypeTag tag res = _TypeVar # (Just ann, _TypeIdentT # (tag, TypeIdentTInfoTypeAnn ann))
+      where
+        ann = TypeAnnCh res
+
+instance AnnotateTypeTag TypeIdentT where
+    annotateTypeTag tag res = _TypeVar # (res ^? typeIdentTInfo % _TypeIdentTInfoTypeAnn, res) 
+
+-- the two lists should be the same size
+annotateTypeTags :: AnnotateTypeTag t => [TypeTag] -> [t] -> [MplType MplTypeSub]
+annotateTypeTags tags = zipWith annotateTypeTag tags
+
+
+
+class AnnotateTypeTagToTypeP t where
+    annotateTypeTagToTypeP :: TypeTag -> t -> TypeP MplTypeSub
+
+instance AnnotateTypeTagToTypeP (([MplPattern MplRenamed], [ChIdentR], [ChIdentR]), NonEmpty (MplCmd MplRenamed)) where
+    annotateTypeTagToTypeP tag res =  _TypeIdentT # (tag, TypeIdentTInfoTypeAnn ann)
+      where
+        ann = TypeAnnProcPhrase res
+
+instance AnnotateTypeTagToTypeP (MplPattern MplRenamed) where
+    annotateTypeTagToTypeP tag patt =  _TypeIdentT # (tag, TypeIdentTInfoTypeAnn ann)
+      where
+        ann = TypeAnnPatt patt
+
+instance AnnotateTypeTagToTypeP ChIdentR where
+    annotateTypeTagToTypeP tag ch =  _TypeIdentT # (tag, TypeIdentTInfoTypeAnn ann)
+      where
+        ann = TypeAnnCh ch
+
+-- the two lists should be the same size
+annotateTypeTagToTypePs :: AnnotateTypeTagToTypeP t => [TypeTag] -> [t] -> [TypeP MplTypeSub]
+annotateTypeTagToTypePs tags = zipWith annotateTypeTagToTypeP tags
+
+annotatesTags :: 
+    AnnotateTypeTagToTypeP t => 
+    [TypeTag] -> 
+    [t] -> 
+    ([TypeP MplTypeSub], [MplType MplTypeSub])
+annotatesTags tags ts = (ttypeps, ttypeps')
+  where
+    ttypeps = annotateTypeTagToTypePs tags ts
+    ttypeps' = annotateTypeTags tags ttypeps

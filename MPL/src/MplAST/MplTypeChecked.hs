@@ -68,6 +68,12 @@ instance HasLocation ChIdentT where
 instance HasNamespace ChIdentT where
     namespace = identR % namespace
 
+data ExprCallDef = 
+    ExprCallPattern (MplPattern MplTypeChecked)
+    | ExprCallFun (MplFunction MplTypeChecked)
+
+$(makePrisms ''ExprCallDef)
+
 type instance IdP MplTypeChecked = IdentT
 type instance ChP MplTypeChecked = ChIdentT
 type instance TypeP MplTypeChecked = IdentT 

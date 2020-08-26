@@ -41,6 +41,7 @@ type family XMplType x
 type family TypeP x
 
 type family XTypeVar x
+type family XTypeWithNoArgs x
 
 type family XTypeSeqWithArgs x
 type family XTypeSeqVarWithArgs x
@@ -75,6 +76,7 @@ type family XXMplBuiltInTypesF x
 
 data MplType x  =
     TypeVar !(XTypeVar x) (TypeP x) 
+    | TypeWithNoArgs !(XTypeWithNoArgs x) (IdP x) 
 
     | TypeSeqWithArgs !(XTypeSeqWithArgs x) (IdP x) [MplType x]
     | TypeSeqVarWithArgs !(XTypeSeqVarWithArgs x) (TypeP x) [MplType x]
@@ -135,6 +137,7 @@ type ForallMplType (c :: Type -> Constraint) x =
     ( c (XMplType x)
     , c (TypeP x)
     , c (XTypeVar x)
+    , c (XTypeWithNoArgs x)
 
     , c (XTypeSeqWithArgs x)
     , c (XTypeSeqVarWithArgs x)

@@ -24,244 +24,82 @@ import MplPasses.Parser.ParseErrors
 import MplPasses.Renamer.Rename
 import MplPasses.Renamer.RenameErrors
 import qualified MplPasses.Renamer.RenameSym as R
+
+import MplPasses.TypeChecker.TypeCheck
+import MplPasses.TypeChecker.TypeCheckErrors
+import MplPasses.TypeChecker.KindCheck
+import MplPasses.TypeChecker.TypeEqns
+
 import MplPasses.Passes
 import MplPasses.Env
 
 -- Tests for overlapping declarations and out of scope errors 
 
 spec = do
-    mapM_ (`describeValidRename` const (return ()))
-        [ v1
-        , v2
-        , v3 
-        , v4 
-        , v5 
-        , v6 
-        , v7 
-        , v8 
-        , v9 
-        , v10 
-        , v11 
-        ]
+    mapM_ (`describeValidTypeCheck` const (return ()))
+        [ v1 ]
 
-    mapM_ (`describeAllErrors` ("out of scope", _MplRenameErrors % _OutOfScope))
-        [ n1
-        , n2
-        , n3 
-        , n4 
-        , n5 
-        , n6 
-        , n7 
-        , n8 
-        , n9 
-        ]
+    mapM_ (`describeAnyErrors` ("higher kinded variable failure", 
+            _MplTypeCheckErrors 
+            % _TypeCheckKindErrors 
+            % _KindHigherKindedTypesAreNotAllowed))
+        [ nh1
+        , ns1 ]
+
+    mapM_ (`describeAnyErrors` ("Kind primitive mismatch", 
+            _MplTypeCheckErrors 
+            % _TypeCheckKindErrors 
+            % _KindPrimtiveMismatchExpectedButGot))
+        [ nk1 ]
+
+    mapM_ (`describeAnyErrors` ("Kind seq arity mismatch", 
+            _MplTypeCheckErrors 
+            % _TypeCheckKindErrors 
+            % _KindAritySeqMismatchExpectedButGot))
+        [ ns1 ]
 
 
 -- Valid tests  
 ----------------------------
 v1 = [r|
-proc v1 =
-    | c => a -> do
-        fork a as
-            a -> do
-                fork a as
-                    a -> do
-                        close a
-                        halt c
-                    b -> halt b
-            b -> do
-                halt b 
-|]
-
-v2 = [r|
-proc v2 =
-    | => a -> do
-       fork a as
-            a -> do
-                halt a
-            b -> do
-                halt b 
-|]
-
-v3 = [r|
-proc v3 =
-    | => a -> do
-        plug 
-            => a,b -> do
-                close b
-                halt a
-            b => a -> do
-                close b
-                halt a
-|]
-
-v4 = [r|
-defn
-    fun test =
-        a -> hehemut(a)
-    fun hehemut =
-        a -> a
-|]
-
-v5 = [r|
-codata 
-    C -> App(A,B) =
-        App :: A,C -> B
-fun appwrapper =
-    (App := f), a -> f(a)
-|]
-
-v6 = [r|
-data
-    MyData(A,B) -> C =
-        MyData :: A,B -> C
-fun appwrapper =
-    a -> case a of
-        MyData(a,b) -> a
-        MyData(_,_) -> a
 |]
 
 
-v7 = [r|
-data
-    MyData(A,B) -> C =
-        MyData :: A,B -> C
-
-fun v7 :: B,MyData(A,A) -> A =
-    b, a -> case a of
-        MyData(a,b) -> a
-        MyData(_,_) -> a
-|]
-
-v8 = [r|
-data
-    MyData(A,B,D) -> C =
-        MyData1 :: A,B,D -> C
-        MyData2 :: A,B,E -> C
-
-    and 
-    Other(A,B,D) -> E =
-        Other :: A,B,C -> E
-|]
-
-v9 = [r|
-fun testing =
-    a -> testing(a)
-|]
-
-v10 = [r|
-fun testing =
-    a -> 
-        let fun wow =
-                b -> a
-        in wow(a)
-|]
-
-v11 = [r|
-defn 
-    fun v11 =
-        a -> pow(a)
-where
-    fun wow =
-        a -> a
-
-    fun pow =
-        a -> wow(a)
-|]
-
-
--- Invalid tests  
+-- Invalid higher order types..
 ----------------------------
-n1 = [r|
-proc n1 =
-    | => a -> do
-       fork a as
-            c -> do
-                halt a
-            b -> do
-                halt b 
+nh1 = [r|
+data 
+    Test(A,B) -> C =
+        Testt :: A,B -> C
+        Testtt :: A(B) -> C
 |]
 
-n2 = [r|
-proc n2 =
-    | => a -> do
-       fork a as
-            c -> do
-                halt c
-            b -> do
-                halt c 
-|]
-
-n3 = [r|
-proc n3 =
-    | => a -> do
-        plug 
-            => a,b -> do
-                close b
-                halt a
-            b => a,c -> do
-                close b
-                close c
-                halt a
-            c => b -> do
-                close b
-                close a
-                halt c
-|]
-
-n4 = [r|
-fun test =
-    a -> hehemut(a)
-
-fun hehemut =
-    a -> a
-|]
-
-n5 = [r|
-fun n5 =
-    a -> a
-    b -> a
-|]
-
-n6 = [r|
-data
-    MyData(A,B) -> C =
-        MyData1 :: A,B,D -> C
-        MyData2 :: A,B,D -> C
-|]
-
-n7 = [r|
+nh2 = [r|
 defn 
-    fun n7 =
-        a -> pow(a)
-where
-    fun pow =
-        a -> wow(a)
-    fun wow =
-        a -> a
+    data 
+        Strange(A,B) -> C =
+            StrangeCts :: Test(A) -> C
+    data 
+        Test(A,B) -> C =
+            Testtt :: A(B) -> C
 |]
 
-n8 = [r|
-defn 
-    fun n8 =
-        a -> pow(a)
-where
-    fun pow =
-        a -> pow(a)
-
-fun whereoutofscope =
-    a -> pow(a)
+-- Invalid higher order types..
+----------------------------
+nk1 = [r|
+data 
+    Test(A,B) -> C =
+        Testtt :: TopBot -> C
 |]
 
-n9 = [r|
+-- Kind seqarity
+----------------------------
+ns1 = [r|
 defn 
-    fun n9 =
-        a -> 
-            let
-                fun pow =
-                    a,b -> a
-            in pow(a)
-
-fun testing =
-    a -> pow(a)
+    data 
+        Strange(A,B) -> C =
+            StrangeCts :: Test(A) -> C
+    data 
+        Test(A,B) -> C =
+            Testtt :: A(B) -> C
 |]
