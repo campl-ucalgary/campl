@@ -1,8 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module MplPasses.TypeChecker.TypeCheckErrors where
 
 import Optics
@@ -14,6 +16,7 @@ import MplAST.MplTypeChecked
 
 import MplPasses.TypeChecker.KindCheck 
 import MplPasses.TypeChecker.TypeEqns 
+import MplPasses.TypeChecker.TypeCheckMplTypeSub 
 
 import Data.Foldable
 import Data.Function
@@ -25,9 +28,14 @@ import Data.Bool
 import Control.Arrow
 
 data TypeCheckErrors = 
+    ---- Errors from the more ``heavy lifting" algorithms
+    --------------------------------
     TypeCheckKindErrors KindCheckErrors
-    -- | TypeCheckUnificationError TypeUnificationError
+    | TypeCheckUnificationErrors (TypeUnificationError MplTypeSub)
 
+
+    -- Object definition errors ...
+    --------------------------------
     | SeqTypeClauseArgsMustContainTheSameTypeVariables 
         [NonEmpty [IdentR]]
         -- list of equivalence classes of the arguments on (==)
@@ -37,8 +45,19 @@ data TypeCheckErrors =
         --
     | ExpectedStateVarButGot IdentR IdentR 
         -- expected, actual
+ 
+    -- Function definition errors...
+    --------------------------------
+    | IllegalPattDataCallGotCodataInstead 
+        -- (MplPattern MplRenamed) (MplTypePhrase MplRenamed (SeqObjTag CodataDefnTag)) 
+        (MplPattern MplRenamed) (MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag)) 
+            -- pattern, codata call
+    | ExpectedPattCodataCallButGotADataCall 
+        (MplTypePhrase MplRenamed (SeqObjTag CodataDefnTag)) (MplPattern MplRenamed)
 
 
+    -- Process definition errors...
+    --------------------------------
     | ExpectedOppositePolarity (IdentR, Polarity)
         -- channel, polarity of channel. 
     | HCaseExpectedInputPolarityChToHaveProtocolButGotCoprotocol 
@@ -58,6 +77,8 @@ data TypeCheckErrors =
     | IllegalLastCommand KeyWordNameOcc 
     | IllegalNonLastCommand KeyWordNameOcc 
 
+    | IllegalHigherOrderFunction ( NonEmpty (MplType MplTypeSub), MplType MplTypeSub)
+
     | TypeCheckBadLookup 
 
   deriving Show
@@ -66,6 +87,9 @@ $(makeClassyPrisms ''TypeCheckErrors)
 
 instance AsKindCheckErrors TypeCheckErrors where
     _KindCheckErrors = _TypeCheckKindErrors  
+
+instance AsTypeUnificationError TypeCheckErrors  MplTypeSub where
+    _TypeUnificationError = _TypeCheckUnificationErrors 
 
 {-
 hCaseError :: 

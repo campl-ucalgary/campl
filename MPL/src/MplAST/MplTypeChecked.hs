@@ -40,10 +40,29 @@ import MplUtil.UniqueSupply
 
 type IdentT = IdentR
 
+data TypeT = 
+    NamedType IdentT
+    | GenNamedType UniqueTag
+  deriving Show
+
+instance Eq TypeT where
+    NamedType a == NamedType b = a ^. uniqueTag == b ^. uniqueTag
+    GenNamedType a == GenNamedType b = a  == b 
+
+instance Ord TypeT where
+    NamedType a <= NamedType b = a ^. uniqueTag <= b ^. uniqueTag
+    GenNamedType a <= GenNamedType b = a <= b 
+
+$(makePrisms ''TypeT)
+
+
 data ChIdentT = ChIdentT {
     _chIdentTChIdentR :: ChIdentR
     , _chIdentTType :: MplType MplTypeChecked 
-}
+}  
+
+deriving instance Show (XMplType MplTypeChecked) => Show ChIdentT
+
 $(makeClassy ''ChIdentT)
 $(makePrisms ''ChIdentT)
 
@@ -72,11 +91,15 @@ data ExprCallDef =
     ExprCallPattern (MplPattern MplTypeChecked)
     | ExprCallFun (MplFunction MplTypeChecked)
 
+deriving instance (Show (XPConstructor MplTypeChecked)) => Show ExprCallDef
+
 $(makePrisms ''ExprCallDef)
 
 type instance IdP MplTypeChecked = IdentT
 type instance ChP MplTypeChecked = ChIdentT
-type instance TypeP MplTypeChecked = IdentT 
+type instance TypeP MplTypeChecked = TypeT
+
+type instance XMplType MplTypeChecked = MplType MplTypeChecked
 
 -- definitions.
 type instance XDataDefn MplTypeChecked  = 
@@ -94,7 +117,8 @@ type instance XProcessDefn MplTypeChecked  = MplProcess MplTypeChecked
 -- Expression instances
 type instance XMplExpr MplTypeChecked = MplExpr MplTypeChecked
 type instance XEPOps MplTypeChecked = XMplType MplTypeChecked
-type instance XEVar MplTypeChecked = XMplType MplTypeChecked
+type instance XEVar MplTypeChecked = 
+    (ExprCallDef , XMplType MplTypeChecked)
 type instance XEInt MplTypeChecked = (Location, XMplType MplTypeChecked)
 type instance XEChar MplTypeChecked = (Location, XMplType MplTypeChecked)
 type instance XEDouble MplTypeChecked = (Location, XMplType MplTypeChecked)
@@ -197,7 +221,9 @@ type instance XTypeConcWithArgs MplTypeChecked =
     MplConcObjDefn MplTypeCheckedClause
 type instance XTypeConcVarWithArgs  MplTypeChecked = Void -- higher kinded types are not allowed (for now)
 
-type instance XTypeVar MplTypeChecked = XMplKind MplTypeChecked 
+type instance XTypeVar MplTypeChecked = 
+    Maybe (XMplKind MplTypeChecked)
+type instance XTypeWithNoArgs MplTypeChecked = ()
 type instance XXType MplTypeChecked = Void
 type instance XTypeIntF MplTypeChecked = NameOcc
 type instance XTypeCharF MplTypeChecked = NameOcc
@@ -246,3 +272,19 @@ type instance XProtocolDefn MplTypeCheckedClause  =
     MplTypeClause MplTypeChecked (ConcObjTag ProtocolDefnTag)
 type instance XCoprotocolDefn MplTypeCheckedClause  = 
     MplTypeClause MplTypeChecked (ConcObjTag CoprotocolDefnTag)
+
+type instance XProcessDefn MplTypeCheckedClause  = 
+    XProcessDefn MplTypeChecked
+type instance XFunctionDefn MplTypeCheckedClause  = 
+    XFunctionDefn MplTypeChecked
+
+data MplTypeCheckedPhrase
+
+type instance XDataDefn MplTypeCheckedPhrase  = 
+    MplTypePhrase MplTypeChecked (SeqObjTag DataDefnTag)
+type instance XCodataDefn MplTypeCheckedPhrase  = 
+    MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag)
+type instance XProtocolDefn MplTypeCheckedPhrase  = 
+    MplTypePhrase MplTypeChecked (ConcObjTag ProtocolDefnTag)
+type instance XCoprotocolDefn MplTypeCheckedPhrase  = 
+    MplTypePhrase MplTypeChecked (ConcObjTag CoprotocolDefnTag)

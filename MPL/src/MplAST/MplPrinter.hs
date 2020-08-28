@@ -79,11 +79,30 @@ instance PPrint IdentP where
 instance PPrint IdentR where
     pprint n = n ^. identRIdentP % to pprint ++ "__" ++ n ^. uniqueTag % to pprint 
 
+instance PPrint TypeT where
+    pprint (NamedType identr) = pprint identr 
+    pprint (GenNamedType p) = "T" ++ pprint p
+
 instance PPrint ChIdentR where
     pprint n = n ^. chIdentRIdentR % to pprint ++ "__" ++ n ^. polarity % to pprint
 
 instance PPrint ChIdentT where
     pprint n = n ^. chIdentTChIdentR % to pprint 
+
+instance PPrint B.MplType where
+    pprint = B.printTree 
+
+instance (PPrint (IdP x), PPrint (TypeP x) ) => PPrint (MplType x) where
+    pprint = B.printTree . mplTypeToBnfc
+
+
+
+
+-- print instances of annotations from type checking (never printed out)
+instance PPrint ((), MplSeqObjDefn MplTypeCheckedClause) where
+    pprint _ = ""
+instance PPrint ((), MplConcObjDefn MplTypeCheckedClause) where
+    pprint _ = ""
 
 instance MplPrintConstraints x => PPrint (MplProg x) where
     pprint = mplPprint
@@ -179,23 +198,23 @@ mplObjDefnToBnfc (ConcObjDefn (CoprotocolDefn x)) =
 class UserProvidedTypeToBnfc t where
     userProvidedTypeToBnfc :: t -> Maybe B.MplType
 
-instance UserProvidedTypeToBnfc (Maybe ([IdentR], [MplType MplRenamed], [MplType MplRenamed], [MplType MplRenamed])) where
+instance PPrint ident => UserProvidedTypeToBnfc (Maybe ([ident], [MplType MplRenamed], [MplType MplRenamed], [MplType MplRenamed])) where
 
     userProvidedTypeToBnfc Nothing = Nothing
     userProvidedTypeToBnfc (Just (foralls, seqs, ins, outs)) = Just $ 
         B.MPL_CONC_ARROW_TYPE (map toBnfcIdent foralls) (map mplTypeToBnfc seqs) (map mplTypeToBnfc ins) (map mplTypeToBnfc outs)
         
-instance UserProvidedTypeToBnfc (Maybe ([IdentR], [MplType MplRenamed], MplType MplRenamed)) where
+instance PPrint ident => UserProvidedTypeToBnfc (Maybe ([ident], [MplType MplRenamed], MplType MplRenamed)) where
     userProvidedTypeToBnfc Nothing = Nothing
     userProvidedTypeToBnfc (Just (foralls, froms, to)) = Just $ 
         B.MPL_SEQ_ARROW_TYPE (map toBnfcIdent foralls) (map mplTypeToBnfc froms) (mplTypeToBnfc to) 
 
 
-instance UserProvidedTypeToBnfc ([IdentT], [MplType MplTypeChecked], MplType MplTypeChecked) where
+instance PPrint ident => UserProvidedTypeToBnfc ([ident], [MplType MplTypeChecked], MplType MplTypeChecked) where
     userProvidedTypeToBnfc (foralls, froms, to) = Just $
         B.MPL_SEQ_ARROW_TYPE (map toBnfcIdent foralls) (map mplTypeToBnfc froms) (mplTypeToBnfc to) 
 
-instance UserProvidedTypeToBnfc ([IdentT], [MplType MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked]) where
+instance PPrint ident => UserProvidedTypeToBnfc ([ident], [MplType MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked]) where
     userProvidedTypeToBnfc (foralls, seqs, ins, outs) = Just $ 
         B.MPL_CONC_ARROW_TYPE (map toBnfcIdent foralls) (map mplTypeToBnfc seqs) (map mplTypeToBnfc ins) (map mplTypeToBnfc outs)
 
@@ -236,6 +255,9 @@ instance ( PPrint (IdP x), PPrint (TypeP x) ) => MplTypeToBnfc (MplType x) where
             B.MPL_UIDENT_SEQ_CONC_ARGS_TYPE (toBnfcIdent tp) bnfcKeyword (map f seqs) (map f chs) bnfcKeyword
         f (TypeConcVarWithArgs cxt tp (seqs, chs)) = 
             B.MPL_UIDENT_SEQ_CONC_ARGS_TYPE (toBnfcIdent tp) bnfcKeyword (map f seqs) (map f chs) bnfcKeyword
+        f (TypeBuiltIn n) = case n of
+            TypeSeqArrF cxt froms to ->
+                B.MPL_SEQ_ARROW_TYPE [] (NE.toList $ fmap f froms) (f to)
 
 class MplClauseToBnfc x t res | t -> res where
     mplClauseToBnfc :: MplTypeClause x t -> res

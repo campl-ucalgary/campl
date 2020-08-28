@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE NamedWildCards #-}
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
@@ -16,6 +17,8 @@ import qualified MplPasses.Renamer.RenameSym as R
 import MplPasses.TypeChecker.TypeCheck
 import MplPasses.TypeChecker.TypeCheckErrors 
 import MplPasses.TypeChecker.KindCheck 
+import MplPasses.TypeChecker.TypeEqns
+import MplPasses.TypeChecker.TypeCheckMplTypeSub
 
 import MplPasses.Env
 
@@ -54,6 +57,8 @@ instance AsTypeCheckErrors MplPassesErrors where
 instance AsKindCheckErrors MplPassesErrors where
     _KindCheckErrors = _MplTypeCheckErrors  % _TypeCheckKindErrors 
 
+instance AsTypeUnificationError MplPassesErrors MplTypeSub where
+    _TypeUnificationError = _MplTypeCheckErrors % _TypeUnificationError 
 
 data MplPassesEnv = MplPassesEnv {
     mplPassesEnvUniqueSupply :: UniqueSupply

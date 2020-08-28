@@ -116,7 +116,7 @@ primitiveKindCheck = para f
         let kd = fromMaybe ekd klkup
         kindCheckEnvMap % at (n ^. uniqueTag) % _Just ?= kd
             
-        return $ bool (_Just %_TypeVar # (kd, n)) Nothing kindmismatch
+        return $ bool (_Just % _TypeVar # (Just kd, NamedType n)) Nothing kindmismatch
 
     f (TypeSeqWithArgsF cxt tp args) = do
         ekd <- guse kindCheckExpectedPrimitiveKind 

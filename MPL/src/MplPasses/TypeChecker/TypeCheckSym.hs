@@ -13,7 +13,6 @@ import MplAST.MplRenamed
 import MplAST.MplTypeChecked
 import MplAST.MplTypeChecked
 import MplPasses.TypeChecker.TypeCheckMplTypeSubUtil
-
 import MplPasses.TypeChecker.TypeCheckMplTypeSub
 
 import Data.Map (Map)
@@ -27,8 +26,8 @@ type SymTabTerm = Map UniqueTag (SymEntry SymInfo)
 type TypeTagMap = Map TypeTag SymTypeEntry
 
 data SymTypeEntry = 
-    SymTypeProc ([IdentT], [MplType MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked])
-    | SymTypeFun ([IdentT], [MplType MplTypeChecked], [MplType MplTypeChecked])
+    SymTypeProc ([TypeP MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked])
+    | SymTypeFun ([TypeP MplTypeChecked], [MplType MplTypeChecked], MplType MplTypeChecked)
     | SymType (MplType MplTypeChecked)
 
 
@@ -46,6 +45,7 @@ instance Monoid SymTab where
 data SymInfo = 
     SymRunInfo (MplProcess MplTypeChecked)
     | SymSeqCall ExprCallDef
+    | SymSeqPhraseCall (MplSeqObjDefn MplTypeCheckedPhrase)
     | SymChInfo ChIdentR
 
 
@@ -54,32 +54,34 @@ data SymEntry a = SymEntry {
     , _symEntryInfo :: a
 }
 
+data SymPhraseType a = SymPhraseType {
+    _noStateVarsType :: a
+    , _originalType :: a
+}
+
 data SymType =
     SymSub (MplType MplTypeSub)
-    | SymInst (MplType MplTypeChecked)
+    | SymProc ([TypeP MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked])
+    | SymFun ([TypeP MplTypeChecked], [MplType MplTypeChecked], MplType MplTypeChecked)
+    | SymDataPhrase (SymPhraseType ([TypeP MplTypeChecked], [MplType MplTypeChecked], MplType MplTypeChecked))
+     
+    | SymCodataPhrase 
+        (SymPhraseType ([TypeP MplTypeChecked], ([MplType MplTypeChecked], MplType MplTypeChecked), MplType MplTypeChecked))
+    -- | SymInst ([IdentT], SymTypeEntry)
+
+
 
 $(concat <$> traverse makePrisms 
     [ ''SymInfo 
     , ''SymType 
     , ''SymEntry 
     , ''SymTypeEntry
+    , ''SymPhraseType
     ]
  )
 $(concat <$> traverse makeLenses 
     [ ''SymEntry
-    , ''SymTab ]
+    , ''SymTab 
+    , ''SymPhraseType  
+    ]
  )
-
-{-
-lookupSym ::
-    ( HasUniqueTag t ) =>
-    t -> SymTab -> SymInfo
-lookupSym v map = fromJust $ Map.lookup (v ^. uniqueTag) map
-
-    
-class CollectSymTab a where
-    collectSymTab :: a -> SymTab
-
-instance CollectSymTab (MplDefn MplTypeChecked) where
-    collectSymTab = undefined
-    -}

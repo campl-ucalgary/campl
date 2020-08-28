@@ -293,8 +293,7 @@ renameCmds (cmd :| rst) = do
 
 renameCmd ::
     Rename (MplCmd MplCmdFreeVars) (MplCmd MplRenamed)
-renameCmd = 
-    f 
+renameCmd = f 
   where
     f :: MplCmd MplCmdFreeVars -> _ (MplCmd MplRenamed)
     f (CRun cxt ident seqs ins outs) = do

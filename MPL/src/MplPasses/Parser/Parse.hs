@@ -84,7 +84,7 @@ parseBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.CODATA_DEFN clauses)) =
         fromtypes' <- traverseTryEach parseBnfcType (init fromtypes)
         fromtypesst' <- parseTypeVariable <=< parseBnfcType $ last fromtypes
         totype' <- parseBnfcType totype 
-        if null fromtypes'
+        if null fromtypes
             then tell [_ExpectedCodataPhraseToHaveFromArgsButHasNone # map toTermIdentP handles ]  >> throwError ()
             else return $ map 
                     ( review _MplTypePhrase 

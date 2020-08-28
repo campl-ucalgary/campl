@@ -19,7 +19,14 @@ newtype TypeTag = TypeTag UniqueTag
 data TypeIdentT = TypeIdentT {
     _typeIdentTUniqueTag :: TypeTag
     , _typeIdentTInfo :: TypeIdentTInfo
-}
+}  deriving Show
+
+instance Eq TypeIdentT where
+    a ==  b = _typeIdentTUniqueTag a  == _typeIdentTUniqueTag b
+
+instance Ord TypeIdentT where
+    a <=  b = _typeIdentTUniqueTag a  <= _typeIdentTUniqueTag b
+
 
 data TypeAnn = 
     -- Function
@@ -30,17 +37,22 @@ data TypeAnn =
     | TypeAnnProcPhrase 
         (([MplPattern MplRenamed], [ChIdentR], [ChIdentR]), NonEmpty (MplCmd MplRenamed) )
 
+    | TypeAnnFunPhrase 
+        ([MplPattern MplRenamed], MplExpr MplRenamed)
+
     -- Expression
     | TypeAnnExpr (MplExpr MplRenamed)
     -- Type pattern..
     | TypeAnnPatt (MplPattern MplRenamed)
     -- Type channel..
     | TypeAnnCh ChIdentR
+  deriving Show
 
 data TypeIdentTInfo = 
     -- type variable..
-    TypeIdentTInfoTypeVar (TypeP MplRenamed)
+    TypeIdentTInfoTypeVar (TypeP MplTypeChecked)
     | TypeIdentTInfoTypeAnn TypeAnn
+  deriving Show
 
 $(makeLenses ''TypeIdentT)
 $(makePrisms ''TypeIdentT)
@@ -48,18 +60,6 @@ $(makePrisms ''TypeIdentTInfo)
 $(makeClassyPrisms ''TypeAnn)
 
 instance AsTypeAnn TypeIdentTInfo where
-    _TypeAnn = _TypeIdentTInfoTypeAnn 
-
-class ToTypeIdentT t where
-    toTypeIdentT :: ( MonadState s m, HasUniqueSupply s) => 
-        t -> m TypeIdentT
-
--- | Note: The IdentR is for type variables!
--- only!
-instance ToTypeIdentT IdentR where
-    toTypeIdentT identr = do
-        tag <- freshTypeTag
-        return $ _TypeIdentT # (tag, _TypeIdentTInfoTypeVar # identr) 
 
 freshTypeTag ::
     ( MonadState s m
