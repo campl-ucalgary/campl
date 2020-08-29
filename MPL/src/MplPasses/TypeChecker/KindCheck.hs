@@ -78,7 +78,6 @@ data KindCheckErrors =
        (IdP MplRenamed, [IdP MplRenamed])
     | KindGivenASequentialClauseButGotAConcurrentClause
         (IdP MplRenamed, [MplType MplRenamed]) (IdP MplRenamed, ([IdP MplRenamed], [IdP MplRenamed]))
-
   deriving Show
 
 $(makeLenses ''KindCheckEnv)
@@ -137,7 +136,7 @@ primitiveKindCheck = para f
                         ( (clausename, clauseargs), (tp, rargs) )
                         ] $ length clauseargs /= length rargs
                 ConcObjDefn concclause ->
-                    let (clausename, clauseargs) = case concclause of
+                    let ~(clausename, clauseargs) = case concclause of
                             ProtocolDefn clause -> 
                                 ( clause ^. typeClauseName
                                 , clause ^. typeClauseArgs)

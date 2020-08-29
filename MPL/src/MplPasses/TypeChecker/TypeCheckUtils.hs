@@ -24,6 +24,7 @@ import MplPasses.TypeChecker.TypeCheckSym
 import MplPasses.TypeChecker.TypeCheckErrors
 import MplPasses.TypeChecker.TypeCheckMplTypeSubUtil
 import MplPasses.TypeChecker.KindCheck
+import MplPasses.TypeChecker.TypeCheckPanic
 import MplPasses.Env
 
 import MplPasses.TypeChecker.TypeEqns 
@@ -154,8 +155,22 @@ typeIdentTToTypeT :: TypeIdentT -> TypeP MplTypeChecked
 typeIdentTToTypeT (TypeIdentT tag (TypeIdentTInfoTypeVar tp)) = tp
 typeIdentTToTypeT (TypeIdentT (TypeTag tag) _) = GenNamedType tag
 
+{-
+lookupSym :: 
+    ( MonadState TypeCheckEnv m ) => Lens' TypeCheckEnv (Maybe a) -> m a
+lookupSym lens = join $ guses lens $ maybe (envLcl % typeInfoSymTab % symTabBadLookup .= True >> panicSymTab) pure
+-}
 
-mkTypeSubSeqArr :: Maybe TypeAnn -> ([MplType MplTypeSub], MplType MplTypeSub) -> MplType MplTypeSub
-mkTypeSubSeqArr ann ([], to) = to
-mkTypeSubSeqArr ann (froms, to) = _TypeSeqArrF # 
-    (ann, NE.fromList froms, to)
+
+
+class MkTypeSubSeqArr t where
+    mkTypeSubSeqArr :: t -> MplType MplTypeSub
+
+instance MkTypeSubSeqArr ([MplType MplTypeSub], MplType MplTypeSub) where
+    mkTypeSubSeqArr ([], to) = to
+    mkTypeSubSeqArr (froms, to) = _TypeSeqArrF # 
+        (Nothing, NE.fromList froms, to)
+
+instance MkTypeSubSeqArr ([TypeIdentT], TypeIdentT) where
+    mkTypeSubSeqArr (froms, to) = mkTypeSubSeqArr 
+        (map typePtoTypeVar froms, typePtoTypeVar to)

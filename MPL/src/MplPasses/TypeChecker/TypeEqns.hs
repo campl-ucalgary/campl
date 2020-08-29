@@ -510,7 +510,8 @@ packageExistentialElim pkg = do
             acc & packageExisVar %~ (Set.singleton v `Set.union`)
 
     collectvars (PlainSubTag, (tp, mpltp)) = tp : mplTypeCollectTypeP mpltp
-    collectvars (StableSubTag, (tp, mpltp)) = mplTypeCollectTypeP mpltp
+    -- stable vars do not change the system at all...
+    collectvars (StableSubTag, (tp, mpltp)) = []
 
 
 packageUniversalElim  ::

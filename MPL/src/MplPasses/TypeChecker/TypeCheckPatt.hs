@@ -67,7 +67,7 @@ typeCheckPattern = para f
             ttypeppatts = annotateTypeTagToTypePs ttypepatts (map fst patts)
             
             (ttypesphrase, lkuptp') = (`evalState`sup) 
-                $ instantiateArrType 
+                $ instantiateArrType -- (_Just % _TypeAnnPatt # patt)
                 $ fromJust 
                 $ lkuptp ^? _SymDataPhrase % noStateVarsType
 
@@ -75,7 +75,7 @@ typeCheckPattern = para f
             eqns = TypeEqnsExist (ttypesphrase ++ ttypeppatts) $
                     [ TypeEqnsEq 
                         ( lkuptp'
-                        , undefined
+                        , mkTypeSubSeqArr (ttypeppatts, ttypep)
                         ) 
                     -- stable equation for this expression
                     ,  genStableEqn ttypestable ttypep ]

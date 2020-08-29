@@ -24,3 +24,22 @@ import qualified Data.Map as Map
 
 import Data.Maybe
 
+import Data.Bool
+
+{-
+lookupSymTab :: 
+    Monad m => 
+    -- | err
+    m () -> 
+    -- | key
+    UniqueTag -> 
+    -- | map
+    SymTabMap a -> 
+    m a
+lookupSymTab err key symtab = do
+    entry <- fmap fromJust $ symtab ^? at key
+    bool err (return ()) $ has 
+        (symTabMapEntryExists % _SymEntryExists) 
+        entry 
+    return $ entry ^. 
+    -}

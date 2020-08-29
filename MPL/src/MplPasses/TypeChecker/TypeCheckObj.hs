@@ -101,7 +101,8 @@ class KindCheckObjArgsKindEnv (t :: ObjectDefnTag) where
     kindCheckObjArgsKindEnv :: MplTypeClauseSpine MplRenamed t -> KindCheckEnv
 
 instance KindCheckObjArgsKindEnv (SeqObjTag t) where
-    kindCheckObjArgsKindEnv spine = KindCheckEnv (_SeqKind # ()) $ collectKindCheckEnvSeqs args
+    kindCheckObjArgsKindEnv spine = _KindCheckEnv # 
+        (_SeqKind # (),  collectKindCheckEnvSeqs args)
       where
         args = Set.toList $ foldMapOf 
                 (typeClauseSpineClauses % folded) (\clause -> 
@@ -110,8 +111,9 @@ instance KindCheckObjArgsKindEnv (SeqObjTag t) where
                 spine 
 
 instance KindCheckObjArgsKindEnv (ConcObjTag t) where
-    kindCheckObjArgsKindEnv spine = KindCheckEnv (_ConcKind # ()) 
-        $ collectKindCheckEnvSeqs seqargs <> collectKindCheckEnvConcs concargs
+    kindCheckObjArgsKindEnv spine = _KindCheckEnv # 
+        ( _ConcKind # ()
+        , collectKindCheckEnvSeqs seqargs <> collectKindCheckEnvConcs concargs )
       where
         seqargs = Set.toList $ foldMapOf 
                 (typeClauseSpineClauses % folded) (\clause -> 

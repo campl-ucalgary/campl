@@ -21,7 +21,7 @@ import qualified Data.Map as Map
 import Data.Maybe
 
 type SymTabType = Map UniqueTag (MplObjectDefn MplTypeCheckedClause)
-type SymTabTerm = Map UniqueTag (SymEntry SymInfo)
+type SymTabTerm = Map UniqueTag (SymEntry SymTermInfo)
 
 type TypeTagMap = Map TypeTag SymTypeEntry
 
@@ -31,18 +31,19 @@ data SymTypeEntry =
     | SymType (MplType MplTypeChecked)
 
 
+
 data SymTab = SymTab {
     _symTabTerm :: SymTabTerm
     , _symTabType :: SymTabType
 }  
 
 instance Semigroup SymTab where
-    SymTab a0 b0 <> SymTab a1 b1 = SymTab (a0 <> a1) (b0 <> b1)
+    SymTab a0 b0 <> SymTab a1 b1 = SymTab (a0 <> a1) (b0 <> b1) 
 
 instance Monoid SymTab where
     mempty = SymTab mempty mempty 
 
-data SymInfo = 
+data SymTermInfo = 
     SymRunInfo (MplProcess MplTypeChecked)
     | SymSeqCall ExprCallDef
     | SymSeqPhraseCall (MplSeqObjDefn MplTypeCheckedPhrase)
@@ -72,7 +73,7 @@ data SymType =
 
 
 $(concat <$> traverse makePrisms 
-    [ ''SymInfo 
+    [ ''SymTermInfo 
     , ''SymType 
     , ''SymEntry 
     , ''SymTypeEntry

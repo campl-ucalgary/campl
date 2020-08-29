@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 26715beabe17de18ef680734dcdc4c38b851281bb8542b5233ac86e49957d45d
+-- hash: 5f263ea6ec0a3eea522bd34e0789ac810de18863b10c222ab22c041ad46f7693
 
 name:           MPL
 version:        0.1.0.0
@@ -78,6 +78,7 @@ library
       MplPasses.TypeChecker.TypeCheckMplTypeSub
       MplPasses.TypeChecker.TypeCheckMplTypeSubUtil
       MplPasses.TypeChecker.TypeCheckObj
+      MplPasses.TypeChecker.TypeCheckPanic
       MplPasses.TypeChecker.TypeCheckPatt
       MplPasses.TypeChecker.TypeCheckSym
       MplPasses.TypeChecker.TypeCheckSymLookup

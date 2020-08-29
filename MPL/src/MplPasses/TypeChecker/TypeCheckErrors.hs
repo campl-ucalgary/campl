@@ -81,6 +81,8 @@ data TypeCheckErrors =
 
     | TypeCheckBadLookup 
 
+    -- Process definition errors...
+    --------------------------------
   deriving Show
 
 $(makeClassyPrisms ''TypeCheckErrors)

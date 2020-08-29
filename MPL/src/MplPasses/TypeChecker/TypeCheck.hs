@@ -28,7 +28,9 @@ import MplPasses.TypeChecker.TypeEqns
 import MplPasses.TypeChecker.TypeCheckObj 
 import MplPasses.TypeChecker.KindCheck 
 import MplPasses.TypeChecker.TypeCheckPatt 
+import MplPasses.TypeChecker.TypeCheckPanic
 import MplPasses.Env
+
 
 import MplUtil.UniqueSupply
 
@@ -79,62 +81,108 @@ runTypeCheck' ~(top, sup) =
     tag = evalState freshTypeTag rsup
 
 runTypeCheck ::
-    TypeCheck (MplProg MplRenamed) (MplProg MplTypeChecked)
+    ( AsTypeCheckErrors e 
+    , AsKindCheckErrors e
+    , AsTypeUnificationError e MplTypeSub
+    , MonadWriter [e] m 
+    , MonadState TypeCheckEnv m
+    , MonadFix m ) =>
+    MplProg MplRenamed -> 
+    m (MplProg MplTypeChecked)
 runTypeCheck (MplProg stmts) = 
     MplProg <$> traverse typeCheckStmts stmts
 
 typeCheckStmts ::
-    TypeCheck (MplStmt MplRenamed) (MplStmt MplTypeChecked)
+    ( AsTypeCheckErrors e 
+    , AsKindCheckErrors e
+    , AsTypeUnificationError e MplTypeSub
+    , MonadWriter [e] m 
+    , MonadState TypeCheckEnv m
+    , MonadFix m ) =>
+    MplStmt MplRenamed -> 
+    m (MplStmt MplTypeChecked)
 typeCheckStmts (MplStmt defns wheres) = do
     wheres' <- traverse typeCheckStmts wheres
+
+    -- envLcl % typeInfoSymTab % symTabBadLookup .= False
     
     rec envLcl % typeInfoEnvMap .= tagmap
-        ~(defns', eqns) <- fmap (NE.unzip . NE.fromList) $ typeCheckDefns $ NE.toList defns
+        ~((defns', eqns), erroccured) <- fmap (NE.unzip . NE.fromList *** not . null) 
+            $ listen 
+            $ typeCheckDefns 
+            $ NE.toList defns
+        -- badlkkup <- guse $ envLcl % typeInfoSymTab % symTabBadLookup 
         let foralls = foldMap (view _1) eqns
             exists = foldMap (view _2) eqns
             subs = foldMap (view _3) eqns
             eqns' = TypeEqnsForall foralls $ [TypeEqnsExist exists subs]
-            -- pkg = runExcept (solveTypeEqns eqns') :: Either (TypeUnificationError MplTypeSub) (Package MplTypeSub)
-            pkg = runExcept (solveTypeEqns eqns') :: Either _ (Package MplTypeSub)
+            -- pkgtest = runExcept (solveTypeEqns eqns') :: Either (TypeUnificationError MplTypeSub) (Package MplTypeSub)
+            -- pkg = runExcept $ bool (return ()) (throwError []) erroccured 
+                -- >> withExceptT pure (solveTypeEqns eqns') 
+            pkg = runExcept $ bool (return ()) (throwError mempty) erroccured 
+                >> withExceptT pure (solveTypeEqns eqns') 
 
+        -- traceM $ show eqns'
         ~tagmap <- packageToTypeTagMap (either mempty id pkg)
 
-    tell $ either pure mempty pkg
+    tell $ either id mempty pkg
 
     -- need to replace definitions in the symbol table here for
     -- functions. Moreover, illegally called functoins need listening..
+    bool (traverse eliminateSymTabDefn defns') (traverse recollectSymTabDefn defns') (has _Right pkg)
 
     return $ MplStmt defns' wheres'
+    
+recollectSymTabDefn ::
+    ( AsTypeCheckErrors e 
+    , AsKindCheckErrors e
+    , AsTypeUnificationError e MplTypeSub
+    , MonadWriter [e] m 
+    , MonadState TypeCheckEnv m
+    , MonadFix m ) =>
+    MplDefn MplTypeChecked -> m ()
+recollectSymTabDefn (FunctionDefn def) = return ()
+recollectSymTabDefn _ = return ()
+            -- FunctionDefn def -> pure 
+                -- ( def ^. funName % uniqueTag
+                -- , SymEntry (fromJust $ tsymtab ^? at (def ^. funName % uniqueTag) % _Just % symEntryType) 
+                    -- $ _SymSeqCall % _ExprCallFun # def)
+                    --
+
+eliminateSymTabDefn ::
+    ( AsTypeCheckErrors e 
+    , AsKindCheckErrors e
+    , AsTypeUnificationError e MplTypeSub
+    , MonadWriter [e] m 
+    , MonadState TypeCheckEnv m
+    , MonadFix m ) =>
+    MplDefn MplTypeChecked -> m ()
+eliminateSymTabDefn = undefined
 
 typeCheckDefns ::
     TypeCheck
         [MplDefn MplRenamed] 
         [ ( MplDefn MplTypeChecked
-            , ([TypeP MplTypeSub], [TypeP MplTypeSub], [TypeEqns MplTypeSub]))
-        ]
+            , ([TypeP MplTypeSub], [TypeP MplTypeSub], [TypeEqns MplTypeSub])) ]
 -- same as the rename step.. need to do the magic recursive do in order
 -- to get the recursive declarations together properly.
 typeCheckDefns (defn : defns) = do
-    rec ~defn' <- collectSymTabDefn $ envLcl % typeInfoSymTab .= symtab 
+    rec ~(defn', eqns) <-  envLcl % typeInfoSymTab .= symtab 
                     >> fmap snd (withFreshTypeTag (typeCheckDefn defn))
+        collectSymTabDefn defn'
         -- envGbl %= (collectSymTab (fmap fst defn')<>)
-        defns' <- typeCheckDefns defns
+        ~defns' <- typeCheckDefns defns
         ~symtab <- guse envGbl
-    return $ defn' : defns'
+    return $ (defn',eqns) : defns'
 typeCheckDefns [] = return []
 
 collectSymTabDefn ::
-    ( AsTypeCheckErrors e 
-    , AsKindCheckErrors e
-    , MonadWriter [e] m 
-    , MonadState TypeCheckEnv m ) => 
-    m (MplDefn MplTypeChecked, ([TypeP MplTypeSub], [TypeP MplTypeSub], [TypeEqns MplTypeSub])) -> 
-    m (MplDefn MplTypeChecked, ([TypeP MplTypeSub], [TypeP MplTypeSub], [TypeEqns MplTypeSub]))
-collectSymTabDefn act = do
-    (def, typeeqns) <- act
+    TypeCheck (MplDefn MplTypeChecked) ()
+collectSymTabDefn def = do
     tsymtab <- guse $ envLcl % typeInfoSymTab % symTabTerm
-    let syms = SymTab symterms symtypes
-        -- exists = null errs
+    let ~syms = mempty 
+            & symTabTerm .~ symterms 
+            & symTabType .~ symtypes
         ~symtypes = Map.fromList $ case def of
             ObjectDefn def -> case def of
                 SeqObjDefn def -> case def of
@@ -154,8 +202,7 @@ collectSymTabDefn act = do
                                 &&& review _CoprotocolDefn ) . NE.toList )
             _ -> mempty
 
-        -- symterms = flip (bool mempty) (null errs) $ Map.fromList $ case def of 
-        symterms = Map.fromList $ case def of 
+        ~symterms = Map.fromList $ case def of 
             ObjectDefn def -> case def of
                 SeqObjDefn def -> case def of
                     DataDefn spine -> datatermcollect spine
@@ -166,7 +213,6 @@ collectSymTabDefn act = do
                     $ _SymSeqCall % _ExprCallFun # def)
 
     envGbl %= (syms<>)
-    return (def, typeeqns)
   where
     datatermcollect spine = 
         let tpvars = foldMapOf (typeClauseSpineClauses % folded) (map NamedType . view typeClauseArgs) spine
@@ -222,7 +268,7 @@ typeCheckDefn (FunctionDefn fun@(MplFunction name funtype defn)) = do
     sup <- freshUniqueSupply
     ((foralls, funtype'), symtp) <- (`evalStateT` (st & uniqueSupply .~ sup)) $ case funtype of    
         Just tp -> do
-            ~tp <- fmap fromJust $ kindCheckFunType tp
+            tp <- kindCheckFunType tp
             insttp <- instantiateArrType tp
             return (insttp, SymFun tp)
         Nothing -> do
@@ -235,7 +281,7 @@ typeCheckDefn (FunctionDefn fun@(MplFunction name funtype defn)) = do
     rec let funsymentry = _SymEntry # (symtp, _SymSeqCall % _ExprCallFun # fun')
         envLcl % typeInfoSymTab % symTabTerm % at (name ^. uniqueTag) ?= funsymentry
 
-        (ttypephrases, (defn', acceqns)) <- second NE.unzip . NE.unzip <$> 
+        ~(ttypephrases, (defn', acceqns)) <- second NE.unzip . NE.unzip <$> 
             traverse (withFreshTypeTag . typeCheckFunBody ) defn
 
         let fun' = MplFunction name (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeFun) defn'
@@ -339,6 +385,11 @@ typeCheckExpr = para f
 
         ~(SymEntry lkuptp (SymSeqCall lkupdef)) <- fmap fromJust 
             $ guse (envLcl % typeInfoSymTab % symTabTerm % at (n ^. uniqueTag))
+        -- ~(SymEntry lkuptp (SymSeqCall lkupdef)) <- 
+            -- join $ guses (envLcl % typeInfoSymTab % symTabTerm % at (n ^. uniqueTag)) $ badLookupCheck
+        -- ~(SymEntry lkuptp (SymSeqCall lkupdef)) <- lookupSym $ envLcl % typeInfoSymTab % symTabTerm % at (n ^. uniqueTag)
+            -- join $ guses (envLcl % typeInfoSymTab % symTabTerm % at (n ^. uniqueTag)) $ badLookupCheck
+
 
         let ttypep = annotateTypeTagToTypeP ttype (_EVar # (cxt, n) :: MplExpr MplRenamed)
             
@@ -451,7 +502,10 @@ typeCheckCmd = \case
 
         sup <- freshUniqueSupply
         let ttypelkup = (`evalState`sup) $ fromJust 
-                $ tp ^? _SymSub % to instantiateArrType <|> tp ^? _SymProc % to instantiateArrType  
+                -- actualyl this is useless
+                $ tp ^? _SymSub % to instantiateArrType 
+                -- but this phrase is helpful
+                <|> tp ^? _SymProc % to instantiateArrType  
 
         -- inslkup <- traverse f ins 
         -- outslkup <- traverse f outs
@@ -751,9 +805,12 @@ kindCheckProcessType ::
 kindCheckProcessType proctype@(varsyms, seqs, ins, outs) = do
     symtab <- guse (envLcl % typeInfoSymTab % symTabType)
     
-    ~(res, st) <- (`runStateT` KindCheckEnv (SeqKind ()) 
-        (Map.fromList $ map (view uniqueTag &&& const Nothing ) varsyms)) 
-        . (`runReaderT` symtab) $ do
+    ~(res, st) <- 
+        ( flip runStateT $ _KindCheckEnv #
+            ( SeqKind ()
+            , Map.fromList $ map (view uniqueTag &&& const Nothing ) varsyms
+            ) )
+        . ( flip runReaderT symtab) $ do
             seqs' <- traverse 
                 (\mpltype -> do
                     kindCheckExpectedPrimitiveKind .= SeqKind ()
@@ -775,24 +832,27 @@ kindCheckProcessType proctype@(varsyms, seqs, ins, outs) = do
 kindCheckFunType ::
     TypeCheck 
         ([TypeP MplRenamed], [MplType MplRenamed], MplType MplRenamed) 
-        (Maybe ([TypeP MplTypeChecked], [MplType MplTypeChecked], MplType MplTypeChecked))
+        ([TypeP MplTypeChecked], [MplType MplTypeChecked], MplType MplTypeChecked)
 kindCheckFunType proctype@(varsyms, froms, to) = do
-    symtab <- guse (envLcl % typeInfoSymTab % symTabType)
+    ~symtab <- guse (envLcl % typeInfoSymTab % symTabType)
     
-    ~(res, st) <- (`runStateT` KindCheckEnv (SeqKind ()) 
-        (Map.fromList $ map (view uniqueTag &&& const Nothing ) varsyms)) 
-        . (`runReaderT` symtab) $ do
-            froms' <- traverse 
+    ~(froms', to') <- 
+        ( flip evalStateT $ _KindCheckEnv # 
+            ( SeqKind ()
+            , Map.fromList $ map (view uniqueTag &&& const Nothing ) varsyms
+            ) ) 
+        . (flip runReaderT symtab) $ do
+            ~froms' <- traverse 
                 (\mpltype -> do
                     kindCheckExpectedPrimitiveKind .= SeqKind ()
-                    primitiveKindCheck mpltype) froms
+                    primitiveKindCheck mpltype)
+                    froms
+
             kindCheckExpectedPrimitiveKind .= SeqKind ()
             to' <- primitiveKindCheck to
-            return $ (,) <$> sequenceA froms' <*> to' 
+            return $ (map fromJust froms', fromJust to')
 
-    return $ do
-        ~(froms',to') <- res
-        return (map NamedType varsyms , froms', to')
+    return (map NamedType varsyms , froms', to')
 
 -------------------------
 -- Utilities
