@@ -53,7 +53,7 @@ typeCheckPattern = para f
         ttypestable <- freshTypeTag
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
-        ~(SymEntry lkuptp ~(SymSeqPhraseCall seqdef)) <- zoom (envLcl % typeInfoSymTab) $ lookupSymTerm n 
+        ~(SymEntry lkuptp (SymSeqPhraseCall seqdef)) <- zoom (envLcl % typeInfoSymTab) $ lookupSymTerm n 
         let patt = (PConstructor cxt n (map fst patts) :: MplPattern MplRenamed) 
 
         tell $ review _ExternalError $ flip (maybe mempty) (seqdef ^? _CodataDefn ) $ \defn ->
@@ -63,11 +63,11 @@ typeCheckPattern = para f
             traverse (withFreshTypeTag . snd ) patts
 
         sup <- freshUniqueSupply 
-        let ttypep = annotateTypeTagToTypeP ttype patt
-            ttypeppatts = annotateTypeTagToTypePs ttypepatts (map fst patts)
+        let ttypep = annotateTypeTag ttype patt
+            ttypeppatts = annotateTypeTags ttypepatts (map fst patts)
             
             ~(ttypesphrase, lkuptp') = (`evalState`sup) 
-                $ instantiateArrType -- (_Just % _TypeAnnPatt # patt)
+                $ instantiateArrType (_Just % _TypeAnnPatt # patt)
                 $ fromJust 
                 $ lkuptp ^? _SymDataPhrase % noStateVarsType
 

@@ -34,16 +34,19 @@ data TypeAnn =
     -- Process
     | TypeAnnProc (MplProcess MplRenamed)
 
-    -- note that these will not exist if these did not compile correctly
+    | TypeAnnProcPhrase 
+        (([MplPattern MplRenamed], [ChIdentR], [ChIdentR]), NonEmpty (MplCmd MplRenamed) )
+    | TypeAnnFunPhrase 
+        ([MplPattern MplRenamed], MplExpr MplRenamed)
+
+    -- | Note that TypeAnnFunCall / TypeAnnProcCall may or may not exist
+    -- if they did not compile properly...
     | TypeAnnFunCall (MplFunction MplTypeChecked)
     -- Process
     | TypeAnnProcCall (MplProcess MplTypeChecked)
 
-    | TypeAnnProcPhrase 
-        (([MplPattern MplRenamed], [ChIdentR], [ChIdentR]), NonEmpty (MplCmd MplRenamed) )
-
-    | TypeAnnFunPhrase 
-        ([MplPattern MplRenamed], MplExpr MplRenamed)
+    -- Command
+    | TypeAnnCmd (MplCmd MplRenamed)
 
     -- Expression
     | TypeAnnExpr (MplExpr MplRenamed)

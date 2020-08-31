@@ -33,6 +33,8 @@ import qualified Data.List.NonEmpty as NE
 
 import Control.Applicative
 
+import Debug.Trace
+
 data MplTypeSub 
 
 type instance IdP MplTypeSub = IdP MplTypeChecked
@@ -65,7 +67,7 @@ type instance XTypeNeg MplTypeSub = NameOcc
 type instance XTypeSeqArrF MplTypeSub = 
     Maybe TypeAnn -- Maybe ([MplPattern MplRenamed], MplExpr MplRenamed)
 type instance XTypeConcArrF MplTypeSub = 
-    Maybe ( ([MplPattern MplRenamed], [ChIdentR], [ChIdentR]), NonEmpty (MplCmd MplRenamed) )
+    Maybe TypeAnn -- Maybe ( ([MplPattern MplRenamed], [ChIdentR], [ChIdentR]), NonEmpty (MplCmd MplRenamed) )
 
 type instance XXMplBuiltInTypesF MplTypeSub = ()
 
@@ -73,7 +75,7 @@ class InstantiateArrType t where
     instantiateArrType :: 
         ( HasUniqueSupply s 
         , MonadState s m ) => 
-        t -> m ([TypeP MplTypeSub], MplType MplTypeSub)
+        Maybe TypeAnn -> t -> m ([TypeP MplTypeSub], MplType MplTypeSub)
 
 {-
 instance InstantiateArrType (MplFunction MplRenamed) where
@@ -87,14 +89,14 @@ instance InstantiateArrType (MplFunction MplRenamed) where
 -}
 
 instance TypeP MplTypeChecked ~ tp => InstantiateArrType ([tp], [MplType MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked]) where
-    instantiateArrType (tpvars, seqs, ins, outs) = do
+    instantiateArrType ann (tpvars, seqs, ins, outs) = do
         tags <- traverse (const freshTypeTag) tpvars
-        let typeps = annotateTypeTagToTypePs tags tpvars 
+        let typeps = annotateTypeTags tags tpvars 
             subs = zipWith (\identt -> (identt,) . typePtoTypeVar) tpvars typeps
         return $ 
             ( typeps
             , _TypeConcArrF # 
-                ( Nothing 
+                ( ann 
                 , fromJust (traverse (instantiateTypeWithSubs subs) seqs)
                 , fromJust (traverse (instantiateTypeWithSubs subs) ins)
                 , fromJust (traverse (instantiateTypeWithSubs subs) outs)
@@ -102,25 +104,30 @@ instance TypeP MplTypeChecked ~ tp => InstantiateArrType ([tp], [MplType MplType
             )
 
 instance InstantiateArrType (MplType MplTypeSub) where
-    instantiateArrType tp = return ([], tp)
+    instantiateArrType ann tp = return ([], tp)
 
 instance TypeP MplTypeChecked ~ tp => InstantiateArrType ([tp], [MplType MplTypeChecked], MplType MplTypeChecked) where
-    instantiateArrType (tpvars, [], to) = do
+    instantiateArrType ann (tpvars, [], to) = do
         tags <- traverse (const freshTypeTag) tpvars
-        let typeps = annotateTypeTagToTypePs tags tpvars 
+        let typeps = annotateTypeTags tags tpvars 
             subs = zipWith (\identt -> (identt,) . typePtoTypeVar) tpvars typeps
+        -- TODO: this actualyl will not preserve the annotation information here...
         return $ ( typeps, fromJust $ instantiateTypeWithSubs subs to)
         
-    instantiateArrType (tpvars, froms, to) = do
+    instantiateArrType ann (tpvars, froms, to) = do
         tags <- traverse (const freshTypeTag) tpvars
-        let typeps = annotateTypeTagToTypePs tags tpvars 
+        let typeps = annotateTypeTags tags tpvars 
             subs = zipWith (\identt -> (identt,) . typePtoTypeVar) tpvars typeps
         return $ 
             ( typeps, _TypeSeqArrF # 
-                ( Nothing
+                ( ann
                 , NE.fromList $ fromJust $ traverse (instantiateTypeWithSubs subs) froms
                 , fromJust $ instantiateTypeWithSubs subs to)
             )
+
+instance TypeP MplTypeChecked ~ tp => InstantiateArrType ([tp], ([MplType MplTypeChecked], MplType MplTypeChecked), MplType MplTypeChecked) where
+    instantiateArrType ann (tpvars, (froms, st), to) = 
+        instantiateArrType ann (tpvars, froms ++[st], to)
         
 
 instantiateTypeWithSubs ::
@@ -143,16 +150,14 @@ instantiateTypeWithSubs sublist = cata f
 substituteTypeVars ::
     [(TypeP MplTypeChecked, MplType MplTypeChecked)] ->
     MplType MplTypeChecked -> 
-    Maybe (MplType MplTypeChecked) 
+    MplType MplTypeChecked
 substituteTypeVars sublist = cata f
   where
     f :: Base (MplType MplTypeChecked) 
-        (Maybe (MplType MplTypeChecked)) -> Maybe (MplType MplTypeChecked)
-    f (TypeVarF cxt typep) = lookup typep sublist
-    f (TypeSeqWithArgsF cxt id args) =
-        TypeSeqWithArgs cxt id <$> sequenceA args 
-    f (TypeConcWithArgsF cxt id args) =
-        TypeConcWithArgs cxt id <$> traverseOf each sequenceA args 
+        (MplType MplTypeChecked) -> MplType MplTypeChecked
+    f (TypeVarF cxt typep) = fromMaybe (_TypeVar # (cxt, typep)) $ lookup typep sublist
+    f (TypeSeqWithArgsF cxt id args) = TypeSeqWithArgs cxt id args 
+    f (TypeConcWithArgsF cxt id args) = TypeConcWithArgs cxt id args 
     f (TypeBuiltInF rst) = error "to implement in substitute type"
 
 class TypeClauseSpineStateVarClauseSubs (t :: ObjectDefnTag) where
@@ -192,59 +197,59 @@ instance TypeClauseSpineStateVarClauseSubs (SeqObjTag CodataDefnTag) where
             ]
 
 class AnnotateTypeTagToTypeP t where
-    annotateTypeTagToTypeP :: TypeTag -> t -> TypeP MplTypeSub
+    annotateTypeTag :: TypeTag -> t -> TypeP MplTypeSub
 
 instance AnnotateTypeTagToTypeP (([MplPattern MplRenamed], [ChIdentR], [ChIdentR]), NonEmpty (MplCmd MplRenamed)) where
-    annotateTypeTagToTypeP tag res =  _TypeIdentT # (tag, TypeIdentTInfoTypeAnn ann)
+    annotateTypeTag tag res =  _TypeIdentT # (tag, TypeIdentTInfoTypeAnn ann)
       where
         ann = TypeAnnProcPhrase res
 
 instance AnnotateTypeTagToTypeP ([MplPattern MplRenamed], MplExpr MplRenamed) where
-    annotateTypeTagToTypeP tag res =  _TypeIdentT # (tag, TypeIdentTInfoTypeAnn ann)
+    annotateTypeTag tag res =  _TypeIdentT # (tag, TypeIdentTInfoTypeAnn ann)
       where
         ann = TypeAnnFunPhrase res
 
 
 instance AnnotateTypeTagToTypeP (MplPattern MplRenamed) where
-    annotateTypeTagToTypeP tag patt =  _TypeIdentT # (tag, TypeIdentTInfoTypeAnn ann)
+    annotateTypeTag tag patt =  _TypeIdentT # (tag, TypeIdentTInfoTypeAnn ann)
       where
         ann = TypeAnnPatt patt
 
 instance AnnotateTypeTagToTypeP ChIdentR where
-    annotateTypeTagToTypeP tag ch =  _TypeIdentT # (tag, TypeIdentTInfoTypeAnn ann)
+    annotateTypeTag tag ch =  _TypeIdentT # (tag, TypeIdentTInfoTypeAnn ann)
       where
         ann = TypeAnnCh ch
 
 instance AnnotateTypeTagToTypeP (MplProcess MplRenamed) where
-    annotateTypeTagToTypeP tag res =  _TypeIdentT # (tag, TypeIdentTInfoTypeAnn ann)
+    annotateTypeTag tag res =  _TypeIdentT # (tag, TypeIdentTInfoTypeAnn ann)
       where
         ann = TypeAnnProc res
 
 instance AnnotateTypeTagToTypeP (MplFunction MplRenamed) where
-    annotateTypeTagToTypeP tag res =  _TypeIdentT # (tag, TypeIdentTInfoTypeAnn ann)
+    annotateTypeTag tag res =  _TypeIdentT # (tag, TypeIdentTInfoTypeAnn ann)
       where
         ann = TypeAnnFun res
 
 instance AnnotateTypeTagToTypeP (MplExpr MplRenamed) where
-    annotateTypeTagToTypeP tag res =  _TypeIdentT # (tag, TypeIdentTInfoTypeAnn ann)
+    annotateTypeTag tag res =  _TypeIdentT # (tag, TypeIdentTInfoTypeAnn ann)
       where
         ann = TypeAnnExpr res
 
 -- Meant for type variables only!!
 instance AnnotateTypeTagToTypeP IdentR where
-    annotateTypeTagToTypeP tag identr =  _TypeIdentT # (tag, ann)
+    annotateTypeTag tag identr =  _TypeIdentT # (tag, ann)
       where
         ann = _TypeIdentTInfoTypeVar # NamedType identr
 
 instance AnnotateTypeTagToTypeP TypeT where
-    annotateTypeTagToTypeP tag tpt =  _TypeIdentT # (tag, ann)
+    annotateTypeTag tag tpt =  _TypeIdentT # (tag, ann)
       where
         ann = _TypeIdentTInfoTypeVar # tpt
 
 
 -- the two lists should be the same size
-annotateTypeTagToTypePs :: AnnotateTypeTagToTypeP t => [TypeTag] -> [t] -> [TypeP MplTypeSub]
-annotateTypeTagToTypePs tags = zipWith annotateTypeTagToTypeP tags
+annotateTypeTags :: AnnotateTypeTagToTypeP t => [TypeTag] -> [t] -> [TypeP MplTypeSub]
+annotateTypeTags tags = zipWith annotateTypeTag tags
 
 typePtoTypeVar :: TypeP MplTypeSub -> MplType MplTypeSub 
 typePtoTypeVar typep = _TypeVar # ( typep ^? typeIdentTInfo % _TypeIdentTInfoTypeAnn, typep ) 
@@ -258,5 +263,4 @@ instance PPrint TypeTag where
 instance PPrint TypeIdentT where
     pprint (TypeIdentT tag (TypeIdentTInfoTypeVar v)) = pprint v 
     pprint (TypeIdentT tag _) = pprint tag
-
 

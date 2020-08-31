@@ -224,7 +224,7 @@ renameExpr = cata f
 
         args' <- sequenceA args
 
-        return $ _EObjCall # 
+        return $ _ECall # 
             (cxt, _IdentR # (ident, ident' ^. uniqueTag), args')
 
     f (ERecordF cxt args) = do

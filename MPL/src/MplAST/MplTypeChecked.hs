@@ -48,6 +48,8 @@ data TypeT =
 instance Eq TypeT where
     NamedType a == NamedType b = a ^. uniqueTag == b ^. uniqueTag
     GenNamedType a == GenNamedType b = a  == b 
+    NamedType a == GenNamedType b = a ^. uniqueTag  == b 
+    GenNamedType a == NamedType b = a == b ^. uniqueTag 
 
 instance Ord TypeT where
     NamedType a <= NamedType b = a ^. uniqueTag <= b ^. uniqueTag

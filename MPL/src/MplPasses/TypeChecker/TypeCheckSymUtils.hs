@@ -3,6 +3,8 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TemplateHaskell #-}
 module MplPasses.TypeChecker.TypeCheckSymUtils where
 
@@ -84,8 +86,8 @@ instance CollectSymTermObj (SeqObjTag DataDefnTag) where
                 , SymEntry 
                     ( _SymDataPhrase % _SymPhraseType #
                         ( ( tpvars
-                            , phrase ^. typePhraseFrom % to (fromJust . traverse (substituteTypeVars stsubs))
-                            , phrase ^. typePhraseTo % to (fromJust . substituteTypeVars stsubs))
+                            , phrase ^. typePhraseFrom % to (fmap (substituteTypeVars stsubs))
+                            , phrase ^. typePhraseTo % to (substituteTypeVars stsubs))
                         , ( tpvars, phrase ^. typePhraseFrom, phrase ^. typePhraseTo)
                         )
                     ) 
@@ -105,9 +107,9 @@ instance CollectSymTermObj (SeqObjTag CodataDefnTag) where
                     ( _SymCodataPhrase % _SymPhraseType #
                         ( ( tpvars
                             , phrase ^. typePhraseFrom % to 
-                                (fromJust . traverse (substituteTypeVars stsubs)
-                                 *** fromJust . substituteTypeVars stsubs )
-                            , phrase ^. typePhraseTo % to (fromJust . substituteTypeVars stsubs))
+                                (fmap (substituteTypeVars stsubs)
+                                 *** substituteTypeVars stsubs )
+                            , phrase ^. typePhraseTo % to (substituteTypeVars stsubs))
                         , ( tpvars, phrase ^. typePhraseFrom, phrase ^. typePhraseTo)
                         )
                     ) 

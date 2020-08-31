@@ -26,9 +26,13 @@ import MplPasses.Renamer.RenameErrors
 import qualified MplPasses.Renamer.RenameSym as R
 
 import MplPasses.TypeChecker.TypeCheck
-import MplPasses.TypeChecker.TypeCheckErrors
-import MplPasses.TypeChecker.KindCheck
-import MplPasses.TypeChecker.TypeEqns
+
+import MplPasses.TypeChecker.KindCheck 
+import MplPasses.TypeChecker.TypeEqns 
+import MplPasses.TypeChecker.TypeCheckSemanticErrors 
+import MplPasses.TypeChecker.TypeCheckCallErrors 
+import MplPasses.TypeChecker.TypeCheckErrorPkg 
+import MplPasses.TypeChecker.TypeCheckMplTypeSub
 
 import MplPasses.Passes
 import MplPasses.Env
@@ -44,7 +48,10 @@ spec = do
             % _TypeCheckKindErrors 
             % _KindHigherKindedTypesAreNotAllowed))
         [ nh1
-        , ns1 ]
+        , nh2 
+        , nh3 
+        , ns1
+        ]
 
     mapM_ (`describeAnyErrors` ("Kind primitive mismatch", 
             _MplTypeCheckErrors 
@@ -57,7 +64,6 @@ spec = do
             % _TypeCheckKindErrors 
             % _KindAritySeqMismatchExpectedButGot))
         [ ns1 ]
-
 
 -- Valid tests  
 ----------------------------
@@ -82,6 +88,15 @@ defn
     data 
         Test(A,B) -> C =
             Testtt :: A(B) -> C
+|]
+
+nh3 =[r|
+data Nat(A) -> S =
+    Succ :: S,A(A) -> S
+    Zero ::   -> S
+
+fun myfun :: Nat(A) -> Nat(A) =
+    Succ(a), Succ(b) -> a
 |]
 
 -- Invalid higher order types..

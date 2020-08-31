@@ -10,7 +10,6 @@
 {-# LANGUAGE NamedWildCards #-}
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
 
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 module MplPasses.TypeChecker.TypeCheck where
 
@@ -38,7 +37,6 @@ import MplPasses.TypeChecker.TypeCheckErrors
 import MplPasses.TypeChecker.TypeCheckCallErrors 
 import MplPasses.Env
 
-
 import MplUtil.UniqueSupply
 
 import Control.Monad.Writer
@@ -51,6 +49,7 @@ import Control.Applicative
 import Data.Semigroup
 import Data.Maybe
 import Data.Bool
+import Data.Traversable
 
 import qualified Data.Map as Map
 import Data.Map (Map)
@@ -60,6 +59,8 @@ import Debug.Trace
 
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
+
+import Data.Foldable
 
 import Data.Functor.Foldable (Base, cata, para)
 
@@ -146,7 +147,8 @@ typeCheckStmts (MplStmt defns wheres) = do
             pkg = runExcept $ bool (return ()) (throwError mempty) erroccured 
                     >> withExceptT pure (solveTypeEqns eqns') 
 
-        ~tagmap <- packageToTypeTagMap (either mempty id pkg)
+        traceShowM eqns'
+        ~tagmap <- packageToTypeTagMap (either mempty id (pkg :: Either [e] (Package MplTypeSub)))
 
     -- tell $ pure $ head $ _Huhh # () : terrs
     tell terrs
@@ -197,11 +199,11 @@ typeCheckDefn (FunctionDefn fun@(MplFunction name funtype defn)) = do
     ((foralls, funtype'), symtp) <- (`evalStateT` (st & uniqueSupply .~ sup)) $ case funtype of    
         Just tp -> do
             tp <- kindCheckFunType tp
-            insttp <- instantiateArrType tp
+            insttp <- instantiateArrType (_Just % _TypeAnnFun # fun) tp
             return (insttp, SymFun tp)
         Nothing -> do
             tag <- freshTypeTag
-            let tp = typePtoTypeVar $ annotateTypeTagToTypeP tag fun
+            let tp = typePtoTypeVar $ annotateTypeTag tag fun
             return $ (([], tp), SymSub tp)
     ttype <- guse (envLcl % typeInfoEnvTypeTag)
     ttypemap <- guse (envLcl % typeInfoEnvMap)
@@ -213,8 +215,8 @@ typeCheckDefn (FunctionDefn fun@(MplFunction name funtype defn)) = do
             traverse (withFreshTypeTag . typeCheckFunBody ) defn
 
         let fun' = MplFunction name (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeFun) defn'
-            ttype' = typePtoTypeVar $ annotateTypeTagToTypeP ttype fun
-            ttypephrases' = annotateTypeTagToTypePs (NE.toList ttypephrases) $ NE.toList defn
+            ttype' = typePtoTypeVar $ annotateTypeTag ttype fun
+            ttypephrases' = annotateTypeTags (NE.toList ttypephrases) $ NE.toList defn
             eqns = TypeEqnsExist ttypephrases' $
                 [ TypeEqnsEq (ttype', funtype') ]
                 <> map (TypeEqnsEq . (ttype',) . typePtoTypeVar ) ttypephrases'
@@ -229,11 +231,11 @@ typeCheckDefn (ProcessDefn proc@(MplProcess name proctype defn)) = do
     ((foralls, proctype'), symtp) <- (`evalStateT` (st & uniqueSupply .~ sup)) $ case proctype of    
         Just tp -> do
             ~tp <- fmap fromJust $ kindCheckProcessType tp
-            insttp <- instantiateArrType tp
+            insttp <- instantiateArrType (_Just % _TypeAnnProc # proc) tp
             return (insttp, SymProc tp)
         Nothing -> do
             tag <- freshTypeTag
-            let tp = typePtoTypeVar $ annotateTypeTagToTypeP tag proc
+            let tp = typePtoTypeVar $ annotateTypeTag tag proc
             return $ (([], tp), SymSub tp)
 
     ttype <- guse (envLcl % typeInfoEnvTypeTag)
@@ -247,8 +249,8 @@ typeCheckDefn (ProcessDefn proc@(MplProcess name proctype defn)) = do
             traverse (withFreshTypeTag . typeCheckProcessBody) defn
 
         let proc' = MplProcess name (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeProc) defn'
-            ttype' = typePtoTypeVar $ annotateTypeTagToTypeP ttype proc
-            ttypephrases' = annotateTypeTagToTypePs (NE.toList ttypephrases) $ NE.toList defn
+            ttype' = typePtoTypeVar $ annotateTypeTag ttype proc
+            ttypephrases' = annotateTypeTags (NE.toList ttypephrases) $ NE.toList defn
             eqns = TypeEqnsExist ttypephrases' $
                 [ TypeEqnsEq (ttype', proctype') ]
                 -- <> map (TypeEqnsEq . (ttype',)) (annotateTypeTags (NE.toList ttypephrases) $ ttypephrases' )
@@ -275,9 +277,9 @@ typeCheckFunBody bdy@(patts, expr) = do
 
     ~(ttypeexpr, (expr', expracceqn)) <- withFreshTypeTag . typeCheckExpr $ expr
 
-    let ttypep = annotateTypeTagToTypeP ttype bdy
-        ttypepexpr = annotateTypeTagToTypeP ttypeexpr expr
-        ttypeppatts = annotateTypeTagToTypePs ttypepatts patts
+    let ttypep = annotateTypeTag ttype bdy
+        ttypepexpr = annotateTypeTag ttypeexpr expr
+        ttypeppatts = annotateTypeTags ttypepatts patts
 
         eqn = TypeEqnsExist (ttypepexpr:ttypeppatts) $
                 [ TypeEqnsEq 
@@ -313,7 +315,7 @@ typeCheckExpr = para f
 
         ~(SymEntry lkuptp (SymSeqCall lkupdef)) <- zoom (envLcl % typeInfoSymTab) $ lookupSymTerm n
 
-        let ttypep = annotateTypeTagToTypeP ttype (_EVar # (cxt, n) :: MplExpr MplRenamed)
+        let ttypep = annotateTypeTag ttype (_EVar # (cxt, n) :: MplExpr MplRenamed)
             
             lkuptp' = fromJust $ lkuptp ^? _SymSub
             eqns = [ TypeEqnsEq (typePtoTypeVar ttypep , lkuptp') ] 
@@ -326,10 +328,127 @@ typeCheckExpr = para f
     f (ECharF _ _ ) = panicNotImplemented
     f (EDoubleF _ _ ) = panicNotImplemented
 
-    f (ECaseF cxt caseon cases ) = panicNotImplemented
-    f (EObjCallF cxt ident args ) = panicNotImplemented
-    f (ECallF cxt ident args ) = panicNotImplemented
-    f (ERecordF cxt phrases) = panicNotImplemented
+    f (ECaseF cxt (caseon, mcaseon) cases) = do
+        ttype <- guse (envLcl % typeInfoEnvTypeTag)
+        ttypestable <- freshTypeTag
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        (ttypecaseon, (caseon', caseoneqn)) <- withFreshTypeTag mcaseon
+
+        ((ttypepatts, ttypeexprs), (pattsexprs', acceqns)) <- 
+            fmap ((NE.unzip *** NE.unzip) <<< NE.unzip)
+            $ for cases $ \(patt, (_, mexpreqn)) -> do
+                (ttypepatt, (patt', patteqn)) <- withFreshTypeTag $ typeCheckPattern patt
+                (ttypeexpr, (expr', expreqn)) <- withFreshTypeTag mexpreqn
+                return ((ttypepatt, ttypeexpr), ((patt', expr'), patteqn <> expreqn))
+
+        let ttypep = annotateTypeTag ttype (_ECase # (cxt, caseon, fmap (second fst) cases) :: MplExpr MplRenamed)
+            ttypepcaseon = annotateTypeTag ttypecaseon caseon
+
+            ttypeppatts = annotateTypeTags (NE.toList ttypepatts) (NE.toList $ fmap fst cases)
+            ttypepexprs = annotateTypeTags (NE.toList ttypeexprs) (NE.toList $ fmap (fst . snd) cases)
+
+            eqns = TypeEqnsExist (ttypepcaseon : ttypeppatts ++ ttypepexprs) $
+                [ genStableEqn ttypestable ttypep ]
+                -- the case on should be the same as all the patterns
+                <> map (TypeEqnsEq . (typePtoTypeVar ttypepcaseon,) . typePtoTypeVar) ttypeppatts
+                -- the resulting type should be the same as all expressions
+                -- on the other side of the case
+                <> map (TypeEqnsEq . (typePtoTypeVar ttypep,) . typePtoTypeVar) ttypepexprs
+                -- accumulate the old equations of course.
+                <> caseoneqn
+                <> concat acceqns
+
+        return 
+            ( _ECase # 
+             ( fromJust $ ttypemap ^? at ttypestable % _Just % _SymType
+             , caseon'
+             , pattsexprs' )
+            , [eqns])
+        
+    f (EObjCallF cxt ident args) = do
+        ttype <- guse (envLcl % typeInfoEnvTypeTag)
+        ttypestable <- freshTypeTag
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        ~(SymEntry lkuptp (SymSeqPhraseCall seqdef)) <- zoom (envLcl % typeInfoSymTab) $ lookupSymTerm ident
+
+        (ttypeargs, (args', argseqns)) <- fmap (second unzip <<< unzip) $
+            for args $ \(_, mexpreqns) -> withFreshTypeTag mexpreqns
+
+        sup <- freshUniqueSupply
+        let expr = _EObjCall # (cxt, ident, map fst args) :: MplExpr MplRenamed
+
+            ttypep = annotateTypeTag ttype expr
+            ttypepargs = annotateTypeTags ttypeargs $ map fst args
+
+            ann = _Just % _TypeAnnExpr # expr
+            ~(ttypesphrase, lkuptp') = (`evalState`sup)
+                $ fromJust 
+                $ instantiateArrType ann
+                    <$> lkuptp ^? _SymDataPhrase % noStateVarsType
+                <|> instantiateArrType ann
+                    <$> lkuptp ^? _SymCodataPhrase % noStateVarsType
+
+            eqns = TypeEqnsExist (ttypesphrase ++ ttypepargs) $
+                [ TypeEqnsEq 
+                    ( mkTypeSubSeqArr (map typePtoTypeVar ttypepargs, typePtoTypeVar ttypep)  
+                    , lkuptp') 
+                ] 
+                <> [genStableEqn ttypestable ttypep]
+                <> concat argseqns
+
+        return 
+            ( _EObjCall # 
+              ( fromJust $ ttypemap ^? at ttypestable % _Just % _SymType
+              , ident
+              , args' ) 
+            , [eqns] )
+
+    -- lots of duplicated code..
+    f (ECallF cxt ident args ) = do
+        ttype <- guse (envLcl % typeInfoEnvTypeTag)
+        ttypestable <- freshTypeTag
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        ~(SymEntry lkuptp (SymSeqCall seqdef)) <- zoom (envLcl % typeInfoSymTab) $ lookupSymTerm ident
+
+        (ttypeargs, (args', argseqns)) <- fmap (second unzip <<< unzip) $
+            for args $ \(_, mexpreqns) -> withFreshTypeTag mexpreqns
+
+        sup <- freshUniqueSupply
+        let expr = _ECall # (cxt, ident, map fst args) :: MplExpr MplRenamed
+
+            ttypep = annotateTypeTag ttype expr
+            ttypepargs = annotateTypeTags ttypeargs $ map fst args
+
+            ann = _Just % _TypeAnnExpr # expr
+            ~(ttypesphrase, lkuptp') = (`evalState`sup)
+                $ fromJust 
+                $ instantiateArrType ann
+                    <$> lkuptp ^? _SymSub
+                -- this call is the only thing that differs from the
+                -- object call.
+                <|> instantiateArrType ann
+                    <$> lkuptp ^? _SymFun 
+
+            eqns = TypeEqnsExist (ttypesphrase ++ ttypepargs) $
+                [ TypeEqnsEq 
+                    ( mkTypeSubSeqArr (map typePtoTypeVar ttypepargs, typePtoTypeVar ttypep)  
+                    , lkuptp') 
+                ] 
+                <> [genStableEqn ttypestable ttypep]
+                <> concat argseqns
+
+        return 
+            ( _EObjCall # 
+              ( fromJust $ ttypemap ^? at ttypestable % _Just % _SymType
+              , ident
+              , args' ) 
+            , [eqns] )
+
+    f (ERecordF cxt phrases) = do
+        undefined
 
 
 -------------------------
@@ -358,17 +477,17 @@ typeCheckProcessBody procbdy@((patts, ins, outs), cmds) = do
     ttypeoutsstable <- traverse (const freshTypeTag) ttypeouts
 
     (cmds', acccmds) <- typeCheckCmds cmds
-    let ttypep = annotateTypeTagToTypeP ttype procbdy
-        ttypeppatts = annotateTypeTagToTypePs ttypepatts patts
-        ttypepins = annotateTypeTagToTypePs ttypeins ins
-        ttypepouts = annotateTypeTagToTypePs ttypeouts outs
+    let ttypep = annotateTypeTag ttype procbdy
+        ttypeppatts = annotateTypeTags ttypepatts patts
+        ttypepins = annotateTypeTags ttypeins ins
+        ttypepouts = annotateTypeTags ttypeouts outs
 
         eqn = TypeEqnsExist (ttypeppatts ++ ttypepins ++ ttypepins) $
                 -- phrase equation
                 [ TypeEqnsEq    
                     ( typePtoTypeVar ttypep
                     , _TypeConcArrF # 
-                        ( Just procbdy
+                        ( _Just % _TypeAnnProcPhrase # procbdy
                         , map typePtoTypeVar ttypeppatts
                         , map typePtoTypeVar ttypepins
                         , map typePtoTypeVar ttypepins ) 
@@ -425,7 +544,7 @@ typeCheckCmd ::
         (MplCmd MplRenamed)
         (MplCmd MplTypeChecked, [TypeEqns MplTypeSub])
 typeCheckCmd = \case
-    CRun cxt ident seqs ins outs -> do
+    cmd@(CRun cxt ident seqs ins outs) -> do
         ttype <- guse (envLcl % typeInfoEnvTypeTag)
         ttypestable <- freshTypeTag
         ttypemap <- guse (envLcl % typeInfoEnvMap)
@@ -436,9 +555,9 @@ typeCheckCmd = \case
         sup <- freshUniqueSupply
         let ttypelkup = (`evalState`sup) $ fromJust 
                 -- actualyl this is useless
-                $ tp ^? _SymSub % to instantiateArrType 
+                $ tp ^? _SymSub % to (instantiateArrType (_Just % _TypeAnnCmd # cmd))
                 -- but this phrase is helpful
-                <|> tp ^? _SymProc % to instantiateArrType  
+                <|> tp ^? _SymProc % to (instantiateArrType (_Just % _TypeAnnCmd # cmd))
 
         -- inslkup <- traverse f ins 
         -- outslkup <- traverse f outs
@@ -793,7 +912,7 @@ kindCheckFunType proctype@(varsyms, froms, to) = do
 addChToSymTab :: TypeCheck ChIdentR TypeTag
 addChToSymTab ch = do
     tag <- freshTypeTag
-    let typep = annotateTypeTagToTypeP tag ch
+    let typep = annotateTypeTag tag ch
         ann = typePtoTypeVar typep
     envLcl % typeInfoSymTab % symTabTerm %%= 
         ( (tag,) 

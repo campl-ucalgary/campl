@@ -33,6 +33,8 @@ import MplPasses.TypeChecker.TypeEqns
 import MplPasses.TypeChecker.TypeCheckMplTypeSub 
 import MplPasses.TypeChecker.TypeCheckMplTypeSubUtil 
 
+import Data.List
+
 import Control.Monad.Writer
 import Control.Monad.Reader
 import Control.Monad.State
@@ -134,7 +136,7 @@ higherOrderCheck tp
             ins'' <- sequenceA ins'
             outs'' <- sequenceA outs'
             return $ _SymTypeProc # 
-                ( foldMap mplTypeCollectTypeP $ seqs'' <> ins'' <> outs''
+                ( nub $ foldMap mplTypeCollectTypeP $ seqs'' <> ins'' <> outs''
                 , seqs''
                 , ins''
                 , outs'')
@@ -145,7 +147,7 @@ higherOrderCheck tp
             froms'' <- sequenceA froms'
             to'' <- to'
             return $ _SymTypeFun # 
-                ( foldMap mplTypeCollectTypeP (NE.cons to'' froms'')
+                ( nub $ foldMap mplTypeCollectTypeP (NE.cons to'' froms'')
                 , NE.toList froms''
                 , to'')
     | otherwise = fmap (review _SymType) <$> go tp
@@ -172,8 +174,6 @@ higherOrderCheck tp
 typeIdentTToTypeT :: TypeIdentT -> TypeP MplTypeChecked
 typeIdentTToTypeT (TypeIdentT tag (TypeIdentTInfoTypeVar tp)) = tp
 typeIdentTToTypeT (TypeIdentT (TypeTag tag) _) = GenNamedType tag
-
-
 
 class MkTypeSubSeqArr t where
     mkTypeSubSeqArr :: t -> MplType MplTypeSub
