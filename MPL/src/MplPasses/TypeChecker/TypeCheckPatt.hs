@@ -18,11 +18,13 @@ import MplAST.MplRenamed
 import MplAST.MplTypeChecked 
 
 import MplPasses.TypeChecker.TypeCheckUtils
-import MplPasses.TypeChecker.TypeCheckErrors 
+import MplPasses.TypeChecker.TypeCheckSemanticErrors 
 import MplPasses.TypeChecker.TypeEqns
 import MplPasses.TypeChecker.TypeCheckMplTypeSub
 import MplPasses.TypeChecker.TypeCheckMplTypeSubUtil 
 import MplPasses.TypeChecker.TypeCheckSym 
+import MplPasses.TypeChecker.TypeCheckSymUtils
+import MplPasses.TypeChecker.TypeCheckErrorPkg
 import MplPasses.Env
 
 import MplUtil.UniqueSupply
@@ -51,22 +53,20 @@ typeCheckPattern = para f
         ttypestable <- freshTypeTag
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
-        ~(SymEntry lkuptp (SymSeqPhraseCall seqdef)) <- fmap fromJust 
-            $ guse (envLcl % typeInfoSymTab % symTabTerm % at (n ^. uniqueTag))
+        ~(SymEntry lkuptp ~(SymSeqPhraseCall seqdef)) <- zoom (envLcl % typeInfoSymTab) $ lookupSymTerm n 
         let patt = (PConstructor cxt n (map fst patts) :: MplPattern MplRenamed) 
 
-        tell $ flip (maybe []) (seqdef ^? _CodataDefn ) $ \defn ->
-            [ _IllegalPattDataCallGotCodataInstead # (patt, defn) ]
-            -- should the defn be of type MplSeqObjDefn MplTypeChecked?
+        tell $ review _ExternalError $ flip (maybe mempty) (seqdef ^? _CodataDefn ) $ \defn ->
+             [_IllegalPattDataCallGotCodataInstead # (patt, defn)]
 
-        (ttypepatts, (patts', pattacceqns)) <- second unzip . unzip <$> 
+        ~(ttypepatts, (patts', pattacceqns)) <- second unzip . unzip <$> 
             traverse (withFreshTypeTag . snd ) patts
 
         sup <- freshUniqueSupply 
         let ttypep = annotateTypeTagToTypeP ttype patt
             ttypeppatts = annotateTypeTagToTypePs ttypepatts (map fst patts)
             
-            (ttypesphrase, lkuptp') = (`evalState`sup) 
+            ~(ttypesphrase, lkuptp') = (`evalState`sup) 
                 $ instantiateArrType -- (_Just % _TypeAnnPatt # patt)
                 $ fromJust 
                 $ lkuptp ^? _SymDataPhrase % noStateVarsType
@@ -83,13 +83,14 @@ typeCheckPattern = para f
                     <> concat pattacceqns
         
         return ( _PConstructor # 
-            ( (fromJust $ seqdef ^? _DataDefn
-              -- THIS WILL THROW ERRORS ALWAYS -- TODO, we need to convert
-              -- all of these type anotations to ``function like annotations"
-              , fromJust $ ttypemap ^? at ttypestable % _Just % _SymType )
-            , n
-            , patts'
-            ), [eqns])
+                ( (fromJust $ seqdef ^? _DataDefn
+                -- THIS WILL THROW ERRORS ALWAYS -- TODO, we need to convert
+                -- all of these type anotations to ``function like annotations"
+                , fromJust $ ttypemap ^? at ttypestable % _Just % _SymType )
+                , n
+                , patts'
+                ), [eqns]
+            )
 
 
     f (PRecordF cxt phrases) = error "pat not implemented"

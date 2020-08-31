@@ -24,6 +24,8 @@ import MplAST.MplRenamed
 import MplAST.MplTypeChecked 
 
 import MplPasses.TypeChecker.TypeCheckSym 
+import MplPasses.TypeChecker.TypeCheckErrorPkg
+import MplPasses.TypeChecker.TypeCheckCallErrors
 import MplPasses.Env
 
 import Control.Monad.Writer
@@ -78,21 +80,30 @@ data KindCheckErrors =
        (IdP MplRenamed, [IdP MplRenamed])
     | KindGivenASequentialClauseButGotAConcurrentClause
         (IdP MplRenamed, [MplType MplRenamed]) (IdP MplRenamed, ([IdP MplRenamed], [IdP MplRenamed]))
+
+    | CannotLookupTypeConstructor (IdP MplRenamed)
   deriving Show
 
 $(makeLenses ''KindCheckEnv)
 $(makePrisms ''KindCheckEnv) 
 $(makeClassyPrisms ''KindCheckErrors) 
 
-
 type KindCheck from to = 
-    forall e m .
-    ( AsKindCheckErrors e
+    forall e0 e1 m.
+    ( AsKindCheckErrors e0
+    , AsTypeCheckCallErrors e1
     , MonadState KindCheckEnv m
     , MonadReader SymTabType m
-    , MonadWriter [e] m ) => 
-    from ->
-    m to
+    , MonadWriter (TypeCheckErrorPkg e0 e1) m ) => 
+    from -> m to
+
+
+lookupSymType :: 
+    KindCheck (IdP MplRenamed) (MplObjectDefn MplTypeCheckedClause)
+lookupSymType n = do
+    res <- gview (ix (n ^. uniqueTag)) 
+    tell $ review _InternalError $ maybe [_CannotCallTypeCts # n] mempty res
+    return $ fromJust res
 
 primitiveKindCheck ::
     KindCheck (MplType MplRenamed) (Maybe (MplType MplTypeChecked))
@@ -107,7 +118,7 @@ primitiveKindCheck = para f
         let kindmismatch = isJust klkup && ekd /= klkup'
             klkup' = fromJust klkup
 
-        tell $ bool [] 
+        tell $ review _ExternalError $ bool [] 
             [_KindPrimtiveMismatchExpectedButGot # 
                 (ekd, klkup', TypeVar cxt n)]
             $ kindmismatch
@@ -119,11 +130,11 @@ primitiveKindCheck = para f
 
     f (TypeSeqWithArgsF cxt tp args) = do
         ekd <- guse kindCheckExpectedPrimitiveKind 
-        ~clauselkup <- fmap fromJust $ gview (ix (tp ^. uniqueTag))
+        ~clauselkup <- lookupSymType tp
 
         let rargs = map fst args
-        ~noerrs <- fmap (null . snd) $ listen $ do 
-            tell $ case clauselkup of
+        ~noerrs <- fmap (has _Empty . snd) $ listen $ do 
+            tell $ _ExternalError # case clauselkup of
                 SeqObjDefn seqclause -> 
                     let (clausename, clauseargs) = case seqclause of
                             DataDefn clause -> 
@@ -147,7 +158,7 @@ primitiveKindCheck = para f
                         ((tp,rargs), (clausename, clauseargs)) ]
                         
             -- checking if this should be a sequential kind
-            tell $ bool 
+            tell $ review _ExternalError $ bool 
                 [_KindPrimtiveMismatchExpectedButGot # 
                     ( ekd
                     , SeqKind ()
@@ -165,7 +176,7 @@ primitiveKindCheck = para f
             return $ _TypeSeqWithArgs # ( clause, tp, rargs' )
 
     f (TypeSeqVarWithArgsF cxt tp args) = do
-        tell [ _KindHigherKindedTypesAreNotAllowed #
+        tell $ _ExternalError # [ _KindHigherKindedTypesAreNotAllowed #
             _TypeSeqVarWithArgs # (cxt, tp, map fst args) ]
         return Nothing
 
@@ -176,8 +187,8 @@ primitiveKindCheck = para f
 
         let rseqs = map fst seqs
             rconcs = map fst concs
-        noerrs <- fmap (null . snd) $ listen $ do 
-            tell $ flip (maybe []) clauselkup $ \case
+        noerrs <- fmap (has _Empty . snd) $ listen $ do 
+            tell $ review _ExternalError $ flip (maybe []) clauselkup $ \case
                 ConcObjDefn seqclause -> 
                     let (clausename, clauseargs@(clauseseqs, clauseconcs)) = case seqclause of
                             ProtocolDefn clause -> 
@@ -202,7 +213,7 @@ primitiveKindCheck = para f
                         ((tp,(rseqs, rconcs)), (clausename, clauseargs)) ]
                         
             -- checking if this should be a concurrent kind
-            tell $ bool 
+            tell $ review _ExternalError $ bool 
                 [_KindPrimtiveMismatchExpectedButGot # 
                     ( ekd
                     , ConcKind ()
@@ -226,7 +237,7 @@ primitiveKindCheck = para f
                 ( clause, tp, (rseqs', rconcs') )
 
     f (TypeConcVarWithArgsF cxt tp args) = do
-        tell [ _KindHigherKindedTypesAreNotAllowed #
+        tell $ _ExternalError # [ _KindHigherKindedTypesAreNotAllowed #
             _TypeConcVarWithArgs # (cxt, tp, map fst *** map fst $ args) ]
         return Nothing
 
@@ -235,7 +246,7 @@ primitiveKindCheck = para f
             ekd <- guse kindCheckExpectedPrimitiveKind 
             let noerr = SeqKind () == ekd
             -- checking if this should be a sequential kind
-            tell $ bool 
+            tell $ review _ExternalError $ bool
                 [_KindPrimtiveMismatchExpectedButGot # 
                     ( ekd
                     , SeqKind ()
@@ -249,7 +260,7 @@ primitiveKindCheck = para f
             ekd <- guse kindCheckExpectedPrimitiveKind 
             let noerr = SeqKind () == ekd
             -- checking if this should be a sequential kind
-            tell $ bool 
+            tell $ review _ExternalError $ bool
                 [_KindPrimtiveMismatchExpectedButGot # 
                     ( ekd
                     , SeqKind ()
@@ -263,7 +274,7 @@ primitiveKindCheck = para f
             ekd <- guse kindCheckExpectedPrimitiveKind 
             let noerr = SeqKind () == ekd
             -- checking if this should be a sequential kind
-            tell $ bool 
+            tell $ review _ExternalError $ bool
                 [_KindPrimtiveMismatchExpectedButGot # 
                     ( ekd
                     , SeqKind ()
@@ -275,7 +286,7 @@ primitiveKindCheck = para f
         TypeGetF ann (lr, l) (rr, r) -> do
             ekd <- guse kindCheckExpectedPrimitiveKind 
             let noerr = ekd == _ConcKind # ()
-            tell $ bool 
+            tell $ review _ExternalError $ bool
                 [_KindPrimtiveMismatchExpectedButGot # 
                     ( ekd
                     , _ConcKind # ()
@@ -290,13 +301,13 @@ primitiveKindCheck = para f
 
             return $ bool Nothing
                 (review _TypeGetF <$> ((ann,,) <$> l' <*> r'))
-                $ noerr && null llg && null rlg 
+                $ noerr && has _Empty llg && has _Empty rlg 
 
         -- duplciated code
         TypePutF ann (lr, l) (rr, r) -> do
             ekd <- guse kindCheckExpectedPrimitiveKind 
             let noerr = ekd == _ConcKind # ()
-            tell $ bool 
+            tell $ review _ExternalError $ bool
                 [_KindPrimtiveMismatchExpectedButGot # 
                     ( ekd
                     , _ConcKind # ()
@@ -311,12 +322,12 @@ primitiveKindCheck = para f
 
             return $ bool Nothing
                 (review _TypePutF <$> ((ann,,) <$> l' <*> r'))
-                $ noerr && null llg && null rlg 
+                $ noerr && has _Empty llg && has _Empty rlg 
 
         TypeTensorF ann (lr, l) (rr, r) -> do
             ekd <- guse kindCheckExpectedPrimitiveKind 
             let noerr = ekd == _ConcKind # ()
-            tell $ bool 
+            tell $ review _ExternalError $ bool
                 [_KindPrimtiveMismatchExpectedButGot # 
                     ( ekd
                     , _ConcKind # ()
@@ -331,13 +342,13 @@ primitiveKindCheck = para f
 
             return $ bool Nothing
                 (review _TypeTensorF <$> ((ann,,) <$> l' <*> r'))
-                $ noerr && null llg && null rlg 
+                $ noerr && has _Empty llg && has _Empty rlg 
 
         -- duplicated code
         TypeParF ann (lr, l) (rr, r) -> do
             ekd <- guse kindCheckExpectedPrimitiveKind 
             let noerr = ekd == _ConcKind # ()
-            tell $ bool 
+            tell $ review _ExternalError $ bool 
                 [_KindPrimtiveMismatchExpectedButGot # 
                     ( ekd
                     , _ConcKind # ()
@@ -352,12 +363,12 @@ primitiveKindCheck = para f
 
             return $ bool Nothing
                 (review _TypeParF <$> ((ann,,) <$> l' <*> r'))
-                $ noerr && null llg && null rlg 
+                $ noerr && has _Empty llg && has _Empty rlg 
                 
         TypeNegF ann (lr, l)  -> do
             ekd <- guse kindCheckExpectedPrimitiveKind 
             let noerr = ekd == _ConcKind # ()
-            tell $ bool 
+            tell $ review _ExternalError $ bool 
                 [_KindPrimtiveMismatchExpectedButGot # 
                     ( ekd
                     , _ConcKind # ()
@@ -369,12 +380,12 @@ primitiveKindCheck = para f
 
             return $ bool Nothing
                 (review _TypeNegF <$> ((ann,) <$> l'))
-                $ noerr && null llg 
+                $ noerr && has _Empty llg 
                 
         TypeTopBotF cxt  -> do
             ekd <- guse kindCheckExpectedPrimitiveKind 
             let noerr = ekd == _ConcKind # ()
-            tell $ bool 
+            tell $ review _ExternalError $ bool 
                 [_KindPrimtiveMismatchExpectedButGot # 
                     ( ekd
                     , _ConcKind # ()

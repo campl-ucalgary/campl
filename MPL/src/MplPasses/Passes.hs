@@ -15,9 +15,12 @@ import MplPasses.Renamer.RenameErrors
 import qualified MplPasses.Renamer.RenameSym as R
 
 import MplPasses.TypeChecker.TypeCheck
-import MplPasses.TypeChecker.TypeCheckErrors 
+import MplPasses.TypeChecker.TypeCheckErrors
 import MplPasses.TypeChecker.KindCheck 
-import MplPasses.TypeChecker.TypeEqns
+import MplPasses.TypeChecker.TypeEqns 
+import MplPasses.TypeChecker.TypeCheckSemanticErrors 
+import MplPasses.TypeChecker.TypeCheckCallErrors 
+import MplPasses.TypeChecker.TypeCheckErrorPkg 
 import MplPasses.TypeChecker.TypeCheckMplTypeSub
 
 import MplPasses.Env
@@ -54,8 +57,14 @@ instance AsRenameErrors MplPassesErrors where
 instance AsTypeCheckErrors MplPassesErrors where
     _TypeCheckErrors = _MplTypeCheckErrors 
 
+instance AsTypeCheckSemanticErrors MplPassesErrors where
+    _TypeCheckSemanticErrors = _MplTypeCheckErrors % _TypeCheckSemanticErrors 
+
 instance AsKindCheckErrors MplPassesErrors where
-    _KindCheckErrors = _MplTypeCheckErrors  % _TypeCheckKindErrors 
+    _KindCheckErrors = _MplTypeCheckErrors % _TypeCheckKindErrors 
+
+instance AsTypeCheckCallErrors MplPassesErrors where
+    _TypeCheckCallErrors = _MplTypeCheckErrors % _TypeCheckCallErrors 
 
 instance AsTypeUnificationError MplPassesErrors MplTypeSub where
     _TypeUnificationError = _MplTypeCheckErrors % _TypeUnificationError 

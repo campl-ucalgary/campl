@@ -21,10 +21,12 @@ import MplAST.MplTypeChecked
 import MplUtil.UniqueSupply
 
 import MplPasses.TypeChecker.TypeCheckSym 
-import MplPasses.TypeChecker.TypeCheckErrors
+import MplPasses.TypeChecker.TypeCheckSemanticErrors
+import MplPasses.TypeChecker.TypeCheckCallErrors 
 import MplPasses.TypeChecker.TypeCheckMplTypeSubUtil
 import MplPasses.TypeChecker.KindCheck
 import MplPasses.TypeChecker.TypeCheckPanic
+import MplPasses.TypeChecker.TypeCheckErrorPkg
 import MplPasses.Env
 
 import MplPasses.TypeChecker.TypeEqns 
@@ -74,10 +76,7 @@ freshTypeInfoEnv = do
     return $ TypeInfoEnv mempty tag mempty
 
 withFreshTypeTag ::
-    ( AsTypeCheckErrors e 
-    , MonadWriter [e] m 
-    , MonadState TypeCheckEnv m
-    , MonadFix m ) =>
+    MonadState TypeCheckEnv m =>
     m a -> m (TypeTag, a)
 withFreshTypeTag act = do
     tag <- guse (envLcl % typeInfoEnvTypeTag)
@@ -88,14 +87,21 @@ withFreshTypeTag act = do
     return (tag', res)
 
 type TypeCheck renamed typechecked =
-    forall e m. 
-    ( AsTypeCheckErrors e 
-    , AsKindCheckErrors e
-    , AsTypeUnificationError e MplTypeSub
-    , MonadWriter [e] m 
-    , MonadState TypeCheckEnv m
-    , MonadFix m ) =>
-    renamed -> m typechecked
+    forall e0 e1 m0 n. 
+    ( AsTypeCheckSemanticErrors e0 
+    , AsKindCheckErrors e0
+
+    , AsTypeCheckCallErrors e0
+    , AsTypeCheckCallErrors e1
+
+
+    , MonadWriter (TypeCheckErrorPkg e0 e1) n 
+    , MonadWriter (TypeCheckErrorPkg e0 e1) m0
+
+    , MonadFix n 
+
+    , Zoom m0 n SymTab TypeCheckEnv ) =>
+    renamed -> n typechecked
 
 -- Utility functions..
 genStableEqn :: 
@@ -105,14 +111,19 @@ genStableEqn ::
 genStableEqn tag typep = _TypeEqnsEqStable # (typep & typeIdentTUniqueTag .~ tag, typePtoTypeVar typep)
 
 packageToTypeTagMap :: 
-    TypeCheck (Package MplTypeSub) TypeTagMap 
+    ( AsTypeCheckSemanticErrors e
+    , MonadWriter [e] m ) => 
+    Package MplTypeSub -> m TypeTagMap 
 packageToTypeTagMap pkg = fmap Map.fromList 
     $ traverse (\(tag, tp) -> fmap ((tag,) . fromJust) $ higherOrderCheck tp) tagstotypesub
   where
     tagstotypesub = pkg ^. packageSubs % to (map (first (view typeIdentTUniqueTag) . snd))
 
 higherOrderCheck :: 
-    TypeCheck (MplType MplTypeSub) (Maybe SymTypeEntry)
+    ( AsTypeCheckSemanticErrors e
+    , MonadWriter [e] m ) => 
+    MplType MplTypeSub -> 
+    m (Maybe SymTypeEntry)
 higherOrderCheck tp 
     | Just (cxt, seqs, ins, outs) <- tp ^? _TypeConcArrF = do
         seqs' <- traverse go seqs
@@ -122,14 +133,21 @@ higherOrderCheck tp
             seqs'' <- sequenceA seqs'
             ins'' <- sequenceA ins'
             outs'' <- sequenceA outs'
-            return $ _SymTypeProc # ([], seqs'', ins'', outs'')
+            return $ _SymTypeProc # 
+                ( foldMap mplTypeCollectTypeP $ seqs'' <> ins'' <> outs''
+                , seqs''
+                , ins''
+                , outs'')
     | Just (cxt, froms, to) <- tp ^? _TypeSeqArrF = do
         froms' <- traverse go froms
         to' <- go to
         return $ do
             froms'' <- sequenceA froms'
             to'' <- to'
-            return $ _SymTypeFun # ([], NE.toList froms'', to'')
+            return $ _SymTypeFun # 
+                ( foldMap mplTypeCollectTypeP (NE.cons to'' froms'')
+                , NE.toList froms''
+                , to'')
     | otherwise = fmap (review _SymType) <$> go tp
   where
     go = para f
@@ -154,12 +172,6 @@ higherOrderCheck tp
 typeIdentTToTypeT :: TypeIdentT -> TypeP MplTypeChecked
 typeIdentTToTypeT (TypeIdentT tag (TypeIdentTInfoTypeVar tp)) = tp
 typeIdentTToTypeT (TypeIdentT (TypeTag tag) _) = GenNamedType tag
-
-{-
-lookupSym :: 
-    ( MonadState TypeCheckEnv m ) => Lens' TypeCheckEnv (Maybe a) -> m a
-lookupSym lens = join $ guses lens $ maybe (envLcl % typeInfoSymTab % symTabBadLookup .= True >> panicSymTab) pure
--}
 
 
 

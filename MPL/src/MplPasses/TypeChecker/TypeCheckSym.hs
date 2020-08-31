@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -18,7 +19,11 @@ import MplPasses.TypeChecker.TypeCheckMplTypeSub
 import Data.Map (Map)
 import qualified Data.Map as Map
 
+import qualified Data.List.NonEmpty as NE
+import Data.List.NonEmpty (NonEmpty (..))
+
 import Data.Maybe
+
 
 type SymTabType = Map UniqueTag (MplObjectDefn MplTypeCheckedClause)
 type SymTabTerm = Map UniqueTag (SymEntry SymTermInfo)
@@ -64,6 +69,7 @@ data SymType =
     SymSub (MplType MplTypeSub)
     | SymProc ([TypeP MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked])
     | SymFun ([TypeP MplTypeChecked], [MplType MplTypeChecked], MplType MplTypeChecked)
+
     | SymDataPhrase (SymPhraseType ([TypeP MplTypeChecked], [MplType MplTypeChecked], MplType MplTypeChecked))
      
     | SymCodataPhrase 
@@ -86,3 +92,4 @@ $(concat <$> traverse makeLenses
     , ''SymPhraseType  
     ]
  )
+

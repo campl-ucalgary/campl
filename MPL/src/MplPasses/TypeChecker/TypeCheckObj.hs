@@ -26,8 +26,9 @@ import MplAST.MplRenamed
 import MplPasses.TypeChecker.TypeCheckUtils 
 import MplPasses.TypeChecker.TypeCheckSym 
 import MplPasses.Env
-import MplPasses.TypeChecker.TypeCheckErrors 
+import MplPasses.TypeChecker.TypeCheckSemanticErrors 
 import MplPasses.TypeChecker.KindCheck 
+import MplPasses.TypeChecker.TypeCheckErrorPkg 
 
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
@@ -60,10 +61,10 @@ typeCheckTypeClauseSpine ::
 typeCheckTypeClauseSpine spine = do
     -- first, check if all the args are the same 
     -- (mutually recursive types must have the same type variables)
-    tell $ typeClauseSpineSameVarError spine
+    tell $ review _ExternalError $ typeClauseSpineSameVarError spine
 
     -- now, do additional checks with state variable placements....
-    tell $ foldMapOf (typeClauseSpineClauses % folded)  
+    tell $ review _ExternalError $ foldMapOf (typeClauseSpineClauses % folded)  
         (\clause -> foldMapOf 
             (typeClausePhrases % folded) 
             (typePhraseStateVarError (clause ^. typeClauseStateVar)) 
@@ -128,11 +129,15 @@ instance KindCheckObjArgsKindEnv (ConcObjTag t) where
 
 class KindCheckPhrase (t :: ObjectDefnTag) where
     kindCheckPhrase :: 
+        KindCheck (MplTypeClause MplTypeChecked t, MplTypePhrase MplRenamed t) 
+            (MplTypePhrase MplTypeChecked t)
+        {-
         ( AsKindCheckErrors e
         , MonadState KindCheckEnv m
         , MonadReader SymTabType m
         , MonadWriter [e] m ) => (MplTypeClause MplTypeChecked t, MplTypePhrase MplRenamed t) ->
             m (MplTypePhrase MplTypeChecked t)
+            -}
 
 instance KindCheckPhrase (SeqObjTag DataDefnTag) where
     kindCheckPhrase (clause, phrase) = do
@@ -202,7 +207,7 @@ instance KindCheckPhrase (ConcObjTag CoprotocolDefnTag) where
 
 class TypeClauseSpineSameVarError (t :: ObjectDefnTag) where
     typeClauseSpineSameVarError :: 
-        AsTypeCheckErrors e => 
+        AsTypeCheckSemanticErrors e => 
         MplTypeClauseSpine MplRenamed t -> 
         [e]
 instance TypeClauseSpineSameVarError (SeqObjTag t) where
@@ -229,7 +234,7 @@ instance TypeClauseSpineSameVarError (ConcObjTag t) where
         shoulderror = length eqclasses >= 2 
 
 class TypePhraseStateVarError t where
-    typePhraseStateVarError :: AsTypeCheckErrors e => IdentR -> MplTypePhrase MplRenamed t -> [e]
+    typePhraseStateVarError :: AsTypeCheckSemanticErrors e => IdentR -> MplTypePhrase MplRenamed t -> [e]
 
 instance TypePhraseStateVarError (SeqObjTag DataDefnTag) where
     typePhraseStateVarError st phrase = bool [] 

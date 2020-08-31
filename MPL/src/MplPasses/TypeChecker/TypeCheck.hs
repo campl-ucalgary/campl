@@ -9,6 +9,9 @@
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE NamedWildCards #-}
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
+
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 module MplPasses.TypeChecker.TypeCheck where
 
 import Optics 
@@ -19,7 +22,7 @@ import MplAST.MplParsed
 import MplAST.MplRenamed
 import MplAST.MplTypeChecked 
 
-import MplPasses.TypeChecker.TypeCheckErrors 
+import MplPasses.TypeChecker.TypeCheckSemanticErrors 
 import MplPasses.TypeChecker.TypeCheckUtils 
 import MplPasses.TypeChecker.TypeCheckSym 
 import MplPasses.TypeChecker.TypeCheckMplTypeSub 
@@ -29,6 +32,10 @@ import MplPasses.TypeChecker.TypeCheckObj
 import MplPasses.TypeChecker.KindCheck 
 import MplPasses.TypeChecker.TypeCheckPatt 
 import MplPasses.TypeChecker.TypeCheckPanic
+import MplPasses.TypeChecker.TypeCheckErrorPkg
+import MplPasses.TypeChecker.TypeCheckSymUtils 
+import MplPasses.TypeChecker.TypeCheckErrors 
+import MplPasses.TypeChecker.TypeCheckCallErrors 
 import MplPasses.Env
 
 
@@ -58,8 +65,10 @@ import Data.Functor.Foldable (Base, cata, para)
 
 runTypeCheck' ::
     ( AsTypeCheckErrors err 
+    , AsTypeUnificationError err MplTypeSub
+    , AsTypeCheckSemanticErrors err
     , AsKindCheckErrors err 
-    , AsTypeUnificationError err MplTypeSub ) =>
+    , AsTypeCheckCallErrors err ) =>
     (TopLevel, UniqueSupply) ->
     MplProg MplRenamed ->
     Either [err] (MplProg MplTypeChecked)
@@ -81,38 +90,53 @@ runTypeCheck' ~(top, sup) =
     tag = evalState freshTypeTag rsup
 
 runTypeCheck ::
+    forall e m0 n. 
     ( AsTypeCheckErrors e 
-    , AsKindCheckErrors e
     , AsTypeUnificationError e MplTypeSub
-    , MonadWriter [e] m 
-    , MonadState TypeCheckEnv m
-    , MonadFix m ) =>
-    MplProg MplRenamed -> 
-    m (MplProg MplTypeChecked)
+    , AsTypeCheckSemanticErrors e
+    , AsKindCheckErrors e
+    , AsTypeCheckCallErrors e
+
+    , MonadWriter [e] n 
+    , MonadWriter [e] m0
+
+    , MonadFix n 
+
+    , Zoom m0 n SymTab TypeCheckEnv ) =>
+    MplProg MplRenamed -> n (MplProg MplTypeChecked)
 runTypeCheck (MplProg stmts) = 
     MplProg <$> traverse typeCheckStmts stmts
 
 typeCheckStmts ::
+    forall e m0 n. 
     ( AsTypeCheckErrors e 
-    , AsKindCheckErrors e
+    , AsTypeCheckCallErrors e
     , AsTypeUnificationError e MplTypeSub
-    , MonadWriter [e] m 
-    , MonadState TypeCheckEnv m
-    , MonadFix m ) =>
-    MplStmt MplRenamed -> 
-    m (MplStmt MplTypeChecked)
+    , AsTypeCheckSemanticErrors e
+    , AsKindCheckErrors e 
+
+    , MonadWriter [e] n 
+    , MonadWriter [e] m0
+
+    , MonadFix n 
+
+    , Zoom m0 n SymTab TypeCheckEnv ) =>
+    MplStmt MplRenamed -> n (MplStmt MplTypeChecked)
 typeCheckStmts (MplStmt defns wheres) = do
     wheres' <- traverse typeCheckStmts wheres
 
     -- envLcl % typeInfoSymTab % symTabBadLookup .= False
     
+    envLcl % typeInfoSymTab %= mempty
     rec envLcl % typeInfoEnvMap .= tagmap
-        ~((defns', eqns), erroccured) <- fmap (NE.unzip . NE.fromList *** not . null) 
-            $ listen 
+        ~((defns', eqns), errpkg) <- fmap (first (NE.unzip . NE.fromList)) 
+            $ runWriterT 
             $ typeCheckDefns 
             $ NE.toList defns
-        -- badlkkup <- guse $ envLcl % typeInfoSymTab % symTabBadLookup 
-        let foralls = foldMap (view _1) eqns
+        let terrs = collectPkgErrors errpkg
+            erroccured = hasn't _Empty terrs
+
+            foralls = foldMap (view _1) eqns
             exists = foldMap (view _2) eqns
             subs = foldMap (view _3) eqns
             eqns' = TypeEqnsForall foralls $ [TypeEqnsExist exists subs]
@@ -120,54 +144,34 @@ typeCheckStmts (MplStmt defns wheres) = do
             -- pkg = runExcept $ bool (return ()) (throwError []) erroccured 
                 -- >> withExceptT pure (solveTypeEqns eqns') 
             pkg = runExcept $ bool (return ()) (throwError mempty) erroccured 
-                >> withExceptT pure (solveTypeEqns eqns') 
+                    >> withExceptT pure (solveTypeEqns eqns') 
 
-        -- traceM $ show eqns'
         ~tagmap <- packageToTypeTagMap (either mempty id pkg)
 
+    -- tell $ pure $ head $ _Huhh # () : terrs
+    tell terrs
     tell $ either id mempty pkg
 
     -- need to replace definitions in the symbol table here for
     -- functions. Moreover, illegally called functoins need listening..
-    bool (traverse eliminateSymTabDefn defns') (traverse recollectSymTabDefn defns') (has _Right pkg)
+    zoom envGbl $ 
+        bool (traverse eliminateSymTabDefn defns') (traverse recollectSymTabDefn defns') (has _Right pkg)
+
+    -- swap the buffers..
+    symtab' <- guse envGbl
+    envLcl % typeInfoSymTab .= symtab'
 
     return $ MplStmt defns' wheres'
-    
-recollectSymTabDefn ::
-    ( AsTypeCheckErrors e 
-    , AsKindCheckErrors e
-    , AsTypeUnificationError e MplTypeSub
-    , MonadWriter [e] m 
-    , MonadState TypeCheckEnv m
-    , MonadFix m ) =>
-    MplDefn MplTypeChecked -> m ()
-recollectSymTabDefn (FunctionDefn def) = return ()
-recollectSymTabDefn _ = return ()
-            -- FunctionDefn def -> pure 
-                -- ( def ^. funName % uniqueTag
-                -- , SymEntry (fromJust $ tsymtab ^? at (def ^. funName % uniqueTag) % _Just % symEntryType) 
-                    -- $ _SymSeqCall % _ExprCallFun # def)
-                    --
-
-eliminateSymTabDefn ::
-    ( AsTypeCheckErrors e 
-    , AsKindCheckErrors e
-    , AsTypeUnificationError e MplTypeSub
-    , MonadWriter [e] m 
-    , MonadState TypeCheckEnv m
-    , MonadFix m ) =>
-    MplDefn MplTypeChecked -> m ()
-eliminateSymTabDefn = undefined
 
 typeCheckDefns ::
     TypeCheck
         [MplDefn MplRenamed] 
         [ ( MplDefn MplTypeChecked
-            , ([TypeP MplTypeSub], [TypeP MplTypeSub], [TypeEqns MplTypeSub])) ]
+          , ([TypeP MplTypeSub], [TypeP MplTypeSub], [TypeEqns MplTypeSub])) ]
 -- same as the rename step.. need to do the magic recursive do in order
 -- to get the recursive declarations together properly.
 typeCheckDefns (defn : defns) = do
-    rec ~(defn', eqns) <-  envLcl % typeInfoSymTab .= symtab 
+    rec ~(defn', eqns) <- envLcl % typeInfoSymTab .= symtab 
                     >> fmap snd (withFreshTypeTag (typeCheckDefn defn))
         collectSymTabDefn defn'
         -- envGbl %= (collectSymTab (fmap fst defn')<>)
@@ -176,82 +180,6 @@ typeCheckDefns (defn : defns) = do
     return $ (defn',eqns) : defns'
 typeCheckDefns [] = return []
 
-collectSymTabDefn ::
-    TypeCheck (MplDefn MplTypeChecked) ()
-collectSymTabDefn def = do
-    tsymtab <- guse $ envLcl % typeInfoSymTab % symTabTerm
-    let ~syms = mempty 
-            & symTabTerm .~ symterms 
-            & symTabType .~ symtypes
-        ~symtypes = Map.fromList $ case def of
-            ObjectDefn def -> case def of
-                SeqObjDefn def -> case def of
-                    DataDefn spine -> spine ^. typeClauseSpineClauses 
-                        % to ( map (view (typeClauseName % uniqueTag)
-                                &&& review _DataDefn  ) 
-                            . NE.toList)
-                    CodataDefn spine -> spine ^. typeClauseSpineClauses 
-                        % to ( map (view (typeClauseName % uniqueTag)
-                                &&& review _CodataDefn ) . NE.toList )
-                ConcObjDefn def -> case def of
-                    ProtocolDefn spine -> spine ^. typeClauseSpineClauses 
-                        % to ( map (view (typeClauseName % uniqueTag)
-                                &&& review _ProtocolDefn ) . NE.toList )
-                    CoprotocolDefn spine -> spine ^. typeClauseSpineClauses 
-                        % to ( map (view (typeClauseName % uniqueTag)
-                                &&& review _CoprotocolDefn ) . NE.toList )
-            _ -> mempty
-
-        ~symterms = Map.fromList $ case def of 
-            ObjectDefn def -> case def of
-                SeqObjDefn def -> case def of
-                    DataDefn spine -> datatermcollect spine
-                    CodataDefn spine -> codatatermcollect spine
-            FunctionDefn def -> pure 
-                ( def ^. funName % uniqueTag
-                , SymEntry (fromJust $ tsymtab ^? at (def ^. funName % uniqueTag) % _Just % symEntryType) 
-                    $ _SymSeqCall % _ExprCallFun # def)
-
-    envGbl %= (syms<>)
-  where
-    datatermcollect spine = 
-        let tpvars = foldMapOf (typeClauseSpineClauses % folded) (map NamedType . view typeClauseArgs) spine
-            stsubs = typeClauseSpineStateVarClauseSubs spine
-            f phrase = 
-                ( phrase ^. typePhraseName % uniqueTag
-                , SymEntry 
-                    ( _SymDataPhrase % _SymPhraseType #
-                        ( ( tpvars
-                            , phrase ^. typePhraseFrom % to (fromJust . traverse (substituteTypeVars stsubs))
-                            , phrase ^. typePhraseTo % to (fromJust . substituteTypeVars stsubs))
-                        , ( tpvars, phrase ^. typePhraseFrom, phrase ^. typePhraseTo)
-                        )
-                    ) 
-                    $ _SymSeqPhraseCall % _DataDefn # phrase
-                )
-        in foldMapOf (typeClauseSpineClauses % folded % typeClausePhrases % folded)
-                 (pure . f) spine 
-
-    -- duplicated code
-    codatatermcollect spine = 
-        let tpvars = foldMapOf (typeClauseSpineClauses % folded) (map NamedType . view typeClauseArgs) spine
-            stsubs = typeClauseSpineStateVarClauseSubs spine
-            f phrase = 
-                ( phrase ^. typePhraseName % uniqueTag
-                , SymEntry 
-                    ( _SymCodataPhrase % _SymPhraseType #
-                        ( ( tpvars
-                            , phrase ^. typePhraseFrom % to 
-                                (fromJust . traverse (substituteTypeVars stsubs)
-                                 *** fromJust . substituteTypeVars stsubs )
-                            , phrase ^. typePhraseTo % to (fromJust . substituteTypeVars stsubs))
-                        , ( tpvars, phrase ^. typePhraseFrom, phrase ^. typePhraseTo)
-                        )
-                    ) 
-                    $ _SymSeqPhraseCall % _CodataDefn # phrase
-                )
-        in foldMapOf (typeClauseSpineClauses % folded % typeClausePhrases % folded)
-                 (pure . f) spine 
 
 typeCheckDefn ::
     TypeCheck (MplDefn MplRenamed) 
@@ -342,10 +270,10 @@ typeCheckFunBody bdy@(patts, expr) = do
     ttypestable <- freshTypeTag
     ttypemap <- guse (envLcl % typeInfoEnvMap)
 
-    (ttypepatts, (patts', pattacceqns)) <- second NE.unzip . NE.unzip <$> 
+    ~(ttypepatts, (patts', pattacceqns)) <- second NE.unzip . NE.unzip <$> 
         traverse (withFreshTypeTag . typeCheckPattern) patts 
 
-    (ttypeexpr, (expr', expracceqn)) <- withFreshTypeTag . typeCheckExpr $ expr
+    ~(ttypeexpr, (expr', expracceqn)) <- withFreshTypeTag . typeCheckExpr $ expr
 
     let ttypep = annotateTypeTagToTypeP ttype bdy
         ttypepexpr = annotateTypeTagToTypeP ttypeexpr expr
@@ -383,13 +311,7 @@ typeCheckExpr = para f
         ttypestable <- freshTypeTag
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
-        ~(SymEntry lkuptp (SymSeqCall lkupdef)) <- fmap fromJust 
-            $ guse (envLcl % typeInfoSymTab % symTabTerm % at (n ^. uniqueTag))
-        -- ~(SymEntry lkuptp (SymSeqCall lkupdef)) <- 
-            -- join $ guses (envLcl % typeInfoSymTab % symTabTerm % at (n ^. uniqueTag)) $ badLookupCheck
-        -- ~(SymEntry lkuptp (SymSeqCall lkupdef)) <- lookupSym $ envLcl % typeInfoSymTab % symTabTerm % at (n ^. uniqueTag)
-            -- join $ guses (envLcl % typeInfoSymTab % symTabTerm % at (n ^. uniqueTag)) $ badLookupCheck
-
+        ~(SymEntry lkuptp (SymSeqCall lkupdef)) <- zoom (envLcl % typeInfoSymTab) $ lookupSymTerm n
 
         let ttypep = annotateTypeTagToTypeP ttype (_EVar # (cxt, n) :: MplExpr MplRenamed)
             
@@ -398,6 +320,17 @@ typeCheckExpr = para f
                 <> [ genStableEqn ttypestable ttypep ]
 
         return (EVar (lkupdef, fromJust $ ttypemap ^? at ttypestable % _Just % _SymType ) n, eqns)
+
+    f (EPOpsF _ _ _ _ ) = panicNotImplemented
+    f (EIntF _ _ ) = panicNotImplemented
+    f (ECharF _ _ ) = panicNotImplemented
+    f (EDoubleF _ _ ) = panicNotImplemented
+
+    f (ECaseF cxt caseon cases ) = panicNotImplemented
+    f (EObjCallF cxt ident args ) = panicNotImplemented
+    f (ECallF cxt ident args ) = panicNotImplemented
+    f (ERecordF cxt phrases) = panicNotImplemented
+
 
 -------------------------
 -- Type checking process...
@@ -464,25 +397,25 @@ typeCheckCmds ::
         (NonEmpty (MplCmd MplRenamed)) 
         (NonEmpty (MplCmd MplTypeChecked), [TypeEqns MplTypeSub])
 typeCheckCmds (cmd :| []) = do
-    case cmd of
-        (CClose cxt _) -> tell [_IllegalLastCommand # cxt]
-        (CGet cxt _ _) -> tell [_IllegalLastCommand # cxt]
-        (CPut cxt _ _) -> tell [_IllegalLastCommand # cxt]
-        (CHPut cxt _ _) -> tell [_IllegalLastCommand # cxt]
-        (CSplit cxt _ _) -> tell [_IllegalLastCommand # cxt]
-        _ -> return ()
+    tell $ review _ExternalError $ case cmd of
+        (CClose cxt _) -> [_IllegalLastCommand # cxt]
+        (CGet cxt _ _) -> [_IllegalLastCommand # cxt]
+        (CPut cxt _ _) -> [_IllegalLastCommand # cxt]
+        (CHPut cxt _ _) -> [_IllegalLastCommand # cxt]
+        (CSplit cxt _ _) -> [_IllegalLastCommand # cxt]
+        _ -> mempty
     first (:|[]) <$> typeCheckCmd cmd
 typeCheckCmds (cmd :| rst) = do
-    case cmd of
-        CFork cxt _ _ -> tell [_IllegalNonLastCommand # cxt]
-        CId cxt _ -> tell [_IllegalNonLastCommand # cxt]
-        CIdNeg cxt _ -> tell [_IllegalNonLastCommand # cxt]
+    tell $ review _ExternalError $ case cmd of
+        CFork cxt _ _ -> [_IllegalNonLastCommand # cxt]
+        CId cxt _ -> [_IllegalNonLastCommand # cxt]
+        CIdNeg cxt _ -> [_IllegalNonLastCommand # cxt]
         -- run commands are not techincally a keyword..
-        CRun _ cxt _ _ _ -> tell [review _IllegalNonLastCommand $ cxt ^. identPNameOcc % to KeyWordNameOcc]
-        CHCase cxt _ _ -> tell [_IllegalNonLastCommand # cxt]
-        CHalt cxt _ -> tell [_IllegalNonLastCommand # cxt]
-        CRace cxt _ -> tell [_IllegalNonLastCommand # cxt]
-        _ -> tell []
+        CRun _ cxt _ _ _ -> [review _IllegalNonLastCommand $ cxt ^. identPNameOcc % to KeyWordNameOcc]
+        CHCase cxt _ _ -> [_IllegalNonLastCommand # cxt]
+        CHalt cxt _ -> [_IllegalNonLastCommand # cxt]
+        CRace cxt _ -> [_IllegalNonLastCommand # cxt]
+        _ -> []
     (cmd', eqn) <- typeCheckCmd cmd
     (rst', eqns) <- first NE.toList <$> typeCheckCmds (NE.fromList rst)
     return (cmd' :| rst', eqn <> eqns)
@@ -498,7 +431,7 @@ typeCheckCmd = \case
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
         ~(SymEntry tp (SymRunInfo proc)) <- fmap fromJust $ 
-            guse (envLcl % typeInfoSymTab % symTabTerm % at (ident ^. uniqueTag))
+            guse (envLcl % typeInfoSymTab % symTabTerm % at (ident ^. uniqueTag)) 
 
         sup <- freshUniqueSupply
         let ttypelkup = (`evalState`sup) $ fromJust 
@@ -863,6 +796,10 @@ addChToSymTab ch = do
     let typep = annotateTypeTagToTypeP tag ch
         ann = typePtoTypeVar typep
     envLcl % typeInfoSymTab % symTabTerm %%= 
-        ((tag,) . (Map.singleton (ch ^. uniqueTag) (_SymEntry # (SymSub ann , SymChInfo ch))  <>))
+        ( (tag,) 
+        . ( Map.singleton 
+            (ch ^. uniqueTag) 
+            (_SymEntry # (SymSub ann , SymChInfo ch)) <>)
+        )
         -- ((Map.fromList $ map (view uniqueTag &&&) ins )<>)
 
