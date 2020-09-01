@@ -69,4 +69,6 @@ $(makeLenses ''MyStrange)
 mytestfun = do
     zoomMaybe (innermap % at 1 % _Just ) $ do
         guse equality
--}
+    -}
+
+

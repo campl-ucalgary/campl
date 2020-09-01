@@ -150,7 +150,7 @@ typeCheckStmts (MplStmt defns wheres) = do
     -- tell $ pure $ head $ _Huhh # () : terrs
     tell terrs
     tell $ either id mempty pkg
-    traceM $ bool [] (show eqns') $ null terrs
+    -- traceM $ bool [] (show eqns') $ null terrs
 
     -- need to replace definitions in the symbol table here for
     -- functions. Moreover, illegally called functoins need listening..
@@ -310,7 +310,10 @@ typeCheckExpr = para f
         ttypestable <- freshTypeTag
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
-        ~(SymEntry lkuptp (SymSeqCall lkupdef)) <- zoom (envLcl % typeInfoSymTab) $ lookupSymTerm n
+        ~(SymEntry lkuptp (SymSeqCall lkupdef)) <- zoom (envLcl % typeInfoSymTab ) $ do
+            res <- guse $ symTabTerm % at (n ^. uniqueTag)
+            tell $ review _InternalError $ maybe [_CannotCallTerm # n] (const []) res
+            return $ fromJust res
 
         let ttypep = annotateTypeTag ttype (_EVar # (cxt, n) :: MplExpr MplRenamed)
             
@@ -480,10 +483,6 @@ typeCheckExpr = para f
                         res <- guse $ symTabTerm % at (ident ^. uniqueTag)
                         let callterm = maybe (_Just % _CannotCallTerm # ident) (const Nothing) res
                         tell $ review _InternalError $ maybeToList $ callterm
-                        -- NOTE: there is a bug here, when given a data call in place
-                        -- of a codata call, it will just non exhaustive pattern match..
-                        -- this requires a little more tinkering and fiddling than my appear
-                        -- when trying to fix this! We leave this as todo...
                         tell $ review _InternalError $ maybeToList $ 
                             res ^? _Just 
                                 % symEntryInfo 
@@ -492,15 +491,13 @@ typeCheckExpr = para f
                                 % to (review _IllegalExprCodataCallGotDataInstead . (expr,))
                         return $ fromJust res
 
-                ~(ttypepatts, ~(patts', pattseqns)) <- fmap (second NE.unzip <<< NE.unzip) 
-                    $ zoom _1 
-                    $ for patts $ withFreshTypeTag . typeCheckPattern
+                ~(ttypepatts, (patts', pattseqns)) <- zoom _1 
+                    $ fmap (second unzip <<< unzip) 
+                    $ traverse (withFreshTypeTag . typeCheckPattern) patts 
 
-                ~(ttypeexpr, ~(expr', expreqns)) <- zoom _1 $ withFreshTypeTag $ lift mexpr 
+                ~(ttypeexpr, (expr', expreqns)) <- zoom _1 $ withFreshTypeTag $ lift mexpr 
 
-                {-
-                 - Note: we need the ``state $ runState" call here to get the correct laziness
-                -}
+                -- Note: we need the ``state $ runState" call here to get the correct laziness
                 (ttypepphrase, ttypeclause) <- zoom _2 $ state $ runState $ do
                     ttypepphrase <- instantiateArrType 
                         {- TODO, probably should include some sort of annotation

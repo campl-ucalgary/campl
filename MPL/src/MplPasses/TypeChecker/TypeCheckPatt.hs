@@ -47,6 +47,8 @@ import qualified Data.List.NonEmpty as NE
 
 import Data.Traversable
 
+import Debug.Trace
+
 typeCheckPattern ::
     TypeCheck
         (MplPattern MplRenamed)
@@ -108,7 +110,6 @@ typeCheckPattern = para f
                 ), [eqns]
             )
 
-
     -- This will look very similar to the record expressions!
     f (PRecordF cxt phrases) = do
         ttype <- guse (envLcl % typeInfoEnvTypeTag)
@@ -127,26 +128,13 @@ typeCheckPattern = para f
             $ (`runStateT` (st & uniqueSupply .~ sup, arrenv))
             $ for phrases $ \((), ident, (_, mpatt)) ->
                 undefined
-                {-
-                ~(SymEntry lkuptp (SymSeqPhraseCall (CodataDefn seqdef))) <- 
-                    zoom (_1 % envLcl % typeInfoSymTab) $ do
-                        res <- guse $ symTabTerm % at (ident ^. uniqueTag)
-                        let callterm = maybe (_Just % _CannotCallTerm # ident) (const Nothing) res
-                        tell $ review _InternalError $ maybeToList $ callterm
-                        tell $ review _InternalError $ maybeToList $ 
-                            callterm >> res ^? _Just 
-                                % symEntryInfo 
-                                % _SymSeqPhraseCall 
-                                % _DataDefn 
-                                % to (review _IllegalExprCodataCallGotDataInstead . (patt,))
-                        return $ fromJust res
-                        -}
 
         error "pat not implemented"
     f (PVarF cxt v) = do
         ttype <- guse (envLcl % typeInfoEnvTypeTag)
         ttypestable <- freshTypeTag
         ttypemap <- guse (envLcl % typeInfoEnvMap)
+
 
         let ann = _TypeAnnPatt # (PVar cxt v)
             ttypep =  _TypeIdentT # (ttype, TypeIdentTInfoTypeAnn ann)

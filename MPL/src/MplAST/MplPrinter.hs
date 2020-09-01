@@ -66,6 +66,9 @@ class PPrint a where
 instance PPrint Int where
     pprint n = show n
 
+instance PPrint String where
+    pprint = id
+
 instance PPrint UniqueTag where
     pprint (UniqueTag (Unique n)) = show n
 
@@ -258,6 +261,7 @@ instance ( PPrint (IdP x), PPrint (TypeP x) ) => MplTypeToBnfc (MplType x) where
         f (TypeBuiltIn n) = case n of
             TypeSeqArrF cxt froms to ->
                 B.MPL_SEQ_ARROW_TYPE [] (NE.toList $ fmap f froms) (f to)
+            TypeTopBotF cxt -> B.MPL_UIDENT_NO_ARGS_TYPE (toBnfcIdent "TopBot")
 
 class MplClauseToBnfc x t res | t -> res where
     mplClauseToBnfc :: MplTypeClause x t -> res

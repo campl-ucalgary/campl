@@ -85,12 +85,14 @@ runPasses ::
     Either [MplPassesErrors] _
 runPasses MplPassesEnv{mplPassesEnvUniqueSupply = supply, mplPassesTopLevel = toplvl} = 
     runTypeCheck' (toplvl, rs) 
-    <=< runRename' (toplvl, ls) 
+    <=< fmap tracePprint . runRename' (toplvl, ls)
     <=< runParse' 
     <=< B.runBnfc
     -- in runRename' (TopLevel, ls, rsymtab) <=< runParse' <=< B.runBnfc
   where
     (ls, rs) = split supply
+
+tracePprint n = trace (pprint n) n
 
 runPassesTester ::
     String -> 
