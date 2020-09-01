@@ -13,6 +13,8 @@ data TypeCheckCallErrors =
     -- Calling something that failed to compile..
     ---------------------
     CannotCallTerm (IdP MplRenamed)
+    -- | CannotCallCh is never actually called..
+    | CannotCallCh (ChP MplRenamed)
     | CannotCallTypeCts (IdP MplRenamed)
 
     -- Function definition errors...

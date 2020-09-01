@@ -112,6 +112,12 @@ genStableEqn ::
     TypeEqns MplTypeSub
 genStableEqn tag typep = _TypeEqnsEqStable # (typep & typeIdentTUniqueTag .~ tag, typePtoTypeVar typep)
 
+genTypeEqEqns :: 
+    [MplType MplTypeSub] ->  
+    [MplType MplTypeSub] ->  
+    [TypeEqns MplTypeSub]
+genTypeEqEqns = zipWith (\a -> review _TypeEqnsEq . (a,) )
+
 packageToTypeTagMap :: 
     ( AsTypeCheckSemanticErrors e
     , MonadWriter [e] m ) => 

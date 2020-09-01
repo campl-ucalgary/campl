@@ -19,8 +19,8 @@ data NegNat -> S =
 codata S -> Fun(A,B) =
     App :: A, S -> B
 
-fun myConst =
-    a -> (Succ := b -> b)
+proc myproc =
+    a | b => c -> myproc(a | b => c)
 |]
 
 

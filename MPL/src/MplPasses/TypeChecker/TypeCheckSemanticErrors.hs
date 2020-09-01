@@ -27,6 +27,8 @@ import qualified Data.List.NonEmpty as NE
 import Data.Bool
 import Control.Arrow
 
+import Data.Maybe
+
 data TypeCheckSemanticErrors = 
     ---- Errors from the more ``heavy lifting" algorithms
     --------------------------------
@@ -54,8 +56,9 @@ data TypeCheckSemanticErrors =
 
     -- Process definition errors...
     --------------------------------
-    | ExpectedOppositePolarity (IdentR, Polarity)
+    | ExpectedPolarityButGot Polarity ChIdentR
         -- channel, polarity of channel. 
+ 
     | HCaseExpectedInputPolarityChToHaveProtocolButGotCoprotocol 
         -- channel, phrase ident
         IdentR IdentR
@@ -73,13 +76,10 @@ data TypeCheckSemanticErrors =
     | IllegalLastCommand KeyWordNameOcc 
     | IllegalNonLastCommand KeyWordNameOcc 
 
+    -- After type checking errors
+    --------------------------------
     | IllegalHigherOrderFunction ( NonEmpty (MplType MplTypeSub), MplType MplTypeSub)
 
-    -- 
-    | Huhh
-
-    -- Process definition errors...
-    --------------------------------
   deriving Show
 
 $(makeClassyPrisms ''TypeCheckSemanticErrors)
@@ -124,7 +124,9 @@ forkExpectedDisjointChannelsButHasSharedChannels a b =
   where
     common = a `intersect` b
 
+-}
 
+{-
 expectedInputPolarity ::
     AsTypeCheckErrors e =>
     (IdentR, SymEntry Polarity) -> 
@@ -138,5 +140,16 @@ expectedOutputPolarity ::
     [e]
 expectedOutputPolarity ch@(ident, SymEntry _ Input) = [_ExpectedOppositePolarity # (ident, Input)]
 expectedOutputPolarity _ = []
-
 -}
+
+expectedOutputPolarity ::
+    AsTypeCheckSemanticErrors e =>
+    ChIdentR -> [e]
+expectedOutputPolarity ch = maybeToList $ 
+    _ExpectedPolarityButGot # (Output, ch) <$ ch ^? polarity % _Input
+
+expectedInputPolarity ::
+    AsTypeCheckSemanticErrors e =>
+    ChIdentR -> [e]
+expectedInputPolarity ch = maybeToList $ 
+    _ExpectedPolarityButGot # (Input, ch) <$ ch ^? polarity % _Output

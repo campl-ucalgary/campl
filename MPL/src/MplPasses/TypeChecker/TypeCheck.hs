@@ -497,14 +497,9 @@ typeCheckExpr = para f
                     $ fmap (second unzip <<< unzip) 
                     $ traverse (withFreshTypeTag . typeCheckPattern) patts 
 
-                -- unfortunetly, the state moand of mexpreqn is different 
-                -- from the current statemonad (since we have not commited to
-                -- a concrete monad and mexpreqn works with an abstract state monad)
-                -- So, we have to pass the new context as well as a fresh generator
-                -- explicitly.... The alternative is to do this with plain recursion...
                 ~(ttypeexpr, (expr', expreqns)) <- lift $ withFreshTypeTag mexpreqn 
 
-                -- Note: we need the ``state $ runState" call here to get the correct laziness
+                -- Note: we need the strange ``state $ runState" call here to get the correct laziness
                 (ttypepphrase, ttypeclause) <- state $ runState $ do
                     ttypepphrase <- instantiateArrType 
                         {- TODO, probably should include some sort of annotation
@@ -580,8 +575,8 @@ typeCheckProcessBody procbdy@((patts, ins, outs), cmds) = do
     (ttypepatts, (patts', pattacceqns)) <- second NE.unzip . NE.unzip <$> 
         traverse (withFreshTypeTag . typeCheckPattern) patts 
 
-    ttypeins <- traverse addChToSymTab ins
-    ttypeouts <- traverse addChToSymTab outs
+    ttypeins <- traverse overwriteChToSymTab ins
+    ttypeouts <- traverse overwriteChToSymTab outs
 
     -- ttypepattsstable <- traverse (const freshTypeTag) ttypepatts
     ttypeinsstable <- traverse (const freshTypeTag) ttypeins
@@ -656,23 +651,72 @@ typeCheckCmd ::
         (MplCmd MplTypeChecked, [TypeEqns MplTypeSub])
 typeCheckCmd = \case
     cmd@(CRun cxt ident seqs ins outs) -> do
+        {-
         ttype <- guse (envLcl % typeInfoEnvTypeTag)
         ttypestable <- freshTypeTag
+        -}
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
-        ~(SymEntry tp (SymRunInfo procc)) <- fmap fromJust $ 
-            guse (envLcl % typeInfoSymTab % symTabTerm % at (ident ^. uniqueTag)) 
+        ~(SymEntry tp (SymRunInfo procc)) <- zoom (envLcl % typeInfoSymTab) $ lookupSymTerm ident
 
         arrenv <- freshInstantiateArrEnv
-        let ttypelkup = (`evalState`arrenv) $ fromJust 
-                -- actualyl this is useless
-                $ tp ^? _SymSub % to (instantiateArrType (_Just % _TypeAnnCmd # cmd))
-                -- but this phrase is helpful
-                <|> tp ^? _SymProc % to (instantiateArrType (_Just % _TypeAnnCmd # cmd))
+        let (ttypepargs, ttypeproc) = (`runInstantiateArrType` arrenv) $ fromJust 
+                -- | this is if no explicit annotation is provided..
+                $ tp ^? _SymSub % to (instantiateArrType (_Just % _TypeAnnProcCall # procc))
+                -- | this is if there is an explicit annotation..
+                <|> tp ^? _SymProc % to (instantiateArrType (_Just % _TypeAnnProcCall # procc))
 
-        -- inslkup <- traverse f ins 
-        -- outslkup <- traverse f outs
-        undefined
+        inslkups <- zoom (envLcl % typeInfoSymTab) $ for ins lookupSymCh
+        outslkups <- zoom (envLcl % typeInfoSymTab) $ for outs lookupSymCh
+
+        tell $ review _ExternalError $ 
+            foldMapOf (folded % symEntryInfo) expectedInputPolarity inslkups 
+            <> foldMapOf (folded % symEntryInfo) expectedOutputPolarity outslkups
+
+        ttypesins <- traverse overwriteChToSymTab ins
+        ttypesinsstables <- traverse (const freshTypeTag) ttypesins
+
+        ttypesouts <- traverse overwriteChToSymTab outs
+        ttypesoutsstables <- traverse (const freshTypeTag) ttypesouts
+
+        (ttypeseqs, (seqs', seqseqns)) <- fmap (second unzip . unzip) 
+            $ traverse (withFreshTypeTag . typeCheckExpr) seqs
+
+        let ttypespins = annotateTypeTags ttypesins ins
+            ttypespouts = annotateTypeTags ttypesins outs
+            ttypespseqs = annotateTypeTags ttypeseqs seqs
+
+            eqns = TypeEqnsExist (ttypepargs <> ttypespseqs <> ttypespins <> ttypespouts) $
+                    -- match the given types with the actual type of the process
+                    [ TypeEqnsEq 
+                        ( ttypeproc
+                        , _TypeConcArrF # 
+                            ( _Just % _TypeAnnCmd # cmd
+                            , map typePtoTypeVar ttypespseqs
+                            , map typePtoTypeVar ttypespins
+                            , map typePtoTypeVar ttypespouts
+                            ) 
+                        ) 
+                    ] 
+                    -- match the new channel types with the old channel types
+                    <> genTypeEqEqns 
+                        (map typePtoTypeVar ttypespins) 
+                        (map (fromJust . preview (symEntryType % _SymSub)) inslkups)
+                    <> genTypeEqEqns 
+                        (map typePtoTypeVar ttypespouts) 
+                        (map (fromJust . preview (symEntryType % _SymSub)) outslkups)
+                    -- stable equations
+                    <> zipWith genStableEqn ttypesinsstables ttypespins
+                    <> zipWith genStableEqn ttypesoutsstables ttypespouts
+                    -- accumlate old equations
+                    <> concat seqseqns
+
+            ins' = zipWith (\chr tag -> _ChIdentT # (chr, fromJust $ ttypemap ^? at tag % _Just % _SymTypeCh)) 
+                    ins ttypesinsstables
+            outs' = zipWith (\chr tag -> _ChIdentT # (chr, fromJust $ ttypemap ^? at tag % _Just % _SymTypeCh))
+                    outs ttypesoutsstables
+
+        return (_CRun # (procc, ident, seqs', ins', outs'), [eqns] )
     
     {-
         symtab <- guse envLcl
@@ -1020,16 +1064,21 @@ kindCheckFunType proctype@(varsyms, froms, to) = do
 -------------------------
 -- Utilities
 -------------------------
-addChToSymTab :: TypeCheck ChIdentR TypeTag
-addChToSymTab ch = do
+overwriteChToSymTab :: TypeCheck ChIdentR TypeTag
+overwriteChToSymTab ch = do
     tag <- freshTypeTag
     let typep = annotateTypeTag tag ch
-        ann = typePtoTypeVar typep
+        typep' = typePtoTypeVar typep
+    {-
     envLcl % typeInfoSymTab % symTabTerm %%= 
         ( (tag,) 
         . ( Map.singleton 
             (ch ^. uniqueTag) 
             (_SymEntry # (SymSub ann , SymChInfo ch)) <>)
         )
+        -}
+    envLcl % typeInfoSymTab % symTabTerm % at (ch ^. uniqueTag) ?=
+        _SymEntry # (SymSub typep', SymChInfo ch) 
+    return tag
         -- ((Map.fromList $ map (view uniqueTag &&&) ins )<>)
 

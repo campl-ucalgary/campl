@@ -50,6 +50,7 @@ spec = do
         , v7 
         , v8 
         , v9 
+        , v10 
         ]
 
     mapM_ (`describeAnyErrors` ("Type unification for all failure", 
@@ -143,6 +144,15 @@ defn
         a -> fun1(a)
     fun fun1 :: B -> A =
         a -> fun0(a)
+|]
+
+
+v10 = [r|
+codata S -> Fun(A,B) =
+    App :: A, S -> B
+
+fun myConst :: A -> Fun(B,B)  =
+    a -> (App := b -> b)
 |]
 
 -- Invalid tests  

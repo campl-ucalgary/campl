@@ -129,7 +129,9 @@ typeCheckPattern = para f
             $ for phrases $ \((), ident, (_, mpatt)) ->
                 undefined
 
+        -- TODO get back to this later...
         error "pat not implemented"
+
     f (PVarF cxt v) = do
         ttype <- guse (envLcl % typeInfoEnvTypeTag)
         ttypestable <- freshTypeTag

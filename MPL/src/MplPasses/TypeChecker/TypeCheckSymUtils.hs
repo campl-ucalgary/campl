@@ -63,14 +63,14 @@ lookupSymType n = do
     tell $ review _InternalError $ maybe [_CannotCallTerm # n] mempty res
     return $ fromJust res
 
-{-
 lookupSymCh :: 
-    TypeCheckSym (ChP MplRenamed) (MplObjectDefn MplTypeCheckedClause)
+    TypeCheckSymLookup (ChP MplRenamed) (SymEntry ChIdentR)
 lookupSymCh n = do
-    res <- guse (symTabType % at (n ^. uniqueTag))
-    tell $ maybe [_CannotLookupTerm # n] mempty res
-    return $ fromJust res
-    -}
+    res <- guse (symTabTerm % at (n ^. uniqueTag))
+    tell $ review _InternalError $ maybe [_CannotCallCh # n] mempty res
+    return $ fromJust $ join $ traverseOf (_Just % symEntryInfo) (preview _SymChInfo) res
+
+
 
 class CollectSymTermObj (t :: ObjectDefnTag) where
     collectSymTermObj :: MplTypeClauseSpine MplTypeChecked t -> [(UniqueTag, SymEntry SymTermInfo)]
