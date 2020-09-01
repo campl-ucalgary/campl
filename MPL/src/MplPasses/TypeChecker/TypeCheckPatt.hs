@@ -104,7 +104,7 @@ typeCheckPattern = para f
                 ( (seqdef 
                 -- THIS WILL THROW ERRORS ALWAYS -- TODO, we need to convert
                 -- all of these type anotations to ``function like annotations"
-                , fromJust $ ttypemap ^? at ttypestable % _Just % _SymType )
+                , fromJust $ ttypemap ^? at ttypestable % _Just % _SymTypeSeq )
                 , n
                 , patts'
                 ), [eqns]
@@ -141,7 +141,7 @@ typeCheckPattern = para f
             mplttype =  _TypeVar # (Just ann, ttypep)
             eqns = [ TypeEqnsEqStable (ttypep & typeIdentTUniqueTag .~ ttypestable, mplttype ) ]
 
-            res = PVar (fromJust $ ttypemap ^? at ttypestable % _Just % _SymType) v 
+            res = PVar (fromJust $ ttypemap ^? at ttypestable % _Just % _SymTypeSeq) v 
 
         envLcl % typeInfoSymTab % symTabTerm % at (v ^. uniqueTag) ?= 
             _SymEntry # (_SymSub # mplttype, _SymSeqCall % _ExprCallPattern # res )
@@ -156,7 +156,7 @@ typeCheckPattern = para f
         let patt = PNull cxt :: MplPattern MplRenamed
 
         return 
-            ( PNull (cxt, fromJust $ ttypemap ^? at ttypestable % _Just % _SymType)
+            ( PNull (cxt, fromJust $ ttypemap ^? at ttypestable % _Just % _SymTypeSeq)
             , [ genStableEqn ttypestable (annotateTypeTag ttype patt) ]
             )
 {-

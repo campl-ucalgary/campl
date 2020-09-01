@@ -135,7 +135,7 @@ higherOrderCheck tp
             seqs'' <- sequenceA seqs'
             ins'' <- sequenceA ins'
             outs'' <- sequenceA outs'
-            return $ _SymTypeProc # 
+            return $ _SymTypeConc # 
                 ( nub $ foldMap mplTypeCollectTypeP $ seqs'' <> ins'' <> outs''
                 , seqs''
                 , ins''
@@ -146,11 +146,18 @@ higherOrderCheck tp
         return $ do
             froms'' <- sequenceA froms'
             to'' <- to'
-            return $ _SymTypeFun # 
+            return $ _SymTypeSeq # 
                 ( nub $ foldMap mplTypeCollectTypeP (NE.cons to'' froms'')
                 , NE.toList froms''
                 , to'')
-    | otherwise = fmap (review _SymType) <$> go tp
+    | otherwise = do
+        tp' <- go tp
+        return $ do
+            tp'' <- tp'
+            return $ _SymTypeSeq # 
+                ( nub $ mplTypeCollectTypeP tp''
+                , mempty
+                , tp'')
   where
     go = para f
 

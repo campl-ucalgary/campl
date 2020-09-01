@@ -20,7 +20,7 @@ codata S -> Fun(A,B) =
     App :: A, S -> B
 
 fun myConst =
-    -> (App := b -> b)
+    a -> (Succ := b -> b)
 |]
 
 

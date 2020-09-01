@@ -72,3 +72,11 @@ mytestfun = do
     -}
 
 
+
+fkingaround :: MonadState Int m => m Int -> StateT Int m Int
+fkingaround act = do
+    equality %= succ
+    lift act
+    
+    
+

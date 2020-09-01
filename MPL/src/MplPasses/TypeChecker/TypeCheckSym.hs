@@ -31,9 +31,15 @@ type SymTabTerm = Map UniqueTag (SymEntry SymTermInfo)
 type TypeTagMap = Map TypeTag SymTypeEntry
 
 data SymTypeEntry = 
-    SymTypeProc ([TypeP MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked])
-    | SymTypeFun ([TypeP MplTypeChecked], [MplType MplTypeChecked], MplType MplTypeChecked)
-    | SymType (MplType MplTypeChecked)
+    SymTypeConc ([TypeP MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked])
+    | SymTypeSeq ([TypeP MplTypeChecked], [MplType MplTypeChecked], MplType MplTypeChecked)
+
+_SymTypeCh :: Prism' SymTypeEntry ([TypeP MplTypeChecked], MplType MplTypeChecked)
+_SymTypeCh = prism' cts prj
+  where
+    cts (vs, tp) = SymTypeSeq (vs, [], tp)
+    prj (SymTypeSeq (vs, [], tp)) = Just $ (vs, tp)
+    prj _ = Nothing
 
 
 

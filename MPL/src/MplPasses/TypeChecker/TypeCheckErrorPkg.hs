@@ -2,9 +2,7 @@
 module MplPasses.TypeChecker.TypeCheckErrorPkg where
 
 import Optics 
-import Optics.State.Operators
-
-
+import Optics.State.Operators 
 
 data TypeCheckErrorPkg external internal = TypeCheckErrorPkg {
     _pkgExternalError :: [external]
