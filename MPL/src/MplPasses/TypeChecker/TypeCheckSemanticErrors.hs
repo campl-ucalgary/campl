@@ -35,12 +35,6 @@ data TypeCheckSemanticErrors =
     TypeCheckKindErrors KindCheckErrors
     | TypeCheckUnificationErrors (TypeUnificationError MplTypeSub)
 
-    -- Codata record construction errors ...
-    ------------------------------------
-    | RecordConstructionErrorGotPhrasesButExpected
-        (NonEmpty (IdP MplTypeChecked)) [MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag)]
-
-
     -- Object definition errors ...
     --------------------------------
     | SeqTypeClauseArgsMustContainTheSameTypeVariables 
@@ -75,6 +69,8 @@ data TypeCheckSemanticErrors =
 
     | IllegalLastCommand KeyWordNameOcc 
     | IllegalNonLastCommand KeyWordNameOcc 
+
+    | AtLastCmdThereAreUnclosedChannels (MplCmd MplRenamed) [ChIdentR]
 
     -- After type checking errors
     --------------------------------
@@ -124,22 +120,6 @@ forkExpectedDisjointChannelsButHasSharedChannels a b =
   where
     common = a `intersect` b
 
--}
-
-{-
-expectedInputPolarity ::
-    AsTypeCheckErrors e =>
-    (IdentR, SymEntry Polarity) -> 
-    [e]
-expectedInputPolarity ch@(ident, SymEntry _ Output) = [_ExpectedOppositePolarity # (ident, Output)]
-expectedInputPolarity _ = []
-
-expectedOutputPolarity ::
-    AsTypeCheckErrors e =>
-    (IdentR, SymEntry Polarity) -> 
-    [e]
-expectedOutputPolarity ch@(ident, SymEntry _ Input) = [_ExpectedOppositePolarity # (ident, Input)]
-expectedOutputPolarity _ = []
 -}
 
 expectedOutputPolarity ::

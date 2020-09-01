@@ -26,7 +26,8 @@ import Data.Maybe
 
 
 type SymTabType = Map UniqueTag (MplObjectDefn MplTypeCheckedClause)
-type SymTabTerm = Map UniqueTag (SymEntry SymTermInfo)
+type SymTabTerm = Map UniqueTag (SymEntry SymType SymTermInfo)
+type SymTabCh = Map UniqueTag (SymEntry (MplType MplTypeSub) ChIdentR)
 
 type TypeTagMap = Map TypeTag SymTypeEntry
 
@@ -46,25 +47,28 @@ _SymTypeCh = prism' cts prj
 data SymTab = SymTab {
     _symTabTerm :: SymTabTerm
     , _symTabType :: SymTabType
+    , _symTabCh :: SymTabCh
 }  
 
 instance Semigroup SymTab where
-    SymTab a0 b0 <> SymTab a1 b1 = SymTab (a0 <> a1) (b0 <> b1) 
+    SymTab a0 b0 c0 <> SymTab a1 b1 c1 = SymTab (a0 <> a1) (b0 <> b1) (c0 <> c1)
 
 instance Monoid SymTab where
-    mempty = SymTab mempty mempty 
+    mempty = SymTab mempty mempty mempty
 
 data SymTermInfo = 
     SymRunInfo (MplProcess MplTypeChecked)
     | SymSeqCall ExprCallDef
     | SymSeqPhraseCall (MplSeqObjDefn MplTypeCheckedPhrase)
+    | SymConcPhraseCall (MplConcObjDefn MplTypeCheckedPhrase)
     | SymChInfo ChIdentR
 
 
-data SymEntry a = SymEntry {
-    _symEntryType :: SymType
-    , _symEntryInfo :: a
+data SymEntry a b = SymEntry {
+    _symEntryType :: a
+    , _symEntryInfo :: b
 }
+-- SymType
 
 data SymPhraseType a = SymPhraseType {
     _noStateVarsType :: a

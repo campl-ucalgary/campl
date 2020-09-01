@@ -27,6 +27,19 @@ instance Eq TypeIdentT where
 instance Ord TypeIdentT where
     a <=  b = _typeIdentTUniqueTag a  <= _typeIdentTUniqueTag b
 
+data TypeChAnn =
+    TypeChAnnNameOcc NameOcc
+    | TypeChAnnCmd (MplCmd MplRenamed)
+    -- Change this in the future! We have a 
+    -- few problems... When we go from 
+    -- MplType MplTypeSub --> MplType MplTypeChecked
+    -- we lose the annotation information if it
+    -- is an inferred type from a variable....
+    -- So this acts as the ``Nothing" in the Maybe
+    | TypeChAnnEmpty
+  deriving Show
+
+
 
 data TypeAnn = 
     -- Function
@@ -65,9 +78,9 @@ data TypeIdentTInfo =
 $(makeLenses ''TypeIdentT)
 $(makePrisms ''TypeIdentT)
 $(makePrisms ''TypeIdentTInfo)
+$(makePrisms ''TypeChAnn)
 $(makeClassyPrisms ''TypeAnn)
 
-instance AsTypeAnn TypeIdentTInfo where
 
 freshTypeTag ::
     ( MonadState s m

@@ -51,6 +51,10 @@ spec = do
         , v8 
         , v9 
         , v10 
+        , v11 
+        , v12 
+        , v13 
+        , v14 
         ]
 
     mapM_ (`describeAnyErrors` ("Type unification for all failure", 
@@ -68,7 +72,14 @@ spec = do
             % _TypeMatchFailure))
         [ nm1
         , nm2 
-        , nm3 ]
+        , nm3
+        , nm4 ]
+
+    mapM_ (`describeAnyErrors` ("Type match failure", 
+            _MplTypeCheckErrors 
+            % _TypeCheckUnificationErrors 
+            % _TypeOccursCheck))
+        [ no0 ]
 
 -- Valid tests  
 ----------------------------
@@ -155,6 +166,46 @@ fun myConst :: A -> Fun(B,B)  =
     a -> (App := b -> b)
 |]
 
+v11 = [r|
+proc v11 :: | A => =
+    | b => -> v11(| b => )
+|]
+
+v12 = [r|
+defn
+    proc v12a :: | Put(A | TopBot) =>  =
+        | b => -> do
+            get a on b 
+            v12b( a | b => )
+    proc v12b :: A | TopBot =>  =
+        a | b => -> do
+            halt b
+|]
+
+v13 = [r|
+proc v13 :: | => Get(A|Get(A|TopBot)) =
+    | => b -> do
+        get a on b 
+        get a on b
+        halt b
+|]
+
+v14 =[r|
+proc v14 :: | => Get(A|Put(A|TopBot)) =
+    | => b -> do
+        get a on b 
+        put a on b
+        halt b
+|]
+
+v15 =[r|
+proc v15 :: | Put(A|Get(A|TopBot)) =>  =
+    | b => -> do
+        get a on b 
+        put a on b
+        halt b
+|]
+
 -- Invalid tests  
 ----------------------------
 nf1 = [r|
@@ -219,4 +270,25 @@ codata S -> Fun(A,B) =
 
 fun testing =
     a -> (App1 := c -> Zero, App2 := a,b-> NZero)
+|]
+
+nm4 = [r|
+data Nat -> S =
+    Succ :: S -> S
+    Zero ::   -> S
+
+data NegNat -> S =
+    Pred :: S -> S
+    NZero ::   -> S
+
+proc myproc =
+    Succ(a) | b => c -> myproc(a | b => c)
+    _ | b => c -> myproc(NZero | b => c)
+|]
+
+no0 = [r|
+proc myproc =
+    | b => -> do
+        get a on b
+        myproc(| b => )
 |]

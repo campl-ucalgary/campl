@@ -300,7 +300,7 @@ primitiveKindCheck = para f
             (r', rlg) <- listen r
 
             return $ bool Nothing
-                (review _TypeGetF <$> ((ann,,) <$> l' <*> r'))
+                (review _TypeGetF <$> ((Just ann,,) <$> l' <*> r'))
                 $ noerr && has _Empty llg && has _Empty rlg 
 
         -- duplciated code
@@ -321,7 +321,7 @@ primitiveKindCheck = para f
             (r', rlg) <- listen r
 
             return $ bool Nothing
-                (review _TypePutF <$> ((ann,,) <$> l' <*> r'))
+                (review _TypePutF <$> ((Just ann,,) <$> l' <*> r'))
                 $ noerr && has _Empty llg && has _Empty rlg 
 
         TypeTensorF ann (lr, l) (rr, r) -> do
@@ -393,6 +393,6 @@ primitiveKindCheck = para f
                 ] [] $ noerr
 
             return $ bool Nothing
-                (_Just % _TypeTopBotF # cxt)
+                (_Just % _TypeTopBotF # (Just cxt))
                 $ noerr 
 

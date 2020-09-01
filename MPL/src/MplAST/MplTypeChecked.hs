@@ -237,11 +237,11 @@ type instance XTypeBoolF MplTypeChecked = NameOcc
 type instance XTypeListF MplTypeChecked = NameOcc
 type instance XTypeTupleF MplTypeChecked = NameOcc
 
-type instance XTypeGet MplTypeChecked = NameOcc
-type instance XTypePut MplTypeChecked = NameOcc
+type instance XTypeGet MplTypeChecked = Maybe NameOcc
+type instance XTypePut MplTypeChecked = Maybe NameOcc
 type instance XTypeTensor MplTypeChecked = NameOcc
 type instance XTypePar MplTypeChecked = NameOcc
-type instance XTypeTopBot MplTypeChecked = NameOcc
+type instance XTypeTopBot MplTypeChecked = Maybe NameOcc
 type instance XTypeNeg MplTypeChecked = NameOcc
 type instance XTypeSeqArrF MplTypeChecked = ()
 type instance XTypeConcArrF MplTypeChecked = ()

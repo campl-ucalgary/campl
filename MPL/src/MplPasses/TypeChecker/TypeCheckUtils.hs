@@ -180,6 +180,23 @@ higherOrderCheck tp
     f  (TypeBuiltInF n) = fmap (fmap TypeBuiltIn) $ case n of
             TypeIntF cxt -> undefined -- return $ Just $ TypeIntF cxt
 
+            TypeTopBotF cxt -> return $ _Just % _TypeTopBotF # (cxt ^? _TypeChAnnNameOcc)
+            TypeGetF cxt (_, seq) (_, conc) -> do
+                seq' <- seq
+                conc' <- conc
+                return $ do
+                    seq'' <- seq'
+                    conc'' <- conc'
+                    return $ _TypeGetF # (cxt ^? _TypeChAnnNameOcc, seq'', conc'')
+            -- duplicatedcode..
+            TypePutF cxt (_, seq) (_, conc) -> do
+                seq' <- seq
+                conc' <- conc
+                return $ do
+                    seq'' <- seq'
+                    conc'' <- conc'
+                    return $ _TypePutF # (cxt ^? _TypeChAnnNameOcc, seq'', conc'')
+
             TypeSeqArrF cxt froms to -> do
                 tell [ _IllegalHigherOrderFunction # (fmap fst froms, fst to) ]
                 return Nothing 

@@ -130,7 +130,7 @@ typeCheckPattern = para f
                 undefined
 
         -- TODO get back to this later...
-        error "pat not implemented"
+        error "record pat not implemented"
 
     f (PVarF cxt v) = do
         ttype <- guse (envLcl % typeInfoEnvTypeTag)

@@ -251,11 +251,28 @@ match = f
 
     f type0@(TypeBuiltIn a) type1@(TypeBuiltIn b) = case (a,b) of
         (TypeIntF a, TypeIntF b) -> return []
+        (TypeTopBotF a, TypeTopBotF b) -> return []
+        (TypeGetF cxt0 seq0 conc0, TypeGetF cxt1 seq1 conc1) -> 
+            concat <$> sequenceA [f seq0 seq1, f conc0 conc1]
+        (TypePutF cxt0 seq0 conc0, TypePutF cxt1 seq1 conc1) -> 
+            concat <$> sequenceA [f seq0 seq1, f conc0 conc1]
 
         (TypeSeqArrF cxt0 froms0 to0, TypeSeqArrF cxt1 froms1 to1) 
-            | length froms0 == length froms1 -> do
+            | length froms0 == length froms1 -> 
                 (<>) <$> (fold <$> traverse (uncurry f) (NE.zip froms0 froms1 ))
                      <*> f to0 to1
+            | otherwise -> throwError $ _TypeMatchFailure # (type0,type1)
+        (TypeConcArrF cxt0 seqs0 froms0 tos0, TypeConcArrF cxt1 seqs1 froms1 tos1 ) 
+            | getAll $  foldMap All 
+                [ length seqs0 == length seqs1
+                , length froms0 == length froms1 
+                , length tos0 == length tos1 
+                ] ->
+                    mconcat <$> traverse (fmap fold . traverse (uncurry f))
+                    [ zip seqs0 seqs1
+                    , zip froms0 froms1
+                    , zip tos0 tos1
+                    ]
             | otherwise -> throwError $ _TypeMatchFailure # (type0,type1)
 
     {-

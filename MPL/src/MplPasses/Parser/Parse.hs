@@ -116,12 +116,13 @@ parseBnfcDefn (B.MPL_CONCURRENT_TYPE_DEFN (B.COPROTOCOL_DEFN clauses)) =
         <$> traverseTryEach f clauses
  where
     f (B.CONCURRENT_TYPE_CLAUSE from to handles) = do
-        ((name, args), st) <- parseTypeWithArgsConcAndStateVar from to
+        -- ((name, args), st) <- parseTypeWithArgsConcAndStateVar from to
+        ((name, args), st) <- parseStateVarAndTypeWithArgsConc from to
         handles' <- traverseTryEach g handles
         return $ _MplTypeClause # (name, args, st, concat handles', ())
 
     g (B.CONCURRENT_TYPE_PHRASE handles fromtype totype) = do
-        fromtype' <- parseTypeVariable <=< parseBnfcType $ totype
+        fromtype' <- parseTypeVariable <=< parseBnfcType $ fromtype
         totype' <- parseBnfcType totype 
         return $ map 
                 ( review _MplTypePhrase 
@@ -318,7 +319,7 @@ parseBnfcCmd (B.PROCESS_HCASE cxt ident phrases) = do
         cmds <- parseBnfcCmdBlock cmdblk
         return $ ((), toTermIdentP uident, cmds)
 parseBnfcCmd (B.PROCESS_HPUT cxt s t) = do
-    return $ _CHPut # (coerce $ toNameOcc cxt, toTermIdentP s, toChIdentP t)
+    return $ _CHPut # (coerce $ toNameOcc cxt, toChIdentP s, toChIdentP t)
 
 parseBnfcCmd (B.PROCESS_SPLIT cxt s chs) = do
     let chs' = map f chs in case chs' of

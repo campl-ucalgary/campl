@@ -49,11 +49,11 @@ type TypeCheckSymLookup from to =
     from -> n to
 
 lookupSymTerm :: 
-    TypeCheckSymLookup (IdP MplRenamed) (SymEntry SymTermInfo)
+    TypeCheckSymLookup (IdP MplRenamed) (SymEntry SymType SymTermInfo)
 lookupSymTerm = fmap fromJust . lookupSymTermM
 
 lookupSymTermM :: 
-    TypeCheckSymLookup (IdP MplRenamed) (Maybe (SymEntry SymTermInfo))
+    TypeCheckSymLookup (IdP MplRenamed) (Maybe (SymEntry SymType SymTermInfo))
 lookupSymTermM n = guse (symTabTerm % at (n ^. uniqueTag)) 
 
 lookupSymType :: 
@@ -64,16 +64,15 @@ lookupSymType n = do
     return $ fromJust res
 
 lookupSymCh :: 
-    TypeCheckSymLookup (ChP MplRenamed) (SymEntry ChIdentR)
+    TypeCheckSymLookup (ChP MplRenamed) (SymEntry (MplType MplTypeSub) ChIdentR)
 lookupSymCh n = do
-    res <- guse (symTabTerm % at (n ^. uniqueTag))
+    res <- guse (symTabCh % at (n ^. uniqueTag))
     tell $ review _InternalError $ maybe [_CannotCallCh # n] mempty res
-    return $ fromJust $ join $ traverseOf (_Just % symEntryInfo) (preview _SymChInfo) res
-
+    return $ fromJust res 
 
 
 class CollectSymTermObj (t :: ObjectDefnTag) where
-    collectSymTermObj :: MplTypeClauseSpine MplTypeChecked t -> [(UniqueTag, SymEntry SymTermInfo)]
+    collectSymTermObj :: MplTypeClauseSpine MplTypeChecked t -> [(UniqueTag, SymEntry SymType SymTermInfo)]
 
 instance CollectSymTermObj (SeqObjTag DataDefnTag) where
     collectSymTermObj spine = foldMapOf (typeClauseSpineClauses % folded % typeClausePhrases % folded)
@@ -152,6 +151,11 @@ collectSymTabDefn def = do
                 ( def ^. funName % uniqueTag
                 , SymEntry (fromJust $ tsymtab ^? at (def ^. funName % uniqueTag) % _Just % symEntryType) 
                     $ _SymSeqCall % _ExprCallFun # def)
+            ProcessDefn def -> pure 
+                ( def ^. procName % uniqueTag
+                , SymEntry (fromJust $ tsymtab ^? at (def ^. procName % uniqueTag) % _Just % symEntryType) 
+                    $ _SymRunInfo # def)
+
 
     envGbl %= (syms<>)
 

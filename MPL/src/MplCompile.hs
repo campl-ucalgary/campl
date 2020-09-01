@@ -9,18 +9,27 @@ import MplPasses.Parser.BnfcParse
 parsebnfc n = runParse' <$> runBnfc n
 
 test = [r|
-data Nat(A) -> S =
-    Succ :: A, S -> S
+data Nat -> S =
+    Succ :: S -> S
     Zero ::   -> S
+
+data List(A) -> S =
+    Cons :: A,S -> S
+    Nil ::   -> S
+
 data NegNat -> S =
     Pred :: S -> S
     NZero ::   -> S
 
-codata S -> Fun(A,B) =
-    App :: A, S -> B
 
-proc myproc =
-    a | b => c -> myproc(a | b => c)
+protocol Test => S =
+    Testing :: TopBot => S
+
+proc v12a  =
+    | => b -> do
+        get a on b 
+        halt b
+
 |]
 
 

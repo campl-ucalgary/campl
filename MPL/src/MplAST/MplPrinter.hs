@@ -124,9 +124,10 @@ type MplPrintConstraints x =
     , MplTypeToBnfc (XTypePhraseTo x (SeqObjTag DataDefnTag))
     , MplTypesToBnfc (XTypePhraseFrom x (SeqObjTag CodataDefnTag))
     , MplTypeToBnfc (XTypePhraseTo x (SeqObjTag CodataDefnTag))
-    , MplTypesToBnfc (XTypePhraseFrom x (ConcObjTag ProtocolDefnTag))
+
+    , MplTypeToBnfc (XTypePhraseFrom x (ConcObjTag ProtocolDefnTag))
     , MplTypeToBnfc (XTypePhraseTo x (ConcObjTag ProtocolDefnTag))
-    , MplTypesToBnfc (XTypePhraseFrom x (ConcObjTag CoprotocolDefnTag))
+    , MplTypeToBnfc (XTypePhraseFrom x (ConcObjTag CoprotocolDefnTag))
     , MplTypeToBnfc (XTypePhraseTo x (ConcObjTag CoprotocolDefnTag))
 
     , XDataDefn x ~ MplTypeClauseSpine x (SeqObjTag DataDefnTag)
@@ -261,6 +262,22 @@ instance ( PPrint (IdP x), PPrint (TypeP x) ) => MplTypeToBnfc (MplType x) where
         f (TypeBuiltIn n) = case n of
             TypeSeqArrF cxt froms to ->
                 B.MPL_SEQ_ARROW_TYPE [] (NE.toList $ fmap f froms) (f to)
+            TypeConcArrF cxt seqs froms tos -> 
+                B.MPL_CONC_ARROW_TYPE [] (map f seqs) (map f froms) (map f tos)
+            TypeGetF cxt seq conc ->
+                B.MPL_UIDENT_SEQ_CONC_ARGS_TYPE 
+                    (toBnfcIdent "Get") 
+                    bnfcKeyword 
+                    [f seq]
+                    [f conc]
+                    bnfcKeyword
+            TypePutF cxt seq conc ->
+                B.MPL_UIDENT_SEQ_CONC_ARGS_TYPE 
+                    (toBnfcIdent "Put") 
+                    bnfcKeyword 
+                    [f seq]
+                    [f conc]
+                    bnfcKeyword
             TypeTopBotF cxt -> B.MPL_UIDENT_NO_ARGS_TYPE (toBnfcIdent "TopBot")
 
 class MplClauseToBnfc x t res | t -> res where
@@ -277,18 +294,44 @@ instance MplPrintConstraints x => MplClauseToBnfc x (SeqObjTag DataDefnTag) B.Se
 
 instance MplPrintConstraints x => MplClauseToBnfc x (SeqObjTag CodataDefnTag) B.SeqTypeClauseDefn where
     mplClauseToBnfc clause = 
-        B.SEQ_TYPE_CLAUSE st name  $ clause ^. typeClausePhrases % to (map mplPhraseToBnfc)
+        B.SEQ_TYPE_CLAUSE st name $ clause ^. typeClausePhrases % to (map mplPhraseToBnfc)
       where
         name = B.MPL_UIDENT_ARGS_TYPE (clause ^. typeClauseName % to toBnfcIdent) 
             bnfcKeyword (clause ^. typeClauseArgs % to 
                 (map (B.MPL_UIDENT_NO_ARGS_TYPE . toBnfcIdent))) bnfcKeyword
         st = clause ^. typeClauseStateVar % to (B.MPL_UIDENT_NO_ARGS_TYPE . toBnfcIdent )
 
-instance MplClauseToBnfc x (ConcObjTag ProtocolDefnTag) B.ConcurrentTypeClauseDefn where
-    mplClauseToBnfc = error "to do in pretty printer"
+instance MplPrintConstraints x => MplClauseToBnfc x (ConcObjTag ProtocolDefnTag) B.ConcurrentTypeClauseDefn where
+    mplClauseToBnfc clause = 
+        B.CONCURRENT_TYPE_CLAUSE name st $ clause ^. typeClausePhrases % to (map mplPhraseToBnfc)
+        -- error "to do in pretty printer"
+      where
+        name = B.MPL_UIDENT_SEQ_CONC_ARGS_TYPE 
+            (clause ^. typeClauseName % to toBnfcIdent) 
+            bnfcKeyword 
+            seqs
+            concs
+            bnfcKeyword
+        (seqs, concs) = clause ^. typeClauseArgs % to 
+                ( map (B.MPL_UIDENT_NO_ARGS_TYPE . toBnfcIdent)
+                        *** map (B.MPL_UIDENT_NO_ARGS_TYPE . toBnfcIdent))
+        st = clause ^. typeClauseStateVar % to (B.MPL_UIDENT_NO_ARGS_TYPE . toBnfcIdent )
 
-instance MplClauseToBnfc x (ConcObjTag CoprotocolDefnTag) B.ConcurrentTypeClauseDefn where
-    mplClauseToBnfc = error "to do in pretty printer"
+instance MplPrintConstraints x => MplClauseToBnfc x (ConcObjTag CoprotocolDefnTag) B.ConcurrentTypeClauseDefn where
+    mplClauseToBnfc clause = 
+        B.CONCURRENT_TYPE_CLAUSE st name $ clause ^. typeClausePhrases % to (map mplPhraseToBnfc)
+        -- error "to do in pretty printer"
+      where
+        name = B.MPL_UIDENT_SEQ_CONC_ARGS_TYPE 
+            (clause ^. typeClauseName % to toBnfcIdent) 
+            bnfcKeyword 
+            seqs
+            concs
+            bnfcKeyword
+        (seqs, concs) = clause ^. typeClauseArgs % to 
+                ( map (B.MPL_UIDENT_NO_ARGS_TYPE . toBnfcIdent)
+                        *** map (B.MPL_UIDENT_NO_ARGS_TYPE . toBnfcIdent))
+        st = clause ^. typeClauseStateVar % to (B.MPL_UIDENT_NO_ARGS_TYPE . toBnfcIdent )
 
 class MplPhraseToBnfc x t res | t -> res where
     mplPhraseToBnfc :: MplTypePhrase x t -> res
@@ -303,11 +346,15 @@ instance MplPrintConstraints x => MplPhraseToBnfc x (SeqObjTag CodataDefnTag) B.
         B.SEQ_TYPE_PHRASE [phrase ^. typePhraseName % to toBnfcIdent] 
             (phrase ^. typePhraseFrom % to mplTypesToBnfc) (phrase ^. typePhraseTo % to mplTypeToBnfc)
 
-instance MplPhraseToBnfc x (ConcObjTag ProtocolDefnTag) B.ConcurrentTypePhraseDefn where
-    mplPhraseToBnfc = undefined
-
-instance MplPhraseToBnfc x (ConcObjTag CoprotocolDefnTag) B.ConcurrentTypePhraseDefn where
-    mplPhraseToBnfc = undefined
+instance MplPrintConstraints x => MplPhraseToBnfc x (ConcObjTag ProtocolDefnTag) B.ConcurrentTypePhraseDefn where
+    mplPhraseToBnfc phrase = 
+        B.CONCURRENT_TYPE_PHRASE [phrase ^. typePhraseName % to toBnfcIdent]
+            (phrase ^. typePhraseFrom % to mplTypeToBnfc) (phrase ^. typePhraseTo % to mplTypeToBnfc)
+            
+instance MplPrintConstraints x => MplPhraseToBnfc x (ConcObjTag CoprotocolDefnTag) B.ConcurrentTypePhraseDefn where
+    mplPhraseToBnfc phrase = 
+        B.CONCURRENT_TYPE_PHRASE [phrase ^. typePhraseName % to toBnfcIdent]
+            (phrase ^. typePhraseFrom % to mplTypeToBnfc) (phrase ^. typePhraseTo % to mplTypeToBnfc)
 
 class MplTypesToBnfc t where
     mplTypesToBnfc :: t -> [B.MplType]

@@ -67,11 +67,11 @@ type instance XTypeBoolF MplTypeSub = NameOcc
 type instance XTypeListF MplTypeSub = NameOcc
 type instance XTypeTupleF MplTypeSub = NameOcc
 
-type instance XTypeGet MplTypeSub = NameOcc
-type instance XTypePut MplTypeSub = NameOcc
+type instance XTypeGet MplTypeSub = TypeChAnn
+type instance XTypePut MplTypeSub = TypeChAnn
 type instance XTypeTensor MplTypeSub = NameOcc
 type instance XTypePar MplTypeSub = NameOcc
-type instance XTypeTopBot MplTypeSub = NameOcc
+type instance XTypeTopBot MplTypeSub = TypeChAnn
 type instance XTypeNeg MplTypeSub = NameOcc
 type instance XTypeSeqArrF MplTypeSub = 
     Maybe TypeAnn -- Maybe ([MplPattern MplRenamed], MplExpr MplRenamed)
@@ -79,6 +79,7 @@ type instance XTypeConcArrF MplTypeSub =
     Maybe TypeAnn -- Maybe ( ([MplPattern MplRenamed], [ChIdentR], [ChIdentR]), NonEmpty (MplCmd MplRenamed) )
 
 type instance XXMplBuiltInTypesF MplTypeSub = ()
+
 
 
 data InstantiateArrEnv = InstantiateArrEnv  {
@@ -173,7 +174,6 @@ instance TypeP MplTypeChecked ~ tp => InstantiateArrType ([tp], [MplType MplType
 instance TypeP MplTypeChecked ~ tp => InstantiateArrType ([tp], ([MplType MplTypeChecked], MplType MplTypeChecked), MplType MplTypeChecked) where
     instantiateArrType ann (tpvars, (froms, st), to) = 
         instantiateArrType ann (tpvars, froms ++[st], to)
-        
 
 instantiateTypeWithSubs ::
     [(TypeP MplTypeChecked, MplType MplTypeSub)] ->
@@ -188,7 +188,22 @@ instantiateTypeWithSubs sublist = cata f
         TypeSeqWithArgs (mempty, cxt) id <$> sequenceA args 
     f (TypeConcWithArgsF cxt id args) =
         TypeConcWithArgs (mempty, cxt) id <$> traverseOf each sequenceA args 
-    f (TypeBuiltInF rst) = error "to implement in substitute type"
+    f (TypeBuiltInF rst) = case rst of
+        TypeGetF cxt seq conc -> do
+            seq' <- seq
+            conc' <- conc
+            return $ _TypeGetF # (annotate cxt, seq', conc')
+        TypePutF cxt seq conc -> do
+            seq' <- seq
+            conc' <- conc
+            return $ _TypePutF # (annotate cxt, seq', conc')
+        TypeTopBotF cxt -> 
+            return $ _TypeTopBotF # annotate cxt
+      where
+        annotate cxt = fromMaybe (_TypeChAnnEmpty # ()) $ review _TypeChAnnNameOcc <$> cxt
+
+        -- undefined
+
     -- f (TypeBuiltInF rst) = TypeBuiltIn . embedBuiltInTypes <$> sequenceA rst 
     --
 
