@@ -100,7 +100,7 @@ freshInstantiateArrEnv = do
 
 runInstantiateArrType :: 
     State InstantiateArrEnv a -> InstantiateArrEnv -> ([TypeP MplTypeSub], a)
-runInstantiateArrType act = 
+runInstantiateArrType ~act = 
     first (toListOf (instantiateArrEnvInstantiated % folded)) 
     . swap 
     . runState act 

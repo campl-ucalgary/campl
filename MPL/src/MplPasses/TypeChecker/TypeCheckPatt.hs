@@ -45,6 +45,8 @@ import Control.Applicative
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
 
+import Data.Traversable
+
 typeCheckPattern ::
     TypeCheck
         (MplPattern MplRenamed)
@@ -65,7 +67,7 @@ typeCheckPattern = para f
             let callterm = maybe (_Just % _CannotCallTerm # n) (const Nothing) res
             tell $ review _InternalError $ maybeToList $ callterm
             tell $ review _InternalError $ maybeToList $ 
-                callterm >> res ^? _Just 
+                res ^? _Just 
                         % symEntryInfo 
                         % _SymSeqPhraseCall 
                         % _CodataDefn 
@@ -115,6 +117,30 @@ typeCheckPattern = para f
 
         let patt = _PRecord # (cxt, phrases & mapped % _3 %~ fst) :: MplPattern MplRenamed
             -- ann = _TypeAnnPatt # patt
+
+        st <- guse equality
+        sup <- freshUniqueSupply
+        arrenv <- freshInstantiateArrEnv
+        ((ttypepphrases, (phrases', phraseseqns)), ttypepinst) <- fmap 
+            ((second NE.unzip <<< NE.unzip) 
+                *** (toListOf (_2 % instantiateArrEnvInstantiated % folded)))
+            $ (`runStateT` (st & uniqueSupply .~ sup, arrenv))
+            $ for phrases $ \((), ident, (_, mpatt)) ->
+                undefined
+                {-
+                ~(SymEntry lkuptp (SymSeqPhraseCall (CodataDefn seqdef))) <- 
+                    zoom (_1 % envLcl % typeInfoSymTab) $ do
+                        res <- guse $ symTabTerm % at (ident ^. uniqueTag)
+                        let callterm = maybe (_Just % _CannotCallTerm # ident) (const Nothing) res
+                        tell $ review _InternalError $ maybeToList $ callterm
+                        tell $ review _InternalError $ maybeToList $ 
+                            callterm >> res ^? _Just 
+                                % symEntryInfo 
+                                % _SymSeqPhraseCall 
+                                % _DataDefn 
+                                % to (review _IllegalExprCodataCallGotDataInstead . (patt,))
+                        return $ fromJust res
+                        -}
 
         error "pat not implemented"
     f (PVarF cxt v) = do

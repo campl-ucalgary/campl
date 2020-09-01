@@ -9,15 +9,15 @@ import MplPasses.Parser.BnfcParse
 parsebnfc n = runParse' <$> runBnfc n
 
 test = [r|
-data Nat -> S =
-    Succ :: S -> S
+data Nat(A) -> S =
+    Succ :: A(A), S -> S
     Zero ::   -> S
 data NegNat -> S =
     Pred :: S -> S
     NZero ::   -> S
 
 codata S -> Fun(A,B) =
-    App1 :: A, S -> B
+    App1 :: A(A), S -> B
     App2 :: A,A,S -> B
 
 data List(A) -> S =
@@ -25,7 +25,7 @@ data List(A) -> S =
     Nil ::      -> S
 
 fun myappend =
-    a,b -> App1(a,b)
+    a,b -> (Succ := -> b)
 |]
 
 

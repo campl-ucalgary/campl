@@ -145,12 +145,12 @@ typeCheckStmts (MplStmt defns wheres) = do
             pkg = runExcept $ bool (return ()) (throwError mempty) erroccured 
                     >> withExceptT pure (solveTypeEqns eqns') 
 
-        traceShowM eqns'
         ~tagmap <- packageToTypeTagMap (either mempty id (pkg :: Either [e] (Package MplTypeSub)))
 
     -- tell $ pure $ head $ _Huhh # () : terrs
     tell terrs
     tell $ either id mempty pkg
+    traceM $ bool [] (show eqns') $ null terrs
 
     -- need to replace definitions in the symbol table here for
     -- functions. Moreover, illegally called functoins need listening..
@@ -480,8 +480,12 @@ typeCheckExpr = para f
                         res <- guse $ symTabTerm % at (ident ^. uniqueTag)
                         let callterm = maybe (_Just % _CannotCallTerm # ident) (const Nothing) res
                         tell $ review _InternalError $ maybeToList $ callterm
+                        -- NOTE: there is a bug here, when given a data call in place
+                        -- of a codata call, it will just non exhaustive pattern match..
+                        -- this requires a little more tinkering and fiddling than my appear
+                        -- when trying to fix this! We leave this as todo...
                         tell $ review _InternalError $ maybeToList $ 
-                            callterm >> res ^? _Just 
+                            res ^? _Just 
                                 % symEntryInfo 
                                 % _SymSeqPhraseCall 
                                 % _DataDefn 
