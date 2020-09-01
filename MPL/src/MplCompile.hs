@@ -12,19 +12,20 @@ test = [r|
 data Nat -> S =
     Succ :: S -> S
     Zero ::   -> S
+data NegNat -> S =
+    Pred :: S -> S
+    NZero ::   -> S
 
--- data NegNat -> S =
---     Pred :: S -> S
---     Zero ::   -> S
--- 
--- codata S -> Fun(A,B) =
---     App :: A, S -> B
+codata S -> Fun(A,B) =
+    App1 :: A, S -> B
+    App2 :: A,A,S -> B
 
-defn
-    fun fun0 :: A -> B =
-        a -> fun1(a)
-    fun fun1 :: B -> B =
-        a -> fun0(a)
+data List(A) -> S =
+    Cons :: A,S -> S
+    Nil ::      -> S
+
+fun myappend =
+    a,b -> App1(a,b)
 |]
 
 

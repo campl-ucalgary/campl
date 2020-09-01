@@ -25,6 +25,7 @@ import MplPasses.TypeChecker.TypeCheckMplTypeSubUtil
 import MplPasses.TypeChecker.TypeCheckSym 
 import MplPasses.TypeChecker.TypeCheckSymUtils
 import MplPasses.TypeChecker.TypeCheckErrorPkg
+import MplPasses.TypeChecker.TypeCheckCallErrors
 import MplPasses.Env
 
 import MplUtil.UniqueSupply
@@ -39,6 +40,10 @@ import Control.Monad.Writer
 import Control.Monad.State
 import Control.Monad.Reader
 import Control.Arrow
+import Control.Applicative
+
+import Data.List.NonEmpty (NonEmpty (..))
+import qualified Data.List.NonEmpty as NE
 
 typeCheckPattern ::
     TypeCheck
@@ -53,20 +58,29 @@ typeCheckPattern = para f
         ttypestable <- freshTypeTag
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
-        ~(SymEntry lkuptp (SymSeqPhraseCall seqdef)) <- zoom (envLcl % typeInfoSymTab) $ lookupSymTerm n 
         let patt = (PConstructor cxt n (map fst patts) :: MplPattern MplRenamed) 
 
-        tell $ review _ExternalError $ flip (maybe mempty) (seqdef ^? _CodataDefn ) $ \defn ->
-             [_IllegalPattDataCallGotCodataInstead # (patt, defn)]
+        ~(SymEntry lkuptp (SymSeqPhraseCall (DataDefn seqdef))) <- zoom (envLcl % typeInfoSymTab) $ do
+            res <- guse $ symTabTerm % at (n ^. uniqueTag)
+            let callterm = maybe (_Just % _CannotCallTerm # n) (const Nothing) res
+            tell $ review _InternalError $ maybeToList $ callterm
+            tell $ review _InternalError $ maybeToList $ 
+                callterm >> res ^? _Just 
+                        % symEntryInfo 
+                        % _SymSeqPhraseCall 
+                        % _CodataDefn 
+                        % to (review _IllegalPattDataCallGotCodataInstead . (patt,))
+
+            return $ fromJust res
 
         ~(ttypepatts, (patts', pattacceqns)) <- second unzip . unzip <$> 
             traverse (withFreshTypeTag . snd ) patts
 
-        sup <- freshUniqueSupply 
+        arrenv <- freshInstantiateArrEnv 
         let ttypep = annotateTypeTag ttype patt
             ttypeppatts = annotateTypeTags ttypepatts (map fst patts)
             
-            ~(ttypesphrase, lkuptp') = (`evalState`sup) 
+            ~(ttypesphrase, lkuptp') = (`runInstantiateArrType`arrenv) 
                 $ instantiateArrType (_Just % _TypeAnnPatt # patt)
                 $ fromJust 
                 $ lkuptp ^? _SymDataPhrase % noStateVarsType
@@ -83,7 +97,7 @@ typeCheckPattern = para f
                     <> concat pattacceqns
         
         return ( _PConstructor # 
-                ( (fromJust $ seqdef ^? _DataDefn
+                ( (seqdef 
                 -- THIS WILL THROW ERRORS ALWAYS -- TODO, we need to convert
                 -- all of these type anotations to ``function like annotations"
                 , fromJust $ ttypemap ^? at ttypestable % _Just % _SymType )
@@ -93,7 +107,16 @@ typeCheckPattern = para f
             )
 
 
-    f (PRecordF cxt phrases) = error "pat not implemented"
+    -- This will look very similar to the record expressions!
+    f (PRecordF cxt phrases) = do
+        ttype <- guse (envLcl % typeInfoEnvTypeTag)
+        ttypestable <- freshTypeTag
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        let patt = _PRecord # (cxt, phrases & mapped % _3 %~ fst) :: MplPattern MplRenamed
+            -- ann = _TypeAnnPatt # patt
+
+        error "pat not implemented"
     f (PVarF cxt v) = do
         ttype <- guse (envLcl % typeInfoEnvTypeTag)
         ttypestable <- freshTypeTag
@@ -111,7 +134,17 @@ typeCheckPattern = para f
 
         return (res, eqns)
 
-    f (PNullF cxt) = error "pat not implemented"
+    f (PNullF cxt) = do 
+        ttype <- guse (envLcl % typeInfoEnvTypeTag)
+        ttypestable <- freshTypeTag
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        let patt = PNull cxt :: MplPattern MplRenamed
+
+        return 
+            ( PNull (cxt, fromJust $ ttypemap ^? at ttypestable % _Just % _SymType)
+            , [ genStableEqn ttypestable (annotateTypeTag ttype patt) ]
+            )
 {-
     PConstructor !(XPConstructor x) (IdP x) [MplPattern x]
     | PRecord !(XPRecord x) (NonEmpty (XPRecordPhrase x, IdP x, MplPattern x) )

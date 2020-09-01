@@ -1,8 +1,18 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts #-}
 module MplPasses.TypeChecker.TypeCheckPanic where
 
 
 import Data.Data
+
+import Optics
+import Optics.State.Operators
+import qualified Data.Map as Map
+
+import Control.Monad.State
+import Control.Monad.Writer
 
 panicSymTab :: a
 panicSymTab = error "Illegal symbol table lookup -- most likely a thunk was evaluated too early."
@@ -10,15 +20,9 @@ panicSymTab = error "Illegal symbol table lookup -- most likely a thunk was eval
 panicNotImplemented :: a
 panicNotImplemented = error "Not implemented yet...."
 
+
+
 {-
-{-# LANGUAGE NoMonomorphismRestriction #-}
-
-import Optics
-import Optics.State.Operators
-
-import Control.Monad.State
-import Control.Monad.Writer
-
 data MyStrange = MyStrange {
     _innertuple :: (Int,Int)
 }  deriving Show
@@ -54,4 +58,15 @@ wowcool = do
     _1 %= succ
 
 callme = fun >> return ()
+
+data MyStrange = MyStrange {
+    _innertuple :: (Int,Int)
+    , _innermap :: Map.Map Int (Either Int Int)
+}  deriving Show
+
+$(makeLenses ''MyStrange)
+
+mytestfun = do
+    zoomMaybe (innermap % at 1 % _Just ) $ do
+        guse equality
 -}

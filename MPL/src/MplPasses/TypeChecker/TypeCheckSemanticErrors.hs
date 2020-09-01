@@ -33,6 +33,11 @@ data TypeCheckSemanticErrors =
     TypeCheckKindErrors KindCheckErrors
     | TypeCheckUnificationErrors (TypeUnificationError MplTypeSub)
 
+    -- Codata record construction errors ...
+    ------------------------------------
+    | RecordConstructionErrorGotPhrasesButExpected
+        (NonEmpty (IdP MplTypeChecked)) [MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag)]
+
 
     -- Object definition errors ...
     --------------------------------
@@ -46,15 +51,6 @@ data TypeCheckSemanticErrors =
     | ExpectedStateVarButGot IdentR IdentR 
         -- expected, actual
  
-    -- Function definition errors...
-    --------------------------------
-    | IllegalPattDataCallGotCodataInstead 
-        -- (MplPattern MplRenamed) (MplTypePhrase MplRenamed (SeqObjTag CodataDefnTag)) 
-        (MplPattern MplRenamed) (MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag)) 
-            -- pattern, codata call
-    | ExpectedPattCodataCallButGotADataCall 
-        (MplTypePhrase MplRenamed (SeqObjTag CodataDefnTag)) (MplPattern MplRenamed)
-
 
     -- Process definition errors...
     --------------------------------
@@ -79,11 +75,7 @@ data TypeCheckSemanticErrors =
 
     | IllegalHigherOrderFunction ( NonEmpty (MplType MplTypeSub), MplType MplTypeSub)
 
-    -- Cannot call errors
-    -- Note: These should not be constructed normally! They
-    -- should only be reconstructed  
-    --------------------------------
-    | CannotLookupTerm (IdP MplRenamed)
+    -- 
     | Huhh
 
     -- Process definition errors...

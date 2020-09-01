@@ -414,6 +414,11 @@ instance MplPrintConstraints x => MplExprToBnfc (MplExpr x) where
         f (ELet _ stmts expr) = B.LET_EXPR (NE.toList (fmap g stmts)) (f expr)
           where
             g = B.LET_EXPR_PHRASE . mplStmtToBnfc
+        f (ERecord _ exprs) = B.RECORD_EXPR bnfcKeyword (NE.toList $ fmap g exprs) bnfcKeyword
+          where
+            g (cxt, ident, (patts, expr)) = 
+                B.RECORD_EXPR_HIGHER_ORDER_PHRASE (toBnfcIdent ident) 
+                    $ B.PATTERN_TO_EXPR (map mplPattToBnfc patts) (f expr)
         {-
         EVar !(XEVar x) (IdP x)
         EInt !(XEInt x) Int

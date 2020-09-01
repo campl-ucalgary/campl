@@ -50,11 +50,11 @@ type TypeCheckSymLookup from to =
 
 lookupSymTerm :: 
     TypeCheckSymLookup (IdP MplRenamed) (SymEntry SymTermInfo)
-lookupSymTerm n = do
-    res <- guse (symTabTerm % at (n ^. uniqueTag)) 
-    -- tell $ review _InternalError $ maybe [_CannotCallTerm # n] mempty res
-    tell $ review _InternalError $ maybe [_CannotCallTerm # n] mempty res
-    return $ fromJust res
+lookupSymTerm = fmap fromJust . lookupSymTermM
+
+lookupSymTermM :: 
+    TypeCheckSymLookup (IdP MplRenamed) (Maybe (SymEntry SymTermInfo))
+lookupSymTermM n = guse (symTabTerm % at (n ^. uniqueTag)) 
 
 lookupSymType :: 
     TypeCheckSymLookup (IdP MplRenamed) (MplObjectDefn MplTypeCheckedClause)

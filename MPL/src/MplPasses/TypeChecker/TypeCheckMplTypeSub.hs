@@ -1,16 +1,19 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE NamedWildCards #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
 module MplPasses.TypeChecker.TypeCheckMplTypeSub where
 
 import Optics
+import Optics.State.Operators
 
 import MplAST.MplCore
 import MplAST.MplParsed
@@ -32,6 +35,12 @@ import Data.List.NonEmpty (NonEmpty)
 import qualified Data.List.NonEmpty as NE
 
 import Control.Applicative
+
+import qualified Data.Map as Map
+import Data.Map (Map)
+
+import Data.Foldable
+import Data.Tuple
 
 import Debug.Trace
 
@@ -71,11 +80,49 @@ type instance XTypeConcArrF MplTypeSub =
 
 type instance XXMplBuiltInTypesF MplTypeSub = ()
 
+
+data InstantiateArrEnv = InstantiateArrEnv  {
+    _instantiateArrEnvInstantiated :: Map (TypeP MplTypeChecked) (TypeP MplTypeSub)
+    , _instantiatArrEnvUniqueSupply :: UniqueSupply
+}
+
+$(makeLenses ''InstantiateArrEnv)
+
+instance HasUniqueSupply InstantiateArrEnv where
+    uniqueSupply = instantiatArrEnvUniqueSupply 
+
+freshInstantiateArrEnv ::
+    ( HasUniqueSupply s 
+    , MonadState s m ) => m InstantiateArrEnv
+freshInstantiateArrEnv = do
+    sup <- freshUniqueSupply
+    return $ InstantiateArrEnv mempty sup
+
+runInstantiateArrType :: 
+    State InstantiateArrEnv a -> InstantiateArrEnv -> ([TypeP MplTypeSub], a)
+runInstantiateArrType act = 
+    first (toListOf (instantiateArrEnvInstantiated % folded)) 
+    . swap 
+    . runState act 
+
+updateInstantiated ::
+    ( MonadState InstantiateArrEnv m ) =>
+    [TypeP MplTypeChecked] -> m ()
+updateInstantiated ns = for_ ns $ \n -> do
+    tag <- freshTypeTag
+    instantiateArrEnvInstantiated % at n %= maybe (Just $ annotateTypeTag tag n) Just
+
+getInstantiatedSubs :: 
+    ( MonadState InstantiateArrEnv m ) =>
+    m [(TypeP MplTypeChecked, MplType MplTypeSub)] 
+getInstantiatedSubs = do
+    tosubs <- guse $ instantiateArrEnvInstantiated 
+    return $ map (second typePtoTypeVar) $ itoListOf ifolded tosubs
+
 class InstantiateArrType t where
     instantiateArrType :: 
-        ( HasUniqueSupply s 
-        , MonadState s m ) => 
-        Maybe TypeAnn -> t -> m ([TypeP MplTypeSub], MplType MplTypeSub)
+        ( MonadState InstantiateArrEnv m ) => 
+        Maybe TypeAnn -> t -> m (MplType MplTypeSub)
 
 {-
 instance InstantiateArrType (MplFunction MplRenamed) where
@@ -90,40 +137,38 @@ instance InstantiateArrType (MplFunction MplRenamed) where
 
 instance TypeP MplTypeChecked ~ tp => InstantiateArrType ([tp], [MplType MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked]) where
     instantiateArrType ann (tpvars, seqs, ins, outs) = do
-        tags <- traverse (const freshTypeTag) tpvars
-        let typeps = annotateTypeTags tags tpvars 
-            subs = zipWith (\identt -> (identt,) . typePtoTypeVar) tpvars typeps
+        updateInstantiated tpvars
+        subs <- getInstantiatedSubs
         return $ 
-            ( typeps
-            , _TypeConcArrF # 
+            _TypeConcArrF # 
                 ( ann 
                 , fromJust (traverse (instantiateTypeWithSubs subs) seqs)
                 , fromJust (traverse (instantiateTypeWithSubs subs) ins)
                 , fromJust (traverse (instantiateTypeWithSubs subs) outs)
                 )
-            )
+           
+
+            -- typeps
 
 instance InstantiateArrType (MplType MplTypeSub) where
-    instantiateArrType ann tp = return ([], tp)
+    instantiateArrType ann tp = return tp
 
 instance TypeP MplTypeChecked ~ tp => InstantiateArrType ([tp], [MplType MplTypeChecked], MplType MplTypeChecked) where
     instantiateArrType ann (tpvars, [], to) = do
-        tags <- traverse (const freshTypeTag) tpvars
-        let typeps = annotateTypeTags tags tpvars 
-            subs = zipWith (\identt -> (identt,) . typePtoTypeVar) tpvars typeps
+        updateInstantiated tpvars
+        subs <- getInstantiatedSubs
         -- TODO: this actualyl will not preserve the annotation information here...
-        return $ ( typeps, fromJust $ instantiateTypeWithSubs subs to)
+        return $ ( fromJust $ instantiateTypeWithSubs subs to )
         
     instantiateArrType ann (tpvars, froms, to) = do
-        tags <- traverse (const freshTypeTag) tpvars
-        let typeps = annotateTypeTags tags tpvars 
-            subs = zipWith (\identt -> (identt,) . typePtoTypeVar) tpvars typeps
+        updateInstantiated tpvars
+        subs <- getInstantiatedSubs
         return $ 
-            ( typeps, _TypeSeqArrF # 
+            _TypeSeqArrF # 
                 ( ann
                 , NE.fromList $ fromJust $ traverse (instantiateTypeWithSubs subs) froms
-                , fromJust $ instantiateTypeWithSubs subs to)
-            )
+                , fromJust $ instantiateTypeWithSubs subs to
+                )
 
 instance TypeP MplTypeChecked ~ tp => InstantiateArrType ([tp], ([MplType MplTypeChecked], MplType MplTypeChecked), MplType MplTypeChecked) where
     instantiateArrType ann (tpvars, (froms, st), to) = 

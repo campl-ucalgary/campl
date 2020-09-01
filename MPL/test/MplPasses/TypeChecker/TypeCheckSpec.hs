@@ -66,7 +66,8 @@ spec = do
             % _TypeCheckUnificationErrors 
             % _TypeMatchFailure))
         [ nm1
-        , nm2 ]
+        , nm2 
+        , nm3 ]
 
 -- Valid tests  
 ----------------------------
@@ -192,4 +193,20 @@ fun nm2 =
     Succ(a) -> case a of
         Pred(b) -> b
         
+|]
+
+nm3 = [r|
+data Nat -> S =
+    Succ :: S -> S
+    Zero ::   -> S
+data NegNat -> S =
+    Pred :: S -> S
+    NZero ::   -> S
+
+codata S -> Fun(A,B) =
+    App1 :: A, S -> B
+    App2 :: A,A,S -> B
+
+fun testing =
+    a -> (App1 := c -> Zero, App2 := a,b-> NZero)
 |]
