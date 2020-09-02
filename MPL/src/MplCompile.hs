@@ -22,6 +22,7 @@ data NegNat -> S =
     NZero ::   -> S
 
 
+{-
 protocol Test => S =
     Testing :: TopBot => S
 
@@ -29,6 +30,12 @@ proc v12a  =
     | => b -> do
         get a on b 
         halt b
+        -}
+
+proc no0 =
+    | b => -> do
+        get a on b
+        no0(| b => )
 
 |]
 

@@ -48,42 +48,49 @@ type TypeCheckSymLookup from to =
     , MonadState SymTab n ) =>
     from -> n to
 
-lookupSymTerm :: 
-    TypeCheckSymLookup (IdP MplRenamed) (SymEntry SymType SymTermInfo)
-lookupSymTerm = fmap fromJust . lookupSymTermM
+lookupSymExpr :: 
+    TypeCheckSymLookup (IdP MplRenamed) (SymEntry SymSeqType SymExprInfo)
+lookupSymExpr = fmap fromJust . lookupSymExprM
 
-lookupSymTermM :: 
-    TypeCheckSymLookup (IdP MplRenamed) (Maybe (SymEntry SymType SymTermInfo))
-lookupSymTermM n = guse (symTabTerm % at (n ^. uniqueTag)) 
+lookupSymExprM :: 
+    TypeCheckSymLookup (IdP MplRenamed) (Maybe (SymEntry SymSeqType SymExprInfo))
+lookupSymExprM n = guse (symTabExpr % at (n ^. uniqueTag)) 
 
 lookupSymType :: 
     TypeCheckSymLookup (IdP MplRenamed) (MplObjectDefn MplTypeCheckedClause)
 lookupSymType n = do
-    res <- guse (symTabType % at (n ^. uniqueTag)) 
+    res <- guse $ symTabType % at (n ^. uniqueTag)
     tell $ review _InternalError $ maybe [_CannotCallTerm # n] mempty res
     return $ fromJust res
 
 lookupSymCh :: 
     TypeCheckSymLookup (ChP MplRenamed) (SymEntry (MplType MplTypeSub) ChIdentR)
 lookupSymCh n = do
-    res <- guse (symTabCh % at (n ^. uniqueTag))
+    res <- guse $ symTabCh % at (n ^. uniqueTag)
     tell $ review _InternalError $ maybe [_CannotCallCh # n] mempty res
     return $ fromJust res 
 
+lookupSymConc :: TypeCheckSymLookup (IdP MplRenamed) (SymEntry SymConcType SymConcInfo)
+lookupSymConc n = do
+    res <- guse $ symTabConc % at (n ^. uniqueTag)
+    tell $ review _InternalError $ maybe [_CannotCallTerm # n] mempty res
+    return $ fromJust res 
 
-class CollectSymTermObj (t :: ObjectDefnTag) where
-    collectSymTermObj :: MplTypeClauseSpine MplTypeChecked t -> [(UniqueTag, SymEntry SymType SymTermInfo)]
 
-instance CollectSymTermObj (SeqObjTag DataDefnTag) where
-    collectSymTermObj spine = foldMapOf (typeClauseSpineClauses % folded % typeClausePhrases % folded)
+class CollectSeqSymObj (t :: SeqObjDefnTag) where
+    collecySeqSymObj :: MplTypeClauseSpine MplTypeChecked (SeqObjTag t) -> [(UniqueTag, SymEntry SymSeqType SymExprInfo)]
+
+instance CollectSeqSymObj DataDefnTag where
+    collecySeqSymObj spine = foldMapOf (typeClauseSpineClauses % folded % typeClausePhrases % folded)
                  (pure . f) spine 
       where
+        -- should call nub here? although doesn't really matter..
         tpvars = foldMapOf (typeClauseSpineClauses % folded) (map NamedType . view typeClauseArgs) spine
         stsubs = typeClauseSpineStateVarClauseSubs spine
         f phrase = 
                 ( phrase ^. typePhraseName % uniqueTag
                 , SymEntry 
-                    ( _SymDataPhrase % _SymPhraseType #
+                    ( _SymDataPhrase % _SymSeqPhraseType #
                         ( ( tpvars
                             , phrase ^. typePhraseFrom % to (fmap (substituteTypeVars stsubs))
                             , phrase ^. typePhraseTo % to (substituteTypeVars stsubs))
@@ -94,16 +101,21 @@ instance CollectSymTermObj (SeqObjTag DataDefnTag) where
                 )
 
 -- more or less duplicated code
-instance CollectSymTermObj (SeqObjTag CodataDefnTag) where
-    collectSymTermObj spine = foldMapOf (typeClauseSpineClauses % folded % typeClausePhrases % folded)
+instance CollectSeqSymObj CodataDefnTag where
+    collecySeqSymObj spine = foldMapOf (typeClauseSpineClauses % folded % typeClausePhrases % folded)
                  (pure . f) spine 
       where
+        -- should call nub here? although doesn't really matter..
+        -- TODO: for each phrase, compute the the free variables, append the 
+        -- tpvars after and call nub on that.. This ensures that we will get the variables
+        -- binding closest to the clause while including some of the ``out of scope" variables
+        -- which should just error anyways...
         tpvars = foldMapOf (typeClauseSpineClauses % folded) (map NamedType . view typeClauseArgs) spine
         stsubs = typeClauseSpineStateVarClauseSubs spine
         f phrase = 
                 ( phrase ^. typePhraseName % uniqueTag
                 , SymEntry 
-                    ( _SymCodataPhrase % _SymPhraseType #
+                    ( _SymCodataPhrase % _SymSeqPhraseType #
                         ( ( tpvars
                             , phrase ^. typePhraseFrom % to 
                                 (fmap (substituteTypeVars stsubs)
@@ -114,15 +126,59 @@ instance CollectSymTermObj (SeqObjTag CodataDefnTag) where
                     ) 
                     $ _SymSeqPhraseCall % _CodataDefn # phrase
                 )
+
+class CollectConcSymObj (t :: ConcObjDefnTag) where
+    collectConcSymObj :: MplTypeClauseSpine MplTypeChecked (ConcObjTag t) -> [(UniqueTag, SymEntry SymConcType SymConcInfo)]
+
+instance CollectConcSymObj ProtocolDefnTag where
+    collectConcSymObj spine = foldMapOf (typeClauseSpineClauses % folded % typeClausePhrases % folded)
+        (pure . f) spine
+      where
+        tpvars = foldMapOf (typeClauseSpineClauses % folded) (map NamedType . uncurry (<>) . view typeClauseArgs) spine
+        stsubs = typeClauseSpineStateVarClauseSubs spine
+        f phrase = 
+            ( phrase ^. typePhraseName ^. uniqueTag
+            , _SymEntry #
+                ( _SymConcPhrase # 
+                    ( tpvars
+                    , phrase ^. typePhraseFrom % to (substituteTypeVars stsubs)
+                    -- we only care about the unwrapped type... the original
+                    -- type is recovered from the state var.
+                    )
+                , _SymConcPhraseCall % _ProtocolDefn # phrase
+                )
+            )
+
+-- more or less duplicated code
+instance CollectConcSymObj CoprotocolDefnTag where
+    collectConcSymObj spine = foldMapOf (typeClauseSpineClauses % folded % typeClausePhrases % folded)
+        (pure . f) spine
+      where
+        tpvars = foldMapOf (typeClauseSpineClauses % folded) (map NamedType . uncurry (<>) . view typeClauseArgs) spine
+        stsubs = typeClauseSpineStateVarClauseSubs spine
+        f phrase = 
+            ( phrase ^. typePhraseName ^. uniqueTag
+            , _SymEntry #
+                ( _SymConcPhrase # 
+                    ( tpvars
+                    , phrase ^. typePhraseTo % to (substituteTypeVars stsubs)
+                    )
+                , _SymConcPhraseCall % _CoprotocolDefn # phrase
+                )
+            )
+
+
 -- | initially collects the symbol table definitions given
 -- a recursive group of declarations..
 collectSymTabDefn ::
     MonadState (Env SymTab TypeInfoEnv) m => MplDefn MplTypeChecked -> m ()
 collectSymTabDefn def = do
-    tsymtab <- guse $ envLcl % typeInfoSymTab % symTabTerm
+    tsymtab <- guse $ envLcl % typeInfoSymTab % symTabExpr
+    csymtab <- guse $ envLcl % typeInfoSymTab % symTabConc
     let ~syms = mempty 
-            & symTabTerm .~ symterms 
+            & symTabExpr .~ symterms 
             & symTabType .~ symtypes
+            & symTabConc .~ symconcs
         ~symtypes = Map.fromList $ case def of
             ObjectDefn def -> case def of
                 SeqObjDefn def -> case def of
@@ -141,20 +197,34 @@ collectSymTabDefn def = do
                         % to ( map (view (typeClauseName % uniqueTag)
                                 &&& review _CoprotocolDefn ) . NE.toList )
             _ -> mempty
+        ~symconcs = Map.fromList $ case def of
+            ObjectDefn def -> case def of
+                ConcObjDefn def -> case def of
+                    ProtocolDefn spine -> collectConcSymObj spine
+                    CoprotocolDefn spine -> collectConcSymObj spine
+                _ -> mempty
+            ProcessDefn def -> pure 
+                ( def ^. procName % uniqueTag
+                , _SymEntry # 
+                    ( fromJust $ csymtab ^? at (def ^. procName % uniqueTag) % _Just % symEntryType
+                    , _SymRunInfo # def
+                    )
+                )
+            _ -> mempty
+
+            
 
         ~symterms = Map.fromList $ case def of 
             ObjectDefn def -> case def of
                 SeqObjDefn def -> case def of
-                    DataDefn spine -> collectSymTermObj spine
-                    CodataDefn spine -> collectSymTermObj spine
+                    DataDefn spine -> collecySeqSymObj spine
+                    CodataDefn spine -> collecySeqSymObj spine
+                _ -> mempty
             FunctionDefn def -> pure 
                 ( def ^. funName % uniqueTag
                 , SymEntry (fromJust $ tsymtab ^? at (def ^. funName % uniqueTag) % _Just % symEntryType) 
                     $ _SymSeqCall % _ExprCallFun # def)
-            ProcessDefn def -> pure 
-                ( def ^. procName % uniqueTag
-                , SymEntry (fromJust $ tsymtab ^? at (def ^. procName % uniqueTag) % _Just % symEntryType) 
-                    $ _SymRunInfo # def)
+            _ -> mempty
 
 
     envGbl %= (syms<>)
@@ -166,9 +236,9 @@ recollectSymTabDefn ::
     ( MonadState SymTab m ) => (MplDefn MplTypeChecked) -> m ()
 recollectSymTabDefn (ObjectDefn _) = return ()
 recollectSymTabDefn (FunctionDefn (MplFunction name tp bdy)) = 
-    symTabTerm % at (name ^. uniqueTag) % _Just % symEntryType .= _SymFun # tp
+    symTabExpr % at (name ^. uniqueTag) % _Just % symEntryType .= _SymExplicit # tp
 recollectSymTabDefn (ProcessDefn (MplProcess name tp bdy)) = 
-    symTabTerm % at (name ^. uniqueTag) % _Just % symEntryType .= _SymProc # tp
+    symTabConc % at (name ^. uniqueTag) % _Just % symEntryType .= _SymExplicit # tp
 
 class EliminateSymTabObj (t :: ObjectDefnTag) where
     eliminateSymTabObj :: ( MonadState SymTab m ) =>
@@ -190,7 +260,7 @@ instance EliminateSymTabObj (t :: ObjectDefnTag) where
             % traversed 
             % typePhraseName 
             % uniqueTag )
-            spine $ \n -> symTabTerm % at n .= Nothing
+            spine $ \n -> symTabExpr % at n .= Nothing
     
 
 -- | eliminates the symbol table definitions of 
@@ -205,6 +275,10 @@ eliminateSymTabDefn (ObjectDefn obj) = case obj of
         ProtocolDefn spine -> eliminateSymTabObj spine
         CoprotocolDefn spine -> eliminateSymTabObj spine
 eliminateSymTabDefn (FunctionDefn (MplFunction name tp bdy)) = 
-    symTabTerm % at (name ^. uniqueTag) .= Nothing
+    symTabExpr % at (name ^. uniqueTag) .= Nothing
 eliminateSymTabDefn (ProcessDefn (MplProcess name tp bdy)) = 
-    symTabTerm % at (name ^. uniqueTag) .= Nothing
+    symTabConc % at (name ^. uniqueTag) .= Nothing
+
+instance InstantiateArrType a => InstantiateArrType (SymCallType a) where
+    instantiateArrType ann (SymImplicit a) = return a
+    instantiateArrType ann (SymExplicit a) = instantiateArrType ann a

@@ -281,14 +281,14 @@ data NegNat -> S =
     Pred :: S -> S
     NZero ::   -> S
 
-proc myproc =
-    Succ(a) | b => c -> myproc(a | b => c)
-    _ | b => c -> myproc(NZero | b => c)
+proc nm4 =
+    Succ(a) | b => c -> nm4(a | b => c)
+    _ | b => c -> nm4(NZero | b => c)
 |]
 
 no0 = [r|
-proc myproc =
+proc no0 =
     | b => -> do
         get a on b
-        myproc(| b => )
+        no0(| b => )
 |]

@@ -50,15 +50,15 @@ data TypeCheckSemanticErrors =
 
     -- Process definition errors...
     --------------------------------
+    -- | Expected polarity, channel / actual polarity
     | ExpectedPolarityButGot Polarity ChIdentR
-        -- channel, polarity of channel. 
  
+    -- | channel, phrase 
     | HCaseExpectedInputPolarityChToHaveProtocolButGotCoprotocol 
-        -- channel, phrase ident
-        IdentR IdentR
+        ChIdentR (MplTypePhrase MplTypeChecked (ConcObjTag CoprotocolDefnTag))
+    -- | channel, phrase 
     | HCaseExpectedOutputPolarityChToHaveCoprotocolButGotProtocol 
-        -- channel, phrase ident
-        IdentR IdentR
+        ChIdentR (MplTypePhrase MplTypeChecked (ConcObjTag ProtocolDefnTag))
 
     | HPutExpectedInputPolarityChToHaveCoprotocolButGotProtocol
         IdentR IdentR

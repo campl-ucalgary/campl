@@ -92,10 +92,9 @@ instance HasNamespace ChIdentT where
 data ExprCallDef = 
     ExprCallPattern (MplPattern MplTypeChecked)
     | ExprCallFun (MplFunction MplTypeChecked)
+  deriving Show
 
-deriving instance (Show (XPConstructor MplTypeChecked)) => Show ExprCallDef
 
-$(makePrisms ''ExprCallDef)
 
 
 type instance IdP MplTypeChecked = IdentT
@@ -190,7 +189,7 @@ type instance XCPlugs MplTypeChecked = (KeyWordNameOcc, [(IdP MplTypeChecked, XM
                                                     -- because it changes based on the phrase
 type instance XCCase MplTypeChecked = KeyWordNameOcc
 type instance XCSwitch MplTypeChecked = KeyWordNameOcc
-type instance XCHCasePhrase MplTypeChecked  = ()
+type instance XCHCasePhrase MplTypeChecked  = MplConcObjDefn MplTypeCheckedPhrase
 type instance XCForkPhrase MplTypeChecked  = [ChP MplTypeChecked] 
 type instance XCPlugPhrase MplTypeChecked  = ()
 type instance XXCmd MplTypeChecked = Void
@@ -291,3 +290,5 @@ type instance XProtocolDefn MplTypeCheckedPhrase  =
     MplTypePhrase MplTypeChecked (ConcObjTag ProtocolDefnTag)
 type instance XCoprotocolDefn MplTypeCheckedPhrase  = 
     MplTypePhrase MplTypeChecked (ConcObjTag CoprotocolDefnTag)
+
+$(makePrisms ''ExprCallDef)

@@ -22,10 +22,10 @@ data TypeIdentT = TypeIdentT {
 }  deriving Show
 
 instance Eq TypeIdentT where
-    a ==  b = _typeIdentTUniqueTag a  == _typeIdentTUniqueTag b
+    a == b = _typeIdentTUniqueTag a == _typeIdentTUniqueTag b
 
 instance Ord TypeIdentT where
-    a <=  b = _typeIdentTUniqueTag a  <= _typeIdentTUniqueTag b
+    a <= b = _typeIdentTUniqueTag a <= _typeIdentTUniqueTag b
 
 data TypeChAnn =
     TypeChAnnNameOcc NameOcc
@@ -67,6 +67,7 @@ data TypeAnn =
     | TypeAnnPatt (MplPattern MplRenamed)
     -- Type channel..
     | TypeAnnCh ChIdentR
+
   deriving Show
 
 data TypeIdentTInfo = 

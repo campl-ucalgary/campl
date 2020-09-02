@@ -199,17 +199,19 @@ typeCheckDefn (FunctionDefn fun@(MplFunction name funtype defn)) = do
             let (inst, insttp) = runInstantiateArrType
                     (instantiateArrType (_Just % _TypeAnnFun # fun) tp)
                     arrenv
-            return ((inst, insttp), SymFun tp)
+            -- return ((inst, insttp), SymFun tp)
+            return ((inst, insttp), _SymExplicit # tp)
         Nothing -> do
             tag <- freshTypeTag
             let tp = typePtoTypeVar $ annotateTypeTag tag fun
-            return $ (([], tp), SymSub tp)
+            -- return $ (([], tp), SymSub tp)
+            return $ (([], tp), _SymImplicit # tp)
     ttype <- guse (envLcl % typeInfoEnvTypeTag)
     ttypestable <- freshTypeTag
     ttypemap <- guse (envLcl % typeInfoEnvMap)
     
     rec let funsymentry = _SymEntry # (symtp, _SymSeqCall % _ExprCallFun # fun')
-        envLcl % typeInfoSymTab % symTabTerm % at (name ^. uniqueTag) ?= funsymentry
+        envLcl % typeInfoSymTab % symTabExpr % at (name ^. uniqueTag) ?= funsymentry
 
         ~(ttypephrases, (defn', acceqns)) <- second NE.unzip . NE.unzip <$> 
             traverse (withFreshTypeTag . typeCheckFunBody ) defn
@@ -228,7 +230,6 @@ typeCheckDefn (FunctionDefn fun@(MplFunction name funtype defn)) = do
 
 -- some duplciated code...
 typeCheckDefn (ProcessDefn procc@(MplProcess name proctype defn)) = do
-    st <- guse equality
     ((foralls, proctype'), symtp) <- case proctype of    
         Just tp -> do
             ~tp <- fmap fromJust $ kindCheckProcessType tp
@@ -236,18 +237,19 @@ typeCheckDefn (ProcessDefn procc@(MplProcess name proctype defn)) = do
             let (inst, insttp) = runInstantiateArrType     
                     (instantiateArrType (_Just % _TypeAnnProc # procc) tp)
                     arrenv 
-            return ((inst, insttp), SymProc tp)
+            return ((inst, insttp), _SymExplicit # tp)
         Nothing -> do
             tag <- freshTypeTag
             let tp = typePtoTypeVar $ annotateTypeTag tag procc
-            return $ (([], tp), SymSub tp)
+            return $ (([], tp), _SymImplicit # tp)
 
     ttype <- guse (envLcl % typeInfoEnvTypeTag)
     ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+    envLcl % typeInfoSymTab % symTabCh .= mempty
     
-    -- rec let procsymentry = _SymEntry # (SymSub proctype', _SymRunInfo # procc')
     rec let procsymentry = _SymEntry # (symtp, _SymRunInfo # procc')
-        envLcl % typeInfoSymTab % symTabTerm % at (name ^. uniqueTag) ?= procsymentry
+        envLcl % typeInfoSymTab % symTabConc % at (name ^. uniqueTag) ?= procsymentry
 
         (ttypephrases, (defn', acceqns)) <- second NE.unzip . NE.unzip <$> 
             traverse (withFreshTypeTag . typeCheckProcessBody) defn
@@ -313,13 +315,13 @@ typeCheckExpr = para f
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
         ~(SymEntry lkuptp (SymSeqCall lkupdef)) <- zoom (envLcl % typeInfoSymTab ) $ do
-            res <- guse $ symTabTerm % at (n ^. uniqueTag)
+            res <- guse $ symTabExpr % at (n ^. uniqueTag)
             tell $ review _InternalError $ maybe [_CannotCallTerm # n] (const []) res
             return $ fromJust res
 
         let ttypep = annotateTypeTag ttype (_EVar # (cxt, n) :: MplExpr MplRenamed)
             
-            lkuptp' = fromJust $ lkuptp ^? _SymSub
+            lkuptp' = fromJust $ lkuptp ^? _SymSeqCallType % _SymImplicit
             eqns = [ TypeEqnsEq (typePtoTypeVar ttypep , lkuptp') ] 
                 <> [ genStableEqn ttypestable ttypep ]
 
@@ -373,7 +375,7 @@ typeCheckExpr = para f
         ttypestable <- freshTypeTag
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
-        ~(SymEntry lkuptp (SymSeqPhraseCall seqdef)) <- zoom (envLcl % typeInfoSymTab) $ lookupSymTerm ident
+        ~(SymEntry lkuptp (SymSeqPhraseCall seqdef)) <- zoom (envLcl % typeInfoSymTab) $ lookupSymExpr ident
 
         (ttypeargs, (args', argseqns)) <- fmap (second unzip <<< unzip) $
             for args $ \(_, mexpreqns) -> withFreshTypeTag mexpreqns
@@ -417,7 +419,7 @@ typeCheckExpr = para f
         ttypestable <- freshTypeTag
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
-        ~(SymEntry lkuptp (SymSeqCall seqdef)) <- zoom (envLcl % typeInfoSymTab) $ lookupSymTerm ident
+        ~(SymEntry lkuptp (SymSeqCall seqdef)) <- zoom (envLcl % typeInfoSymTab) $ lookupSymExpr ident
 
         (ttypeargs, (args', argseqns)) <- fmap (second unzip <<< unzip) $
             for args $ \(_, mexpreqns) -> withFreshTypeTag mexpreqns
@@ -431,11 +433,7 @@ typeCheckExpr = para f
             ann = _Just % _TypeAnnExpr # expr
             ~(ttypesphrase, lkuptp') = (`runInstantiateArrType`arrenv)
                 $ fromJust 
-                $ instantiateArrType ann
-                    <$> lkuptp ^? _SymSub
-                -- this call is the only thing that differs from the
-                -- object call.
-                <|> instantiateArrType ann <$> lkuptp ^? _SymFun 
+                $ instantiateArrType ann <$> lkuptp ^? _SymSeqCallType
 
             eqns = TypeEqnsExist (ttypesphrase ++ ttypepargs) $
                 [ TypeEqnsEq 
@@ -446,7 +444,7 @@ typeCheckExpr = para f
                 <> concat argseqns
 
         return 
-            ( _EObjCall # 
+            ( _ECall # 
               ( fromJust $ ttypemap ^? at ttypestable % _Just % _SymTypeSeq
               , ident
               , args' ) 
@@ -480,7 +478,7 @@ typeCheckExpr = para f
             $ for phrases $ \(_, ident, (patts, (expr, mexpreqn))) -> do
                 ~(SymEntry lkuptp (SymSeqPhraseCall (CodataDefn seqdef))) <- 
                     lift $ zoom (envLcl % typeInfoSymTab) $ do
-                        res <- guse $ symTabTerm % at (ident ^. uniqueTag)
+                        res <- guse $ symTabExpr % at (ident ^. uniqueTag)
                         let callterm = maybe (_Just % _CannotCallTerm # ident) (const Nothing) res
                         tell $ review _InternalError $ maybeToList $ callterm
                         tell $ review _InternalError $ maybeToList $ 
@@ -512,13 +510,7 @@ typeCheckExpr = para f
                         , seqdef ^. typePhraseExt % to 
                             (\clause -> fromJust 
                                 $ instantiateTypeWithSubs subs
-                                $ _TypeSeqWithArgs # 
-                                    ( _CodataDefn # clause
-                                    , clause ^. typeClauseName
-                                    , clause ^. typeClauseArgs 
-                                        -- duplicated code from TypeCheckMplTypeSub.hs
-                                        % to (map (review _TypeVar . (Just $ SeqKind (),) . NamedType ))
-                                    ) 
+                                $ typeClauseToMplType clause 
                             )
                         )
 
@@ -659,14 +651,12 @@ typeCheckCmd = \cmd -> case cmd of
     CRun cxt ident seqs ins outs -> do
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
-        ~(SymEntry tp (SymRunInfo procc)) <- zoom (envLcl % typeInfoSymTab) $ lookupSymTerm ident
+        ~(SymEntry tp (SymRunInfo procc)) <- zoom (envLcl % typeInfoSymTab) $ lookupSymConc ident
 
         arrenv <- freshInstantiateArrEnv
-        let (ttypepargs, ttypeproc) = (`runInstantiateArrType` arrenv) $ fromJust 
-                -- | this is if no explicit annotation is provided..
-                $ tp ^? _SymSub % to (instantiateArrType (_Just % _TypeAnnProcCall # procc))
-                -- | this is if there is an explicit annotation..
-                <|> tp ^? _SymProc % to (instantiateArrType (_Just % _TypeAnnProcCall # procc))
+        let (ttypepargs, ttypeproc) = (`runInstantiateArrType` arrenv) 
+                $ fromJust 
+                $ tp ^? _SymConcCallType % to (instantiateArrType (_Just % _TypeAnnProcCall # procc))
 
         inslkups <- zoom (envLcl % typeInfoSymTab) $ for ins lookupSymCh
         outslkups <- zoom (envLcl % typeInfoSymTab) $ for outs lookupSymCh
@@ -848,7 +838,7 @@ typeCheckCmd = \cmd -> case cmd of
 
     CHCase cxt ch cases -> do
         ttypemap <- guse (envLcl % typeInfoEnvMap)
-        ~(SymEntry lkuptp info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch
+        ~(SymEntry ttypech info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch
         ttypechstable <- freshTypeTag
 
         arrenv <- freshInstantiateArrEnv
@@ -856,12 +846,56 @@ typeCheckCmd = \cmd -> case cmd of
             (NE.unzip *** toListOf (instantiateArrEnvInstantiated % folded) )
             $ (`runStateT` arrenv) 
             $ for cases $ \(cxt, ident, cmds) -> do
-                ~(SymEntry lkuptp ~(SymConcPhraseCall def)) <- lift $ zoom (envLcl % typeInfoSymTab) $ do
-                    res <- guse $ symTabTerm % at (ident ^. uniqueTag)
+                ~(SymEntry clauselkuptp ~(SymConcPhraseCall def)) <- lift $ zoom (envLcl % typeInfoSymTab) $ do
+                    res <- guse $ symTabConc % at (ident ^. uniqueTag)
                     tell $ review _InternalError $ maybe [_CannotCallTerm # ident] mempty res
-                    undefined
-                undefined
-        undefined
+                    return $ fromJust res
+
+                tell $ review _ExternalError 
+                    $ inputOutput (ch ^. polarity)
+                        ( maybeToList 
+                            $ def ^? _CoprotocolDefn 
+                                % to (review _HCaseExpectedInputPolarityChToHaveProtocolButGotCoprotocol . (ch,))
+                            )
+                        ( maybeToList 
+                            $ def ^? _ProtocolDefn 
+                                % to ( review _HCaseExpectedOutputPolarityChToHaveCoprotocolButGotProtocol 
+                                     . (ch,)))
+
+                let (ttypeargs, unwrappedtp) = fromJust $ clauselkuptp ^? _SymConcPhrase 
+
+                subs <- updateInstantiatedAndGetSubs ttypeargs
+
+                ttypech' <- lift $ overwriteChToSymTab ch
+                (cmds', cmdseqns) <- lift $ typeCheckCmds cmds
+
+                let ttypepunwrapped = fromJust $ instantiateTypeWithSubs subs $ unwrappedtp
+                    ttypepclause = fromJust $ case def of
+                        ProtocolDefn phrase -> 
+                            phrase ^. typePhraseExt
+                                % to ( instantiateTypeWithSubs subs 
+                                     . typeClauseToMplType)
+                        CoprotocolDefn phrase -> 
+                            phrase ^. typePhraseExt
+                                % to ( instantiateTypeWithSubs subs 
+                                     . typeClauseToMplType)
+                    ttypepch' = annotateTypeTag ttypech' ch
+                    eqns = TypeEqnsExist [ttypepch'] $
+                        [ TypeEqnsEq 
+                            ( typePtoTypeVar ttypepch'
+                            , ttypepunwrapped )
+                        , TypeEqnsEq 
+                            ( ttypech
+                            , ttypepclause )
+                        ]
+                        <> cmdseqns
+
+                return ((def, ident, cmds') , [eqns])
+
+        -- let eqns = [genStableEqn ttypechstable ttypech] <> fold caseseqns
+        let eqns = fold caseseqns
+
+        return (_CHCase # (undefined, undefined, cases'), eqns)
     {-
     f (CHCase cxt ch cases) = do
         symtab <- guse envLcl
@@ -1142,7 +1176,7 @@ overwriteChToSymTab ch = do
     let typep = annotateTypeTag tag ch
         typep' = typePtoTypeVar typep
     {-
-    envLcl % typeInfoSymTab % symTabTerm %%= 
+    envLcl % typeInfoSymTab % symTabExpr %%= 
         ( (tag,) 
         . ( Map.singleton 
             (ch ^. uniqueTag) 

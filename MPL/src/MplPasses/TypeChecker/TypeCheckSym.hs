@@ -1,6 +1,10 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -26,8 +30,9 @@ import Data.Maybe
 
 
 type SymTabType = Map UniqueTag (MplObjectDefn MplTypeCheckedClause)
-type SymTabTerm = Map UniqueTag (SymEntry SymType SymTermInfo)
+type SymTabExpr = Map UniqueTag (SymEntry SymSeqType SymExprInfo)
 type SymTabCh = Map UniqueTag (SymEntry (MplType MplTypeSub) ChIdentR)
+type SymTabConc = Map UniqueTag (SymEntry SymConcType SymConcInfo)
 
 type TypeTagMap = Map TypeTag SymTypeEntry
 
@@ -42,64 +47,86 @@ _SymTypeCh = prism' cts prj
     prj (SymTypeSeq (vs, [], tp)) = Just $ (vs, tp)
     prj _ = Nothing
 
-
-
 data SymTab = SymTab {
-    _symTabTerm :: SymTabTerm
+    _symTabExpr :: SymTabExpr
     , _symTabType :: SymTabType
+    , _symTabConc :: SymTabConc
     , _symTabCh :: SymTabCh
 }  
 
 instance Semigroup SymTab where
-    SymTab a0 b0 c0 <> SymTab a1 b1 c1 = SymTab (a0 <> a1) (b0 <> b1) (c0 <> c1)
+    SymTab a0 b0 c0 d0 <> SymTab a1 b1 c1 d1 = SymTab (a0 <> a1) (b0 <> b1) (c0 <> c1) (d0 <> d1)
 
 instance Monoid SymTab where
-    mempty = SymTab mempty mempty mempty
+    mempty = SymTab mempty mempty mempty mempty
 
-data SymTermInfo = 
-    SymRunInfo (MplProcess MplTypeChecked)
-    | SymSeqCall ExprCallDef
+data SymExprInfo = 
+    SymSeqCall ExprCallDef
     | SymSeqPhraseCall (MplSeqObjDefn MplTypeCheckedPhrase)
-    | SymConcPhraseCall (MplConcObjDefn MplTypeCheckedPhrase)
-    | SymChInfo ChIdentR
+    -- | SymConcPhraseCall (MplConcObjDefn MplTypeCheckedPhrase)
+    -- | SymChInfo ChIdentR
+
+data SymConcInfo = 
+    SymConcPhraseCall 
+        (MplConcObjDefn MplTypeCheckedPhrase)
+    | SymRunInfo (MplProcess MplTypeChecked)
 
 
 data SymEntry a b = SymEntry {
     _symEntryType :: a
     , _symEntryInfo :: b
 }
--- SymType
 
-data SymPhraseType a = SymPhraseType {
+data SymSeqPhraseType a = SymSeqPhraseType {
     _noStateVarsType :: a
     , _originalType :: a
 }
 
-data SymType =
-    SymSub (MplType MplTypeSub)
-    | SymProc ([TypeP MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked])
-    | SymFun ([TypeP MplTypeChecked], [MplType MplTypeChecked], MplType MplTypeChecked)
+data SymCallType a = 
+    SymImplicit (MplType MplTypeSub)
+    | SymExplicit a
 
-    | SymDataPhrase (SymPhraseType ([TypeP MplTypeChecked], [MplType MplTypeChecked], MplType MplTypeChecked))
+data SymSeqType =
+    SymSeqCallType (SymCallType ([TypeP MplTypeChecked], [MplType MplTypeChecked], MplType MplTypeChecked))
+
+    | SymDataPhrase (SymSeqPhraseType 
+        ( [TypeP MplTypeChecked], [MplType MplTypeChecked], MplType MplTypeChecked))
      
     | SymCodataPhrase 
-        (SymPhraseType ([TypeP MplTypeChecked], ([MplType MplTypeChecked], MplType MplTypeChecked), MplType MplTypeChecked))
-    -- | SymInst ([IdentT], SymTypeEntry)
+        ( SymSeqPhraseType ([TypeP MplTypeChecked]
+        , ([MplType MplTypeChecked], MplType MplTypeChecked), MplType MplTypeChecked))
 
-
+data SymConcType = 
+    SymConcCallType (SymCallType 
+        ([TypeP MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked]))
+    | SymConcPhrase ( [TypeP MplTypeChecked], MplType MplTypeChecked )
+        -- (free vars, unwrapped type, clause type)
 
 $(concat <$> traverse makePrisms 
-    [ ''SymTermInfo 
-    , ''SymType 
+    [ ''SymExprInfo 
+    , ''SymSeqType 
     , ''SymEntry 
     , ''SymTypeEntry
-    , ''SymPhraseType
+    , ''SymSeqPhraseType
+    , ''SymConcType 
+    , ''SymConcInfo 
     ]
  )
+
+$(makeClassyPrisms ''SymCallType)
+
 $(concat <$> traverse makeLenses 
     [ ''SymEntry
     , ''SymTab 
-    , ''SymPhraseType  
+    , ''SymSeqPhraseType  
     ]
  )
 
+
+instance (tp ~ TypeP MplTypeChecked, mpltp ~ MplType MplTypeChecked) => 
+    AsSymCallType SymSeqType ([tp], [mpltp], mpltp) where
+    _SymCallType = _SymSeqCallType
+
+instance (tp ~ TypeP MplTypeChecked, mpltp ~ MplType MplTypeChecked) =>
+    AsSymCallType SymConcType ([tp], [mpltp], [mpltp], [mpltp]) where
+    _SymCallType = _SymConcCallType 

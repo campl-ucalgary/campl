@@ -63,12 +63,17 @@ type family XProcessDefn x
 type family XFunctionDefn x 
 
 type ForallDefn (c :: Type -> Constraint) x =
+    ( ForallObjDefn c x
+    , c (XFunctionDefn x)
+    , c (XProcessDefn x)
+
+    )
+
+type ForallObjDefn (c :: Type -> Constraint) x =
     ( c (XDataDefn x)
     , c (XCodataDefn x)
     , c (XCoprotocolDefn x)
     , c (XProtocolDefn x)
-    , c (XProcessDefn x)
-    , c (XFunctionDefn x)
 
     , c (MplSeqObjDefn x)
     , c (MplConcObjDefn x)
@@ -129,9 +134,9 @@ instance AsMplConcObjDefn (MplObjectDefn x) x where
     _MplConcObjDefn = _ConcObjDefn 
 
 deriving instance (ForallDefn Show x) => Show (MplDefn x)
-deriving instance (ForallDefn Show x) => Show (MplObjectDefn x) 
-deriving instance (ForallDefn Show x) => Show (MplSeqObjDefn x)
-deriving instance (ForallDefn Show x) => Show (MplConcObjDefn x)
+deriving instance (ForallObjDefn Show x) => Show (MplObjectDefn x) 
+deriving instance (ForallObjDefn Show x) => Show (MplSeqObjDefn x)
+deriving instance (ForallObjDefn Show x) => Show (MplConcObjDefn x)
 
 type family XTypeClauseSpineExt x (t :: ObjectDefnTag)
 

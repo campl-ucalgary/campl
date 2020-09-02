@@ -263,12 +263,12 @@ parseBnfcUnfoldPhrase (B.UNFOLD_EXPR_PHRASE patt foldphrases) = do
 parseBnfcProcess :: BnfcParse B.ProcessDefn (MplProcess MplParsed)
 parseBnfcProcess (B.PROCESS_DEFN ident phrases) = do
     phrases' <- traverseTryEach parseBnfcProcessPhrase phrases
-    return $ MplProcess (toTermIdentP ident) Nothing $ NE.fromList phrases'
+    return $ MplProcess (toChIdentP ident) Nothing $ NE.fromList phrases'
 parseBnfcProcess (B.INTERNAL_TYPED_PROCESS_DEFN _ _ _) = error "bnfc does not parse INTERNAL_TYPED_PROCESS_DEFN"
 parseBnfcProcess (B.TYPED_PROCESS_DEFN ident seqtype intype outtype phrases) = do
     ~[seqtype', intype', outtype'] <- traverseTryEach (traverseTryEach parseBnfcType) [seqtype, intype, outtype]
     phrases' <- traverseTryEach parseBnfcProcessPhrase phrases
-    return $ MplProcess (toTermIdentP ident) (Just (seqtype', intype', outtype')) $ NE.fromList phrases'
+    return $ MplProcess (toChIdentP ident) (Just (seqtype', intype', outtype')) $ NE.fromList phrases'
 
 parseBnfcProcessPhrase :: BnfcParse 
     B.ProcessPhrase 
@@ -295,7 +295,7 @@ parseBnfcCmd (B.PROCESS_RUN ident _ seqs inchs outchs _) = do
     seqs' <- traverseTryEach parseBnfcExpr seqs
     return $ _CRun # 
         ( ()
-        , toTermIdentP ident
+        , toChIdentP ident
         , seqs'
         , map toChIdentP inchs
         , map toChIdentP outchs
@@ -317,7 +317,7 @@ parseBnfcCmd (B.PROCESS_HCASE cxt ident phrases) = do
   where
     f (B.HCASE_PHRASE uident cmdblk) = do
         cmds <- parseBnfcCmdBlock cmdblk
-        return $ ((), toTermIdentP uident, cmds)
+        return $ ((), toChIdentP uident, cmds)
 parseBnfcCmd (B.PROCESS_HPUT cxt s t) = do
     return $ _CHPut # (coerce $ toNameOcc cxt, toChIdentP s, toChIdentP t)
 
@@ -382,7 +382,7 @@ parseBnfcCmd (B.PROCESS_PLUG phrases) = do
         seqs' <- traverseTryEach parseBnfcExpr seqs
         let inchs' = map toChIdentP inchs
             outchs' = map toChIdentP outchs
-            cmd = _CRun # (() , toTermIdentP ident , seqs' , inchs' , outchs') 
+            cmd = _CRun # (() , toChIdentP ident , seqs' , inchs' , outchs') 
         return ((), (inchs', outchs'), cmd :| [])
     f (B.PLUG_PHRASE cmds) = do
         cmds' <- parseBnfcCmdBlock cmds

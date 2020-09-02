@@ -120,6 +120,15 @@ getInstantiatedSubs = do
     tosubs <- guse $ instantiateArrEnvInstantiated 
     return $ map (second typePtoTypeVar) $ itoListOf ifolded tosubs
 
+updateInstantiatedAndGetSubs :: 
+    ( MonadState InstantiateArrEnv m ) =>
+    [TypeP MplTypeChecked] -> 
+    m [(TypeP MplTypeChecked, MplType MplTypeSub)]
+updateInstantiatedAndGetSubs ns = do
+    updateInstantiated ns
+    getInstantiatedSubs
+    
+
 class InstantiateArrType t where
     instantiateArrType :: 
         ( MonadState InstantiateArrEnv m ) => 
@@ -134,7 +143,7 @@ instance InstantiateArrType (MplFunction MplRenamed) where
 
     instantiateArrType fun@(MplFunction name (Just tp) defn) = do
         error "ahaha still need to do"
--}
+-} 
 
 instance TypeP MplTypeChecked ~ tp => InstantiateArrType ([tp], [MplType MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked]) where
     instantiateArrType ann (tpvars, seqs, ins, outs) = do
@@ -220,41 +229,49 @@ substituteTypeVars sublist = cata f
     f (TypeConcWithArgsF cxt id args) = TypeConcWithArgs cxt id args 
     f (TypeBuiltInF rst) = error "to implement in substitute type"
 
-class TypeClauseSpineStateVarClauseSubs (t :: ObjectDefnTag) where
-    typeClauseSpineStateVarClauseSubs :: 
-        MplTypeClauseSpine MplTypeChecked t ->
-        [(TypeP MplTypeChecked, MplType MplTypeChecked)]
+typeClauseSpineStateVarClauseSubs :: 
+    TypeClauseToMplType t => MplTypeClauseSpine MplTypeChecked t ->
+    [(TypeP MplTypeChecked, MplType MplTypeChecked)]
+typeClauseSpineStateVarClauseSubs = 
+    foldMapOf (typeClauseSpineClauses % folded) f 
+  where
+    f clause = [ (clause ^. typeClauseStateVar % to NamedType, typeClauseToMplType clause) ]
 
-instance TypeClauseSpineStateVarClauseSubs (SeqObjTag DataDefnTag) where
-    typeClauseSpineStateVarClauseSubs = 
-        foldMapOf (typeClauseSpineClauses % folded) f 
-      where
-        f :: MplTypeClause _ _ -> [(_, _)]
-        f clause = 
-            [ ( clause ^. typeClauseStateVar % to NamedType 
-              , _TypeSeqWithArgs # 
-                ( _DataDefn #  clause
+class TypeClauseToMplType (t :: ObjectDefnTag) where
+    typeClauseToMplType :: 
+        MplTypeClause MplTypeChecked t -> MplType MplTypeChecked 
+
+instance TypeClauseToMplType (SeqObjTag DataDefnTag) where
+    typeClauseToMplType clause = _TypeSeqWithArgs # 
+                ( _DataDefn # clause
                 , clause ^. typeClauseName 
                 , clause ^. typeClauseArgs 
                     % to (map (review _TypeVar . (Just $ SeqKind (),) . NamedType )) )
-              ) 
-            ]
 
--- duplicated code...
-instance TypeClauseSpineStateVarClauseSubs (SeqObjTag CodataDefnTag) where
-    typeClauseSpineStateVarClauseSubs = 
-        foldMapOf (typeClauseSpineClauses % folded) f 
-      where
-        f :: MplTypeClause _ _ -> [(_, _)]
-        f clause = 
-            [ ( clause ^. typeClauseStateVar % to NamedType 
-              , _TypeSeqWithArgs # 
-                ( _CodataDefn #  clause
+-- duplciated code
+instance TypeClauseToMplType (SeqObjTag CodataDefnTag) where
+    typeClauseToMplType clause = _TypeSeqWithArgs # 
+                ( _CodataDefn # clause
                 , clause ^. typeClauseName 
                 , clause ^. typeClauseArgs 
-                    % to (map (review  _TypeVar . (Just $ SeqKind (),) . NamedType )) )
-              ) 
-            ]
+                    % to (map (review _TypeVar . (Just $ SeqKind (),) . NamedType )) )
+
+instance TypeClauseToMplType (ConcObjTag ProtocolDefnTag) where
+    typeClauseToMplType clause = _TypeConcWithArgs # 
+                ( _ProtocolDefn # clause
+                , clause ^. typeClauseName 
+                , clause ^. typeClauseArgs 
+                    % to (over each (map (review _TypeVar . (Just $ SeqKind (),) . NamedType )))
+                )
+
+-- duplicated code..
+instance TypeClauseToMplType (ConcObjTag CoprotocolDefnTag) where
+    typeClauseToMplType clause = _TypeConcWithArgs # 
+                ( _CoprotocolDefn # clause
+                , clause ^. typeClauseName 
+                , clause ^. typeClauseArgs 
+                    % to (over each (map (review _TypeVar . (Just $ SeqKind (),) . NamedType )))
+                ) 
 
 class AnnotateTypeTagToTypeP t where
     annotateTypeTag :: TypeTag -> t -> TypeP MplTypeSub

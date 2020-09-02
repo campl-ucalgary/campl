@@ -298,7 +298,7 @@ renameCmd = f
     f :: MplCmd MplCmdFreeVars -> _ (MplCmd MplRenamed)
     f (CRun cxt ident seqs ins outs) = do
         symtab <- guse envLcl
-        let identlkup = lookupSym ident (_Just % _SymProcInfo) symtab
+        let identlkup = lookupProc ident symtab
             ident' = _IdentR # (ident, identlkup ^. to fromJust % uniqueTag )
             inslkup = traverse (flip lookupCh symtab) ins
             outslkup = traverse (flip lookupCh symtab) outs
@@ -315,7 +315,7 @@ renameCmd = f
                     . view uniqueTag) outs outslkup'
 
         tell $ concat 
-            [ maybe [_OutOfScope # ident] (const []) identlkup
+            [ maybe [_OutOfScope # ident] mempty identlkup
             , outOfScopesWith lookupCh symtab ins 
             , outOfScopesWith lookupCh symtab outs ]
         -- tell $ maybe (concatMap expectedInputPolarity $ zip ins inslkup') (const []) $ inslkup

@@ -65,7 +65,7 @@ typeCheckPattern = para f
         let patt = (PConstructor cxt n (map fst patts) :: MplPattern MplRenamed) 
 
         ~(SymEntry lkuptp (SymSeqPhraseCall (DataDefn seqdef))) <- zoom (envLcl % typeInfoSymTab) $ do
-            res <- guse $ symTabTerm % at (n ^. uniqueTag)
+            res <- guse $ symTabExpr % at (n ^. uniqueTag)
             let callterm = maybe (_Just % _CannotCallTerm # n) (const Nothing) res
             tell $ review _InternalError $ maybeToList $ callterm
             tell $ review _InternalError $ maybeToList $ 
@@ -145,8 +145,8 @@ typeCheckPattern = para f
 
             res = PVar (fromJust $ ttypemap ^? at ttypestable % _Just % _SymTypeSeq) v 
 
-        envLcl % typeInfoSymTab % symTabTerm % at (v ^. uniqueTag) ?= 
-            _SymEntry # (_SymSub # mplttype, _SymSeqCall % _ExprCallPattern # res )
+        envLcl % typeInfoSymTab % symTabExpr % at (v ^. uniqueTag) ?= 
+            _SymEntry # (_SymImplicit # mplttype, _SymSeqCall % _ExprCallPattern # res )
 
         return (res, eqns)
 

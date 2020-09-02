@@ -2,6 +2,9 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE PartialTypeSignatures #-}
+{-# OPTIONS_GHC -Wno-partial-type-signatures #-}
 module MplPasses.Renamer.RenameSym where
 
 import Optics
@@ -101,14 +104,25 @@ lookupSymTypeInfo ident =
 lookupSymSeqPhrase ident = 
     lookupSym ident (_Just % _SymSeqPhraseInfo)
 
+{-
 lookupSym ident prism = join 
     . fmap ( 
         traverseOf symEntryInfo 
             ( preview prism ) . view _2 )
     . find ((ident ==) . view _1)
+-}
+
+lookupSym :: Eq t => t -> Prism _ _ _ _ -> [(t, SymEntry a)] -> Maybe (SymEntry b)
+lookupSym ident prism [] = Nothing
+lookupSym ident prism ((ident', entry):rst) 
+    -- | ident == ident' && has (symEntryInfo % prism) entry = Just entry
+    | ident == ident', Just entry' <- entry ^? symEntryInfo % prism
+        = Just $ entry & symEntryInfo .~ entry'
+    | otherwise = lookupSym ident prism rst
 
 lookupSymAny ident = fmap snd . find ((ident ==) . view _1)
 
+deleteSym :: Eq t => t -> Prism _ _ _ _ -> [(t, SymEntry a)] -> [(t, SymEntry a)]
 deleteSym ident prism [] = []
 deleteSym ident prism (sym:syms) 
     | ident == sym ^. _1 

@@ -916,8 +916,6 @@ cmdIToGraph = f
             undefined
 
             
-            
-
 
 cmdsIToGraph ::
     NonEmpty (ProcessCommandI BnfcIdent) -> 
