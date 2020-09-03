@@ -257,6 +257,11 @@ match = f
         (TypePutF cxt0 seq0 conc0, TypePutF cxt1 seq1 conc1) -> 
             concat <$> sequenceA [f seq0 seq1, f conc0 conc1]
 
+        (TypeParF cxt0 a0 b0, TypeParF cxt1 a1 b1) -> 
+            (<>) <$> f a0 a1 <*> f b0 b1
+        (TypeTensorF cxt0 a0 b0, TypeTensorF cxt1 a1 b1) -> 
+            (<>) <$> f a0 a1 <*> f b0 b1
+
         (TypeSeqArrF cxt0 froms0 to0, TypeSeqArrF cxt1 froms1 to1) 
             | length froms0 == length froms1 -> 
                 (<>) <$> (fold <$> traverse (uncurry f) (NE.zip froms0 froms1 ))
@@ -274,6 +279,8 @@ match = f
                     , zip tos0 tos1
                     ]
             | otherwise -> throwError $ _TypeMatchFailure # (type0,type1)
+        _ -> throwError $ _TypeMatchFailure # (type0,type1)
+    f type0 type1 = throwError $ _TypeMatchFailure # (type0,type1)
 
     {-
      -

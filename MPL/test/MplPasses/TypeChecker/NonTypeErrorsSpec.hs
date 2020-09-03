@@ -47,7 +47,44 @@ spec = do
         [ n0
         ]
 
+    mapM_ (`describeAnyErrors` ("Non exhaustive fork scope..", 
+            _MplTypeCheckErrors 
+            % _SemanticErrors 
+            % _ForkHasChannelsInScopeButContextsAreNonExhaustiveWith)
+            )
+        [ n1
+        ]
 
+    mapM_ (`describeAnyErrors` ("Fork non disjoint channels", 
+            _MplTypeCheckErrors 
+            % _SemanticErrors 
+            % _ForkExpectedDisjointChannelsButHasSharedChannels)
+            )
+        [ n2
+        ]
+
+    mapM_ (`describeAnyErrors` ("Illegal ID of channels with the same polarity", 
+            _MplTypeCheckErrors 
+            % _SemanticErrors 
+            % _IllegalIdGotChannelsOfTheSamePolarityButIdNeedsDifferentPolarity
+            )
+            )
+        [ n3
+        ]
+
+    mapM_ (`describeAnyErrors` ("Illegal IdNeg of channels with the same polarity", 
+            _MplTypeCheckErrors 
+            % _SemanticErrors 
+            % _IllegalIdNegGotChannelsOfDifferentPolarityButIdNegNeedsTheSamePolarity
+            )
+            )
+        [ n4
+        ]
+
+
+ -- IllegalIdNegGotChannelsOfDifferentPolarityButIdNegNeedsTheSamePolarity
+
+-- bad codata call
 n0 = [r|
 data Nat -> S =
     Succ :: S -> S
@@ -55,4 +92,40 @@ data Nat -> S =
 
 fun myConst =
     a -> (Succ := b -> b)
+|]
+
+-- fork hs channels in scope
+n1 = [r|
+proc n1 :: | => TopBot (*) TopBot, TopBot =
+    | => a,other -> do
+        fork a as
+            s -> do
+                halt s
+            t -> do
+                halt t
+|]
+
+-- fork disjoint
+n2 = [r|
+proc n2 :: | => TopBot (*) TopBot, TopBot =
+    | => a,other -> do
+        fork a as
+            s -> do
+                close other
+                halt s
+            t -> do
+                close other
+                halt t
+|]
+
+-- Id polarity error 
+n3 = [r|
+proc n3 =
+    | a,b => -> a |=| b
+|]
+
+-- Idneg polarity error 
+n4 = [r|
+proc n4 =
+    | a => b -> a |=| neg b
 |]

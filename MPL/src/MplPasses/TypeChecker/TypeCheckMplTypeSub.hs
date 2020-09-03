@@ -69,10 +69,10 @@ type instance XTypeTupleF MplTypeSub = NameOcc
 
 type instance XTypeGet MplTypeSub = TypeChAnn
 type instance XTypePut MplTypeSub = TypeChAnn
-type instance XTypeTensor MplTypeSub = NameOcc
-type instance XTypePar MplTypeSub = NameOcc
+type instance XTypeTensor MplTypeSub = TypeChAnn
+type instance XTypePar MplTypeSub = TypeChAnn
 type instance XTypeTopBot MplTypeSub = TypeChAnn
-type instance XTypeNeg MplTypeSub = NameOcc
+type instance XTypeNeg MplTypeSub = TypeChAnn
 type instance XTypeSeqArrF MplTypeSub = 
     Maybe TypeAnn -- Maybe ([MplPattern MplRenamed], MplExpr MplRenamed)
 type instance XTypeConcArrF MplTypeSub = 
@@ -206,6 +206,16 @@ instantiateTypeWithSubs sublist = cata f
             seq' <- seq
             conc' <- conc
             return $ _TypePutF # (annotate cxt, seq', conc')
+
+        TypeTensorF cxt a b -> do
+            a' <- a
+            b' <- b
+            return $ _TypeTensorF # (annotate cxt, a', b')
+        TypeParF cxt a b -> do
+            a' <- a
+            b' <- b
+            return $ _TypeParF # (annotate cxt, a', b')
+
         TypeTopBotF cxt -> 
             return $ _TypeTopBotF # annotate cxt
       where
@@ -227,7 +237,7 @@ substituteTypeVars sublist = cata f
     f (TypeVarF cxt typep) = fromMaybe (_TypeVar # (cxt, typep)) $ lookup typep sublist
     f (TypeSeqWithArgsF cxt id args) = TypeSeqWithArgs cxt id args 
     f (TypeConcWithArgsF cxt id args) = TypeConcWithArgs cxt id args 
-    f (TypeBuiltInF rst) = error "to implement in substitute type"
+    f n = embed n
 
 typeClauseSpineStateVarClauseSubs :: 
     TypeClauseToMplType t => MplTypeClauseSpine MplTypeChecked t ->
@@ -297,6 +307,11 @@ instance AnnotateTypeTagToTypeP ChIdentR where
       where
         ann = TypeAnnCh ch
 
+instance AnnotateTypeTagToTypeP (MplCmd MplRenamed) where
+    annotateTypeTag tag ch =  _TypeIdentT # (tag, TypeIdentTInfoTypeAnn ann)
+      where
+        ann = TypeAnnCmd ch
+
 instance AnnotateTypeTagToTypeP (MplProcess MplRenamed) where
     annotateTypeTag tag res =  _TypeIdentT # (tag, TypeIdentTInfoTypeAnn ann)
       where
@@ -338,6 +353,6 @@ instance PPrint TypeTag where
     pprint (TypeTag n) = pprint n
 
 instance PPrint TypeIdentT where
-    pprint (TypeIdentT tag (TypeIdentTInfoTypeVar v)) = pprint v 
+    pprint (TypeIdentT tag (TypeIdentTInfoTypeVar v)) = pprint v  ++ "__" ++ pprint tag
     pprint (TypeIdentT tag _) = pprint tag
 

@@ -68,6 +68,9 @@ deriving instance Show (XMplType MplTypeChecked) => Show ChIdentT
 $(makeClassy ''ChIdentT)
 $(makePrisms ''ChIdentT)
 
+instance Eq ChIdentT where
+    a == b = a ^. chIdentR == b ^. chIdentR
+
 instance HasChIdentR ChIdentT where
     chIdentR = chIdentTChIdentR 
 
@@ -176,7 +179,7 @@ type instance XCHalt MplTypeChecked = KeyWordNameOcc
 type instance XCGet MplTypeChecked = KeyWordNameOcc
 type instance XCPut MplTypeChecked = KeyWordNameOcc
 type instance XCHCase MplTypeChecked = KeyWordNameOcc
-type instance XCHPut MplTypeChecked = KeyWordNameOcc
+type instance XCHPut MplTypeChecked = (KeyWordNameOcc, MplConcObjDefn MplTypeCheckedPhrase)
 type instance XCSplit MplTypeChecked = KeyWordNameOcc
 type instance XCFork MplTypeChecked = KeyWordNameOcc
 type instance XCId MplTypeChecked = KeyWordNameOcc
@@ -238,8 +241,8 @@ type instance XTypeTupleF MplTypeChecked = NameOcc
 
 type instance XTypeGet MplTypeChecked = Maybe NameOcc
 type instance XTypePut MplTypeChecked = Maybe NameOcc
-type instance XTypeTensor MplTypeChecked = NameOcc
-type instance XTypePar MplTypeChecked = NameOcc
+type instance XTypeTensor MplTypeChecked = Maybe NameOcc
+type instance XTypePar MplTypeChecked = Maybe NameOcc
 type instance XTypeTopBot MplTypeChecked = Maybe NameOcc
 type instance XTypeNeg MplTypeChecked = NameOcc
 type instance XTypeSeqArrF MplTypeChecked = ()

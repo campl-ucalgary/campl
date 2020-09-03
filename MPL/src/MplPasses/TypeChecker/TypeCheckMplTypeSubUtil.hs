@@ -65,9 +65,9 @@ data TypeAnn =
     | TypeAnnExpr (MplExpr MplRenamed)
     -- Type pattern..
     | TypeAnnPatt (MplPattern MplRenamed)
+
     -- Type channel..
     | TypeAnnCh ChIdentR
-
   deriving Show
 
 data TypeIdentTInfo = 

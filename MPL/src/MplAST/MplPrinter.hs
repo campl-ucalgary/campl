@@ -264,6 +264,11 @@ instance ( PPrint (IdP x), PPrint (TypeP x) ) => MplTypeToBnfc (MplType x) where
                 B.MPL_SEQ_ARROW_TYPE [] (NE.toList $ fmap f froms) (f to)
             TypeConcArrF cxt seqs froms tos -> 
                 B.MPL_CONC_ARROW_TYPE [] (map f seqs) (map f froms) (map f tos)
+            TypeTensorF cxt l r -> 
+                B.TENSOR_TYPE (f l) bnfcKeyword (f r)
+            TypeParF cxt l r -> 
+                B.PAR_TYPE (f l) bnfcKeyword (f r)
+
             TypeGetF cxt seq conc ->
                 B.MPL_UIDENT_SEQ_CONC_ARGS_TYPE 
                     (toBnfcIdent "Get") 
@@ -580,3 +585,9 @@ instance BnfcKeyword B.Fork where
 
 instance BnfcKeyword B.ChId where
     bnfcKeyword = B.ChId ((-1,-1), "|=|")
+
+instance BnfcKeyword B.Par where
+    bnfcKeyword = B.Par ((-1,-1), "(+)")
+
+instance BnfcKeyword B.Tensor where
+    bnfcKeyword = B.Tensor ((-1,-1), "(*)")

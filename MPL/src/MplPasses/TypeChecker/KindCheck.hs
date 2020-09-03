@@ -183,14 +183,14 @@ primitiveKindCheck = para f
     f (TypeConcWithArgsF cxt tp (seqs,concs)) = do
         ekd <- guse kindCheckExpectedPrimitiveKind 
         -- clauselkup <- gview $ ix (tp ^. uniqueTag)
-        clauselkup <- undefined
+        ~clauselkup <- lookupSymType tp
 
         let rseqs = map fst seqs
             rconcs = map fst concs
-        noerrs <- fmap (has _Empty . snd) $ listen $ do 
-            tell $ review _ExternalError $ flip (maybe []) clauselkup $ \case
-                ConcObjDefn seqclause -> 
-                    let (clausename, clauseargs@(clauseseqs, clauseconcs)) = case seqclause of
+        ~noerrs <- fmap (has _Empty . snd) $ listen $ do 
+            tell $ review _ExternalError $ case clauselkup of
+                ConcObjDefn concclause -> 
+                    let (clausename, clauseargs@(clauseseqs, clauseconcs)) = case concclause of
                             ProtocolDefn clause -> 
                                 ( clause ^. typeClauseName
                                 , clause ^. typeClauseArgs)
@@ -201,8 +201,8 @@ primitiveKindCheck = para f
                         ( (clausename, clauseargs), (tp, (rseqs,rconcs)) )
                         ] $ length clauseseqs /= length rseqs  
                             && length clauseconcs /= length rconcs  
-                SeqObjDefn concclause ->
-                    let (clausename, clauseargs) = case concclause of
+                SeqObjDefn seqclause ->
+                    let (clausename, clauseargs) = case seqclause of
                             DataDefn clause -> 
                                 ( clause ^. typeClauseName
                                 , clause ^. typeClauseArgs)
@@ -230,7 +230,7 @@ primitiveKindCheck = para f
                 snd n) concs
 
         return $ flip (bool Nothing) noerrs $ do
-            clause <- clauselkup ^? _Just % _ConcObjDefn 
+            clause <- clauselkup ^?  _ConcObjDefn 
             rseqs' <- sequenceA rseqs
             rconcs' <- sequenceA rconcs
             return $ _TypeConcWithArgs # 
@@ -341,7 +341,7 @@ primitiveKindCheck = para f
             (r', rlg) <- listen r
 
             return $ bool Nothing
-                (review _TypeTensorF <$> ((ann,,) <$> l' <*> r'))
+                (review _TypeTensorF <$> ((Just ann,,) <$> l' <*> r'))
                 $ noerr && has _Empty llg && has _Empty rlg 
 
         -- duplicated code
@@ -362,7 +362,7 @@ primitiveKindCheck = para f
             (r', rlg) <- listen r
 
             return $ bool Nothing
-                (review _TypeParF <$> ((ann,,) <$> l' <*> r'))
+                (review _TypeParF <$> ((Just ann,,) <$> l' <*> r'))
                 $ noerr && has _Empty llg && has _Empty rlg 
                 
         TypeNegF ann (lr, l)  -> do

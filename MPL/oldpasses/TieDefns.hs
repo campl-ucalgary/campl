@@ -915,7 +915,7 @@ cmdIToGraph = f
             -- return [ (cmds0', (ttypescommon0, eqns0)), (cmds1', (ttypescommon1, eqns1))]
             undefined
 
-            
+
 
 cmdsIToGraph ::
     NonEmpty (ProcessCommandI BnfcIdent) -> 

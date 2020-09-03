@@ -55,6 +55,20 @@ spec = do
         , v12 
         , v13 
         , v14 
+        , v15 
+        , v16 
+        , v17 
+        , v18 
+        , v19 
+        , v20 
+        , v21 
+        , v22 
+        , v23 
+        , v24 
+        , v25 
+        , v26 
+        , v27 
+        , v28 
         ]
 
     mapM_ (`describeAnyErrors` ("Type unification for all failure", 
@@ -73,9 +87,14 @@ spec = do
         [ nm1
         , nm2 
         , nm3
-        , nm4 ]
+        , nm4
+        , nm5 
+        , nm6
+        , nm7
+        , nm8
+        ]
 
-    mapM_ (`describeAnyErrors` ("Type match failure", 
+    mapM_ (`describeAnyErrors` ("Occurs check", 
             _MplTypeCheckErrors 
             % _TypeCheckUnificationErrors 
             % _TypeOccursCheck))
@@ -206,8 +225,160 @@ proc v15 :: | Put(A|Get(A|TopBot)) =>  =
         halt b
 |]
 
+v16 = [r|
+protocol Test => S =
+    -- Testing :: TopBot => S
+    Testing :: TopBot => S
+
+proc v16 =
+    | a => -> do
+        hcase a of
+            Testing -> halt a
+|]
+
+v17 = [r|
+protocol Test => S =
+    Testing0 :: TopBot => S
+    Testing1 :: TopBot => S
+
+proc v17 :: | Test( | ) => TopBot =
+    | a => other -> do
+        hcase a of
+            Testing0 -> do
+                close other
+                halt a
+            Testing1 -> do
+                close other
+                halt a
+|]
+
+v18 =[r|
+protocol Test(A,B | ) => S =
+    Testing0 :: Put(A | Get(B |TopBot)) => S
+    Testing1 :: Put(B | TopBot) => S
+
+proc v18 :: | Test(A,A |) => = 
+    | a => -> do
+        hcase a of
+            Testing0 -> do
+                get res on a
+                put res on a
+                halt a
+            Testing1 -> do
+                get _ on a
+                halt a
+|]
+
+v19 = [r|
+protocol Test(A,B | ) => S =
+    Testing0 :: Get(A | TopBot) => S
+    Testing1 :: Get(A | TopBot) => S
+
+proc v19 :: | => Test(A,B | ) =
+    | => other -> do
+        hput Testing0 on other
+        get _ on other
+        halt other
+|]
+
+v20 = [r|
+fun v20 :: -> A=
+    -> v20
+|]
+
+v21 = [r|
+fun v21 :: -> A=
+    -> v21()
+|]
+
+v22 = [r|
+protocol Test(A,B | ) => S =
+    Testing0 :: Get(B | Put(A | TopBot)) => S 
+    Testing1 :: Put(A | TopBot) => S 
+
+proc v12a :: |  => Test(A,A | ) =
+    | => other -> do
+        hput Testing0 on other
+        get a on other
+        put a on other
+        halt other
+|]
+
+
+v23 = [r|
+protocol Test(A| ) => S =
+    Testing0 :: Get(A | S) => S 
+
+proc v23 :: |  => Test(A | ) =
+    | => other -> do
+        hput Testing0 on other
+        get a on other
+        v23(| => other )
+|]
+
+v24 = [r|
+proc v24 :: | => Get(A | TopBot) (+) TopBot =
+    | => a -> do
+        split a into s,t
+        get v on s
+        close s 
+        halt t
+|]
+
+v25 = [r| 
+proc v25 :: | => TopBot (*) TopBot, TopBot =
+    | => a,other -> do
+        fork a as
+            s -> do
+                close other 
+                halt s
+            t -> halt t
+|]
+
+v26 = [r|
+proc v26 :: | Put(A| B) => B =
+    | a => b -> do
+        get _ on a
+        a |=| b
+|]
+
+v27 = [r|
+proc v27 :: | Put(A | TopBot), Put(A | TopBot) => =
+    | a,b => -> do
+        race 
+            a -> do
+                get _ on a
+                get _ on b
+                close b
+                halt a
+            b -> do
+                get _ on a
+                get _ on b
+                close a
+                halt b
+|]
+
+v28 = [r|
+proc v12a :: | => Get(A | TopBot), Get(A | TopBot) =
+    |  => a,b -> do
+        race 
+            a -> do
+                get _ on a
+                get _ on b
+                close b
+                halt a
+            b -> do
+                get _ on a
+                get _ on b
+                close a
+                halt b
+|]
+
 -- Invalid tests  
 ----------------------------
+
+-- Forall match failure
+-------------
 nf1 = [r|
 fun nf1 :: A -> B =
     a -> a
@@ -226,6 +397,8 @@ defn
         a -> fun0(a)
 |]
 
+-- Match failures
+-------------
 nm1 = [r|
 data Nat -> S =
     Succ :: S -> S
@@ -286,9 +459,83 @@ proc nm4 =
     _ | b => c -> nm4(NZero | b => c)
 |]
 
+nm5 = [r|
+protocol Test => S =
+    -- Testing :: TopBot => S
+    Testing0 :: TopBot => S
+    Testing1 :: TopBot => S
+
+proc nm5 =
+    | a => other -> do
+        hcase a of
+            Testing0 -> do
+                close other
+                halt a
+            Testing1 -> do
+                get b on other
+                close other
+                halt a
+|]
+
+nm6 = [r|
+data Nat -> S =
+    Succ :: S -> S
+    Zero ::   -> S
+
+data NegNat -> S =
+    Pred :: S -> S
+    NZero ::   -> S
+
+
+protocol Test(A,B | ) => S =
+    Testing0 :: Put(A | TopBot) => S
+    Testing1 :: Put(A | TopBot) => S
+
+proc nm6 :: | Test(A,A |) => = 
+    | a => -> do
+        hcase a of
+            Testing0 -> do
+                get NZero on a
+                halt a
+            Testing1 -> do
+                get Zero on a
+                halt a
+|]
+
+nm7 = [r|
+protocol Test(A,B | ) => S =
+    Testing0 :: Get(A | TopBot) => S
+    Testing1 :: Get(A | TopBot) => S
+
+proc nm7 =
+    | => other -> do
+        hput Testing0 on other
+        get _ on other
+        get _ on other
+        halt other
+|]
+
+nm8 = [r|
+proc nm8 =
+    | a,b => -> do
+        race 
+            a -> do
+                get _ on a
+                close b
+                halt a
+            b -> do
+                get _ on a
+                get _ on b
+                close a
+                halt b
+|]
+
+-- Occurs checks
+-------------
 no0 = [r|
 proc no0 =
     | b => -> do
         get a on b
         no0(| b => )
 |]
+

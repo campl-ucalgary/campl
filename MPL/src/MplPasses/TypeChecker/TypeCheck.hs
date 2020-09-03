@@ -220,13 +220,13 @@ typeCheckDefn (FunctionDefn fun@(MplFunction name funtype defn)) = do
             ttypep =  annotateTypeTag ttype fun
             ttypep' = typePtoTypeVar $ ttypep
             ttypephrases' = annotateTypeTags (NE.toList ttypephrases) $ NE.toList defn
-            eqns = TypeEqnsExist ttypephrases' $
+            eqns = -- TypeEqnsExist ttypephrases' $
                 [ TypeEqnsEq (ttypep', funtype') ]
                 <> [ genStableEqn ttypestable ttypep ]
                 <> map (TypeEqnsEq . (ttypep',) . typePtoTypeVar ) ttypephrases'
                 <> (sconcat acceqns)
 
-    return (FunctionDefn fun', (foralls, ttypephrases', [eqns]))
+    return (FunctionDefn fun', (foralls, ttypep : ttypephrases', eqns))
 
 -- some duplciated code...
 typeCheckDefn (ProcessDefn procc@(MplProcess name proctype defn)) = do
@@ -244,6 +244,7 @@ typeCheckDefn (ProcessDefn procc@(MplProcess name proctype defn)) = do
             return $ (([], tp), _SymImplicit # tp)
 
     ttype <- guse (envLcl % typeInfoEnvTypeTag)
+    ttypestable <- freshTypeTag
     ttypemap <- guse (envLcl % typeInfoEnvMap)
 
     envLcl % typeInfoSymTab % symTabCh .= mempty
@@ -254,16 +255,17 @@ typeCheckDefn (ProcessDefn procc@(MplProcess name proctype defn)) = do
         (ttypephrases, (defn', acceqns)) <- second NE.unzip . NE.unzip <$> 
             traverse (withFreshTypeTag . typeCheckProcessBody) defn
 
-        let procc' = MplProcess name (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeConc) defn'
-            ttype' = typePtoTypeVar $ annotateTypeTag ttype procc
+        let procc' = MplProcess name (fromJust $ ttypemap ^? at ttypestable % _Just % _SymTypeConc) defn'
+            ttypep = annotateTypeTag ttype procc
             ttypephrases' = annotateTypeTags (NE.toList ttypephrases) $ NE.toList defn
-            eqns = TypeEqnsExist ttypephrases' $
-                [ TypeEqnsEq (ttype', proctype') ]
+            eqns = -- TypeEqnsExist ttypephrases' $
+                [ TypeEqnsEq (typePtoTypeVar ttypep, proctype') ]
                 -- <> map (TypeEqnsEq . (ttype',)) (annotateTypeTags (NE.toList ttypephrases) $ ttypephrases' )
-                <> map (TypeEqnsEq . (ttype',) . typePtoTypeVar) ttypephrases'
+                <> map (TypeEqnsEq . (typePtoTypeVar ttypep,) . typePtoTypeVar) ttypephrases'
+                <> [ genStableEqn ttypestable ttypep ]
                 <> (sconcat acceqns)
 
-    return $ (ProcessDefn procc', (foralls, ttypephrases', [eqns])) 
+    return $ (ProcessDefn procc', (foralls, ttypep : ttypephrases', eqns)) 
 
 -------------------------
 -- Type checking expressions
@@ -319,13 +321,26 @@ typeCheckExpr = para f
             tell $ review _InternalError $ maybe [_CannotCallTerm # n] (const []) res
             return $ fromJust res
 
-        let ttypep = annotateTypeTag ttype (_EVar # (cxt, n) :: MplExpr MplRenamed)
+        arrenv <- freshInstantiateArrEnv
+        let ann = _EVar # (cxt, n) :: MplExpr MplRenamed
+            ttypep = annotateTypeTag ttype ann
             
-            lkuptp' = fromJust $ lkuptp ^? _SymSeqCallType % _SymImplicit
-            eqns = [ TypeEqnsEq (typePtoTypeVar ttypep , lkuptp') ] 
+            -- lkuptp' = fromJust $ lkuptp ^? _SymSeqCallType % _SymImplicit
+            {- Note: This is a little peculiar! we can have a program like:
+             - fun undefined :: -> A =
+             -      -> undefined
+             - So, this is a valid call because it takes no arguments ( undefined is the same as undefined() )
+             - But this indeed has an explicit type... indeed, this is identical to the ECallF case..
+            -}
+            (ttypeargs, lkuptp') = (`runInstantiateArrType`arrenv)
+                $ fromJust 
+                $ instantiateArrType (_Just % _TypeAnnExpr # ann) <$> lkuptp ^? _SymSeqCallType
+
+            eqn = TypeEqnsExist ttypeargs $ 
+                [ TypeEqnsEq (typePtoTypeVar ttypep , lkuptp') ] 
                 <> [ genStableEqn ttypestable ttypep ]
 
-        return (EVar (lkupdef, fromJust $ ttypemap ^? at ttypestable % _Just % _SymTypeSeq ) n, eqns)
+        return (EVar (lkupdef, fromJust $ ttypemap ^? at ttypestable % _Just % _SymTypeSeq ) n, [eqn])
 
     f (EPOpsF _ _ _ _ ) = panicNotImplemented
     f (EIntF _ _ ) = panicNotImplemented
@@ -565,20 +580,21 @@ typeCheckProcessBody procbdy@((patts, ins, outs), cmds) = do
     (ttypepatts, (patts', pattacceqns)) <- second NE.unzip . NE.unzip <$> 
         traverse (withFreshTypeTag . typeCheckPattern) patts 
 
-    ttypeins <- traverse overwriteChToSymTab ins
-    ttypeouts <- traverse overwriteChToSymTab outs
+    ttypeins <- traverse freshChTypeTag ins
+    ttypeouts <- traverse freshChTypeTag outs
 
     -- ttypepattsstable <- traverse (const freshTypeTag) ttypepatts
     ttypeinsstable <- traverse (const freshTypeTag) ttypeins
     ttypeoutsstable <- traverse (const freshTypeTag) ttypeouts
 
     (cmds', acccmds) <- typeCheckCmds cmds
+
     let ttypep = annotateTypeTag ttype procbdy
         ttypeppatts = annotateTypeTags ttypepatts patts
         ttypepins = annotateTypeTags ttypeins ins
         ttypepouts = annotateTypeTags ttypeouts outs
 
-        eqn = TypeEqnsExist (ttypeppatts ++ ttypepins ++ ttypepins) $
+        eqn = TypeEqnsExist (ttypeppatts ++ ttypepins ++ ttypepouts) $
                 -- phrase equation
                 [ TypeEqnsEq    
                     ( typePtoTypeVar ttypep
@@ -647,7 +663,7 @@ typeCheckCmd ::
     TypeCheck
         (MplCmd MplRenamed)
         (MplCmd MplTypeChecked, [TypeEqns MplTypeSub])
-typeCheckCmd = \cmd -> case cmd of 
+typeCheckCmd cmd = case cmd of 
     CRun cxt ident seqs ins outs -> do
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
@@ -658,18 +674,16 @@ typeCheckCmd = \cmd -> case cmd of
                 $ fromJust 
                 $ tp ^? _SymConcCallType % to (instantiateArrType (_Just % _TypeAnnProcCall # procc))
 
-        inslkups <- zoom (envLcl % typeInfoSymTab) $ for ins lookupSymCh
-        outslkups <- zoom (envLcl % typeInfoSymTab) $ for outs lookupSymCh
+        ttypesins <- zoom (envLcl % typeInfoSymTab) $ traverse lookupSymCh ins 
+        ttypesinsstables <- traverse (const freshTypeTag) ins
+
+        ttypesouts <- zoom (envLcl % typeInfoSymTab) $ for outs $ lookupSymCh 
+        ttypesoutsstables <- traverse (const freshTypeTag) outs
 
         tell $ review _ExternalError $ 
-            foldMapOf (folded % symEntryInfo) expectedInputPolarity inslkups 
-            <> foldMapOf (folded % symEntryInfo) expectedOutputPolarity outslkups
+            foldMapOf (folded % symEntryInfo) expectedInputPolarity ttypesins
+            <> foldMapOf (folded % symEntryInfo) expectedOutputPolarity ttypesouts
 
-        ttypesins <- traverse overwriteChToSymTab ins
-        ttypesinsstables <- traverse (const freshTypeTag) ttypesins
-
-        ttypesouts <- traverse overwriteChToSymTab outs
-        ttypesoutsstables <- traverse (const freshTypeTag) ttypesouts
 
         (ttypeseqs, (seqs', seqseqns)) <- fmap (second unzip . unzip) 
             $ traverse (withFreshTypeTag . typeCheckExpr) seqs
@@ -679,11 +693,11 @@ typeCheckCmd = \cmd -> case cmd of
             for_ ins $ \ch -> symTabCh % at (ch ^. uniqueTag) .= Nothing
             for_ outs $ \ch -> symTabCh % at (ch ^. uniqueTag) .= Nothing
 
-        let ttypespins = annotateTypeTags ttypesins ins
-            ttypespouts = annotateTypeTags ttypesins outs
+        let ttypespins = annotateTypeTags (map (view symEntryType) ttypesins) ins
+            ttypespouts = annotateTypeTags (map (view symEntryType) ttypesouts) outs
             ttypespseqs = annotateTypeTags ttypeseqs seqs
 
-            eqns = TypeEqnsExist (ttypepargs <> ttypespseqs <> ttypespins <> ttypespouts) $
+            eqns = TypeEqnsExist (ttypepargs <> ttypespseqs) $
                     -- match the given types with the actual type of the process
                     [ TypeEqnsEq 
                         ( ttypeproc
@@ -696,12 +710,14 @@ typeCheckCmd = \cmd -> case cmd of
                         ) 
                     ] 
                     -- match the new channel types with the old channel types
+                    {-
                     <> genTypeEqEqns 
+                        (map typePtoTypeVar (annotateTypeTags ttypesinsstables ins))
                         (map typePtoTypeVar ttypespins) 
-                        (map (view symEntryType) inslkups)
                     <> genTypeEqEqns 
+                        (map typePtoTypeVar (annotateTypeTags ttypesinsstables outs))
                         (map typePtoTypeVar ttypespouts) 
-                        (map (view symEntryType) outslkups)
+                    -}
                     -- stable equations
                     <> zipWith genStableEqn ttypesinsstables ttypespins
                     <> zipWith genStableEqn ttypesoutsstables ttypespouts
@@ -718,9 +734,7 @@ typeCheckCmd = \cmd -> case cmd of
     CClose cxt ch -> do
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
-        ~(SymEntry lkuptp info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch
-
-        ttypech <- overwriteChToSymTab ch
+        ~(SymEntry ttypech info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch
         ttypechstable <- freshTypeTag
 
         envLcl % typeInfoSymTab % symTabCh % at (ch ^. uniqueTag) .= Nothing
@@ -728,118 +742,117 @@ typeCheckCmd = \cmd -> case cmd of
         let ch' = _ChIdentT # (ch, fromJust $ ttypemap ^? at ttypechstable % _Just % _SymTypeCh )
 
             ttypepch = annotateTypeTag ttypech ch
-            eqn = TypeEqnsExist [ttypepch] $
-                [ TypeEqnsEq
-                    ( typePtoTypeVar ttypepch
-                    , lkuptp  ) 
+            eqns = 
+                [ genStableEqn ttypechstable ttypepch
+                -- the type is top bot..
                 , TypeEqnsEq
                     ( typePtoTypeVar ttypepch
                     , _TypeTopBotF # _TypeChAnnCmd # cmd )
                 ]
-                
-        return (_CClose # (cxt, ch'), [eqn])
+
+        return (_CClose # (cxt, ch'), eqns)
     
     -- duplicated code from the CClose case...
     CHalt cxt ch -> do
         ttypemap <- guse (envLcl % typeInfoEnvMap)
-        ~(SymEntry lkuptp info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch
 
-        ttypech <- overwriteChToSymTab ch
+        ~(SymEntry ttypech info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch
         ttypechstable <- freshTypeTag
 
         envLcl % typeInfoSymTab % symTabCh % at (ch ^. uniqueTag) .= Nothing
 
         let ch' = _ChIdentT # (ch, fromJust $ ttypemap ^? at ttypechstable % _Just % _SymTypeCh )
+
             ttypepch = annotateTypeTag ttypech ch
-            eqn = TypeEqnsExist [ttypepch] $
-                [ TypeEqnsEq
-                    ( typePtoTypeVar ttypepch
-                    , lkuptp ) 
+            eqns = 
+                [ genStableEqn ttypechstable ttypepch
+                -- the type is top bot..
                 , TypeEqnsEq
                     ( typePtoTypeVar ttypepch
                     , _TypeTopBotF # _TypeChAnnCmd # cmd )
                 ]
-                
-        return (_CHalt # (cxt, ch'), [eqn])
+
+        return (_CHalt # (cxt, ch'), eqns)
+
     CGet cxt patt ch -> do
         ttypemap <- guse (envLcl % typeInfoEnvMap)
-        ~(SymEntry lkuptp info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch
+        ~(SymEntry ttypech info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch
         ttypechstable <- freshTypeTag
+
+        ttypech' <- freshChTypeTag ch
 
         (ttypepatt, (patt', patteqns)) <- withFreshTypeTag $ typeCheckPattern patt
 
-        ttypech <- overwriteChToSymTab ch
 
         let ch' = _ChIdentT # (ch, fromJust $ ttypemap ^? at ttypechstable % _Just % _SymTypeCh)
             ttypepch = annotateTypeTag ttypech ch
-            ttypepch' = typePtoTypeVar ttypepch
+            ttypepch' = annotateTypeTag ttypech' ch
 
             ttypeppatt = annotateTypeTag ttypepatt patt
-            ttypeppatt' = typePtoTypeVar ttypeppatt 
 
-            lkuptp' = lkuptp 
-
-            eqn = TypeEqnsExist [ttypepch, ttypeppatt] $
+            eqn = TypeEqnsExist [ttypepch', ttypeppatt] $
                 [ TypeEqnsEq
-                    ( lkuptp'
+                    ( typePtoTypeVar ttypepch
                     , inputOutput (ch ^. polarity) 
                         (_TypePutF # 
                             ( _TypeChAnnCmd # cmd
-                            , ttypeppatt'
-                            , ttypepch'))
+                            , typePtoTypeVar ttypeppatt
+                            , typePtoTypeVar ttypepch'))
                         (_TypeGetF # 
                             ( _TypeChAnnCmd # cmd
-                            , ttypeppatt'
-                            , ttypepch'))
+                            , typePtoTypeVar ttypeppatt
+                            , typePtoTypeVar ttypepch'))
                     )
 
-                , genStableEqn ttypechstable ttypepch
+                , genStableEqn ttypechstable $ ttypepch
                 ]
                 <> patteqns
+
         return (_CGet # (cxt, patt', ch'), [eqn])
 
     -- duplciated (except changing the expression)
     CPut cxt expr ch -> do
         ttypemap <- guse (envLcl % typeInfoEnvMap)
-        ~(SymEntry lkuptp info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch
+        ~(SymEntry ttypech info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch
         ttypechstable <- freshTypeTag
 
-        (ttypeexpr, (expr', patteqns)) <- withFreshTypeTag $ typeCheckExpr expr
+        ttypech' <- freshChTypeTag ch
 
-        ttypech <- overwriteChToSymTab ch
+        (ttypeexpr, (expr', expreqns)) <- withFreshTypeTag $ typeCheckExpr expr
+
 
         let ch' = _ChIdentT # (ch, fromJust $ ttypemap ^? at ttypechstable % _Just % _SymTypeCh)
             ttypepch = annotateTypeTag ttypech ch
-            ttypepch' = typePtoTypeVar ttypepch
+            ttypepch' = annotateTypeTag ttypech' ch
 
             ttypepexpr = annotateTypeTag ttypeexpr expr
-            ttypepexpr' = typePtoTypeVar ttypepexpr 
 
-            lkuptp' = lkuptp
-
-            eqn = TypeEqnsExist [ttypepch, ttypepexpr] $
+            eqn = TypeEqnsExist [ttypepch', ttypepexpr] $
                 [ TypeEqnsEq
-                    ( lkuptp'
+                    ( typePtoTypeVar ttypepch
                     , inputOutput (ch ^. polarity) 
                         (_TypeGetF # 
                             ( _TypeChAnnCmd # cmd
-                            , ttypepexpr'
-                            , ttypepch'))
+                            , typePtoTypeVar ttypepexpr
+                            , typePtoTypeVar ttypepch'))
                         (_TypePutF # 
                             ( _TypeChAnnCmd # cmd
-                            , ttypepexpr'
-                            , ttypepch'))
+                            , typePtoTypeVar ttypepexpr
+                            , typePtoTypeVar ttypepch'))
                     )
 
-                , genStableEqn ttypechstable ttypepch
+                , genStableEqn ttypechstable $ ttypepch
                 ]
-                <> patteqns
+                <> expreqns
+
         return (_CPut # (cxt, expr', ch'), [eqn])
 
     CHCase cxt ch cases -> do
         ttypemap <- guse (envLcl % typeInfoEnvMap)
         ~(SymEntry ttypech info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch
         ttypechstable <- freshTypeTag
+
+        let ttypepch = annotateTypeTag ttypech ch
 
         arrenv <- freshInstantiateArrEnv
         ((cases', caseseqns), ttypeinst) <- fmap 
@@ -864,10 +877,12 @@ typeCheckCmd = \cmd -> case cmd of
 
                 let (ttypeargs, unwrappedtp) = fromJust $ clauselkuptp ^? _SymConcPhrase 
 
-                subs <- updateInstantiatedAndGetSubs ttypeargs
+                subs <- state $ runState $ updateInstantiatedAndGetSubs ttypeargs
 
-                ttypech' <- lift $ overwriteChToSymTab ch
-                (cmds', cmdseqns) <- lift $ typeCheckCmds cmds
+                (ttypech', (cmds', cmdseqns)) <- lift $ localEnvSt id $ do
+                    ttypech' <- freshChTypeTag ch
+                    (cmds', cmdseqns) <- typeCheckCmds cmds
+                    return (ttypech', (cmds', cmdseqns))
 
                 let ttypepunwrapped = fromJust $ instantiateTypeWithSubs subs $ unwrappedtp
                     ttypepclause = fromJust $ case def of
@@ -885,168 +900,358 @@ typeCheckCmd = \cmd -> case cmd of
                             ( typePtoTypeVar ttypepch'
                             , ttypepunwrapped )
                         , TypeEqnsEq 
-                            ( ttypech
+                            ( typePtoTypeVar ttypepch
                             , ttypepclause )
                         ]
                         <> cmdseqns
 
                 return ((def, ident, cmds') , [eqns])
 
-        -- let eqns = [genStableEqn ttypechstable ttypech] <> fold caseseqns
-        let eqns = fold caseseqns
+        let eqn = TypeEqnsExist ttypeinst $
+                [genStableEqn ttypechstable ttypepch] <> fold caseseqns
+            ch' = _ChIdentT # (ch, fromJust $ ttypemap ^? at ttypechstable % _Just % _SymTypeCh)
 
-        return (_CHCase # (undefined, undefined, cases'), eqns)
-    {-
-    f (CHCase cxt ch cases) = do
-        symtab <- guse envLcl
-        tell $ outOfScopeWith lookupCh symtab ch
-        let chlkup = lookupCh ch symtab
-            ch' = do
-                chlkup' <- chlkup
-                return $ _ChIdentR # (_IdentR # (ch, chlkup' ^. uniqueTag ), chlkup' ^. symEntryInfo)
-            ch'' = fromJust ch' 
+        envLcl % typeInfoSymTab % symTabCh .= mempty
 
-        cases' <- traverse (g ch') cases
-        return $ CHCase cxt ch'' cases'
-      where
-        g ch' (cxt, ident, cmds) = do
-            symtab <- guse envLcl
-            tell $ outOfScopeWith lookupConcPhrase symtab ident
-            let lkup = lookupConcPhrase ident symtab
-                lkup' = fromJust lkup 
-                ident' = tagIdentPWithSymEntry ident lkup'
+        return (_CHCase # (cxt, ch', cases'), [eqn])
 
-                ch'' = fromJust ch'
-            {-
-            tell $ bool [] 
-                (hCaseError 
-                    (ch'' ^. chIdentRIdentR % identRIdentP, ch'' ^. polarity)
-                    (ident' ^. identRIdentP, lkup' ^. symEntryInfo)
-                    ) 
-                (isJust ch' && isJust lkup)
-                -}
+    CHPut cxt ident ch -> do
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+        ~(SymEntry ttypech info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch
+        ttypechstable <- freshTypeTag
+        let ttypepch = annotateTypeTag ttypech ch
 
-            cmds' <- splitUniqueSupply $ renameCmds cmds
-            envLcl .= symtab
-            return (cxt, ident', cmds')
-    f (CHPut cxt ident ch) = do
-        symtab <- guse envLcl
-        tell $ outOfScopeWith lookupCh symtab ch
-        tell $ outOfScopeWith lookupConcPhrase symtab ident
-        let chlkup = lookupCh ch symtab
-            chlkup' = fromJust chlkup
-            ch' = _ChIdentR # (_IdentR # (ch, chlkup' ^. uniqueTag ), chlkup' ^. symEntryInfo)
+        ~(SymEntry clauselkuptp (SymConcPhraseCall def)) <- zoom (envLcl % typeInfoSymTab) $ do
+            res <- guse $ symTabConc % at (ident ^. uniqueTag)
+            tell $ review _InternalError $ maybe [_CannotCallTerm # ident] mempty res
+            return $ fromJust res
 
-            lkup = lookupConcPhrase ident symtab
-            lkup' = fromJust lkup 
-            ident' = tagIdentPWithSymEntry ident lkup'
+        tell $ review _ExternalError 
+            $ inputOutput (ch ^. polarity)
+                ( maybeToList 
+                    $ def ^? _ProtocolDefn 
+                        % to ( review _HPutExpectedInputPolarityChToHaveCoprotocolButGotProtocol 
+                             . (cxt, ch,))
+                    )
+                ( maybeToList 
+                    $ def ^? _CoprotocolDefn 
+                        % to ( review _HPutExpectedOutputPolarityChToHaveProtocolButGotCoprotocol 
+                             . (cxt, ch,)))
 
+        ttypech' <- freshChTypeTag ch
+        let ttypepch' = annotateTypeTag ttypech' ch
+
+        arrenv <- freshInstantiateArrEnv
+        let (ttypeargs, unwrappedtp) = fromJust $ clauselkuptp ^? _SymConcPhrase 
+            (ttypepargs, (ttypepclause, ttypepunwrapped)) = (`runInstantiateArrType` arrenv) $ do
+                subs <- updateInstantiatedAndGetSubs ttypeargs
+                return 
+                    ( fromJust $ case def of
+                        ProtocolDefn phrase -> 
+                            phrase ^. typePhraseExt % to ( instantiateTypeWithSubs subs . typeClauseToMplType )
+                        CoprotocolDefn phrase -> 
+                            phrase ^. typePhraseExt % to ( instantiateTypeWithSubs subs . typeClauseToMplType )
+                    , fromJust $ instantiateTypeWithSubs subs $ unwrappedtp)
+            eqn = TypeEqnsExist ([ttypepch'] <> ttypepargs) $
+                    [ TypeEqnsEq
+                        ( typePtoTypeVar ttypepch
+                        , ttypepclause )
+                    , TypeEqnsEq
+                        ( typePtoTypeVar ttypepch'
+                        , ttypepunwrapped
+                        )
+                    , genStableEqn ttypechstable ttypepch
+                    ]
+            ch' = _ChIdentT # (ch, fromJust $ ttypemap ^? at ttypechstable % _Just % _SymTypeCh)
+        
+        return (_CHPut # ((cxt, def), ident, ch'), [eqn])
+
+    CSplit cxt ch (ch0, ch1) -> do
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+        ~(SymEntry ttypech info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch
+        ttypechstable <- freshTypeTag
+        let ttypepch = annotateTypeTag ttypech ch
+
+        ttypech0 <- freshChTypeTag ch0
+        ttypech0stable <- freshTypeTag
+        ttypech1 <- freshChTypeTag ch1
+        ttypech1stable <- freshTypeTag
+
+        envLcl % typeInfoSymTab % symTabCh % at (ch ^. uniqueTag) .= Nothing
+
+        let ch' = _ChIdentT # (ch, fromJust $ ttypemap ^? at ttypechstable % _Just % _SymTypeCh )
+            ch0' = _ChIdentT # (ch0, fromJust $ ttypemap ^? at ttypech0stable % _Just % _SymTypeCh )
+            ch1' = _ChIdentT # (ch1, fromJust $ ttypemap ^? at ttypech1stable % _Just % _SymTypeCh )
+
+            ttypepch0 = annotateTypeTag ttypech0 ch0
+            ttypepch1 = annotateTypeTag ttypech1 ch1
+
+            eqn = TypeEqnsExist [ttypepch0, ttypepch1] $ 
+                    [ TypeEqnsEq 
+                        ( typePtoTypeVar ttypepch
+                        , inputOutput (ch ^. polarity)
+                            (_TypeTensorF # 
+                                ( _TypeChAnnCmd # cmd
+                                , typePtoTypeVar ttypepch0
+                                , typePtoTypeVar ttypepch1
+                                ) 
+                            )
+                            (_TypeParF # 
+                                ( _TypeChAnnCmd # cmd
+                                , typePtoTypeVar ttypepch0
+                                , typePtoTypeVar ttypepch1
+                                ) 
+                            )
+                        )
+                    , genStableEqn ttypechstable ttypepch
+                    , genStableEqn ttypech0stable ttypepch0
+                    , genStableEqn ttypech1stable ttypepch1
+                    ]
+
+        return (_CSplit # (cxt, ch', (ch0', ch1')), [eqn])
+
+    -- duplciated code from the split case...
+    CFork cxt ch ((ch0, cxt0, cmds0), (ch1, cxt1, cmds1)) -> do
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+        ~(SymEntry ttypech info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch
+        ttypechstable <- freshTypeTag
+        let ttypepch = annotateTypeTag ttypech ch
+
+        scoped <- guses (envLcl % typeInfoSymTab % symTabCh) (toListOf (itraversed % symEntryInfo))
+        let sharedchs = cxt0 `intersect` cxt1
+        tell $ review _ExternalError $ bool 
+            [_ForkExpectedDisjointChannelsButHasSharedChannels # (cxt, sharedchs)] 
+            [] $ null sharedchs
+        let nonexhaustive = scoped \\ (ch : cxt0 <> cxt1)
+        tell $ review _ExternalError $ bool 
+            [_ForkHasChannelsInScopeButContextsAreNonExhaustiveWith #
+                ( cxt
+                , scoped
+                , (cxt0, cxt1)
+                , nonexhaustive)
+            ] 
+            [] $ null nonexhaustive
+
+        ttypecxt0 <- zoom (envLcl % typeInfoSymTab) $ traverse lookupSymCh cxt0
+        ttypecxt1 <- zoom (envLcl % typeInfoSymTab) $ traverse lookupSymCh cxt1
+        cxt0stables <- traverse (const freshTypeTag) cxt0
+        cxt1stables <- traverse (const freshTypeTag) cxt1
+        
+        -- phrase 1...
+        ttypech0 <- freshChTypeTag ch0
+        ttypech0stable <- freshTypeTag
+        let cxt0tags = ch0 ^. uniqueTag : map (view uniqueTag) cxt0
+        (cmds0', cmds0eqns) <- localEnvSt 
+            ( over 
+                (envLcl % typeInfoSymTab % symTabCh) 
+                (Map.filterWithKey (\k _ -> k `elem` cxt0tags))
+            ) $ typeCheckCmds cmds0 
+
+        -- phrase 2...
+        ttypech1 <- freshChTypeTag ch1
+        ttypech1stable <- freshTypeTag
+        let cxt1tags = ch1 ^. uniqueTag : map (view uniqueTag) cxt1
+        (cmds1', cmds1eqns) <- localEnvSt 
+            ( over 
+                (envLcl % typeInfoSymTab % symTabCh) 
+                (Map.filterWithKey (\k _ -> k `elem` cxt1tags))
+            ) $ typeCheckCmds cmds1 
+
+
+        let ch' = _ChIdentT # (ch, fromJust $ ttypemap ^? at ttypechstable % _Just % _SymTypeCh )
+            ch0' = _ChIdentT # (ch0, fromJust $ ttypemap ^? at ttypech0stable % _Just % _SymTypeCh )
+            ch1' = _ChIdentT # (ch1, fromJust $ ttypemap ^? at ttypech1stable % _Just % _SymTypeCh )
+
+            ttypepch0 = annotateTypeTag ttypech0 ch0
+            ttypepch1 = annotateTypeTag ttypech1 ch1
+
+            cxt0' = zipWith 
+                    (\stable ch -> 
+                        _ChIdentT # (ch, fromJust $ ttypemap ^? at stable % _Just % _SymTypeCh )) 
+                    cxt0stables cxt0
+            cxt1' = zipWith 
+                    (\stable ch -> 
+                        _ChIdentT # (ch, fromJust $ ttypemap ^? at stable % _Just % _SymTypeCh ))
+                    cxt1stables cxt1
+
+            ttypepcxt0 = annotateTypeTags (map (view symEntryType) ttypecxt0) cxt0
+            ttypepcxt1 = annotateTypeTags (map (view symEntryType) ttypecxt1) cxt1
+
+
+            eqn = TypeEqnsExist [ttypepch0, ttypepch1] $ 
+                    [ TypeEqnsEq 
+                        ( typePtoTypeVar ttypepch
+                        , inputOutput (ch ^. polarity)
+                            (_TypeParF # 
+                                ( _TypeChAnnCmd # cmd
+                                , typePtoTypeVar ttypepch0
+                                , typePtoTypeVar ttypepch1
+                                ) 
+                            )
+                            (_TypeTensorF # 
+                                ( _TypeChAnnCmd # cmd
+                                , typePtoTypeVar ttypepch0
+                                , typePtoTypeVar ttypepch1
+                                ) 
+                            )
+                        )
+                    , genStableEqn ttypechstable ttypepch
+                    , genStableEqn ttypech0stable ttypepch0
+                    , genStableEqn ttypech1stable ttypepch1
+                    ]
+                    <> zipWith genStableEqn cxt0stables ttypepcxt0
+                    <> zipWith genStableEqn cxt1stables ttypepcxt1
+                    <> cmds0eqns 
+                    <> cmds1eqns 
+
+        envLcl % typeInfoSymTab % symTabCh .=  mempty
+
+        return 
+            ( _CFork # 
+                ( cxt
+                , ch'
+                , ( (ch0', cxt0', cmds0')
+                  , (ch1', cxt1', cmds1')
+                  ) 
+                )
+            , [eqn]) 
+
+    CId cxt (ch0, ch1) -> do
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+        ~(SymEntry ttypech info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch0
+        ttypech0stable <- freshTypeTag
+        let ttypepch0 = annotateTypeTag ttypech ch0
+
+        ~(SymEntry ttypech info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch1
+        ttypech1stable <- freshTypeTag
+        let ttypepch1 = annotateTypeTag ttypech ch1
+
+        tell $ review _ExternalError $ bool []
+            [_IllegalIdGotChannelsOfTheSamePolarityButIdNeedsDifferentPolarity # (cxt, ch0, ch1) ] 
+            $ ch0 ^. polarity == ch1 ^. polarity
+
+        let ch0' = _ChIdentT # (ch0, fromJust $ ttypemap ^? at ttypech0stable % _Just % _SymTypeCh )
+            ch1' = _ChIdentT # (ch1, fromJust $ ttypemap ^? at ttypech1stable % _Just % _SymTypeCh )
+
+            eqns = 
+                [ TypeEqnsEq (typePtoTypeVar ttypepch0, typePtoTypeVar ttypepch1)
+                , genStableEqn ttypech0stable ttypepch0
+                , genStableEqn ttypech1stable ttypepch1
+                ]
+
+        envLcl % typeInfoSymTab % symTabCh % at (ch0 ^. uniqueTag) .= Nothing
+        envLcl % typeInfoSymTab % symTabCh % at (ch1 ^. uniqueTag) .= Nothing
+
+        return ( _CId # (cxt, (ch0', ch1')), eqns )
+    -- duplciated code..
+    CIdNeg cxt (ch0, ch1) -> do
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+        ~(SymEntry ttypech info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch0
+        ttypech0stable <- freshTypeTag
+        let ttypepch0 = annotateTypeTag ttypech ch0
+
+        ~(SymEntry ttypech info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch1
+        ttypech1stable <- freshTypeTag
+        let ttypepch1 = annotateTypeTag ttypech ch1
+
+        tell $ review _ExternalError $ bool []
+            [ _IllegalIdNegGotChannelsOfDifferentPolarityButIdNegNeedsTheSamePolarity # (cxt, ch0, ch1) ] 
+            $ ch0 ^. polarity /= ch1 ^. polarity
+
+        let ch0' = _ChIdentT # (ch0, fromJust $ ttypemap ^? at ttypech0stable % _Just % _SymTypeCh )
+            ch1' = _ChIdentT # (ch1, fromJust $ ttypemap ^? at ttypech1stable % _Just % _SymTypeCh )
+
+            eqns = 
+                [ TypeEqnsEq 
+                    ( typePtoTypeVar ttypepch0
+                    , _TypeNegF # (_TypeChAnnCmd # cmd, typePtoTypeVar ttypepch1))
+                , genStableEqn ttypech0stable ttypepch0
+                , genStableEqn ttypech1stable ttypepch1
+                ] 
+
+        envLcl % typeInfoSymTab % symTabCh % at (ch0 ^. uniqueTag) .= Nothing
+        envLcl % typeInfoSymTab % symTabCh % at (ch1 ^. uniqueTag) .= Nothing
+
+        return ( _CId # (cxt, (ch0', ch1')), eqns )
+    CRace cxt ((ch, cmds) :| races) -> do
         {-
-        tell $ bool [] 
-            (hPutError 
-                (ch' ^. chIdentRIdentR % identRIdentP, ch' ^. polarity)
-                (ident' ^. identRIdentP, lkup' ^. symEntryInfo)
-                ) 
-            (isJust chlkup && isJust lkup)
+         - the unneccessary error checking?
+         - neg (empty or empty) = not empty and not empty
+        let inpoutchs = NE.partition (has (_1 % polarity % _Input)) races
+        tell $ review _ExternalError $ bool []
+            [ _IllegalIdNegGotChannelsOfDifferentPolarityButIdNegNeedsTheSamePolarity # (cxt, ch0, ch1) ] 
+            $ inpoutchs
+            ch0 ^. polarity /= ch1 ^. polarity
+        - (ChIdentR, NonEmpty cmd)
         -}
 
-        return $ CHPut cxt ident' ch'
+        ~(SymEntry ttypech info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch
+        ttypechstable <- freshTypeTag 
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        let ttypepch = annotateTypeTag ttypech ch
+
+        (ttypepdummies, geteqn) <- instantiateRaceEqn ch ttypepch
+
+        (cmds', cmdseqns) <- localEnvSt id $ typeCheckCmds cmds
+
+        let ch' = _ChIdentT # (ch, fromJust $ ttypemap ^? at ttypechstable % _Just % _SymTypeCh )
+            raceeqn = TypeEqnsExist ttypepdummies $ 
+                [ geteqn 
+                , genStableEqn ttypechstable ttypepch ]
+                <> cmdseqns
+
+        (races', raceseqns) <- fmap unzip 
+            $ flip evalStateT ttypepch
+            $ for races $ \(ch, cmds) -> do
+                -- duplciated code..
+                ~(SymEntry ttypech info) <- lift $ zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch
+                ttypechstable <- lift $ freshTypeTag 
         
-    f (CSplit cxt ch (ch1,ch2)) = do
-        symtab <- guse envLcl
-        tell $ outOfScopeWith lookupCh symtab ch
-        let chlkup = lookupCh ch symtab
-            chlkup' = fromJust chlkup
-            ch' = _ChIdentR # (_IdentR # (ch, chlkup' ^. uniqueTag ), chlkup' ^. symEntryInfo)
-        ch1' <- fmap (review _ChIdentR . (,ch' ^. polarity)) $ splitUniqueSupply $ tagIdentP ch1
-        ch2' <- fmap (review _ChIdentR . (,ch' ^. polarity)) $ splitUniqueSupply $ tagIdentP ch2
-        envLcl %= deleteCh ch
-        envLcl %= ((collectSymTab [ch1',ch2'])<>)
-        return $ CSplit cxt ch' (ch1',ch2')
-
-    f (CFork cxt ch ((ch1, (p1, cxt1), cmds1), (ch2, (p2, cxt2), cmds2))) = do
-        symtab <- guse envLcl
-        tell $ outOfScopeWith lookupCh symtab ch
-        let chlkup = lookupCh ch symtab
-            chlkup' = fromJust chlkup
-            ch' = fromJust $ tagIdentPToChIdentRWithSymEntry ch <$> chlkup
-
-            cxt1' = zipWith tagIdentPToChIdentRWithSymEntry cxt1 
-                    $ fromJust
-                    $ traverse (flip lookupCh symtab) cxt1
-            cxt2' = zipWith tagIdentPToChIdentRWithSymEntry cxt2 
-                    $ fromJust
-                    $ traverse (flip lookupCh symtab) cxt2
-            -- TODO: Currently, if there is a user provided context and a variable out of 
-            -- scope, this will simply just ignore it... change this so that it really checks
-            -- it, by providing the information of whether it was user supplied so we know whether
-            -- to do out of scope checks.
-        if p1 == UserProvidedContext
-            then do 
-                tell $ outOfScopesWith lookupCh symtab cxt1 
-                tell $ overlappingDeclarations cxt1 
-            else return ()
-        if p2 == UserProvidedContext
-            then do
-                tell $ outOfScopesWith lookupCh symtab cxt2 
-                tell $ overlappingDeclarations cxt1 
-            else return ()
-
-        envLcl %= deleteCh ch
-        symtab <- guse envLcl
-
-        -- tell $ forkExpectedDisjointChannelsButHasSharedChannels cxt1 cxt2
-
-        ch1' <- fmap (review _ChIdentR . (,ch' ^. polarity)) $ splitUniqueSupply $ tagIdentP ch1
-        ch2' <- fmap (review _ChIdentR . (,ch' ^. polarity)) $ splitUniqueSupply $ tagIdentP ch2
-
-        envLcl .= symtab
-        envLcl %= ((collectSymTab ch1')<>) . restrictChs cxt1
+                let ttypepch = annotateTypeTag ttypech ch
         
-        cmds1' <- renameCmds cmds1
+                (ttypepdummies, geteqn) <- lift $ instantiateRaceEqn ch ttypepch
+                (cmds', cmdseqns) <- lift $ localEnvSt id $ typeCheckCmds cmds
 
-        envLcl .= symtab
-        envLcl %= ((collectSymTab ch2')<>) . restrictChs cxt2
-        cmds2' <- renameCmds cmds2
+                oldch <- equality <<.= ttypepch
 
-        envLcl .= symtab
+                let ch' = _ChIdentT # (ch, fromJust $ ttypemap ^? at ttypechstable % _Just % _SymTypeCh )
+                    raceeqn = TypeEqnsExist ttypepdummies $ 
+                        [ geteqn 
+                        , genStableEqn ttypechstable ttypepch 
+                        , TypeEqnsEq (typePtoTypeVar oldch, typePtoTypeVar ttypepch) ]
+                        <> cmdseqns
 
-        return $ CFork cxt ch' ((ch1', cxt1', cmds1'), (ch2', cxt2', cmds2'))
+                return ((ch', cmds'), raceeqn)
+        let eqns = [ raceeqn ] <> raceseqns
 
-    f (CId cxt (ch1, ch2)) = do
-        symtab <- guse envLcl
-        tell $ outOfScopeWith lookupCh symtab ch1
-        tell $ outOfScopeWith lookupCh symtab ch2
-        let ch1lkup = lookupCh ch1 symtab
-            ch1' = fromJust $ tagIdentPToChIdentRWithSymEntry ch1 <$> ch1lkup
-            ch2lkup = lookupCh ch2 symtab
-            ch2' = fromJust $ tagIdentPToChIdentRWithSymEntry ch2 <$> ch2lkup
-        return $ CId cxt (ch1', ch2')
+        envLcl % typeInfoSymTab % symTabCh .= mempty
 
-    f (CIdNeg cxt (ch1, ch2)) = do
-        symtab <- guse envLcl
-        tell $ outOfScopeWith lookupCh symtab ch1
-        tell $ outOfScopeWith lookupCh symtab ch2
-        let ch1lkup = lookupCh ch1 symtab
-            ch1' = fromJust $ tagIdentPToChIdentRWithSymEntry ch1 <$> ch1lkup
-            ch2lkup = lookupCh ch2 symtab
-            ch2' = fromJust $ tagIdentPToChIdentRWithSymEntry ch2 <$> ch2lkup
-        return $ CIdNeg cxt (ch1', ch2')
+        return (_CRace # (cxt, (ch',cmds') :| races'), eqns)
 
-    f (CRace cxt races) = do
-        races' <- traverse g races
-        return $ CRace cxt races'
       where
-        g (ch, cmds) = do
-            symtab <- guse envLcl
-            let chlkup = lookupCh ch symtab
-                ch' = fromJust $ tagIdentPToChIdentRWithSymEntry ch <$> chlkup
-            cmds' <- renameCmds cmds
+        instantiateRaceEqn ch ttypepch = do
+            ttypechgetseq <- freshTypeTag
+            ttypechgetconc <- freshTypeTag
+            let ttypepchgetseq = annotateTypeTag ttypechgetseq cmd
+                ttypepchgetconc = annotateTypeTag ttypechgetconc cmd
+                eqn = TypeEqnsEq 
+                        ( typePtoTypeVar ttypepch 
+                        , inputOutput (ch ^. polarity)
+                            (_TypePutF # 
+                                ( _TypeChAnnCmd # cmd
+                                , typePtoTypeVar ttypepchgetseq
+                                , typePtoTypeVar ttypepchgetconc
+                                ))
+                            (_TypeGetF # 
+                                ( _TypeChAnnCmd # cmd
+                                , typePtoTypeVar ttypepchgetseq
+                                , typePtoTypeVar ttypepchgetconc
+                                ))
+                        )
+            return ([ttypepchgetseq, ttypepchgetconc], eqn)
 
-            envLcl .= symtab
-
-            return (ch', cmds')
-
+    {-
     f (CPlugs (keyword, (p, cxt)) (phr1, phr2, phrs)) = do
         ~symtab <- guse envLcl
 
@@ -1170,21 +1375,9 @@ kindCheckFunType proctype@(varsyms, froms, to) = do
 -------------------------
 -- Utilities
 -------------------------
-overwriteChToSymTab :: TypeCheck ChIdentR TypeTag
-overwriteChToSymTab ch = do
+freshChTypeTag :: TypeCheck ChIdentR TypeTag
+freshChTypeTag ch = do
     tag <- freshTypeTag
-    let typep = annotateTypeTag tag ch
-        typep' = typePtoTypeVar typep
-    {-
-    envLcl % typeInfoSymTab % symTabExpr %%= 
-        ( (tag,) 
-        . ( Map.singleton 
-            (ch ^. uniqueTag) 
-            (_SymEntry # (SymSub ann , SymChInfo ch)) <>)
-        )
-        -}
     envLcl % typeInfoSymTab % symTabCh % at (ch ^. uniqueTag) ?=
-        _SymEntry # (typep', ch) 
+        _SymEntry # (tag, ch) 
     return tag
-        -- ((Map.fromList $ map (view uniqueTag &&&) ins )<>)
-

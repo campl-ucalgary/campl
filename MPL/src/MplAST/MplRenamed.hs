@@ -71,11 +71,13 @@ instance HasNamespace IdentR where
 data ChIdentR = ChIdentR {
     _chIdentRIdentR :: IdentR
     , _chIdentRPolarity :: Polarity
-}
-  deriving Show
+}  deriving Show
 
 $(makeClassy ''ChIdentR)
 $(makePrisms ''ChIdentR)
+
+instance Eq ChIdentR where
+    a == b = a ^. identR == b ^. identR
 
 instance HasIdentR ChIdentR where
     identR = chIdentRIdentR

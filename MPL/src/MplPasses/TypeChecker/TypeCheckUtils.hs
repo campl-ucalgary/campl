@@ -181,6 +181,8 @@ higherOrderCheck tp
             TypeIntF cxt -> undefined -- return $ Just $ TypeIntF cxt
 
             TypeTopBotF cxt -> return $ _Just % _TypeTopBotF # (cxt ^? _TypeChAnnNameOcc)
+
+
             TypeGetF cxt (_, seq) (_, conc) -> do
                 seq' <- seq
                 conc' <- conc
@@ -196,6 +198,21 @@ higherOrderCheck tp
                     seq'' <- seq'
                     conc'' <- conc'
                     return $ _TypePutF # (cxt ^? _TypeChAnnNameOcc, seq'', conc'')
+
+            TypeTensorF cxt (_, a) (_, b) -> do
+                a' <- a
+                b' <- b
+                return $ do
+                    a'' <- a'
+                    b'' <- b'
+                    return $ _TypeTensorF # (cxt ^? _TypeChAnnNameOcc, a'', b'')
+            TypeParF cxt (_, a) (_, b) -> do
+                a' <- a
+                b' <- b
+                return $ do
+                    a'' <- a'
+                    b'' <- b'
+                    return $ _TypeParF # (cxt ^? _TypeChAnnNameOcc, a'', b'')
 
             TypeSeqArrF cxt froms to -> do
                 tell [ _IllegalHigherOrderFunction # (fmap fst froms, fst to) ]

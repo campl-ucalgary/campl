@@ -21,7 +21,6 @@ panicNotImplemented :: a
 panicNotImplemented = error "Not implemented yet...."
 
 
-
 {-
 data MyStrange = MyStrange {
     _innertuple :: (Int,Int)

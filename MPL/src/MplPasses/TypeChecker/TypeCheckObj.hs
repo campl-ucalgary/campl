@@ -118,8 +118,7 @@ instance KindCheckObjArgsKindEnv (ConcObjTag t) where
       where
         seqargs = Set.toList $ foldMapOf 
                 (typeClauseSpineClauses % folded) (\clause -> 
-                    clause ^. typeClauseArgs % _1 % to Set.fromList
-                    <> clause ^. typeClauseStateVar % to Set.singleton) 
+                    clause ^. typeClauseArgs % _1 % to Set.fromList) 
                 spine 
         concargs = Set.toList $ foldMapOf 
                 (typeClauseSpineClauses % folded) (\clause -> 

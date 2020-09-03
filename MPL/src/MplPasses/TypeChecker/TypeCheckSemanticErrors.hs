@@ -38,39 +38,54 @@ data TypeCheckSemanticErrors =
     -- Object definition errors ...
     --------------------------------
     | SeqTypeClauseArgsMustContainTheSameTypeVariables 
-        [NonEmpty [IdentR]]
+        [NonEmpty [IdP MplRenamed]]
         -- list of equivalence classes of the arguments on (==)
     | ConcTypeClauseArgsMustContainTheSameTypeVariables 
-        [NonEmpty ([IdentR], [IdentR])]
+        [NonEmpty ([IdP MplRenamed], [IdP MplRenamed])]
         -- list of equivalence classes of the arguments on (==)
         --
-    | ExpectedStateVarButGot IdentR IdentR 
+    | ExpectedStateVarButGot (IdP MplRenamed) (IdP MplRenamed)
         -- expected, actual
  
 
     -- Process definition errors...
     --------------------------------
     -- | Expected polarity, channel / actual polarity
-    | ExpectedPolarityButGot Polarity ChIdentR
+    | ExpectedPolarityButGot Polarity (ChP MplRenamed)
  
     -- | channel, phrase 
     | HCaseExpectedInputPolarityChToHaveProtocolButGotCoprotocol 
-        ChIdentR (MplTypePhrase MplTypeChecked (ConcObjTag CoprotocolDefnTag))
+        (ChP MplRenamed) (MplTypePhrase MplTypeChecked (ConcObjTag CoprotocolDefnTag))
     -- | channel, phrase 
     | HCaseExpectedOutputPolarityChToHaveCoprotocolButGotProtocol 
-        ChIdentR (MplTypePhrase MplTypeChecked (ConcObjTag ProtocolDefnTag))
+        (ChP MplRenamed) (MplTypePhrase MplTypeChecked (ConcObjTag ProtocolDefnTag))
 
     | HPutExpectedInputPolarityChToHaveCoprotocolButGotProtocol
-        IdentR IdentR
+        KeyWordNameOcc (ChP MplRenamed) (MplTypePhrase MplTypeChecked (ConcObjTag ProtocolDefnTag))
     | HPutExpectedOutputPolarityChToHaveProtocolButGotCoprotocol
-        IdentR IdentR
+        KeyWordNameOcc (ChP MplRenamed) (MplTypePhrase MplTypeChecked (ConcObjTag CoprotocolDefnTag))
 
-    | ForkExpectedDisjointChannelsButHasSharedChannels [IdentR]
+    | ForkExpectedDisjointChannelsButHasSharedChannels KeyWordNameOcc [ChP MplRenamed]
+    | ForkHasChannelsInScopeButContextsAreNonExhaustiveWith 
+        KeyWordNameOcc [ChP MplRenamed] 
+            ([ChP MplRenamed], [ChP MplRenamed]) 
+            [ChP MplRenamed]
+
+    | IllegalIdGotChannelsOfTheSamePolarityButIdNeedsDifferentPolarity
+        KeyWordNameOcc (ChP MplRenamed) (ChP MplRenamed)
+    | IllegalIdNegGotChannelsOfDifferentPolarityButIdNegNeedsTheSamePolarity
+        KeyWordNameOcc (ChP MplRenamed) (ChP MplRenamed)
+
+
+    -- | input polarities, output polarities
+    -- actually not totally sure that we need to test this?
+    | IllegalRaceAgainstDifferentPolarities KeyWordNameOcc [ChP MplRenamed] [ChP MplRenamed]
 
     | IllegalLastCommand KeyWordNameOcc 
     | IllegalNonLastCommand KeyWordNameOcc 
 
-    | AtLastCmdThereAreUnclosedChannels (MplCmd MplRenamed) [ChIdentR]
+
+    | AtLastCmdThereAreUnclosedChannels (MplCmd MplRenamed) [ChP MplRenamed]
 
     -- After type checking errors
     --------------------------------

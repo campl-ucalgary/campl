@@ -31,7 +31,7 @@ import Data.Maybe
 
 type SymTabType = Map UniqueTag (MplObjectDefn MplTypeCheckedClause)
 type SymTabExpr = Map UniqueTag (SymEntry SymSeqType SymExprInfo)
-type SymTabCh = Map UniqueTag (SymEntry (MplType MplTypeSub) ChIdentR)
+type SymTabCh = Map UniqueTag (SymEntry TypeTag ChIdentR)
 type SymTabConc = Map UniqueTag (SymEntry SymConcType SymConcInfo)
 
 type TypeTagMap = Map TypeTag SymTypeEntry

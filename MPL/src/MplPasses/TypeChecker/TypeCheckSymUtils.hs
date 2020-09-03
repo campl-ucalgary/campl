@@ -64,7 +64,7 @@ lookupSymType n = do
     return $ fromJust res
 
 lookupSymCh :: 
-    TypeCheckSymLookup (ChP MplRenamed) (SymEntry (MplType MplTypeSub) ChIdentR)
+    TypeCheckSymLookup (ChP MplRenamed) (SymEntry TypeTag ChIdentR)
 lookupSymCh n = do
     res <- guse $ symTabCh % at (n ^. uniqueTag)
     tell $ review _InternalError $ maybe [_CannotCallCh # n] mempty res
