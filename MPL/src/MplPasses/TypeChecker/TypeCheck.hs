@@ -1228,8 +1228,9 @@ typeCheckCmd cmd = case cmd of
         envLcl % typeInfoSymTab % symTabCh .= mempty
 
         return (_CRace # (cxt, (ch',cmds') :| races'), eqns)
-
       where
+        -- instantiates the race equations because races must have the type 
+        -- be of get andput
         instantiateRaceEqn ch ttypepch = do
             ttypechgetseq <- freshTypeTag
             ttypechgetconc <- freshTypeTag
@@ -1251,6 +1252,8 @@ typeCheckCmd cmd = case cmd of
                         )
             return ([ttypepchgetseq, ttypepchgetconc], eqn)
 
+    -- GET THIS PLUGGING DONE....
+    -- After, finally chase down all the non exhaustive patterns, and write a pretty printer...
     {-
     f (CPlugs (keyword, (p, cxt)) (phr1, phr2, phrs)) = do
         ~symtab <- guse envLcl

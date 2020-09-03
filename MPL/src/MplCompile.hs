@@ -30,7 +30,9 @@ protocol Test(A| ) => S =
     Testing0 :: Get(A | S) => S 
 
 proc v12a =
-    |  a=> b -> do
+    |  => a,b -> do
+        get _ on a
+        get _ on b
         race 
             a -> do
                 get _ on a
