@@ -68,6 +68,9 @@ data TypeAnn =
 
     -- Type channel..
     | TypeAnnCh ChIdentR
+
+    -- Maybe
+    | TypeAnnEmpty
   deriving Show
 
 data TypeIdentTInfo = 
@@ -81,6 +84,7 @@ $(makePrisms ''TypeIdentT)
 $(makePrisms ''TypeIdentTInfo)
 $(makePrisms ''TypeChAnn)
 $(makeClassyPrisms ''TypeAnn)
+
 
 
 freshTypeTag ::

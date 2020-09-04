@@ -69,6 +69,11 @@ spec = do
         , v26 
         , v27 
         , v28 
+        , v29 
+        , v30 
+        , v31 
+        , v32 
+        , v33 
         ]
 
     mapM_ (`describeAnyErrors` ("Type unification for all failure", 
@@ -92,6 +97,7 @@ spec = do
         , nm6
         , nm7
         , nm8
+        , nm9
         ]
 
     mapM_ (`describeAnyErrors` ("Occurs check", 
@@ -359,7 +365,7 @@ proc v27 :: | Put(A | TopBot), Put(A | TopBot) => =
 |]
 
 v28 = [r|
-proc v12a :: | => Get(A | TopBot), Get(A | TopBot) =
+proc v28 :: | => Get(A | TopBot), Get(A | TopBot) =
     |  => a,b -> do
         race 
             a -> do
@@ -373,6 +379,71 @@ proc v12a :: | => Get(A | TopBot), Get(A | TopBot) =
                 close a
                 halt b
 |]
+
+v29 = [r|
+proc v29 :: | => TopBot =
+    |  => a -> do
+        plug
+            => a,c -> do
+                close a
+                halt c
+            c => -> do
+                halt c
+|]
+
+v30 = [r|
+proc v30 =
+    |  => a -> do
+        plug
+            => a,c -> do
+                close a
+                halt c
+            c => b -> do
+                close b
+                halt c
+            b => -> do
+                halt b
+|]
+
+v31 = [r|
+proc v31 =
+    |  => -> do
+        plug
+            f => -> do
+                halt f
+            => f,a -> do
+                close a
+                halt f
+            a => -> do
+                halt a
+|]
+
+v32 = [r|
+proc v32 =
+    |  => -> do
+        plug
+            => f,a -> do
+                close a
+                halt f
+            f => -> do
+                halt f
+            a => -> do
+                halt a
+|]
+
+v33 = [r|
+proc v33 =
+    |  => -> do
+        plug
+            a => -> do
+                halt a
+            => f,a -> do
+                close a
+                halt f
+            f => -> do
+                halt f
+|]
+
 
 -- Invalid tests  
 ----------------------------
@@ -396,6 +467,7 @@ defn
     fun fun1 :: B -> B =
         a -> fun0(a)
 |]
+
 
 -- Match failures
 -------------
@@ -529,6 +601,19 @@ proc nm8 =
                 close a
                 halt b
 |]
+
+nm9 = [r|
+proc nm9 =
+    |  => a -> do
+        plug
+            => a,c -> do
+                close a
+                halt c
+            c => -> do
+                get _ on c
+                halt c
+|]
+
 
 -- Occurs checks
 -------------

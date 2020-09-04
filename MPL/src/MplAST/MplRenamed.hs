@@ -79,6 +79,9 @@ $(makePrisms ''ChIdentR)
 instance Eq ChIdentR where
     a == b = a ^. identR == b ^. identR
 
+instance Ord ChIdentR where
+    a <= b = a ^. identR <= b ^. identR
+
 instance HasIdentR ChIdentR where
     identR = chIdentRIdentR
 

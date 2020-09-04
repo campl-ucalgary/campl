@@ -3,11 +3,15 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module MplPasses.TypeChecker.TypeCheckSemanticErrors where
 
 import Optics
+import Optics.State.Operators
 
 import MplAST.MplCore
 import MplAST.MplParsed
@@ -26,6 +30,16 @@ import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
 import Data.Bool
 import Control.Arrow
+
+import qualified Data.Map as Map
+import Data.Map (Map)
+
+import Control.Monad.State
+import Control.Monad.Writer
+
+import Data.Traversable
+
+import Debug.Trace
 
 import Data.Maybe
 
@@ -76,10 +90,19 @@ data TypeCheckSemanticErrors =
     | IllegalIdNegGotChannelsOfDifferentPolarityButIdNegNeedsTheSamePolarity
         KeyWordNameOcc (ChP MplRenamed) (ChP MplRenamed)
 
-
     -- | input polarities, output polarities
-    -- actually not totally sure that we need to test this?
+    -- We don't test this because this will result in a type error anyways, but
+    -- Dr.Cockett mentioned we should? Ask him about this later....
     | IllegalRaceAgainstDifferentPolarities KeyWordNameOcc [ChP MplRenamed] [ChP MplRenamed]
+
+    -- | Cut condition failures..
+    -- (c1), (c2), (c3), cycle condition
+    | ExpectedAtMostTwoOccurencesOfAChannelInAPlugPhraseButGot [ChIdentR]
+    | ExpectedVariablesToBeOfOppositePolarityInAPlugPhraseButGot [ChIdentR] 
+    | ExpectedVariablesToBeInADifferentPlugPhraseButGotIn [ChIdentR] ([ChIdentR], [ChIdentR])
+
+    | IllegalCycleInPlugPhrase [([ChIdentR], [ChIdentR])]
+    | UnreachablePhrasesInPlugPhrase [([ChIdentR], [ChIdentR])] [([ChIdentR], [ChIdentR])]
 
     | IllegalLastCommand KeyWordNameOcc 
     | IllegalNonLastCommand KeyWordNameOcc 
@@ -101,42 +124,6 @@ instance AsKindCheckErrors TypeCheckSemanticErrors where
 instance AsTypeUnificationError TypeCheckSemanticErrors  MplTypeSub where
     _TypeUnificationError = _TypeCheckUnificationErrors 
 
-{-
-hCaseError :: 
-    AsTypeCheckErrors e =>
-    (IdentR, Polarity) ->
-    (IdentR, ConcObjDefnTag) ->
-    [e]
-hCaseError (ch, Input) (ident, CoprotocolDefnTag) = 
-    [_HCaseExpectedInputPolarityChToHaveProtocolButGotCoprotocol # (ch,ident) ]
-hCaseError (ch, Output) (ident, ProtocolDefnTag) = 
-    [_HCaseExpectedOutputPolarityChToHaveCoprotocolButGotProtocol # (ch,ident) ]
-hCaseError _ _ = []
-
-hPutError :: 
-    AsTypeCheckErrors e =>
-    (IdentR, Polarity) ->
-    (IdentR, ConcObjDefnTag) ->
-    [e]
-hPutError (ch, Input) (ident, ProtocolDefnTag) = 
-    [ _HPutExpectedInputPolarityChToHaveCoprotocolButGotProtocol # (ch,ident) ]
-hPutError (ch, Output) (ident, CoprotocolDefnTag) = 
-    [_HPutExpectedOutputPolarityChToHaveProtocolButGotCoprotocol # (ch,ident) ]
-hPutError _ _ = []
-
-
-forkExpectedDisjointChannelsButHasSharedChannels ::
-    AsTypeCheckErrors e =>
-    [IdentR] ->
-    [IdentR] ->
-    [e]
-forkExpectedDisjointChannelsButHasSharedChannels a b =
-    bool [_ForkExpectedDisjointChannelsButHasSharedChannels # common ] [] (null common)
-  where
-    common = a `intersect` b
-
--}
-
 expectedOutputPolarity ::
     AsTypeCheckSemanticErrors e =>
     ChIdentR -> [e]
@@ -148,3 +135,165 @@ expectedInputPolarity ::
     ChIdentR -> [e]
 expectedInputPolarity ch = maybeToList $ 
     _ExpectedPolarityButGot # (Input, ch) <$ ch ^? polarity % _Output
+
+
+
+{-
+ - Tests for the following conditions:
+ -      (c1) at most 2 occurences of each variable, 
+ -      (c2) each variable must be of opposite polarity in each of the plug phrases
+ -      (c3) each variable must be in a different phrase
+ -}
+cutConditions :: 
+    forall e. 
+    ( AsTypeCheckSemanticErrors e ) => 
+    [([ChIdentR], [ChIdentR])] ->
+    [e]
+cutConditions plugphrases = 
+    c1c2 plugphrases <> concatMap c3 plugphrases
+  where
+    c1c2 = concatMap g . toListOf folded . flip execState Map.empty . traverse f 
+
+    -- create a map of: channel --> (occurences in input phrase, occurences in output phrase)
+    f :: ( MonadState (Map UniqueTag ([ChIdentR], [ChIdentR])) m ) => 
+        ([ChIdentR], [ChIdentR]) -> 
+        m ()
+    f (ins, outs) = do
+        for_ ins $ \ch -> at (ch ^. uniqueTag) %= Just . maybe ([ch], []) (over _1 (ch:))
+        for_ outs $ \ch -> at (ch ^. uniqueTag) %= Just . maybe ([], [ch]) (over _2 (ch:))
+
+    g :: ([ChIdentR], [ChIdentR]) -> [e]
+    g res = fold [c1 res, c2 res]
+    
+    c1 inputsoutputs 
+        | uncurry (+) (over each length inputsoutputs) > 2 =
+            [ _ExpectedAtMostTwoOccurencesOfAChannelInAPlugPhraseButGot # uncurry (<>) inputsoutputs ]
+        | otherwise = [] 
+
+    c2 (as@(_:_:_), []) = [ _ExpectedVariablesToBeOfOppositePolarityInAPlugPhraseButGot # as ]
+    c2 ([], bs@(_:_:_)) = [ _ExpectedVariablesToBeOfOppositePolarityInAPlugPhraseButGot # bs ]
+    c2 _ = []
+
+    c3 phrase@(ins, outs) = 
+        let common = ins `intersect` outs
+        in bool [_ExpectedVariablesToBeInADifferentPlugPhraseButGotIn # (common, phrase)]
+            [] $ null common
+
+type FocusedPhraseMap = 
+    ( Map UniqueTag (ChIdentR, [([ChIdentR], [ChIdentR])])
+    , Map UniqueTag (ChIdentR, [([ChIdentR], [ChIdentR])]) 
+    )
+
+data CutCyclesEnv = CutCyclesEnv {
+    -- | Unique tag to ChIdentR and number of times it occured
+    _focusedPhrase :: FocusedPhraseMap
+    , _unfocusedPhrases :: [([ChIdentR], [ChIdentR])]
+}
+
+$(makeLenses ''CutCyclesEnv)
+
+{- Tests if there is a cycle in the plug and if the plug
+ - graph is fully connected...
+ -}
+cutCycles :: 
+    forall e. 
+    ( AsTypeCheckSemanticErrors e ) => 
+    -- | phrases
+    NonEmpty ([ChIdentR], [ChIdentR]) ->
+    [e]
+cutCycles (start@(startins,startouts) :| phrases) = execWriter 
+    $ flip evalStateT (CutCyclesEnv initfocused phrases) 
+    $ loop
+  where
+    initfocused = (Map.fromList $ map f startins, Map.fromList $ map f startouts)
+      where
+        f ch = (ch ^. uniqueTag, (ch, [start]))
+
+    allphrases = start:phrases
+
+    loop :: ( MonadWriter [e] m, MonadState CutCyclesEnv m ) => m ()
+    loop = do
+        focused@(infocus, outfocus) <- guse focusedPhrase
+        unfocused <- guse unfocusedPhrases
+        let common = Map.keys $ uncurry Map.intersection focused
+            cycles = map (\k -> fromJust (infocus ^? at k % _Just % _2 ) 
+                <> fromJust (outfocus ^? at k % _Just % _2 % to reverse)) common
+            
+        tell $ bool (map (review _IllegalCycleInPlugPhrase) cycles) [] $ has _Empty common
+
+        let infocuschs = infocus ^.. folded % _1
+            infindsres = map (flip findAndRemoveNodeOutput unfocused) infocuschs
+            inres = getFirst $ foldMap First $ zipWith (\ch -> fmap (ch,)) infocuschs infindsres
+
+            outfocuschs = outfocus ^.. folded % _1
+            outfindsres = map (flip findAndRemoveNodeInput unfocused) outfocuschs
+            outres = getFirst $ foldMap First $ zipWith (\ch -> fmap (ch,)) outfocuschs outfindsres
+
+        joinEdges inres outres
+    
+    joinEdges :: ( MonadWriter [e] m, MonadState CutCyclesEnv m ) => 
+        Maybe (ChIdentR, (([ChIdentR], [ChIdentR]), [([ChIdentR], [ChIdentR])])) -> 
+        Maybe (ChIdentR, (([ChIdentR], [ChIdentR]), [([ChIdentR], [ChIdentR])])) -> 
+        m ()
+    joinEdges Nothing Nothing = do
+        unfocused <- guse unfocusedPhrases
+        tell $ bool [] [ _UnreachablePhrasesInPlugPhrase # (allphrases \\ unfocused, unfocused) ] 
+             $ hasn't _Empty unfocused
+        return ()
+
+    -- input sub found
+    joinEdges (Just (ch, (phrase, nunfocused))) _ = do
+        focusedPhrase % _1 % at (ch ^. uniqueTag) .= Nothing
+        let phraseouts = phrase ^. _2 % to (over equality (delete ch))
+            phraseins = phrase ^. _1 
+        for phraseouts $ \outch -> do
+            focusedPhrase % _2 % at (outch ^. uniqueTag) %= 
+                Just . maybe ((outch, [phrase])) (const outch *** (phrase:)) 
+        for phraseins $ \inch -> do
+            focusedPhrase % _1 % at (inch ^. uniqueTag) %= 
+                Just . maybe ((inch, [phrase])) (const inch *** (phrase:)) 
+
+        unfocusedPhrases .= nunfocused
+
+        loop
+
+    -- output sub found
+    joinEdges _ (Just (ch, (phrase, nunfocused))) = do
+        focusedPhrase % _2 % at (ch ^. uniqueTag) .= Nothing
+        let phraseins =  phrase ^. _1 % to (over equality (delete ch))
+            phraseouts = phrase ^. _2 
+        for phraseouts $ \outch -> do
+            focusedPhrase % _2 % at (outch ^. uniqueTag) %= 
+                Just . maybe ((outch, [phrase])) (const outch *** (phrase:)) 
+        for phraseins $ \inch -> do
+            focusedPhrase % _1 % at (inch ^. uniqueTag) %= 
+                Just . maybe ((inch, [phrase])) (const inch *** (phrase:)) 
+
+        unfocusedPhrases .= nunfocused
+
+        loop
+
+    findAndRemoveNodeInput ::
+        ChIdentR -> 
+        [([ChIdentR], [ChIdentR]) ] -> 
+        Maybe ( ([ChIdentR], [ChIdentR]), [([ChIdentR], [ChIdentR])])
+    findAndRemoveNodeInput = findAndRemoveNodeBy (\ch -> elem ch . fst)
+
+    findAndRemoveNodeOutput ::
+        ChIdentR -> 
+        [([ChIdentR], [ChIdentR]) ] -> 
+        Maybe (([ChIdentR], [ChIdentR]), [([ChIdentR], [ChIdentR])])
+    findAndRemoveNodeOutput = findAndRemoveNodeBy (\ch -> elem ch . snd)
+
+    findAndRemoveNodeBy :: 
+        ( ChIdentR -> ([ChIdentR], [ChIdentR]) -> Bool) ->
+        ChIdentR -> 
+        [([ChIdentR], [ChIdentR]) ] -> 
+        Maybe (([ChIdentR], [ChIdentR]), [([ChIdentR], [ChIdentR])])
+    findAndRemoveNodeBy p ch = f
+      where
+        f [] = Nothing
+        f (phrase:phrases) 
+            | p ch phrase = Just (phrase, phrases)
+            -- | ch `elem` uncurry (<>) phrase = Just (phrase, phrases)
+            | otherwise = second (phrase:) <$> f phrases

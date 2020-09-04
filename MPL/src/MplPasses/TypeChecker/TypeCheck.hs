@@ -47,6 +47,7 @@ import Control.Applicative
 import Data.Semigroup
 import Data.Maybe
 import Data.Bool
+import Data.Function
 import Data.Traversable
 
 import qualified Data.Map as Map
@@ -1230,7 +1231,7 @@ typeCheckCmd cmd = case cmd of
         return (_CRace # (cxt, (ch',cmds') :| races'), eqns)
       where
         -- instantiates the race equations because races must have the type 
-        -- be of get andput
+        -- be of get or put (depending on polarity)...
         instantiateRaceEqn ch ttypepch = do
             ttypechgetseq <- freshTypeTag
             ttypechgetconc <- freshTypeTag
@@ -1252,55 +1253,80 @@ typeCheckCmd cmd = case cmd of
                         )
             return ([ttypepchgetseq, ttypepchgetconc], eqn)
 
-    -- GET THIS PLUGGING DONE....
-    -- After, finally chase down all the non exhaustive patterns, and write a pretty printer...
-    {-
-    f (CPlugs (keyword, (p, cxt)) (phr1, phr2, phrs)) = do
-        ~symtab <- guse envLcl
+    CPlugs (cxt, plugs) (phr1, phr2, phrs) -> do
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+        -- TODO
+        -- NEED TO CHECK CUT CONDITION STILL:
+        --      - at most 2 occurences of each variable, 
+        --      - each variable must be of opposite polarity in each of the plug phrases
+        --      - each variable must be in a different phrase
+        --      - And there CANNOT be any cycles...
+        --
+        let allphrases = phr1:phr2:phrs
+            allphrasesgraph = map (view _2) allphrases
+        tell $ review _ExternalError $ cutConditions allphrasesgraph
+        tell $ review _ExternalError $ cutCycles $ NE.fromList allphrasesgraph
 
-        sup <- freshUniqueSupply
+        -- Get the map for the stable equations
+        let allchs = nubBy ((==) `on` view uniqueTag) 
+                $ foldMapOf (folded % _2 % each % folded) (pure . view uniqueTag) 
+                $ phr1:phr2:phrs
+            allchsids = map (view uniqueTag) allchs
+        ttypechsstable <- traverse (const freshTypeTag) allchs 
+        let stablerefs = Map.fromList $ zip allchs ttypechsstable
 
-        let ~scopes = map fst $ channelsInScope symtab
-            ~plugged = if p == ComputedContext 
-                then cxt \\ scopes
-                else cxt
-            ~plugged' = (`evalState` sup) $ traverse tagIdentP plugged
+        ~((phr1':phr2':phrs', acceqns), ttypesplugged) <- flip runStateT Map.empty $ fmap unzip $ for allphrases $ \(cxt, (ins, outs), cmds) -> do
+            let insr = map (view identR) ins
+                outsr = map (view identR) outs
+                pluggedins = map (review _ChIdentR . (,Input)) $ filter (\identr -> identr `elem` insr ) plugs 
+                pluggedouts = map (review _ChIdentR . (,Output)) $ filter (\identr -> identr `elem` outsr ) plugs 
 
-        tell $ bool [] (overlappingDeclarations plugged) (p == UserProvidedContext)
+                phrsechsids = map (view uniqueTag) $ ins <> outs
 
-        ~(phr1':phr2':phrs') <- traverse (g plugged') (phr1:phr2:phrs)
+            for_ (pluggedins <> pluggedouts) $ \ch -> do
+                ch' <- lift $ freshChTypeTag ch
+                at (ch ^. uniqueTag) %= Just . maybe (ch' :| []) (NE.cons ch')
 
-        return $ CPlugs (keyword, plugged') (phr1', phr2', phrs')
-      where
-        g :: _ -> ((), ([IdentP], [IdentP]), NonEmpty (MplCmd MplCmdFreeVars)) ->
-            _ ((), ([ChIdentR], [ChIdentR]), NonEmpty (MplCmd MplRenamed))
-        g plugged ((), (ins, outs), cmds) = do
-            initsymtab <- guse envLcl
+            lift $ tell $ review _ExternalError $ foldMap expectedInputPolarity ins
+                <> foldMap expectedOutputPolarity outs
 
-            -- check overlapping declarations...
-            tell $ overlappingDeclarations $ ins ++ outs
+            (cmds', cmdseqns) <- lift 
+                $ localEnvSt (over (envLcl % typeInfoSymTab % symTabCh) (Map.filterWithKey (\k _ -> k `elem` phrsechsids)) )
+                $ typeCheckCmds cmds
 
-            -- restrict and check out of scope for the input channels
-            envLcl %= (restrictChs ins (collectSymTab (map (review _ChIdentR . (,Input)) plugged))<>)
-            symtab <- guse envLcl
-            tell $ outOfScopesWith lookupCh symtab ins 
-            let inslkup = fromJust $ traverse (flip lookupCh symtab) ins
-                ins' = zipWith tagIdentPToChIdentRWithSymEntry ins inslkup
-            -- envLcl %= restrictChs ins
+            let eqns = cmdseqns
+                ins' = map (\ch -> _ChIdentT # 
+                        ( ch
+                        , fromJust $ ttypemap ^? at (fromJust $ stablerefs ^. at (ch ^. uniqueTag)) % _Just % _SymTypeCh 
+                        )) ins
+                outs' = map (\ch -> _ChIdentT # 
+                        ( ch
+                        , fromJust $ ttypemap ^? at (fromJust $ stablerefs ^. at (ch ^. uniqueTag)) % _Just % _SymTypeCh 
+                        )) outs
 
-            -- similarly, for the output channels
-            envLcl %= (restrictChs outs (collectSymTab (map (review _ChIdentR . (,Output)) plugged))<>)
-            symtab <- guse envLcl
-            tell $ outOfScopesWith lookupCh symtab outs 
-            let outslkup = fromJust $ traverse (flip lookupCh symtab) outs
-                outs' = zipWith tagIdentPToChIdentRWithSymEntry outs outslkup
-            envLcl %= restrictChs (ins ++ outs)
+            return ((cxt, (ins', outs'), cmds'), eqns)
 
-            ~cmds' <- renameCmds cmds
+        let (exists, pluggedeqns) = second fold 
+                $ unzip 
+                $ flip concatMap plugs 
+                $ (\ch -> 
+                    let f (h :| hs) = (:) (annotateTypeTag h (), []) 
+                            $ map (\(prev, curr) -> 
+                                    ( annotateTypeTag curr ()
+                                    , [ TypeEqnsEq 
+                                        ( typePtoTypeVar $ annotateTypeTag prev ()
+                                        , typePtoTypeVar $ annotateTypeTag curr ()) ]
+                                    ) 
+                                ) 
+                            $ zip (h:hs) hs
+                    in f . fromJust $ ttypesplugged ^. at (ch ^. uniqueTag))
 
-            envLcl .= initsymtab
+            eqn = TypeEqnsExist exists $ pluggedeqns <> fold acceqns
+            plugs' = map (\ch -> (ch, fromJust $ ttypemap ^? at (fromJust $ stablerefs ^. at (ch ^. uniqueTag)) % _Just % _SymTypeCh)) plugs
 
-            return ((), (ins', outs'), cmds')
+        envLcl % typeInfoSymTab % symTabCh .= mempty
+
+        return (_CPlugs # ((cxt, plugs'), (phr1', phr2',phrs')), [eqn])
 
     {-
     | CCase 
@@ -1313,7 +1339,6 @@ typeCheckCmd cmd = case cmd of
         -}
     | CSwitch !(XCSwitch x) (NonEmpty (XMplExpr x, NonEmpty (MplCmd x)))
         -- { _cSwitches :: NonEmpty (Expr pattern letdef typedef seqcalleddef ident, ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident) }
-        -}
         -}
 
 -------------------------

@@ -7,8 +7,7 @@ import Optics
 
 import Control.Monad.State 
 
-import MplUtil.UniqueSupply
-
+import MplUtil.UniqueSupply 
 
 data TopLevel = TopLevel
   deriving Show

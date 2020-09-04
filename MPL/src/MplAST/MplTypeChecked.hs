@@ -186,7 +186,9 @@ type instance XCId MplTypeChecked = KeyWordNameOcc
 type instance XCIdNeg MplTypeChecked = KeyWordNameOcc
 type instance XCRace MplTypeChecked = KeyWordNameOcc
 type instance XCPlug MplTypeChecked = Void
-type instance XCPlugs MplTypeChecked = (KeyWordNameOcc, [(IdP MplTypeChecked, XMplType MplTypeChecked)])
+type instance XCPlugs MplTypeChecked = 
+    ( KeyWordNameOcc
+    , [(IdP MplTypeChecked, ([TypeP MplTypeChecked], XMplType MplTypeChecked))])
                                                     -- these are the new plugged channels.
                                                     -- Note that these do not have a polarity 
                                                     -- because it changes based on the phrase

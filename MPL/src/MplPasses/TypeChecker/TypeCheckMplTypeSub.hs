@@ -338,6 +338,11 @@ instance AnnotateTypeTagToTypeP TypeT where
       where
         ann = _TypeIdentTInfoTypeVar # tpt
 
+instance AnnotateTypeTagToTypeP () where
+    annotateTypeTag tag tpt =  _TypeIdentT # (tag, ann)
+      where
+        ann =  _TypeIdentTInfoTypeAnn % _TypeAnnEmpty # tpt
+
 
 -- the two lists should be the same size
 annotateTypeTags :: AnnotateTypeTagToTypeP t => [TypeTag] -> [t] -> [TypeP MplTypeSub]

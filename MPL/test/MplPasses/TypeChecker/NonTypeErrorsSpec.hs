@@ -81,6 +81,15 @@ spec = do
         [ n4
         ]
 
+    mapM_ (`describeAnyErrors` ("Cut condition cycles", 
+            _MplTypeCheckErrors 
+            % _SemanticErrors 
+            % _IllegalCycleInPlugPhrase
+            )
+            )
+        [ nc0
+        ]
+
 
  -- IllegalIdNegGotChannelsOfDifferentPolarityButIdNegNeedsTheSamePolarity
 
@@ -128,4 +137,18 @@ proc n3 =
 n4 = [r|
 proc n4 =
     | a => b -> a |=| neg b
+|]
+
+-------
+-- cut condition failures
+nc0 = [r|
+proc nc0 =
+    |  => -> do
+        plug
+            a => b -> do
+                close a
+                halt b
+            b => a -> do
+                close a
+                halt b
 |]
