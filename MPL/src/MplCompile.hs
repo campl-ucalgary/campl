@@ -42,44 +42,25 @@ proc v12a =
             b => -> do
                 halt b
 -}
+
+
 proc v30 =
     |  => -> do
         plug
-            f => -> do
-                halt f
-            a => b,c -> do
-                close a 
+            a,b => c -> do
+                close a
                 close b 
-                halt c
-            b,c => d,e,f -> do
-                close b 
-                close c
-                close d
-                close e
-                halt f
-            e,d => -> do
+                halt c 
+            c => d,e -> do
+                close c 
                 close d
                 halt e
-{- valid
-proc v30 =
-    |  => -> do
-        plug
-            a => b,c -> do
-                close a 
-                close b 
-                halt c
-            b,c => d,e,f -> do
-                close b 
-                close c
+            d => g -> do
                 close d
-                close e
-                halt f
-            e,d => -> do
-                close d
+                halt g
+            e => a -> do
+                close a
                 halt e
-            f => -> do
-                halt f
--}
 |]
 
 

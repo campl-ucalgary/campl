@@ -88,6 +88,15 @@ spec = do
             )
             )
         [ nc0
+        , nc1
+        ]
+    mapM_ (`describeAnyErrors` ("Cut condition unreachable", 
+            _MplTypeCheckErrors 
+            % _SemanticErrors 
+            % _UnreachablePhrasesInPlugPhrase
+            )
+            )
+        [ nu0
         ]
 
 
@@ -151,4 +160,36 @@ proc nc0 =
             b => a -> do
                 close a
                 halt b
+|]
+
+nc1 = [r|
+proc nc1 =
+    |  => -> do
+        plug
+            a,b => c -> do
+                close a
+                close b 
+                halt c 
+            c => d,e -> do
+                close c 
+                close d
+                halt e
+            d => g -> do
+                close d
+                halt g
+            e => a -> do
+                close a
+                halt e
+|]
+
+nu0 = [r|
+proc nu0 =
+    |  => -> do
+        plug
+            a,b =>  -> do
+                close a 
+                halt b
+            => c,d -> do
+                close c
+                halt d
 |]

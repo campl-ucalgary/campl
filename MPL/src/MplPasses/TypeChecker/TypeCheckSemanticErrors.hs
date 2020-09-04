@@ -223,17 +223,17 @@ cutCycles (start@(startins,startouts) :| phrases) = execWriter
 
         let infocuschs = infocus ^.. folded % _1
             infindsres = map (flip findAndRemoveNodeOutput unfocused) infocuschs
-            inres = getFirst $ foldMap First $ zipWith (\ch -> fmap (ch,)) infocuschs infindsres
+            inres = getFirst $ foldMap First infindsres
 
             outfocuschs = outfocus ^.. folded % _1
             outfindsres = map (flip findAndRemoveNodeInput unfocused) outfocuschs
-            outres = getFirst $ foldMap First $ zipWith (\ch -> fmap (ch,)) outfocuschs outfindsres
+            outres = getFirst $ foldMap First outfindsres
 
         joinEdges inres outres
     
     joinEdges :: ( MonadWriter [e] m, MonadState CutCyclesEnv m ) => 
-        Maybe (ChIdentR, (([ChIdentR], [ChIdentR]), [([ChIdentR], [ChIdentR])])) -> 
-        Maybe (ChIdentR, (([ChIdentR], [ChIdentR]), [([ChIdentR], [ChIdentR])])) -> 
+        Maybe (([ChIdentR], [ChIdentR]), [([ChIdentR], [ChIdentR])]) -> 
+        Maybe (([ChIdentR], [ChIdentR]), [([ChIdentR], [ChIdentR])]) -> 
         m ()
     joinEdges Nothing Nothing = do
         unfocused <- guse unfocusedPhrases
@@ -242,14 +242,19 @@ cutCycles (start@(startins,startouts) :| phrases) = execWriter
         return ()
 
     -- input sub found
-    joinEdges (Just (ch, (phrase, nunfocused))) _ = do
-        focusedPhrase % _1 % at (ch ^. uniqueTag) .= Nothing
-        let phraseouts = phrase ^. _2 % to (over equality (delete ch))
-            phraseins = phrase ^. _1 
-        for phraseouts $ \outch -> do
+    joinEdges (Just (phrase@(phraseins, phraseouts), nunfocused)) _ = do
+        focusedins <- guses (focusedPhrase % _1) Map.keys
+        let pluggedintersect = filter ((`elem` focusedins) . view uniqueTag) phraseouts
+
+        for pluggedintersect $ \pluggedch -> do
+            focusedPhrase % _1 % at (pluggedch ^. uniqueTag) .= Nothing
+
+        let phraseouts' = phraseouts ^. to (over equality (filter (`notElem`pluggedintersect)))
+            phraseins' = phraseins 
+        for phraseouts' $ \outch -> do
             focusedPhrase % _2 % at (outch ^. uniqueTag) %= 
                 Just . maybe ((outch, [phrase])) (const outch *** (phrase:)) 
-        for phraseins $ \inch -> do
+        for phraseins' $ \inch -> do
             focusedPhrase % _1 % at (inch ^. uniqueTag) %= 
                 Just . maybe ((inch, [phrase])) (const inch *** (phrase:)) 
 
@@ -258,20 +263,26 @@ cutCycles (start@(startins,startouts) :| phrases) = execWriter
         loop
 
     -- output sub found
-    joinEdges _ (Just (ch, (phrase, nunfocused))) = do
-        focusedPhrase % _2 % at (ch ^. uniqueTag) .= Nothing
-        let phraseins =  phrase ^. _1 % to (over equality (delete ch))
-            phraseouts = phrase ^. _2 
-        for phraseouts $ \outch -> do
+    joinEdges _ (Just (phrase@(phraseins, phraseouts), nunfocused)) = do
+        focusedouts <- guses (focusedPhrase % _2) Map.keys
+        let pluggedintersect = filter ((`elem` focusedouts) . view uniqueTag) phraseins
+
+        for pluggedintersect $ \pluggedch -> do
+            focusedPhrase % _2 % at (pluggedch ^. uniqueTag) .= Nothing
+
+        let phraseouts' = phraseouts 
+            phraseins' = phraseins ^. to (over equality (filter (`notElem`pluggedintersect)))
+        for phraseouts' $ \outch -> do
             focusedPhrase % _2 % at (outch ^. uniqueTag) %= 
                 Just . maybe ((outch, [phrase])) (const outch *** (phrase:)) 
-        for phraseins $ \inch -> do
+        for phraseins' $ \inch -> do
             focusedPhrase % _1 % at (inch ^. uniqueTag) %= 
                 Just . maybe ((inch, [phrase])) (const inch *** (phrase:)) 
 
         unfocusedPhrases .= nunfocused
 
         loop
+
 
     findAndRemoveNodeInput ::
         ChIdentR -> 

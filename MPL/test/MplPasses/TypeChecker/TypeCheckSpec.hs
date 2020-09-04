@@ -74,6 +74,8 @@ spec = do
         , v31 
         , v32 
         , v33 
+        , v34 
+        , v35 
         ]
 
     mapM_ (`describeAnyErrors` ("Type unification for all failure", 
@@ -444,6 +446,48 @@ proc v33 =
                 halt f
 |]
 
+v34 = [r|
+proc v34 =
+    |  => -> do
+        plug
+            f => -> do
+                halt f
+            a => b,c -> do
+                close a 
+                close b 
+                halt c
+            b,c => d,e,f -> do
+                close b 
+                close c
+                close d
+                close e
+                halt f
+            e,d => -> do
+                close d
+                halt e
+|]
+
+
+v35 = [r|
+proc v35 =
+    |  => -> do
+        plug
+            b,c => d,e,f -> do
+                close b 
+                close c
+                close d
+                close e
+                halt f
+            a => b,c -> do
+                close a 
+                close b 
+                halt c
+            e,d => -> do
+                close d
+                halt e
+            f => -> do
+                halt f
+|]
 
 -- Invalid tests  
 ----------------------------
