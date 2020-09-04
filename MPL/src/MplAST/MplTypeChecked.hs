@@ -230,7 +230,8 @@ type instance XTypeConcVarWithArgs  MplTypeChecked = Void -- higher kinded types
 
 type instance XTypeVar MplTypeChecked = 
     Maybe (XMplKind MplTypeChecked)
-type instance XTypeWithNoArgs MplTypeChecked = ()
+type instance XTypeWithNoArgs MplTypeChecked = 
+    MplObjectDefn MplTypeCheckedClause
 type instance XXType MplTypeChecked = Void
 type instance XTypeIntF MplTypeChecked = NameOcc
 type instance XTypeCharF MplTypeChecked = NameOcc

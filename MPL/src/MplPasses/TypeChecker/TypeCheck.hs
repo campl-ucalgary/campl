@@ -1255,13 +1255,8 @@ typeCheckCmd cmd = case cmd of
 
     CPlugs (cxt, plugs) (phr1, phr2, phrs) -> do
         ttypemap <- guse (envLcl % typeInfoEnvMap)
-        -- TODO
-        -- NEED TO CHECK CUT CONDITION STILL:
-        --      - at most 2 occurences of each variable, 
-        --      - each variable must be of opposite polarity in each of the plug phrases
-        --      - each variable must be in a different phrase
-        --      - And there CANNOT be any cycles...
-        --
+
+        -- see the cut condition things...
         let allphrases = phr1:phr2:phrs
             allphrasesgraph = map (view _2) allphrases
         tell $ review _ExternalError $ cutConditions allphrasesgraph
@@ -1328,18 +1323,28 @@ typeCheckCmd cmd = case cmd of
 
         return (_CPlugs # ((cxt, plugs'), (phr1', phr2',phrs')), [eqn])
 
-    {-
-    | CCase 
-        !(XCCase x) 
-        (XMplExpr x) 
-        (NonEmpty (XMplPattern x, NonEmpty (MplCmd x)))
-        {-
-        { _cCase :: Expr pattern letdef typedef seqcalleddef ident
-        , _cCases :: [(pattern, ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident)] }
-        -}
-    | CSwitch !(XCSwitch x) (NonEmpty (XMplExpr x, NonEmpty (MplCmd x)))
-        -- { _cSwitches :: NonEmpty (Expr pattern letdef typedef seqcalleddef ident, ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident) }
-        -}
+    CCase cxt expr cases -> do
+        (ttypeexpr, (expr', expreqn)) <- withFreshTypeTag $ typeCheckExpr expr
+        ttypeexprstable <- freshTypeTag
+        (ttypespatts, (cases', caseseqns)) <- fmap (second NE.unzip . NE.unzip)
+            $ for cases $ \(patt, cmds) -> localEnvSt id $ do
+                (ttypepatt, (patt', patteqn)) <- withFreshTypeTag $ typeCheckPattern patt
+                (cmds', cmdseqns) <- typeCheckCmds cmds
+                return (ttypepatt, ((patt', cmds'), patteqn <> cmdseqns))
+
+        let ttypepexpr = annotateTypeTag ttypeexpr expr
+            ttypesppatts = annotateTypeTags (NE.toList ttypespatts) (NE.toList $ fmap fst cases)
+            eqn = TypeEqnsExist (ttypepexpr : ttypesppatts) $ 
+                [ genStableEqn ttypeexprstable ttypepexpr ] 
+                <> map (review _TypeEqnsEq . (typePtoTypeVar ttypepexpr,) . typePtoTypeVar) ttypesppatts
+                <> expreqn
+                <> fold caseseqns
+
+        envLcl % typeInfoSymTab % symTabCh .= mempty
+
+        return (_CCase # (cxt, expr', cases'), [eqn])
+    CSwitch cxt switches -> panicNotImplemented
+
 
 -------------------------
 -- Kind checking

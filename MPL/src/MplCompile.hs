@@ -44,23 +44,13 @@ proc v12a =
 -}
 
 
-proc v30 =
-    |  => -> do
-        plug
-            a,b => c -> do
-                close a
-                close b 
-                halt c 
-            c => d,e -> do
-                close c 
-                close d
-                halt e
-            d => g -> do
-                close d
-                halt g
-            e => a -> do
-                close a
-                halt e
+proc v30 :: Nat | TopBot => =
+    a |  b => -> 
+        case a of
+            Succ(a) -> do
+                halt b
+            Zero -> do
+                halt b
 |]
 
 

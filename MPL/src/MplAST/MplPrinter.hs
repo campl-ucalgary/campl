@@ -248,6 +248,8 @@ instance ( PPrint (IdP x), PPrint (TypeP x) ) => MplTypeToBnfc (MplType x) where
     mplTypeToBnfc = f
       where
         f (TypeVar cxt tp) = B.MPL_UIDENT_NO_ARGS_TYPE $ toBnfcIdent tp
+        f (TypeWithNoArgs cxt tp) = B.MPL_UIDENT_NO_ARGS_TYPE (toBnfcIdent tp)
+
         f (TypeSeqWithArgs cxt tp args) = 
             B.MPL_UIDENT_ARGS_TYPE (toBnfcIdent tp) bnfcKeyword (map f args) bnfcKeyword
         f (TypeSeqVarWithArgs cxt tp args) = 
@@ -417,8 +419,16 @@ instance ( MplToForkPhrase (CForkPhrase x), MplToPlugPhrase (CPlugPhrase x), PPr
         f (CRace _ races) = B.PROCESS_RACE $ NE.toList $ fmap g races
           where
             g (ch, cmds) = B.RACE_PHRASE (toBnfcIdent ch) $ mplCmdsToBnfc cmds
-        -- TODO -- we should actually show the generated context here!
+        -- TODO -- we should actually show the generated context here!??
         f (CPlugs _ (a,b,c)) = B.PROCESS_PLUG $ map mplToPlugPhrase (a:b:c)
+
+        f (CCase cxt caseon cases) = B.PROCESS_CASE bnfcKeyword (mplExprToBnfc caseon) $ NE.toList $ fmap g cases 
+          where
+            g (patt, cmds) = B.PROCESS_CASE_PHRASE (mplPattToBnfc patt) (mplCmdsToBnfc cmds)
+        f (CSwitch cxt switches) = B.PROCESS_SWITCH $ NE.toList $ fmap g switches
+          where
+            g (expr, cmds) = B.PROCESS_SWITCH_PHRASE (mplExprToBnfc expr) (mplCmdsToBnfc cmds)
+
 
 -- we can configure a fork phrase to have a context..
 class MplToForkPhrase t where

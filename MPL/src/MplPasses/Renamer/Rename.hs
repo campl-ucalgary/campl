@@ -38,6 +38,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
 
 import Data.Foldable
+import Data.Traversable
 import Control.Arrow
 
 import Debug.Trace
@@ -461,23 +462,16 @@ renameCmd = f
             else return ()
 
         envLcl %= deleteCh ch
-        symtab <- guse envLcl
 
         -- tell $ forkExpectedDisjointChannelsButHasSharedChannels cxt1 cxt2
 
         ch1' <- fmap (review _ChIdentR . (,ch' ^. polarity)) $ splitUniqueSupply $ tagIdentP ch1
         ch2' <- fmap (review _ChIdentR . (,ch' ^. polarity)) $ splitUniqueSupply $ tagIdentP ch2
 
-        envLcl .= symtab
-        envLcl %= ((collectSymTab ch1')<>) . restrictChs cxt1
-        
-        cmds1' <- renameCmds cmds1
+        cmds1' <- localEnvSt (over envLcl (((collectSymTab ch1')<>) . restrictChs cxt1)) $ renameCmds cmds1
 
-        envLcl .= symtab
-        envLcl %= ((collectSymTab ch2')<>) . restrictChs cxt2
-        cmds2' <- renameCmds cmds2
+        cmds2' <- localEnvSt (over envLcl (((collectSymTab ch2')<>) . restrictChs cxt2)) $ renameCmds cmds2
 
-        envLcl .= symtab
 
         return $ CFork cxt ch' ((ch1', cxt1', cmds1'), (ch2', cxt2', cmds2'))
 
@@ -562,15 +556,11 @@ renameCmd = f
 
             return ((), (ins', outs'), cmds')
 
-    {-
-    | CCase 
-        !(XCCase x) 
-        (XMplExpr x) 
-        (NonEmpty (XMplPattern x, NonEmpty (MplCmd x)))
-        {-
-        { _cCase :: Expr pattern letdef typedef seqcalleddef ident
-        , _cCases :: [(pattern, ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident)] }
-        -}
-    | CSwitch !(XCSwitch x) (NonEmpty (XMplExpr x, NonEmpty (MplCmd x)))
-        -- { _cSwitches :: NonEmpty (Expr pattern letdef typedef seqcalleddef ident, ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident) }
-        -}
+    f (CCase cxt caseon cases) = do
+        caseon' <- renameExpr caseon
+        cases' <- for cases $ \(patt, cmds) -> localEnvSt id $ (,) <$> renamePattern patt <*> renameCmds cmds
+        return $ CCase cxt caseon' cases'
+
+    f (CSwitch cxt switches) = do
+        switches' <- for switches $ \(expr, cmds) -> localEnvSt id $ (,) <$> renameExpr expr <*> renameCmds cmds
+        return $ CSwitch cxt switches'

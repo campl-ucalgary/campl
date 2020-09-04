@@ -128,11 +128,52 @@ primitiveKindCheck = para f
             
         return $ bool (_Just % _TypeVar # (Just kd, NamedType n)) Nothing kindmismatch
 
+
+    f (TypeWithNoArgsF cxt tp) = do
+        ekd <- guse kindCheckExpectedPrimitiveKind 
+        ~clauselkup <- lookupSymType tp
+
+        -- duplciated code...
+        ~noerrs <- fmap (has _Empty . snd) $ listen $ do 
+            tell $ _ExternalError # case clauselkup of
+                SeqObjDefn seqclause
+                    | has _ConcKind ekd -> 
+                        [ _KindPrimtiveMismatchExpectedButGot # (ekd, _SeqKind # (), TypeWithNoArgs cxt tp) ]
+                    | otherwise  -> 
+                        let (clausename, clauseargs) = case seqclause of
+                                DataDefn clause -> 
+                                    ( clause ^. typeClauseName
+                                    , clause ^. typeClauseArgs)
+                                CodataDefn clause -> 
+                                    ( clause ^. typeClauseName
+                                    , clause ^. typeClauseArgs)
+                        in bool [] [_KindAritySeqMismatchExpectedButGot # 
+                            ( (clausename, clauseargs), (tp, mempty) )
+                            ] $ hasn't _Empty clauseargs
+                ConcObjDefn concclause
+                    | has _SeqKind ekd -> 
+                        [ _KindPrimtiveMismatchExpectedButGot # (ekd, _ConcKind # (), TypeWithNoArgs cxt tp) ]
+                    | otherwise  -> 
+                        let ~(clausename, clauseargs) = case concclause of
+                                ProtocolDefn clause -> 
+                                    ( clause ^. typeClauseName
+                                    , clause ^. typeClauseArgs)
+                                CoprotocolDefn clause -> 
+                                    ( clause ^. typeClauseName
+                                    , clause ^. typeClauseArgs)
+                        in bool [] [_KindArityConcMismatchExpectedButGot # 
+                            ( (clausename, clauseargs), (tp, mempty) )
+                            ] $ hasn't _Empty clauseargs
+
+        return $ flip (bool Nothing) noerrs $ return $ _TypeWithNoArgs # (clauselkup, tp)
+
+
     f (TypeSeqWithArgsF cxt tp args) = do
         ekd <- guse kindCheckExpectedPrimitiveKind 
         ~clauselkup <- lookupSymType tp
 
         let rargs = map fst args
+        -- duplciated code...
         ~noerrs <- fmap (has _Empty . snd) $ listen $ do 
             tell $ _ExternalError # case clauselkup of
                 SeqObjDefn seqclause -> 
@@ -187,6 +228,7 @@ primitiveKindCheck = para f
 
         let rseqs = map fst seqs
             rconcs = map fst concs
+        -- duplciated code...
         ~noerrs <- fmap (has _Empty . snd) $ listen $ do 
             tell $ review _ExternalError $ case clauselkup of
                 ConcObjDefn concclause -> 

@@ -194,6 +194,10 @@ $(makeLenses ''CutCyclesEnv)
 
 {- Tests if there is a cycle in the plug and if the plug
  - graph is fully connected...
+ -
+ - Might be a good idea to generalize this later? Really bound to just
+ - this specific kind of graph... Perhaps look into operations in Data.Graph from 
+ - containers.
  -}
 cutCycles :: 
     forall e. 
@@ -263,6 +267,7 @@ cutCycles (start@(startins,startouts) :| phrases) = execWriter
         loop
 
     -- output sub found
+    -- (duplciated code...)
     joinEdges _ (Just (phrase@(phraseins, phraseouts), nunfocused)) = do
         focusedouts <- guses (focusedPhrase % _2) Map.keys
         let pluggedintersect = filter ((`elem` focusedouts) . view uniqueTag) phraseins
@@ -282,7 +287,6 @@ cutCycles (start@(startins,startouts) :| phrases) = execWriter
         unfocusedPhrases .= nunfocused
 
         loop
-
 
     findAndRemoveNodeInput ::
         ChIdentR -> 

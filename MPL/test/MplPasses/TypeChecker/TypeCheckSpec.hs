@@ -76,6 +76,7 @@ spec = do
         , v33 
         , v34 
         , v35 
+        , v36 
         ]
 
     mapM_ (`describeAnyErrors` ("Type unification for all failure", 
@@ -100,6 +101,8 @@ spec = do
         , nm7
         , nm8
         , nm9
+        , nm10
+        , nm11
         ]
 
     mapM_ (`describeAnyErrors` ("Occurs check", 
@@ -489,6 +492,20 @@ proc v35 =
                 halt f
 |]
 
+v36 =[r|
+data Nat -> S =
+    Succ :: S -> S
+    Zero ::   -> S
+
+proc v36 :: Nat() | TopBot => =
+    a |  b => -> 
+        case a of
+            Succ(a) -> do
+                halt b
+            Zero -> do
+                halt b
+|]
+
 -- Invalid tests  
 ----------------------------
 
@@ -656,6 +673,38 @@ proc nm9 =
             c => -> do
                 get _ on c
                 halt c
+|]
+
+nm10 =[r|
+data Nat -> S =
+    Succ :: S -> S
+    Zero ::   -> S
+
+data Negative -> S =
+    NSucc :: S -> S
+    NZero ::   -> S
+
+proc nm10 :: Nat() | TopBot => =
+    a |  b => -> 
+        case a of
+            Succ(a) -> do
+                halt b
+            NZero -> do
+                halt b
+|]
+nm11 =[r|
+data Nat -> S =
+    Succ :: S -> S
+    Zero ::   -> S
+
+proc nm11 :: Nat() | TopBot => =
+    a |  b => -> 
+        case a of
+            Succ(a) -> do
+                halt b
+            Zero -> do
+                get _ on b
+                halt b
 |]
 
 
