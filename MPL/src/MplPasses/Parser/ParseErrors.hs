@@ -28,6 +28,9 @@ data ParseErrors =
     | ForkExpectedExactlyTwoForkedChannelsButGot 
         [(IdentP, Maybe [IdentP], NonEmpty (MplCmd MplParsed))]
 
+    | NegExpectedExactlyOneArgumentButGot 
+        NameOcc [MplType MplParsed]
+
     | PlugExpectedTwoOrMorePhrasesButGot 
         (Maybe (CPlugPhrase MplParsed))
     | PlugExpectedARunProcessCallButGot 

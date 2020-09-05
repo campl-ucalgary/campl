@@ -27,6 +27,7 @@ import MplPasses.TypeChecker.TypeCheckMplTypeSubUtil
 import MplPasses.TypeChecker.KindCheck
 import MplPasses.TypeChecker.TypeCheckPanic
 import MplPasses.TypeChecker.TypeCheckErrorPkg
+import MplPasses.TypeChecker.TypeCheckErrors 
 import MplPasses.Env
 
 import MplPasses.TypeChecker.TypeEqns 
@@ -90,11 +91,17 @@ withFreshTypeTag act = do
 
 type TypeCheck renamed typechecked =
     forall e0 e1 m0 n. 
-    ( AsTypeCheckSemanticErrors e0 
+    ( AsTypeUnificationError e0 MplTypeSub
+    , AsTypeCheckSemanticErrors e0
     , AsKindCheckErrors e0
-
     , AsTypeCheckCallErrors e0
+    , AsTypeCheckErrors e0
+
+    , AsTypeCheckSemanticErrors e1 
+    , AsKindCheckErrors e1
     , AsTypeCheckCallErrors e1
+    , AsTypeCheckErrors e1
+
 
 
     , MonadWriter (TypeCheckErrorPkg e0 e1) n 
@@ -170,7 +177,7 @@ higherOrderCheck tp
     f :: Base (MplType MplTypeSub) (MplType MplTypeSub, _ (Maybe (MplType MplTypeChecked))) ->
         (_ (Maybe (MplType MplTypeChecked)))
     f  (TypeVarF cxt n) = return $ Just $ TypeVar Nothing (typeIdentTToTypeT n)
-    -- f  (TypeWithNoArgsF cxt n) = return $ TypeVar Nothing (typeIdentTToTypeT n)
+    f  (TypeWithNoArgsF cxt n) = return $ Just $ TypeWithNoArgs cxt n
     f  (TypeSeqWithArgsF cxt n args) = do
         args' <- traverse snd args
         return $ TypeSeqWithArgs (snd cxt) n <$> sequenceA args'
@@ -217,6 +224,12 @@ higherOrderCheck tp
             TypeSeqArrF cxt froms to -> do
                 tell [ _IllegalHigherOrderFunction # (fmap fst froms, fst to) ]
                 return Nothing 
+
+            TypeNegF cxt (_, tp) -> do
+                tp' <- tp
+                return $ do
+                    tp'' <- tp'
+                    return $ _TypeNegF # (cxt ^? _TypeChAnnNameOcc, tp'') 
 
 typeIdentTToTypeT :: TypeIdentT -> TypeP MplTypeChecked
 typeIdentTToTypeT (TypeIdentT tag (TypeIdentTInfoTypeVar tp)) = tp

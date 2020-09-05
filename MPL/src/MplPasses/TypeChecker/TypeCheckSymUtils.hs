@@ -78,10 +78,10 @@ lookupSymConc n = do
 
 
 class CollectSeqSymObj (t :: SeqObjDefnTag) where
-    collecySeqSymObj :: MplTypeClauseSpine MplTypeChecked (SeqObjTag t) -> [(UniqueTag, SymEntry SymSeqType SymExprInfo)]
+    collectSeqSymObj :: MplTypeClauseSpine MplTypeChecked (SeqObjTag t) -> [(UniqueTag, SymEntry SymSeqType SymExprInfo)]
 
 instance CollectSeqSymObj DataDefnTag where
-    collecySeqSymObj spine = foldMapOf (typeClauseSpineClauses % folded % typeClausePhrases % folded)
+    collectSeqSymObj spine = foldMapOf (typeClauseSpineClauses % folded % typeClausePhrases % folded)
                  (pure . f) spine 
       where
         -- should call nub here? although doesn't really matter..
@@ -102,7 +102,7 @@ instance CollectSeqSymObj DataDefnTag where
 
 -- more or less duplicated code
 instance CollectSeqSymObj CodataDefnTag where
-    collecySeqSymObj spine = foldMapOf (typeClauseSpineClauses % folded % typeClausePhrases % folded)
+    collectSeqSymObj spine = foldMapOf (typeClauseSpineClauses % folded % typeClausePhrases % folded)
                  (pure . f) spine 
       where
         -- should call nub here? although doesn't really matter..
@@ -171,10 +171,12 @@ instance CollectConcSymObj CoprotocolDefnTag where
 -- | initially collects the symbol table definitions given
 -- a recursive group of declarations..
 collectSymTabDefn ::
-    MonadState (Env SymTab TypeInfoEnv) m => MplDefn MplTypeChecked -> m ()
+    MonadState SymTab m => MplDefn MplTypeChecked -> m SymTab
 collectSymTabDefn def = do
-    tsymtab <- guse $ envLcl % typeInfoSymTab % symTabExpr
-    csymtab <- guse $ envLcl % typeInfoSymTab % symTabConc
+    -- tsymtab <- guse $ envLcl % typeInfoSymTab % symTabExpr
+    -- csymtab <- guse $ envLcl % typeInfoSymTab % symTabConc
+    tsymtab <- guse symTabExpr
+    csymtab <- guse symTabConc
     let ~syms = mempty 
             & symTabExpr .~ symterms 
             & symTabType .~ symtypes
@@ -210,15 +212,13 @@ collectSymTabDefn def = do
                     , _SymRunInfo # def
                     )
                 )
-            _ -> mempty
-
-            
+            _ -> mempty 
 
         ~symterms = Map.fromList $ case def of 
             ObjectDefn def -> case def of
                 SeqObjDefn def -> case def of
-                    DataDefn spine -> collecySeqSymObj spine
-                    CodataDefn spine -> collecySeqSymObj spine
+                    DataDefn spine -> collectSeqSymObj spine
+                    CodataDefn spine -> collectSeqSymObj spine
                 _ -> mempty
             FunctionDefn def -> pure 
                 ( def ^. funName % uniqueTag
@@ -226,14 +226,13 @@ collectSymTabDefn def = do
                     $ _SymSeqCall % _ExprCallFun # def)
             _ -> mempty
 
-
-    envGbl %= (syms<>)
+    return syms
 
 -- | recollects symbol table definitions after a recursive group
 -- is defined.. Note that object definitions do not need recollection
 -- but recursive function/process calls need to be recollected....
 recollectSymTabDefn ::
-    ( MonadState SymTab m ) => (MplDefn MplTypeChecked) -> m ()
+    ( MonadState SymTab m ) => MplDefn MplTypeChecked -> m ()
 recollectSymTabDefn (ObjectDefn _) = return ()
 recollectSymTabDefn (FunctionDefn (MplFunction name tp bdy)) = 
     symTabExpr % at (name ^. uniqueTag) % _Just % symEntryType .= _SymExplicit # tp

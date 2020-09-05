@@ -62,6 +62,7 @@ import qualified Data.List.NonEmpty as NE
 import Data.Foldable
 
 import Data.Functor.Foldable (Base, cata, para)
+import Data.Tuple
 
 runTypeCheck' ::
     ( AsTypeCheckErrors err 
@@ -104,10 +105,9 @@ runTypeCheck ::
 
     , Zoom m0 n SymTab TypeCheckEnv ) =>
     MplProg MplRenamed -> n (MplProg MplTypeChecked)
-runTypeCheck (MplProg stmts) = 
-    MplProg <$> traverse typeCheckStmts stmts
+runTypeCheck (MplProg stmts) = MplProg <$> traverse typeCheckStmt stmts
 
-typeCheckStmts ::
+typeCheckStmt ::
     forall e m0 n. 
     ( AsTypeCheckErrors e 
     , AsTypeCheckCallErrors e
@@ -122,12 +122,10 @@ typeCheckStmts ::
 
     , Zoom m0 n SymTab TypeCheckEnv ) =>
     MplStmt MplRenamed -> n (MplStmt MplTypeChecked)
-typeCheckStmts (MplStmt defns wheres) = do
-    wheres' <- traverse typeCheckStmts wheres
+typeCheckStmt (MplStmt defns wheres) = do
+    wheres' <- traverse typeCheckStmt wheres
 
-    -- envLcl % typeInfoSymTab % symTabBadLookup .= False
-    
-    envLcl % typeInfoSymTab %= mempty
+    envLcl % typeInfoSymTab .= mempty
     rec envLcl % typeInfoEnvMap .= tagmap
         ~((defns', eqns), errpkg) <- fmap (first (NE.unzip . NE.fromList)) 
             $ runWriterT 
@@ -148,7 +146,6 @@ typeCheckStmts (MplStmt defns wheres) = do
 
         ~tagmap <- packageToTypeTagMap (either mempty id (pkg :: Either [e] (Package MplTypeSub)))
 
-    -- tell $ pure $ head $ _Huhh # () : terrs
     tell terrs
     traceM $ bool [] (show eqns') $ null terrs
     tell $ either id mempty pkg
@@ -174,8 +171,8 @@ typeCheckDefns ::
 typeCheckDefns (defn : defns) = do
     rec ~(defn', eqns) <- envLcl % typeInfoSymTab .= symtab 
                     >> fmap snd (withFreshTypeTag (typeCheckDefn defn))
-        collectSymTabDefn defn'
-        -- envGbl %= (collectSymTab (fmap fst defn')<>)
+        ~nsyms <- zoom (envLcl % typeInfoSymTab) $ collectSymTabDefn defn'
+        envGbl %= (nsyms<>)
         ~defns' <- typeCheckDefns defns
         ~symtab <- guse envGbl
     return $ (defn', eqns) : defns'
@@ -344,9 +341,51 @@ typeCheckExpr = para f
         return (EVar (lkupdef, fromJust $ ttypemap ^? at ttypestable % _Just % _SymTypeSeq ) n, [eqn])
 
     f (EPOpsF _ _ _ _ ) = panicNotImplemented
+    f (EBuiltInOpF _ _ _ _ ) = panicNotImplemented
     f (EIntF _ _ ) = panicNotImplemented
     f (ECharF _ _ ) = panicNotImplemented
     f (EDoubleF _ _ ) = panicNotImplemented
+    f (EListF _ _ ) = panicNotImplemented
+    f (EStringF _ _ ) = panicNotImplemented
+    f (EUnitF _ ) = panicNotImplemented
+    f (ETupleF _ _ ) = panicNotImplemented
+    f (EIfF _ _ _ _) = panicNotImplemented
+    f (ELetF cxt lets (_, mexpr)) = do
+        st <- guse equality
+        sup <- freshUniqueSupply
+
+
+        let ~(MplProg lets', errs) = runWriter 
+                $ flip evalStateT 
+                    -- some awkwardness here that we need to update the 
+                    -- global symbol table...
+                    ( st & uniqueSupply .~ sup 
+                         & envGbl .~ st ^. envLcl % typeInfoSymTab ) 
+                $ runTypeCheck
+                $ MplProg (NE.toList lets)
+
+        tell $ review _ExternalError $ errs
+
+        zoom (envLcl % typeInfoSymTab) $ do
+            nsyms <- traverse (traverse collectSymTabDefn . view stmtDefns) lets'
+            equality %= (foldOf (folded % folded) nsyms<>)
+            traverse_ (traverse_ recollectSymTabDefn . view stmtDefns) lets'
+
+        (expr', expreqns) <- mexpr
+
+        return ( _ELet # (cxt, NE.fromList lets', expr') , expreqns) 
+
+    f (EFoldF cxt foldon phrases) = do
+        ttype <- guse (envLcl % typeInfoEnvTypeTag)
+        ttypestable <- freshTypeTag
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+        panicNotImplemented
+        panicDeprecated
+
+    f (EUnfoldF cxt unfoldon phrases) = do
+        panicDeprecated
+
+    f (ESwitchF _ _) = panicNotImplemented
 
     f (ECaseF cxt (caseon, mcaseon) cases) = do
         ttype <- guse (envLcl % typeInfoEnvTypeTag)
@@ -465,6 +504,7 @@ typeCheckExpr = para f
               , ident
               , args' ) 
             , [eqns] )
+
 
     f (ERecordF cxt phrases) = do
         ttype <- guse (envLcl % typeInfoEnvTypeTag)
@@ -1119,13 +1159,13 @@ typeCheckCmd cmd = case cmd of
 
     CId cxt (ch0, ch1) -> do
         ttypemap <- guse (envLcl % typeInfoEnvMap)
-        ~(SymEntry ttypech info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch0
+        ~(SymEntry ttypech0 info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch0
         ttypech0stable <- freshTypeTag
-        let ttypepch0 = annotateTypeTag ttypech ch0
+        let ttypepch0 = annotateTypeTag ttypech0 ch0
 
-        ~(SymEntry ttypech info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch1
+        ~(SymEntry ttypech1 info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch1
         ttypech1stable <- freshTypeTag
-        let ttypepch1 = annotateTypeTag ttypech ch1
+        let ttypepch1 = annotateTypeTag ttypech1 ch1
 
         tell $ review _ExternalError $ bool []
             [_IllegalIdGotChannelsOfTheSamePolarityButIdNeedsDifferentPolarity # (cxt, ch0, ch1) ] 
@@ -1147,13 +1187,13 @@ typeCheckCmd cmd = case cmd of
     -- duplciated code..
     CIdNeg cxt (ch0, ch1) -> do
         ttypemap <- guse (envLcl % typeInfoEnvMap)
-        ~(SymEntry ttypech info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch0
+        ~(SymEntry ttypech0 info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch0
         ttypech0stable <- freshTypeTag
-        let ttypepch0 = annotateTypeTag ttypech ch0
+        let ttypepch0 = annotateTypeTag ttypech0 ch0
 
-        ~(SymEntry ttypech info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch1
+        ~(SymEntry ttypech1 info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch1
         ttypech1stable <- freshTypeTag
-        let ttypepch1 = annotateTypeTag ttypech ch1
+        let ttypepch1 = annotateTypeTag ttypech1 ch1
 
         tell $ review _ExternalError $ bool []
             [ _IllegalIdNegGotChannelsOfDifferentPolarityButIdNegNeedsTheSamePolarity # (cxt, ch0, ch1) ] 
@@ -1173,7 +1213,7 @@ typeCheckCmd cmd = case cmd of
         envLcl % typeInfoSymTab % symTabCh % at (ch0 ^. uniqueTag) .= Nothing
         envLcl % typeInfoSymTab % symTabCh % at (ch1 ^. uniqueTag) .= Nothing
 
-        return ( _CId # (cxt, (ch0', ch1')), eqns )
+        return ( _CIdNeg # (cxt, (ch0', ch1')), eqns )
     CRace cxt ((ch, cmds) :| races) -> do
         {-
          - the unneccessary error checking?

@@ -4,6 +4,7 @@
 module MplPasses.Env where
 
 import Optics
+import Optics.State.Operators
 
 import Control.Monad.State 
 
@@ -40,12 +41,24 @@ localEnvSt ::
     ( s ~ Env gbl lcl
     , MonadState s m ) => 
     (s -> s) ->
-    StateT s m a -> 
+    -- StateT s m a -> 
+    m a -> 
     m a
 localEnvSt f act = do
     sup <- freshUniqueSupply
     st <- guse equality
+
+    uniqueSupply .= sup
+    equality %= f
+
+    act' <- act 
+
+    equality .= st
+    return act'
+
+    {-
     flip evalStateT 
         ( st & uniqueSupply .~ sup
              & equality %~ f
         ) $ act
+    -}

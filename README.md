@@ -34,3 +34,14 @@ line utility to read input), two windows will pop up asking for a character as i
 In this program, `true` is denoted as the character `t` and `false` is any other character.
 
 See the projects' individual `README.md` for more information i.e., look at `AMPL/README.md` or `AMPLC/README.md` for more information.
+
+-- package up to a *tar* and send to Cockett so it is backed up formally...
+-- maybe change the ending...
+
+-- try to get it so that we can tie it up in the future...
+
+-- by WEDNESDAY next week (September 9)
+
+-- category theory: 
+    -- most likely 3:30pm  mondays and wednesdays?
+    -- Or tuesday/thursday?

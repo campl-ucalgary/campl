@@ -251,7 +251,7 @@ renameExpr = cata f
         stmts' <- traverse f stmts
         envLcl %= (collectSymTab stmts' <>)
         expr' <- expr 
-        return $ ELet cxt stmts' expr'
+        return $ _ELet # (cxt, stmts', expr')
       where
         f :: MplStmt MplParsed -> _ (MplStmt MplRenamed)
         f stmt = do
@@ -259,7 +259,44 @@ renameExpr = cata f
             lcl <- guse envLcl
             sup <- freshUniqueSupply
             evalStateT (renameStmt stmt) (st & uniqueSupply .~ sup & envGbl .~ lcl)
-            
+
+    f (EFoldF cxt foldon phrases) = do
+        symtab <- guse envLcl
+
+        foldon' <- foldon
+
+        phrases' <- for phrases $ \(cxt, ident, patts, mexpr) -> localEnvSt id $ do
+            let ident' = fromJust $ lookupSymSeqPhrase ident  symtab
+            tell $ outOfScopeWith lookupSymSeqPhrase symtab ident 
+
+            patts' <- traverse renamePattern patts
+            expr' <- mexpr
+
+            return (cxt, _IdentR # (ident, ident' ^. uniqueTag), patts', expr') 
+
+        return $ _EFold # (cxt, foldon', phrases')
+
+    f (EUnfoldF cxt unfoldon phrases) = do
+        symtab <- guse envLcl
+
+        unfoldon' <- unfoldon
+
+        -- ((), patt, NonEmpty ((), identp, patts, expr) )
+        phrases' <- for phrases $ \(cxt0, patt, foldphrases) -> localEnvSt id $ do
+            patt' <- renamePattern patt
+            foldphrases' <- for foldphrases $ \(cxt1, ident, patts, mexpr) -> localEnvSt id $ do
+                -- duplciated from the fold case
+                let ident' = fromJust $ lookupSymSeqPhrase ident  symtab
+                tell $ outOfScopeWith lookupSymSeqPhrase symtab ident 
+
+                patts' <- traverse renamePattern patts
+                expr' <- mexpr
+
+                return (cxt, _IdentR # (ident, ident' ^. uniqueTag), patts', expr') 
+
+            return (cxt0, patt', foldphrases')
+
+        return $ _EUnfold # (cxt, unfoldon', phrases')
 
 -- Renaming commands...
 renameCmds ::

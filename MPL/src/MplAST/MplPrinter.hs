@@ -286,6 +286,7 @@ instance ( PPrint (IdP x), PPrint (TypeP x) ) => MplTypeToBnfc (MplType x) where
                     [f conc]
                     bnfcKeyword
             TypeTopBotF cxt -> B.MPL_UIDENT_NO_ARGS_TYPE (toBnfcIdent "TopBot")
+            TypeNegF cxt tp -> B.MPL_UIDENT_ARGS_TYPE (toBnfcIdent "Neg") bnfcKeyword [f tp] bnfcKeyword
 
 class MplClauseToBnfc x t res | t -> res where
     mplClauseToBnfc :: MplTypeClause x t -> res
@@ -415,7 +416,9 @@ instance ( MplToForkPhrase (CForkPhrase x), MplToPlugPhrase (CPlugPhrase x), PPr
         f (CFork _ ch (a,b)) = 
             B.PROCESS_FORK bnfcKeyword (toBnfcIdent ch) $ map mplToForkPhrase [a, b]
         f (CId _ (a,b)) = B.PROCESS_ID (toBnfcIdent a) bnfcKeyword (toBnfcIdent b)
-        f (CIdNeg _ (a,b)) = B.PROCESS_NEG (toBnfcIdent a) bnfcKeyword (toBnfcIdent b)
+        f (CIdNeg _ (a,b)) = B.PROCESS_NEG 
+            (toBnfcIdent a) bnfcKeyword 
+            (toBnfcIdent b)
         f (CRace _ races) = B.PROCESS_RACE $ NE.toList $ fmap g races
           where
             g (ch, cmds) = B.RACE_PHRASE (toBnfcIdent ch) $ mplCmdsToBnfc cmds
@@ -485,6 +488,17 @@ instance MplPrintConstraints x => MplExprToBnfc (MplExpr x) where
             g (cxt, ident, (patts, expr)) = 
                 B.RECORD_EXPR_HIGHER_ORDER_PHRASE (toBnfcIdent ident) 
                     $ B.PATTERN_TO_EXPR (map mplPattToBnfc patts) (f expr)
+        f (EFold cxt expr phrases) = B.FOLD_EXPR (f expr) $ NE.toList $ fmap g phrases
+          where
+            g (cxt, ident, patts, expr) = 
+                B.FOLD_EXPR_PHRASE (toBnfcIdent ident) bnfcKeyword (map mplPattToBnfc patts) (f expr)
+        f (EUnfold cxt expr phrases) = B.UNFOLD_EXPR (f expr) $ NE.toList $ fmap g phrases
+          where
+            g (cxt, patt, foldphrases) = 
+                B.UNFOLD_EXPR_PHRASE (mplPattToBnfc patt) $ NE.toList $ fmap h foldphrases
+            h (cxt, ident, patts, expr) = 
+                B.FOLD_EXPR_PHRASE (toBnfcIdent ident) bnfcKeyword (map mplPattToBnfc patts) (f expr)
+
         {-
         EVar !(XEVar x) (IdP x)
         EInt !(XEInt x) Int
@@ -601,3 +615,6 @@ instance BnfcKeyword B.Par where
 
 instance BnfcKeyword B.Tensor where
     bnfcKeyword = B.Tensor ((-1,-1), "(*)")
+
+instance BnfcKeyword B.Colon where
+    bnfcKeyword = B.Colon ((-1,-1), ":")

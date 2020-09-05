@@ -199,6 +199,7 @@ data InternalConcTypes =
     | InternalTopBot
     | InternalTensor
     | InternalPar
+    | InternalNeg
   deriving ( Eq, Ord, Read, Show, Generic, Data, Typeable )
 
 _InternalConcTypeParser :: Prism' String InternalConcTypes
@@ -210,6 +211,7 @@ _InternalConcTypeParser = prism' embed match
         , ("TopBot", InternalTopBot)
         , ("(*)", InternalTensor)
         , ("(+)", InternalPar)
+        , ("Neg", InternalNeg)
         ]
 
     embed n = fst . fromJust $ find ((n==) . snd) tmp

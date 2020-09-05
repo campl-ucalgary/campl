@@ -77,6 +77,9 @@ spec = do
         , v34 
         , v35 
         , v36 
+        , v37 
+        , v38 
+        , v39 
         ]
 
     mapM_ (`describeAnyErrors` ("Type unification for all failure", 
@@ -497,13 +500,35 @@ data Nat -> S =
     Succ :: S -> S
     Zero ::   -> S
 
-proc v36 :: Nat() | TopBot => =
+proc v36 :: Nat | TopBot => =
     a |  b => -> 
         case a of
             Succ(a) -> do
                 halt b
             Zero -> do
                 halt b
+|]
+
+v37 = [r|
+
+data Unit -> S =
+    Unit :: -> S
+fun v37 :: A -> A=
+    a -> let fun testing =
+                b -> a
+         in testing(Unit)
+|]
+
+v38 = [r|
+proc v38 :: | => A, Neg(A) =
+    |  => a,b -> do
+        b |=| neg a
+|]
+
+v39 = [r|
+proc v39 :: | => Neg(A), A =
+    |  => a,b -> do
+        a |=| neg b
 |]
 
 -- Invalid tests  

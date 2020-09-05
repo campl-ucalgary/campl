@@ -26,31 +26,19 @@ fun undefined :: -> A=
     -> undefined
 
 
+fun foldtest =
+    a -> fold a of
+        Succ : b -> Succ(b)
+        Zero : -> b
+
+
 protocol Test(A| ) => S =
     Testing0 :: Get(A | S) => S 
 
-{-
-proc v12a =
-    |  => a -> do
-        plug
-            => a,c -> do
-                close a
-                halt c
-            c => b -> do
-                close b
-                halt c
-            b => -> do
-                halt b
--}
+proc v12a :: | => Neg(A), A =
+    |  => a,b -> do
+        a |=| neg b
 
-
-proc v30 :: Nat | TopBot => =
-    a |  b => -> 
-        case a of
-            Succ(a) -> do
-                halt b
-            Zero -> do
-                halt b
 |]
 
 

@@ -56,7 +56,8 @@ type instance XTypeConcWithArgs MplTypeSub = ((), MplConcObjDefn MplTypeCheckedC
 type instance XTypeConcVarWithArgs  MplTypeSub = Void
 
 type instance XTypeVar MplTypeSub = Maybe TypeAnn
-type instance XTypeWithNoArgs MplTypeSub = ()
+type instance XTypeWithNoArgs MplTypeSub = 
+    MplObjectDefn MplTypeCheckedClause
 type instance XXType MplTypeSub = Void
 type instance XTypeIntF MplTypeSub = NameOcc
 type instance XTypeCharF MplTypeSub = NameOcc
@@ -193,6 +194,7 @@ instantiateTypeWithSubs sublist = cata f
     f :: Base (MplType MplTypeChecked) 
         (Maybe (MplType MplTypeSub)) -> Maybe (MplType MplTypeSub)
     f (TypeVarF cxt typep) = lookup typep sublist
+    f (TypeWithNoArgsF cxt id) = return $ TypeWithNoArgs cxt id
     f (TypeSeqWithArgsF cxt id args) =
         TypeSeqWithArgs (mempty, cxt) id <$> sequenceA args 
     f (TypeConcWithArgsF cxt id args) =
@@ -215,6 +217,10 @@ instantiateTypeWithSubs sublist = cata f
             a' <- a
             b' <- b
             return $ _TypeParF # (annotate cxt, a', b')
+
+        TypeNegF cxt a -> do
+            a' <- a
+            return $ _TypeNegF # (annotate cxt, a')
 
         TypeTopBotF cxt -> 
             return $ _TypeTopBotF # annotate cxt

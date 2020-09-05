@@ -247,7 +247,7 @@ type instance XTypePut MplTypeChecked = Maybe NameOcc
 type instance XTypeTensor MplTypeChecked = Maybe NameOcc
 type instance XTypePar MplTypeChecked = Maybe NameOcc
 type instance XTypeTopBot MplTypeChecked = Maybe NameOcc
-type instance XTypeNeg MplTypeChecked = NameOcc
+type instance XTypeNeg MplTypeChecked = Maybe NameOcc
 type instance XTypeSeqArrF MplTypeChecked = ()
 type instance XTypeConcArrF MplTypeChecked = ()
 

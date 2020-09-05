@@ -249,9 +249,25 @@ match = f
         | otherwise = throwError $  _TypeMatchFailure # (type0, type1)
     -- TypeConcVarWithArgs !(XTypeConcVarWithArgs x) (TypeP x) ([MplType x], [MplType x])
 
+    f type0@(TypeConcWithArgs _ a args) type1@(TypeWithNoArgs _ b) 
+        | a == b && has _Empty args = return mempty
+        | otherwise = throwError $  _TypeMatchFailure # (type0, type1)
+    f type0@(TypeSeqWithArgs _ a args) type1@(TypeWithNoArgs _ b) 
+        | a == b && has _Empty args = return mempty
+        | otherwise = throwError $  _TypeMatchFailure # (type0, type1)
+    f type0@(TypeWithNoArgs _ a) type1@(TypeConcWithArgs _ b brgs)
+        | a == b && has _Empty brgs = return mempty
+        | otherwise = throwError $  _TypeMatchFailure # (type0, type1)
+    f type0@(TypeWithNoArgs _ a) type1@(TypeSeqWithArgs _ b brgs) 
+        | a == b && has _Empty brgs = return mempty
+        | otherwise = throwError $  _TypeMatchFailure # (type0, type1)
+
     f type0@(TypeBuiltIn a) type1@(TypeBuiltIn b) = case (a,b) of
         (TypeIntF a, TypeIntF b) -> return []
         (TypeTopBotF a, TypeTopBotF b) -> return []
+
+        (TypeNegF cxt0 a, TypeNegF cxt1 b) -> f a b
+
         (TypeGetF cxt0 seq0 conc0, TypeGetF cxt1 seq1 conc1) -> 
             concat <$> sequenceA [f seq0 seq1, f conc0 conc1]
         (TypePutF cxt0 seq0 conc0, TypePutF cxt1 seq1 conc1) -> 

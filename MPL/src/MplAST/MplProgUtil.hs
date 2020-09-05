@@ -75,6 +75,8 @@ mplTypeCollectTypeP = cata f
   where
     f (TypeVarF _ n) = [n]
 
+    f (TypeWithNoArgsF cxt tp) = mempty
+
     f (TypeSeqWithArgsF _ n acc) = concat acc
     f (TypeSeqVarWithArgsF _ n acc) = n : concat acc
 

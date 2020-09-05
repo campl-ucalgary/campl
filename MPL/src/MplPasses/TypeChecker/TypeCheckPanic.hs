@@ -21,6 +21,9 @@ panicNotImplemented :: a
 panicNotImplemented = error "Not implemented yet...."
 
 
+panicDeprecated :: a
+panicDeprecated = error "Sorry! This was deprecated..."
+
 {-
 data MyStrange = MyStrange {
     _innertuple :: (Int,Int)

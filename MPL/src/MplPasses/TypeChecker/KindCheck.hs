@@ -421,7 +421,7 @@ primitiveKindCheck = para f
             (l', llg) <- listen l
 
             return $ bool Nothing
-                (review _TypeNegF <$> ((ann,) <$> l'))
+                (review _TypeNegF <$> ((Just ann,) <$> l'))
                 $ noerr && has _Empty llg 
                 
         TypeTopBotF cxt  -> do
