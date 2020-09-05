@@ -354,7 +354,6 @@ typeCheckExpr = para f
         st <- guse equality
         sup <- freshUniqueSupply
 
-
         let ~(MplProg lets', errs) = runWriter 
                 $ flip evalStateT 
                     -- some awkwardness here that we need to update the 
@@ -375,10 +374,47 @@ typeCheckExpr = para f
 
         return ( _ELet # (cxt, NE.fromList lets', expr') , expreqns) 
 
-    f (EFoldF cxt foldon phrases) = do
+    f (EFoldF cxt (_, foldon) (phrase :| phrases)) = do
         ttype <- guse (envLcl % typeInfoEnvTypeTag)
         ttypestable <- freshTypeTag
         ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        (ttypefoldon, (foldon, foldoneqns)) <- withFreshTypeTag foldon
+
+        {- Remarks..
+         - Given a fold expression:
+         - fold a of
+         -  Constructor0 : a b c -> expr0
+         -  Constructor1 : a b c -> expr1
+         -  Constructor2 : a b c -> expr2
+         -
+         - The type of the overall expression is the type of the state 
+         - variable for THE FIRST CONSTRUCTOR even given a mutually 
+         - recursive case....
+         -
+         - So first, we do our ``magic" with the first phrase, then all 
+         - the other phrases should follow after... Moreover, in the future,
+         - we need to keep track that all the phrases are ``reachable" from
+         - the first phrase... Actually, I think this should be checked when
+         - checking the data clause -- but oh well, we will think about this later..
+         - TODO
+         - -}
+
+        -- ((), identr, patts, (expr (para), mexpr) )
+        arrenv <- freshInstantiateArrEnv
+        -- (phrases', phraseseqns) <- fmap 
+        _ <- fmap 
+            -- ((second NE.unzip . NE.unzip) *** (toListOf (instantiateArrEnvInstantiated % folded)))
+            (id *** toListOf (instantiateArrEnvInstantiated % folded))
+            $ flip runStateT arrenv $ do
+                ~(SymEntry lkuptp (SymSeqPhraseCall seqdef)) <- zoom (envLcl % typeInfoSymTab) 
+                    $ lookupSymExpr ident
+
+                undefined
+                for phrases $ \(cxt, ident, patts, (expr, mexpr)) -> do
+                    undefined
+        -- TODO 
+
         panicNotImplemented
         panicDeprecated
 
