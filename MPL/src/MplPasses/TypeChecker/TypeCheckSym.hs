@@ -93,8 +93,9 @@ data SymSeqType =
         ( [TypeP MplTypeChecked], [MplType MplTypeChecked], MplType MplTypeChecked))
      
     | SymCodataPhrase 
-        ( SymSeqPhraseType ([TypeP MplTypeChecked]
-        , ([MplType MplTypeChecked], MplType MplTypeChecked), MplType MplTypeChecked))
+        ( SymSeqPhraseType 
+            ([TypeP MplTypeChecked], ([MplType MplTypeChecked], MplType MplTypeChecked), MplType MplTypeChecked)
+        )
 
 data SymConcType = 
     SymConcCallType (SymCallType 

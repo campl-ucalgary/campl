@@ -156,9 +156,10 @@ type instance XMplPattern MplTypeChecked = MplPattern MplTypeChecked
 type instance XPConstructor MplTypeChecked = 
     (MplTypePhrase MplTypeChecked (SeqObjTag DataDefnTag), MplSeqType MplTypeChecked)
 type instance XPRecord MplTypeChecked = 
-    (Location, MplTypeClause MplTypeChecked (SeqObjTag CodataDefnTag), MplSeqType MplTypeChecked)
+    (Location, MplSeqType MplTypeChecked)
 type instance XPRecordPhrase MplTypeChecked = 
-    (Location, MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag), MplSeqType MplTypeChecked)
+    -- (MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag), MplSeqType MplTypeChecked)
+    MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag)
 type instance XPVar MplTypeChecked = MplSeqType MplTypeChecked
 type instance XPNull MplTypeChecked = (Location, MplSeqType MplTypeChecked)
 type instance XXPattern MplTypeChecked = Void

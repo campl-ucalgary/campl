@@ -22,14 +22,28 @@ data NegNat -> S =
     Pred :: S -> S
     NZero ::   -> S
 
-fun undefined :: -> A=
+codata S -> Tuple(A,B) =
+    P0 :: S -> A
+    P1 :: S -> B
+
+codata S -> Fun(A,B) =
+    App :: A,S -> B
+
+fun prj0 :: Fun(A,B), A -> B=
+    (App := f), a -> f(a)
+
+fun undefined :: -> A =
     -> undefined
 
 
+
+{- TODO
 fun foldtest =
     a -> fold a of
         Succ : b -> Succ(b)
         Zero : -> b
+-}
+
 
 
 protocol Test(A| ) => S =

@@ -45,6 +45,8 @@ import Control.Applicative
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
 
+import Data.Foldable
+
 import Data.Traversable
 
 import Debug.Trace
@@ -102,8 +104,6 @@ typeCheckPattern = para f
         
         return ( _PConstructor # 
                 ( (seqdef 
-                -- THIS WILL THROW ERRORS ALWAYS -- TODO, we need to convert
-                -- all of these type anotations to ``function like annotations"
                 , fromJust $ ttypemap ^? at ttypestable % _Just % _SymTypeSeq )
                 , n
                 , patts'
@@ -117,20 +117,83 @@ typeCheckPattern = para f
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
         let patt = _PRecord # (cxt, phrases & mapped % _3 %~ fst) :: MplPattern MplRenamed
-            -- ann = _TypeAnnPatt # patt
+            ttypep = annotateTypeTag ttype patt
+
+        {- TODO, given a tuple projections P1, and P2, this will type check
+         -
+         - (P1 := a) -> a
+         - 
+         - when clearly, we should have two arguments to the tuple.. Not totally
+         - sure where we should put this error tho? Moreover, we should check for duplicated
+         - pattern matching i.e., (P1 := a, P1 := b) -> a is allowed... 
+         - I guess this is also a compilation of pattern matching sort of error thing
+         - going on again -- so we delay this ot later...
+         -}
 
         st <- guse equality
         sup <- freshUniqueSupply
         arrenv <- freshInstantiateArrEnv
-        ((ttypepphrases, (phrases', phraseseqns)), ttypepinst) <- fmap 
-            ((second NE.unzip <<< NE.unzip) 
-                *** (toListOf (_2 % instantiateArrEnvInstantiated % folded)))
-            $ (`runStateT` (st & uniqueSupply .~ sup, arrenv))
-            $ for phrases $ \((), ident, (_, mpatt)) ->
-                undefined
+        (((ttypeppatts, phrases'), phraseseqns), ttypepinst) <- fmap 
+            (( first NE.unzip <<< NE.unzip)
+                *** (toListOf (instantiateArrEnvInstantiated % folded)))
+            $ (`runStateT` arrenv)
+            $ for phrases $ \((), ident, (_, mpatt)) -> do
+                -- duplicated checking code from the constructor definition..
+                ~(SymEntry lkuptp (SymSeqPhraseCall (CodataDefn seqdef))) <- lift $ zoom (envLcl % typeInfoSymTab) $ do
+                    res <- guse $ symTabExpr % at (ident ^. uniqueTag)
+                    let callterm = maybe (_Just % _CannotCallTerm # ident) (const Nothing) res
+                    tell $ review _InternalError $ maybeToList $ callterm
+                    tell $ review _InternalError $ maybeToList $ 
+                        res ^? _Just 
+                                % symEntryInfo 
+                                % _SymSeqPhraseCall 
+                                % _DataDefn 
+                                % to (review _IllegalPattCodataCallGotDataInstead . (patt,))
+                    return $ fromJust res
 
-        -- TODO get back to this later...
-        error "record pat not implemented"
+                (ttypepatt, (patt', pattseqns)) <- lift $ withFreshTypeTag mpatt 
+
+                (ttypepphrase, ttypeclause) <- state $ runState $ do
+                    ttypepphrases <- instantiateArrType
+                        {- TODO, probably should include some sort of annotation
+                        - information here... e.g. (_Just % TypeAnnPatt seqdef) -}
+                        Nothing
+                        $ fromJust $ lkuptp ^? _SymCodataPhrase
+                            % noStateVarsType
+                            % to (over _2 (view _1))
+                    subs <- getInstantiatedSubs
+                    return 
+                        ( ttypepphrases
+                        , seqdef ^. typePhraseExt % to 
+                            ( fromJust 
+                            . instantiateTypeWithSubs subs 
+                            . typeClauseToMplType )
+                        )
+                let ttypeppatt = annotateTypeTag ttypepatt patt
+                    phraseeqns = 
+                        -- the type of the patt is the same as the 
+                        -- type of the phrase...
+                        [ TypeEqnsEq
+                            ( typePtoTypeVar ttypeppatt
+                            , ttypepphrase ) 
+                        -- The type of this pattern is the type of the clause..
+                        , TypeEqnsEq
+                            ( ttypeclause
+                            , typePtoTypeVar ttypep )
+                        ]
+
+                return ((ttypeppatt, (seqdef, ident, patt')), phraseeqns <> pattseqns)
+
+        let eqn = TypeEqnsExist (ttypepinst <> NE.toList ttypeppatts) $
+                -- generate the stable equation for this pattern
+                [ genStableEqn ttypestable ttypep ]
+                <> fold phraseseqns
+
+        return 
+            ( _PRecord # 
+              ( ( cxt, fromJust $ ttypemap ^? at ttypestable % _Just % _SymTypeSeq)
+              , phrases')
+            , [eqn] )
 
     f (PVarF cxt v) = do
         ttype <- guse (envLcl % typeInfoEnvTypeTag)

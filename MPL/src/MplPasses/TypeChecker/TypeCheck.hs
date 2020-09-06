@@ -398,17 +398,24 @@ typeCheckExpr = para f
          - the first phrase... Actually, I think this should be checked when
          - checking the data clause -- but oh well, we will think about this later..
          - TODO
-         - -}
+         -}
 
+        {- tomorrow morning todo...
+         - Get the fold and unfold done...
+         - And chase all the no exhaustive patterns...
+         - Then a pretty printer...
+         -
+         - AND APPLY FOR THE PHILLIP WADDLER THING.
+         -
+         -}
         -- ((), identr, patts, (expr (para), mexpr) )
         arrenv <- freshInstantiateArrEnv
         -- (phrases', phraseseqns) <- fmap 
         _ <- fmap 
-            -- ((second NE.unzip . NE.unzip) *** (toListOf (instantiateArrEnvInstantiated % folded)))
+            -- (t p(second NE.unzip . NE.unzip) *** (toListOf (instantiateArrEnvInstantiated % folded)))
             (id *** toListOf (instantiateArrEnvInstantiated % folded))
             $ flip runStateT arrenv $ do
-                ~(SymEntry lkuptp (SymSeqPhraseCall seqdef)) <- zoom (envLcl % typeInfoSymTab) 
-                    $ lookupSymExpr ident
+                -- ~(SymEntry lkuptp (SymSeqPhraseCall seqdef)) <- zoom (envLcl % typeInfoSymTab) $ lookupSymExpr undefined
 
                 undefined
                 for phrases $ \(cxt, ident, patts, (expr, mexpr)) -> do
@@ -552,7 +559,10 @@ typeCheckExpr = para f
 
         {-
          -- STILL NEED TO CHECK IF THE CLAUSE IS EXHAUSTIVE
-         -- Not really a type checking thing to do?
+         -- Not really a type checking thing to do? Think of this as
+         -- a non exhaustive patterns error which happens in compilation
+         -- of pattern matching.....
+
         tell $ review _ExternalError $ bool 
             [] [_RecordConstructionErrorGotPhrasesButExpected # 
                 ( recordphraseidents
@@ -565,7 +575,7 @@ typeCheckExpr = para f
         arrenv <- freshInstantiateArrEnv
         ~(((ttypeppatts, ttypepexpr), (phrases', phraseseqns)), ttypepinst) <- fmap 
             (( unzip *** unzip <<< unzip <<< NE.toList) 
-                *** (toListOf (instantiateArrEnvInstantiated % folded) ) )
+                *** (toListOf (instantiateArrEnvInstantiated % folded)))
             $ (`runStateT` arrenv)
             $ for phrases $ \(_, ident, (patts, (expr, mexpreqn))) -> do
                 ~(SymEntry lkuptp (SymSeqPhraseCall (CodataDefn seqdef))) <- 
@@ -600,9 +610,9 @@ typeCheckExpr = para f
                     return 
                         ( ttypepphrase
                         , seqdef ^. typePhraseExt % to 
-                            (\clause -> fromJust 
-                                $ instantiateTypeWithSubs subs
-                                $ typeClauseToMplType clause 
+                            ( fromJust 
+                            . instantiateTypeWithSubs subs
+                            . typeClauseToMplType 
                             )
                         )
 

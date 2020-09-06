@@ -80,6 +80,8 @@ spec = do
         , v37 
         , v38 
         , v39 
+        , v40 
+        , v41 
         ]
 
     mapM_ (`describeAnyErrors` ("Type unification for all failure", 
@@ -529,6 +531,25 @@ v39 = [r|
 proc v39 :: | => Neg(A), A =
     |  => a,b -> do
         a |=| neg b
+|]
+
+v40 = [r|
+codata S -> Tuple(A,B) =
+    P0 :: S -> A
+    P1 :: S -> B
+
+fun prj0 :: Tuple(A,B) -> A =
+    (P0 := a, P1 := b) -> a
+fun prj1 :: Tuple(A,B) -> B =
+    (P0 := a, P1 := b) -> b
+|]
+
+v41 = [r|
+codata S -> Fun(A,B) =
+    App :: A,S -> B
+
+fun v41 :: Fun(A,B), A -> B=
+    (App := f), a -> f(a)
 |]
 
 -- Invalid tests  
