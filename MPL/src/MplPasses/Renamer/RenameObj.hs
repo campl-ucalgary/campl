@@ -51,10 +51,7 @@ renameTypeClauseSpine ::
     Rename (MplTypeClauseSpine MplParsed t)
         (MplTypeClauseSpine MplRenamed t)
 renameTypeClauseSpine spine = do
-    -- first, check if all the args are the same 
-    -- (mutually recursive types must have the same type variables)
-    -- tell $ typeClauseSpineSameVarError spine
-    -- moreover, we need to test for overlapping declarations of the 
+    -- Need to test for overlapping declarations of the 
     -- arguments and the state vars
     tell $ overlappingDeclarations spine
 

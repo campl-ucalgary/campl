@@ -38,21 +38,22 @@ import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
 
 import Data.Foldable
+import Data.Traversable
 import Control.Arrow
 
 import Debug.Trace
 
 runRename' ::
     AsRenameErrors err =>
-    (TopLevel, UniqueSupply, SymTab) ->
+    (TopLevel, UniqueSupply) ->
     MplProg MplParsed ->
     Either [err] (MplProg MplRenamed)
-runRename' (top, sup, gbl) = 
+runRename' (top, sup) = 
     \case 
         (res, []) -> Right res
         (_, errs) -> Left errs
     . runWriter 
-    . (`evalStateT` (_Env # (top, sup, gbl, [])))
+    . (`evalStateT` (_Env # (top, sup, mempty, mempty)))
     . runRename
 
 runRename ::
@@ -96,10 +97,12 @@ renameDefns [] = return []
 renameDefn ::
     Rename (MplDefn MplParsed) (MplDefn MplRenamed)
 renameDefn (ObjectDefn obj) = ObjectDefn <$> case obj of
-    DataDefn n -> DataDefn <$> renameTypeClauseSpine n
-    CodataDefn n -> CodataDefn <$> renameTypeClauseSpine n
-    ProtocolDefn n -> ProtocolDefn <$> renameTypeClauseSpine n
-    CoprotocolDefn n -> CoprotocolDefn <$> renameTypeClauseSpine n
+    SeqObjDefn obj -> SeqObjDefn <$> case obj of
+        DataDefn n -> DataDefn <$> renameTypeClauseSpine n
+        CodataDefn n -> CodataDefn <$> renameTypeClauseSpine n
+    ConcObjDefn obj -> ConcObjDefn <$> case obj of
+        ProtocolDefn n -> ProtocolDefn <$> renameTypeClauseSpine n
+        CoprotocolDefn n -> CoprotocolDefn <$> renameTypeClauseSpine n
 renameDefn (FunctionDefn (MplFunction name funtype defn)) = do
     name' <- tagIdentP name
 
@@ -222,7 +225,7 @@ renameExpr = cata f
 
         args' <- sequenceA args
 
-        return $ _EObjCall # 
+        return $ _ECall # 
             (cxt, _IdentR # (ident, ident' ^. uniqueTag), args')
 
     f (ERecordF cxt args) = do
@@ -248,7 +251,7 @@ renameExpr = cata f
         stmts' <- traverse f stmts
         envLcl %= (collectSymTab stmts' <>)
         expr' <- expr 
-        return $ ELet cxt stmts' expr'
+        return $ _ELet # (cxt, stmts', expr')
       where
         f :: MplStmt MplParsed -> _ (MplStmt MplRenamed)
         f stmt = do
@@ -256,7 +259,44 @@ renameExpr = cata f
             lcl <- guse envLcl
             sup <- freshUniqueSupply
             evalStateT (renameStmt stmt) (st & uniqueSupply .~ sup & envGbl .~ lcl)
-            
+
+    f (EFoldF cxt foldon phrases) = do
+        symtab <- guse envLcl
+
+        foldon' <- foldon
+
+        phrases' <- for phrases $ \(cxt, ident, patts, mexpr) -> localEnvSt id $ do
+            let ident' = fromJust $ lookupSymSeqPhrase ident  symtab
+            tell $ outOfScopeWith lookupSymSeqPhrase symtab ident 
+
+            patts' <- traverse renamePattern patts
+            expr' <- mexpr
+
+            return (cxt, _IdentR # (ident, ident' ^. uniqueTag), patts', expr') 
+
+        return $ _EFold # (cxt, foldon', phrases')
+
+    f (EUnfoldF cxt unfoldon phrases) = do
+        symtab <- guse envLcl
+
+        unfoldon' <- unfoldon
+
+        -- ((), patt, NonEmpty ((), identp, patts, expr) )
+        phrases' <- for phrases $ \(cxt0, patt, foldphrases) -> localEnvSt id $ do
+            patt' <- renamePattern patt
+            foldphrases' <- for foldphrases $ \(cxt1, ident, patts, mexpr) -> localEnvSt id $ do
+                -- duplciated from the fold case
+                let ident' = fromJust $ lookupSymSeqPhrase ident  symtab
+                tell $ outOfScopeWith lookupSymSeqPhrase symtab ident 
+
+                patts' <- traverse renamePattern patts
+                expr' <- mexpr
+
+                return (cxt, _IdentR # (ident, ident' ^. uniqueTag), patts', expr') 
+
+            return (cxt0, patt', foldphrases')
+
+        return $ _EUnfold # (cxt, unfoldon', phrases')
 
 -- Renaming commands...
 renameCmds ::
@@ -291,13 +331,12 @@ renameCmds (cmd :| rst) = do
 
 renameCmd ::
     Rename (MplCmd MplCmdFreeVars) (MplCmd MplRenamed)
-renameCmd = 
-    f 
+renameCmd = f 
   where
     f :: MplCmd MplCmdFreeVars -> _ (MplCmd MplRenamed)
     f (CRun cxt ident seqs ins outs) = do
         symtab <- guse envLcl
-        let identlkup = lookupSym ident (_Just % _SymProcInfo) symtab
+        let identlkup = lookupProc ident symtab
             ident' = _IdentR # (ident, identlkup ^. to fromJust % uniqueTag )
             inslkup = traverse (flip lookupCh symtab) ins
             outslkup = traverse (flip lookupCh symtab) outs
@@ -314,7 +353,7 @@ renameCmd =
                     . view uniqueTag) outs outslkup'
 
         tell $ concat 
-            [ maybe [_OutOfScope # ident] (const []) identlkup
+            [ maybe [_OutOfScope # ident] mempty identlkup
             , outOfScopesWith lookupCh symtab ins 
             , outOfScopesWith lookupCh symtab outs ]
         -- tell $ maybe (concatMap expectedInputPolarity $ zip ins inslkup') (const []) $ inslkup
@@ -460,23 +499,16 @@ renameCmd =
             else return ()
 
         envLcl %= deleteCh ch
-        symtab <- guse envLcl
 
         -- tell $ forkExpectedDisjointChannelsButHasSharedChannels cxt1 cxt2
 
         ch1' <- fmap (review _ChIdentR . (,ch' ^. polarity)) $ splitUniqueSupply $ tagIdentP ch1
         ch2' <- fmap (review _ChIdentR . (,ch' ^. polarity)) $ splitUniqueSupply $ tagIdentP ch2
 
-        envLcl .= symtab
-        envLcl %= ((collectSymTab ch1')<>) . restrictChs cxt1
-        
-        cmds1' <- renameCmds cmds1
+        cmds1' <- localEnvSt (over envLcl (((collectSymTab ch1')<>) . restrictChs cxt1)) $ renameCmds cmds1
 
-        envLcl .= symtab
-        envLcl %= ((collectSymTab ch2')<>) . restrictChs cxt2
-        cmds2' <- renameCmds cmds2
+        cmds2' <- localEnvSt (over envLcl (((collectSymTab ch2')<>) . restrictChs cxt2)) $ renameCmds cmds2
 
-        envLcl .= symtab
 
         return $ CFork cxt ch' ((ch1', cxt1', cmds1'), (ch2', cxt2', cmds2'))
 
@@ -561,15 +593,11 @@ renameCmd =
 
             return ((), (ins', outs'), cmds')
 
-    {-
-    | CCase 
-        !(XCCase x) 
-        (XMplExpr x) 
-        (NonEmpty (XMplPattern x, NonEmpty (MplCmd x)))
-        {-
-        { _cCase :: Expr pattern letdef typedef seqcalleddef ident
-        , _cCases :: [(pattern, ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident)] }
-        -}
-    | CSwitch !(XCSwitch x) (NonEmpty (XMplExpr x, NonEmpty (MplCmd x)))
-        -- { _cSwitches :: NonEmpty (Expr pattern letdef typedef seqcalleddef ident, ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident) }
-        -}
+    f (CCase cxt caseon cases) = do
+        caseon' <- renameExpr caseon
+        cases' <- for cases $ \(patt, cmds) -> localEnvSt id $ (,) <$> renamePattern patt <*> renameCmds cmds
+        return $ CCase cxt caseon' cases'
+
+    f (CSwitch cxt switches) = do
+        switches' <- for switches $ \(expr, cmds) -> localEnvSt id $ (,) <$> renameExpr expr <*> renameCmds cmds
+        return $ CSwitch cxt switches'

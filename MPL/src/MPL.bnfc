@@ -396,8 +396,6 @@ PROCESS_CASE   . ProcessCommand ::= Case Expr "of" "{" [ProcessCasePhrase] "}";
 PROCESS_SWITCH . ProcessCommand ::= "switch" "{" [ProcessSwitchPhrase] "}";
 
 
-
-
 HCASE_PHRASE . HCasePhrase ::= UIdent "->" ProcessCommandsBlock ;
 separator HCasePhrase ";" ;
 
@@ -421,7 +419,7 @@ PLUG_PHRASE_AS . PlugPhrase ::= [PIdent] "=>" [PIdent] "->" ProcessCommandsBlock
 separator nonempty PlugPhrase ";" ;
 
 PROCESS_CASE_PHRASE . ProcessCasePhrase ::=  Pattern "->" ProcessCommandsBlock ;
-separator ProcessCasePhrase ";" ;
+separator nonempty ProcessCasePhrase ";" ;
 
 PROCESS_SWITCH_PHRASE . ProcessSwitchPhrase ::= Expr "->" ProcessCommandsBlock ;
 separator nonempty ProcessSwitchPhrase ";" ;

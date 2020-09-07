@@ -472,7 +472,6 @@ instance Print PlugPhrase where
 instance Print ProcessCasePhrase where
   prt i e = case e of
     PROCESS_CASE_PHRASE pattern processcommandsblock -> prPrec i 0 (concatD [prt 0 pattern, doc (showString "->"), prt 0 processcommandsblock])
-  prtList _ [] = (concatD [])
   prtList _ [x] = (concatD [prt 0 x])
   prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ";"), prt 0 xs])
 instance Print ProcessSwitchPhrase where

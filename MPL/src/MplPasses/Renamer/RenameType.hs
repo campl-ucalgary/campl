@@ -92,11 +92,18 @@ renameScopedType = cata f
         tell $ maybe [ _OutOfScope # ident ] (const []) lkup
         return $ case fromJust lkup of
             SymEntry tag (SymTypeClause objtag)
+                | otherwise -> _TypeWithNoArgs # ( (), _IdentR # (ident, tag) )
+                {-
                 | has _SeqObjTag objtag  -> 
+                    _TypeWithArgs
                     _TypeSeqWithArgs # ( (), _IdentR # (ident, tag), mempty )
                 | otherwise  -> 
                     _TypeConcWithArgs # ( (), _IdentR # (ident, tag), mempty )
+                -}
             SymEntry tag SymTypeVar -> _TypeVar # ((), _IdentR # (ident, tag))
+
+    f (TypeBuiltInF n) = TypeBuiltIn . embedBuiltInTypes <$> sequenceA n
+
 
 renameType :: 
     Rename 
@@ -114,9 +121,9 @@ renameType ptype = do
     ptype' <- runReaderT (renameScopedType ptype) symtab'
     return (nvars', ptype')
 
--- THIS LOOPS! Remember the whacky order of sequencing effects
   {-
   where
+-- THIS LOOPS! Remember the whacky order of sequencing effects
     f :: Base (MplType MplParsed) (_ ([IdentR], MplType MplRenamed)) -> 
         _ ([IdentR], MplType MplRenamed)
     f (TypeSeqVarWithArgsF () ident args) = do
@@ -196,6 +203,7 @@ typeFreeVariables symtab = nub . cata f
         maybe [ident] (const []) (lookupSymTypeInfo ident symtab) <> mconcat (args ^.. each % to mconcat)
 
     f (TypeVarF () ident) =  maybe [ident] (const []) $ lookupSymTypeInfo ident symtab 
+    f (TypeBuiltInF n) = fold n
 
 
 {-

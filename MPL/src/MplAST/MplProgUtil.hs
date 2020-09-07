@@ -55,10 +55,12 @@ instance MplProgUtil MplParsed where
     mplDefnIdents = NE.fromList . f
       where
         f (ObjectDefn def) = case def of
-            DataDefn n -> g n
-            CodataDefn n -> g n
-            ProtocolDefn n -> g n
-            CoprotocolDefn n -> g n
+            SeqObjDefn def -> case def of
+                DataDefn n -> g n
+                CodataDefn n -> g n
+            ConcObjDefn def -> case def of
+                ProtocolDefn n -> g n
+                CoprotocolDefn n -> g n
         f (FunctionDefn n) = [n ^. funName]
         f (ProcessDefn n) = [n ^. procName]
     
@@ -72,6 +74,8 @@ mplTypeCollectTypeP :: MplType x -> [TypeP x]
 mplTypeCollectTypeP = cata f
   where
     f (TypeVarF _ n) = [n]
+
+    f (TypeWithNoArgsF cxt tp) = mempty
 
     f (TypeSeqWithArgsF _ n acc) = concat acc
     f (TypeSeqVarWithArgsF _ n acc) = n : concat acc

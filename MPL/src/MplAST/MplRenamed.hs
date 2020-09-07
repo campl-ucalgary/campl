@@ -50,6 +50,9 @@ instance Eq IdentR where
     a == b = a ^. identRUniqueTag == b ^. identRUniqueTag
 
 
+instance Ord IdentR where
+    a <= b = a ^. identRUniqueTag <= b ^. identRUniqueTag
+
 instance HasUniqueTag IdentR where
     uniqueTag = identRUniqueTag 
 
@@ -68,11 +71,16 @@ instance HasNamespace IdentR where
 data ChIdentR = ChIdentR {
     _chIdentRIdentR :: IdentR
     , _chIdentRPolarity :: Polarity
-}
-  deriving Show
+}  deriving Show
 
 $(makeClassy ''ChIdentR)
 $(makePrisms ''ChIdentR)
+
+instance Eq ChIdentR where
+    a == b = a ^. identR == b ^. identR
+
+instance Ord ChIdentR where
+    a <= b = a ^. identR <= b ^. identR
 
 instance HasIdentR ChIdentR where
     identR = chIdentRIdentR
@@ -97,6 +105,18 @@ type instance IdP MplRenamed = IdentR
 type instance ChP MplRenamed = ChIdentR
 type instance TypeP MplRenamed = IdentR
 
+-- definitions.
+type instance XDataDefn MplRenamed  = 
+    MplTypeClauseSpine MplRenamed (SeqObjTag DataDefnTag)
+type instance XCodataDefn MplRenamed  = 
+    MplTypeClauseSpine MplRenamed (SeqObjTag CodataDefnTag)
+type instance XProtocolDefn MplRenamed  = 
+    MplTypeClauseSpine MplRenamed (ConcObjTag ProtocolDefnTag)
+type instance XCoprotocolDefn MplRenamed  = 
+    MplTypeClauseSpine MplRenamed (ConcObjTag CoprotocolDefnTag)
+
+type instance XFunctionDefn MplRenamed = MplFunction MplRenamed
+type instance XProcessDefn MplRenamed  = MplProcess MplRenamed 
 
 
 -- Expression instances
@@ -208,6 +228,7 @@ type instance XTypeConcWithArgs MplRenamed = ()
 type instance XTypeConcVarWithArgs  MplRenamed = ()
 
 type instance XTypeVar MplRenamed = () 
+type instance XTypeWithNoArgs MplRenamed = () 
 type instance XXType MplRenamed = Void
 type instance XTypeIntF MplRenamed = NameOcc
 type instance XTypeCharF MplRenamed = NameOcc

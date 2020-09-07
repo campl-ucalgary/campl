@@ -407,8 +407,7 @@ ListPlugPhrase : PlugPhrase { (:[]) $1 }
 ProcessCasePhrase :: { ProcessCasePhrase }
 ProcessCasePhrase : Pattern '->' ProcessCommandsBlock { Language.AbsMPL.PROCESS_CASE_PHRASE $1 $3 }
 ListProcessCasePhrase :: { [ProcessCasePhrase] }
-ListProcessCasePhrase : {- empty -} { [] }
-                      | ProcessCasePhrase { (:[]) $1 }
+ListProcessCasePhrase : ProcessCasePhrase { (:[]) $1 }
                       | ProcessCasePhrase ';' ListProcessCasePhrase { (:) $1 $3 }
 ProcessSwitchPhrase :: { ProcessSwitchPhrase }
 ProcessSwitchPhrase : Expr '->' ProcessCommandsBlock { Language.AbsMPL.PROCESS_SWITCH_PHRASE $1 $3 }

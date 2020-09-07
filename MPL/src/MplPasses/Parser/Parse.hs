@@ -55,7 +55,7 @@ parseBnfcStmt (B.MPL_STMT def) =
 
 parseBnfcDefn :: BnfcParse B.MplDefn (MplDefn MplParsed)
 parseBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.DATA_DEFN clauses)) =  
-    review _DataDefn . UMplTypeClauseSpine . NE.fromList 
+    review (_SeqObjDefn % _DataDefn) . UMplTypeClauseSpine . NE.fromList 
         <$> traverseTryEach f clauses
  where
     f (B.SEQ_TYPE_CLAUSE from to handles) = do
@@ -71,9 +71,8 @@ parseBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.DATA_DEFN clauses)) =
             . (,fromtypes', totype',()) 
             . toTermIdentP
             ) handles
-
 parseBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.CODATA_DEFN clauses)) =  
-    review _CodataDefn . UMplTypeClauseSpine . NE.fromList 
+    review (_SeqObjDefn % _CodataDefn) . UMplTypeClauseSpine . NE.fromList 
         <$> traverseTryEach f clauses
  where
     f (B.SEQ_TYPE_CLAUSE from to handles) = do
@@ -85,7 +84,7 @@ parseBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.CODATA_DEFN clauses)) =
         fromtypes' <- traverseTryEach parseBnfcType (init fromtypes)
         fromtypesst' <- parseTypeVariable <=< parseBnfcType $ last fromtypes
         totype' <- parseBnfcType totype 
-        if null fromtypes'
+        if null fromtypes
             then tell [_ExpectedCodataPhraseToHaveFromArgsButHasNone # map toTermIdentP handles ]  >> throwError ()
             else return $ map 
                     ( review _MplTypePhrase 
@@ -94,7 +93,7 @@ parseBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.CODATA_DEFN clauses)) =
                     ) handles
 
 parseBnfcDefn (B.MPL_CONCURRENT_TYPE_DEFN (B.PROTOCOL_DEFN clauses)) =  
-    review _ProtocolDefn . UMplTypeClauseSpine . NE.fromList 
+    review (_ConcObjDefn % _ProtocolDefn) . UMplTypeClauseSpine . NE.fromList 
         <$> traverseTryEach f clauses
  where
     f (B.CONCURRENT_TYPE_CLAUSE from to handles) = do
@@ -113,16 +112,17 @@ parseBnfcDefn (B.MPL_CONCURRENT_TYPE_DEFN (B.PROTOCOL_DEFN clauses)) =
 
 -- duplciated code
 parseBnfcDefn (B.MPL_CONCURRENT_TYPE_DEFN (B.COPROTOCOL_DEFN clauses)) =  
-    review _CoprotocolDefn . UMplTypeClauseSpine . NE.fromList 
+    review (_ConcObjDefn % _CoprotocolDefn) . UMplTypeClauseSpine . NE.fromList 
         <$> traverseTryEach f clauses
  where
     f (B.CONCURRENT_TYPE_CLAUSE from to handles) = do
-        ((name, args), st) <- parseTypeWithArgsConcAndStateVar from to
+        -- ((name, args), st) <- parseTypeWithArgsConcAndStateVar from to
+        ((name, args), st) <- parseStateVarAndTypeWithArgsConc from to
         handles' <- traverseTryEach g handles
         return $ _MplTypeClause # (name, args, st, concat handles', ())
 
     g (B.CONCURRENT_TYPE_PHRASE handles fromtype totype) = do
-        fromtype' <- parseTypeVariable <=< parseBnfcType $ totype
+        fromtype' <- parseTypeVariable <=< parseBnfcType $ fromtype
         totype' <- parseBnfcType totype 
         return $ map 
                 ( review _MplTypePhrase 
@@ -263,12 +263,12 @@ parseBnfcUnfoldPhrase (B.UNFOLD_EXPR_PHRASE patt foldphrases) = do
 parseBnfcProcess :: BnfcParse B.ProcessDefn (MplProcess MplParsed)
 parseBnfcProcess (B.PROCESS_DEFN ident phrases) = do
     phrases' <- traverseTryEach parseBnfcProcessPhrase phrases
-    return $ MplProcess (toTermIdentP ident) Nothing $ NE.fromList phrases'
+    return $ MplProcess (toChIdentP ident) Nothing $ NE.fromList phrases'
 parseBnfcProcess (B.INTERNAL_TYPED_PROCESS_DEFN _ _ _) = error "bnfc does not parse INTERNAL_TYPED_PROCESS_DEFN"
 parseBnfcProcess (B.TYPED_PROCESS_DEFN ident seqtype intype outtype phrases) = do
     ~[seqtype', intype', outtype'] <- traverseTryEach (traverseTryEach parseBnfcType) [seqtype, intype, outtype]
     phrases' <- traverseTryEach parseBnfcProcessPhrase phrases
-    return $ MplProcess (toTermIdentP ident) (Just (seqtype', intype', outtype')) $ NE.fromList phrases'
+    return $ MplProcess (toChIdentP ident) (Just (seqtype', intype', outtype')) $ NE.fromList phrases'
 
 parseBnfcProcessPhrase :: BnfcParse 
     B.ProcessPhrase 
@@ -295,7 +295,7 @@ parseBnfcCmd (B.PROCESS_RUN ident _ seqs inchs outchs _) = do
     seqs' <- traverseTryEach parseBnfcExpr seqs
     return $ _CRun # 
         ( ()
-        , toTermIdentP ident
+        , toChIdentP ident
         , seqs'
         , map toChIdentP inchs
         , map toChIdentP outchs
@@ -317,9 +317,9 @@ parseBnfcCmd (B.PROCESS_HCASE cxt ident phrases) = do
   where
     f (B.HCASE_PHRASE uident cmdblk) = do
         cmds <- parseBnfcCmdBlock cmdblk
-        return $ ((), toTermIdentP uident, cmds)
+        return $ ((), toChIdentP uident, cmds)
 parseBnfcCmd (B.PROCESS_HPUT cxt s t) = do
-    return $ _CHPut # (coerce $ toNameOcc cxt, toTermIdentP s, toChIdentP t)
+    return $ _CHPut # (coerce $ toNameOcc cxt, toChIdentP s, toChIdentP t)
 
 parseBnfcCmd (B.PROCESS_SPLIT cxt s chs) = do
     let chs' = map f chs in case chs' of
@@ -382,7 +382,7 @@ parseBnfcCmd (B.PROCESS_PLUG phrases) = do
         seqs' <- traverseTryEach parseBnfcExpr seqs
         let inchs' = map toChIdentP inchs
             outchs' = map toChIdentP outchs
-            cmd = _CRun # (() , toTermIdentP ident , seqs' , inchs' , outchs') 
+            cmd = _CRun # (() , toChIdentP ident , seqs' , inchs' , outchs') 
         return ((), (inchs', outchs'), cmd :| [])
     f (B.PLUG_PHRASE cmds) = do
         cmds' <- parseBnfcCmdBlock cmds

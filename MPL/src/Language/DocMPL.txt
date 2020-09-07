@@ -373,8 +373,7 @@ All other symbols are terminals.
   | //[PlugPhrase]// | -> | //PlugPhrase// 
   |  |  **|**  | //PlugPhrase// ``;`` //[PlugPhrase]// 
   | //ProcessCasePhrase// | -> | //Pattern// ``->`` //ProcessCommandsBlock// 
-  | //[ProcessCasePhrase]// | -> | **eps**
-  |  |  **|**  | //ProcessCasePhrase// 
+  | //[ProcessCasePhrase]// | -> | //ProcessCasePhrase// 
   |  |  **|**  | //ProcessCasePhrase// ``;`` //[ProcessCasePhrase]// 
   | //ProcessSwitchPhrase// | -> | //Expr// ``->`` //ProcessCommandsBlock// 
   | //[ProcessSwitchPhrase]// | -> | //ProcessSwitchPhrase// 

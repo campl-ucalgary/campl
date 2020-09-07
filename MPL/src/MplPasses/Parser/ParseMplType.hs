@@ -77,18 +77,25 @@ parseBnfcType (B.MPL_UIDENT_NO_ARGS_TYPE ident) = case parseNoArgInternalType id
     Nothing -> return $ _TypeVar # ((), toTypeIdentP ident)
 
 parseBnfcType (B.MPL_UIDENT_ARGS_TYPE ident _ args _) = do
+    let ident' = toTypeIdentP ident
+        res = toNameOcc ident
     args' <- traverse parseBnfcType args
-    return $ _TypeSeqVarWithArgs # ((), toTypeIdentP ident, args')
+    case ident' ^? name % _Name % _InternalConcTypeParser of
+        Just InternalNeg -> case args' of
+            [arg'] -> return $ _TypeNegF # (res, arg')
+            err -> tell [ _NegExpectedExactlyOneArgumentButGot # (res, err)  ]
+                >> throwError ()
+        _ -> return $ _TypeSeqVarWithArgs # ((), ident', args')
 
 parseBnfcType (B.MPL_UIDENT_SEQ_CONC_ARGS_TYPE ident lb [a] [b] rb) = do
     let ident' = toTypeIdentP ident 
         res = toNameOcc ident
     a' <- parseBnfcType a
     b' <- parseBnfcType b
-    case ident' ^? name % _Name % _InternalConcTypeParser of
-        Just InternalGet -> return $ _TypeGetF # (res, a', b')
-        Just InternalPut -> return $ _TypePutF # (res, a', b')
-        _ -> return $ _TypeConcVarWithArgs # ((), ident', ([a'], [b']))
+    return $ case ident' ^? name % _Name % _InternalConcTypeParser of
+        Just InternalGet -> _TypeGetF # (res, a', b')
+        Just InternalPut -> _TypePutF # (res, a', b')
+        _ -> _TypeConcVarWithArgs # ((), ident', ([a'], [b']))
 
 parseBnfcType (B.MPL_UIDENT_SEQ_CONC_ARGS_TYPE ident _ seqs concs _) = do
     seqs' <- traverse parseBnfcType seqs

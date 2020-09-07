@@ -64,6 +64,19 @@ type instance IdP MplParsed = IdentP
 type instance ChP MplParsed = IdentP
 type instance TypeP MplParsed = IdentP
 
+-- definitions.
+type instance XDataDefn MplParsed  = 
+    MplTypeClauseSpine MplParsed (SeqObjTag DataDefnTag)
+type instance XCodataDefn MplParsed  = 
+    MplTypeClauseSpine MplParsed (SeqObjTag CodataDefnTag)
+type instance XProtocolDefn MplParsed  = 
+    MplTypeClauseSpine MplParsed (ConcObjTag ProtocolDefnTag)
+type instance XCoprotocolDefn MplParsed  = 
+    MplTypeClauseSpine MplParsed (ConcObjTag CoprotocolDefnTag)
+
+type instance XFunctionDefn MplParsed = MplFunction MplParsed
+type instance XProcessDefn MplParsed  = MplProcess MplParsed
+
 
 -- Expression instances
 type instance XMplExpr MplParsed = MplExpr MplParsed
@@ -170,6 +183,7 @@ type instance XTypeConcWithArgs MplParsed = Void
 type instance XTypeConcVarWithArgs  MplParsed = ()
 
 type instance XTypeVar MplParsed = ()
+type instance XTypeWithNoArgs MplParsed = Void
 type instance XXType MplParsed = Void
 type instance XTypeIntF MplParsed = NameOcc
 type instance XTypeCharF MplParsed = NameOcc

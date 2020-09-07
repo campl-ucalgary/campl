@@ -16,18 +16,35 @@ import MplPasses.Parser.ParseErrors
 import MplPasses.Renamer.Rename
 import MplPasses.Renamer.RenameErrors
 import qualified MplPasses.Renamer.RenameSym as R
+import MplPasses.TypeChecker.TypeCheck
+
 import MplPasses.Passes
 import MplPasses.Env
+import MplUtil.UniqueSupply
 
 import Control.Monad
 
 describeValidRename prog rst = do
     describe ("Testing the valid program: \n" ++ prog) $ do
         mplpassesenv <- runIO mplPassesEnv
-        let prog' = runRename' 
-                ( TopLevel
-                , mplPassesEnvUniqueSupply mplpassesenv
-                , mplPassesContext mplpassesenv )
+        let 
+            prog' = runRename' ( mplPassesTopLevel mplpassesenv , mplPassesEnvUniqueSupply mplpassesenv )
+                <=< runParse' 
+                <=< B.runBnfc $ prog
+        it "Should be a valid program.." $ do
+            case prog' of
+                Right prog'' -> do
+                    rst prog''
+                    return ()
+                Left (errs :: [MplPassesErrors]) -> assertFailure (show errs) >> return () 
+
+describeValidTypeCheck prog rst = do
+    describe ("Testing the valid program: \n" ++ prog) $ do
+        mplpassesenv <- runIO mplPassesEnv
+        let (ls, rs) = split $ mplPassesEnvUniqueSupply mplpassesenv
+            prog' =
+                runTypeCheck' ( mplPassesTopLevel mplpassesenv , rs)
+                <=< runRename' ( mplPassesTopLevel mplpassesenv , ls)
                 <=< runParse' 
                 <=< B.runBnfc $ prog
         it "Should be a valid program.." $ do
