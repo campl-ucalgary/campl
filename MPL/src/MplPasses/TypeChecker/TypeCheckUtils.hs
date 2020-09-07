@@ -8,6 +8,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE NamedWildCards #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
 module MplPasses.TypeChecker.TypeCheckUtils where
 
@@ -51,6 +52,7 @@ import qualified Data.List.NonEmpty as NE
 import Data.Functor.Foldable (Base, cata, para)
 
 import Data.Maybe
+import Data.Kind
 
 import Debug.Trace
 
@@ -89,28 +91,31 @@ withFreshTypeTag act = do
     envLcl % typeInfoEnvTypeTag .= tag
     return (tag', res)
 
+type AsAllTypeCheckErrors e = 
+    ( AsTypeUnificationError e MplTypeSub
+    , AsTypeCheckSemanticErrors e
+    , AsKindCheckErrors e
+    , AsTypeCheckCallErrors e
+    , AsTypeCheckErrors e
+    )
+
 type TypeCheck renamed typechecked =
-    forall e0 e1 m0 n. 
-    ( AsTypeUnificationError e0 MplTypeSub
-    , AsTypeCheckSemanticErrors e0
-    , AsKindCheckErrors e0
-    , AsTypeCheckCallErrors e0
-    , AsTypeCheckErrors e0
-
-    , AsTypeCheckSemanticErrors e1 
-    , AsKindCheckErrors e1
-    , AsTypeCheckCallErrors e1
-    , AsTypeCheckErrors e1
-
-
+    forall e0 e1 m0 m1 symm n. 
+    ( AsAllTypeCheckErrors e0
+    , AsAllTypeCheckErrors e1
 
     , MonadWriter (TypeCheckErrorPkg e0 e1) n 
     , MonadWriter (TypeCheckErrorPkg e0 e1) m0
+    , MonadWriter (TypeCheckErrorPkg e0 e1) m1
+    , MonadWriter (TypeCheckErrorPkg e0 e1) symm
 
     , MonadFix n 
 
-    , Zoom m0 n SymTab TypeCheckEnv ) =>
+    , Zoom symm n SymTab TypeCheckEnv
+    , SymZooms m0 m1 symm
+    ) =>
     renamed -> n typechecked
+
 
 -- Utility functions..
 genStableEqn :: 

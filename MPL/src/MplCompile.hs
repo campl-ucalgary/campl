@@ -35,6 +35,9 @@ fun prj0 :: Fun(A,B), A -> B=
 fun undefined :: -> A =
     -> undefined
 
+data Wrapper(A) -> S =
+    Wrapper :: A -> S
+
 
 
 {- TODO
@@ -44,14 +47,6 @@ fun foldtest =
         Zero : -> b
 -}
 
-
-
-protocol Test(A| ) => S =
-    Testing0 :: Get(A | S) => S 
-
-proc v12a :: | => Neg(A), A =
-    |  => a,b -> do
-        a |=| neg b
 
 |]
 

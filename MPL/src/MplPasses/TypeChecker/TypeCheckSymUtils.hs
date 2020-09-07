@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DataKinds #-}
@@ -42,19 +43,68 @@ import Control.Arrow
 import Debug.Trace
 
 type TypeCheckSymLookup from to =
-    forall e0 e1 n. 
+    forall e0 e1 m0 m1 n. 
     ( AsTypeCheckCallErrors e1 
     , MonadWriter (TypeCheckErrorPkg e0 e1) n 
-    , MonadState SymTab n ) =>
+    , MonadWriter (TypeCheckErrorPkg e0 e1) m0
+    , MonadState SymTab n 
+    , SymZooms m0 m1 n
+    ) =>
     from -> n to
 
-lookupSymExpr :: 
-    TypeCheckSymLookup (IdP MplRenamed) (SymEntry SymSeqType SymExprInfo)
-lookupSymExpr = fmap fromJust . lookupSymExprM
+-- zoomLookup lensmaybe notfound found = zoomMaybe lensmaybe found >>= maybe notfound return
+zoomLookup lensmaybe notfound found = zoomMaybe lensmaybe found >>= maybe notfound return
 
-lookupSymExprM :: 
-    TypeCheckSymLookup (IdP MplRenamed) (Maybe (SymEntry SymSeqType SymExprInfo))
-lookupSymExprM n = guse (symTabExpr % at (n ^. uniqueTag)) 
+-- we can generalize all of these expression lookups and make
+-- it more compositional with zoom..
+lookupSymExpr :: TypeCheckSymLookup (IdP MplRenamed) (SymEntry SymSeqType SymExprInfo)
+lookupSymExpr n = zoomSymExpr n (guses equality fromJust)
+
+zoomSymExpr :: 
+    ( AsTypeCheckCallErrors e1 
+    -- , HasUniqueTag ident 
+    , MonadWriter (TypeCheckErrorPkg e0 e1) m
+    , Zoom m n (Maybe (SymEntry SymSeqType SymExprInfo)) SymTab 
+    ) => IdP MplRenamed -> m a -> n a
+zoomSymExpr ident k = zoom (symTabExpr % at (ident ^. uniqueTag)) $ do 
+    res <- guse equality
+    tell $ review _InternalError $ maybe [_CannotCallTerm # ident] mempty res
+    k
+
+zoomSymExprSeqPhrase ::
+    ( AsTypeCheckCallErrors e1 
+    -- , HasUniqueTag ident 
+    , MonadWriter (TypeCheckErrorPkg e0 e1) m
+    , Zoom m n (MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag)) (Maybe (SymEntry SymSeqType SymExprInfo))
+    ) => IdP MplRenamed -> m a -> n a
+zoomSymExprSeqPhrase =  undefined
+
+
+lookupSymExprCodataPhrase :: 
+    TypeCheckSymLookup 
+        (IdP MplRenamed, MplExpr MplRenamed) 
+        (SymEntry SymSeqType (MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag)))
+lookupSymExprCodataPhrase (ident, expr) = do
+    res <- guse $ symTabExpr % at (ident ^. uniqueTag)
+    let callterm = maybe (_Just % _CannotCallTerm # ident) (const Nothing) res
+    tell $ review _InternalError $ maybeToList $ callterm
+    tell $ review _InternalError $ maybeToList $ 
+        res ^? _Just 
+            % symEntryInfo 
+            % _SymSeqPhraseCall 
+            % _DataDefn 
+            % to (review _IllegalExprCodataCallGotDataInstead . (expr,))
+    let ~(SymEntry lkuptp (SymSeqPhraseCall (CodataDefn seqdef))) = fromJust res
+    return $ SymEntry lkuptp seqdef
+
+{-
+lookupSymExprDataPhrase :: 
+    TypeCheckSymLookup (IdP MplRenamed, MplExpr MplRenamed) (SymEntry SymSeqType SymExprInfo)
+lookupSymExprDataPhrase n = do
+    res <- guse $ symTabExpr % at (n ^. uniqueTag)
+    tell $ review _InternalError $ maybe [_CannotCallTerm # n] mempty res
+    return $ fromJust res
+-}
 
 lookupSymType :: 
     TypeCheckSymLookup (IdP MplRenamed) (MplObjectDefn MplTypeCheckedClause)

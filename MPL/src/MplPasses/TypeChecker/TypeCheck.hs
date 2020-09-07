@@ -65,11 +65,7 @@ import Data.Functor.Foldable (Base, cata, para)
 import Data.Tuple
 
 runTypeCheck' ::
-    ( AsTypeCheckErrors err 
-    , AsTypeUnificationError err MplTypeSub
-    , AsTypeCheckSemanticErrors err
-    , AsKindCheckErrors err 
-    , AsTypeCheckCallErrors err ) =>
+    ( AsAllTypeCheckErrors err ) =>
     (TopLevel, UniqueSupply) ->
     MplProg MplRenamed ->
     Either [err] (MplProg MplTypeChecked)
@@ -91,36 +87,32 @@ runTypeCheck' ~(top, sup) =
     tag = evalState freshTypeTag rsup
 
 runTypeCheck ::
-    forall e m0 n. 
-    ( AsTypeCheckErrors e 
-    , AsTypeUnificationError e MplTypeSub
-    , AsTypeCheckSemanticErrors e
-    , AsKindCheckErrors e
-    , AsTypeCheckCallErrors e
+    forall e m0 m1 symm n. 
+    ( AsAllTypeCheckErrors e
 
     , MonadWriter [e] n 
-    , MonadWriter [e] m0
+    , MonadWriter [e] symm
 
     , MonadFix n 
 
-    , Zoom m0 n SymTab TypeCheckEnv ) =>
+    , Zoom symm n SymTab TypeCheckEnv
+    , SymZooms m0 m1 symm
+    ) =>
     MplProg MplRenamed -> n (MplProg MplTypeChecked)
 runTypeCheck (MplProg stmts) = MplProg <$> traverse typeCheckStmt stmts
 
 typeCheckStmt ::
-    forall e m0 n. 
-    ( AsTypeCheckErrors e 
-    , AsTypeCheckCallErrors e
-    , AsTypeUnificationError e MplTypeSub
-    , AsTypeCheckSemanticErrors e
-    , AsKindCheckErrors e 
+    forall e m0 m1 symm n. 
+    ( AsAllTypeCheckErrors e
 
     , MonadWriter [e] n 
-    , MonadWriter [e] m0
+    , MonadWriter [e] symm
 
     , MonadFix n 
 
-    , Zoom m0 n SymTab TypeCheckEnv ) =>
+    , Zoom symm n SymTab TypeCheckEnv
+    , SymZooms m0 m1 symm
+    ) =>
     MplStmt MplRenamed -> n (MplStmt MplTypeChecked)
 typeCheckStmt (MplStmt defns wheres) = do
     wheres' <- traverse typeCheckStmt wheres
@@ -402,7 +394,7 @@ typeCheckExpr = para f
 
         {- tomorrow morning todo...
          - Get the fold and unfold done...
-         - And chase all the no exhaustive patterns...
+         - And chase all the non exhaustive patterns...
          - Then a pretty printer...
          -
          - AND APPLY FOR THE PHILLIP WADDLER THING.
@@ -415,7 +407,20 @@ typeCheckExpr = para f
             -- (t p(second NE.unzip . NE.unzip) *** (toListOf (instantiateArrEnvInstantiated % folded)))
             (id *** toListOf (instantiateArrEnvInstantiated % folded))
             $ flip runStateT arrenv $ do
-                -- ~(SymEntry lkuptp (SymSeqPhraseCall seqdef)) <- zoom (envLcl % typeInfoSymTab) $ lookupSymExpr undefined
+                -- the first phrase is the type of the overal expresion... 
+                let (cxt, ident, patts, (expr, mexpr)) = phrase
+                ~(SymEntry lkuptp (SymSeqPhraseCall (DataDefn seqdef))) <- 
+                    lift $ zoom (envLcl % typeInfoSymTab) $ do
+                        res <- guse $ symTabExpr % at (ident ^. uniqueTag)
+                        let callterm = maybe (_Just % _CannotCallTerm # ident) (const Nothing) res
+                        tell $ review _InternalError $ maybeToList $ callterm
+                        tell $ review _InternalError $ maybeToList $ 
+                            res ^? _Just 
+                                % symEntryInfo 
+                                % _SymSeqPhraseCall 
+                                % _DataDefn 
+                                % to (review _IllegalExprCodataCallGotDataInstead . (expr,))
+                        return $ fromJust res
 
                 undefined
                 for phrases $ \(cxt, ident, patts, (expr, mexpr)) -> do
@@ -576,7 +581,7 @@ typeCheckExpr = para f
         ~(((ttypeppatts, ttypepexpr), (phrases', phraseseqns)), ttypepinst) <- fmap 
             (( unzip *** unzip <<< unzip <<< NE.toList) 
                 *** (toListOf (instantiateArrEnvInstantiated % folded)))
-            $ (`runStateT` arrenv)
+            $ flip runStateT arrenv
             $ for phrases $ \(_, ident, (patts, (expr, mexpreqn))) -> do
                 ~(SymEntry lkuptp (SymSeqPhraseCall (CodataDefn seqdef))) <- 
                     lift $ zoom (envLcl % typeInfoSymTab) $ do

@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
@@ -28,6 +29,8 @@ import Data.List.NonEmpty (NonEmpty (..))
 
 import Data.Maybe
 
+import Data.Kind
+
 
 type SymTabType = Map UniqueTag (MplObjectDefn MplTypeCheckedClause)
 type SymTabExpr = Map UniqueTag (SymEntry SymSeqType SymExprInfo)
@@ -35,6 +38,11 @@ type SymTabCh = Map UniqueTag (SymEntry TypeTag ChIdentR)
 type SymTabConc = Map UniqueTag (SymEntry SymConcType SymConcInfo)
 
 type TypeTagMap = Map TypeTag SymTypeEntry
+
+type SymZooms m0 m1 n = 
+    ( Zoom m0 n (Maybe (SymEntry SymSeqType SymExprInfo)) SymTab 
+    , Zoom m1 m0 (MplSeqObjDefn MplTypeCheckedPhrase) (Maybe (SymEntry SymSeqType SymExprInfo))
+    ) 
 
 data SymTypeEntry = 
     SymTypeConc ([TypeP MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked])

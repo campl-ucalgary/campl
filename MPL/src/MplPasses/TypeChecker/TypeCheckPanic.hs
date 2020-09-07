@@ -1,5 +1,8 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleContexts #-}
 module MplPasses.TypeChecker.TypeCheckPanic where
@@ -13,6 +16,8 @@ import qualified Data.Map as Map
 
 import Control.Monad.State
 import Control.Monad.Writer
+
+import Data.Kind
 
 panicSymTab :: a
 panicSymTab = error "Illegal symbol table lookup -- most likely a thunk was evaluated too early."
@@ -73,12 +78,31 @@ mytestfun = do
         guse equality
     -}
 
+data MyStrange = MyStrange {
+    _innertuple :: (Int,Int)
+    , _innermap :: Map.Map Int (Either Int Int)
+}  deriving Show
 
 
+$(makeLenses ''MyStrange)
+
+myfun = do
+    zoom innertuple $ myotherfun1
+    zoom innertuple $ myotherfun2
+    zoom innermap $ myotherfun3
+
+myotherfun1 = do
+    zoom _1 $ return ()
+
+myotherfun2 = do
+    zoom _2 $ return ()
+
+myotherfun3 = do
+    zoomMaybe (at 3) $ return $ Just ()
+
+{-
 fkingaround :: MonadState Int m => m Int -> StateT Int m Int
 fkingaround act = do
     equality %= succ
     lift act
-    
-    
-
+-}
