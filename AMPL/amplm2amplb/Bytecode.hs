@@ -1,5 +1,4 @@
 module Bytecode where
-
 import Data.Array
 import Data.List
 import Data.Function
@@ -39,9 +38,10 @@ import Data.Int
 -- Definition of the byte code commands
 -- DO NOT CHANGE THE ORDER, THIS MUST MATCH THE C++ ENUM DECLARATION
 data BytecodeCommand = 
-    B_AM_DONE 
+      B_AM_DONE 
     | B_AM_STOR 
     | B_AM_STOR_N
+    | B_AM_UNSTOR_N
     | B_AM_LOAD 
     | B_AM_CALL 
     | B_AM_RET 
@@ -84,7 +84,7 @@ data BytecodeCommand =
     deriving (Enum, Show, Eq)
 
 data BytecodeEntry =
-    BI BytecodeCommand
+      BI BytecodeCommand
     | BChID LocalChanID
     | BGlobalChID GlobalChanID
     | BServiceDataType ServiceDataType
@@ -109,8 +109,8 @@ bytecodeEntryToByteString (BServiceDataType CharService) = word64LE $ fromIntegr
 bytecodeEntryToByteString (BServiceType StdService) = word64LE $ fromIntegral 0
 bytecodeEntryToByteString (BServiceType (NetworkedService _)) = word64LE $ fromIntegral 1
 bytecodeEntryToByteString (BServiceType (TerminalNetworkedService _ _)) = word64LE $ fromIntegral 2
-bytecodeEntryToByteString (BPolarity Output) = word64LE $ fromIntegral 0
-bytecodeEntryToByteString (BPolarity Input) = word64LE $ fromIntegral 1
+bytecodeEntryToByteString (BPolarity Output) = word64LE $ fromIntegral 1
+bytecodeEntryToByteString (BPolarity Input) = word64LE $ fromIntegral 2
 bytecodeEntryToByteString (BU v) =  word64LE v
 bytecodeEntryToByteString (BIdx v) =  word64LE $ v
 bytecodeEntryToByteString (BCellU cell) = error "Cells cannot be converted to bytestrings (translate to word64)"
@@ -214,9 +214,11 @@ translateSequential (IRet) = emit $ BI B_AM_RET
 
 translateSequential (ICall funid num) = do
     ret <- emit $ BI B_AM_STOR_N
-    emit $ BIdx $ fromIntegral num
+    emit $ BU $ fromIntegral num
     emit $ BI B_AM_CALL
     emit $ BFunID funid
+    emit $ BI B_AM_UNSTOR_N
+    emit $ BU $ fromIntegral num
     return ret
 
 translateSequential (IConst val) = do
@@ -340,20 +342,25 @@ translateConcurrent (IFork
         (ch2, ch2Table, ch2Code))) = let
     in do
         ret <- emit $ BI B_AM_FORK
+        
+        emit $ BChID target
 
-        emit $ BChID ch1
-        ch1JmpLoc <- skip 
+        ch1JmpLoc <- skip  -- code 1
+        emit $ BChID ch1   -- ch1 name
         translateChannelList ch1Table
         
-        emit $ BChID ch2
-        ch2JmpLoc <- skip 
+        ch2JmpLoc <- skip  -- code 2
+        emit $ BChID ch2   -- ch2 name
         translateChannelList ch2Table
         
         -- no code comes after fork
         emit $ BI B_AM_DONE 
 
-        translateBlock ch1Code
-        translateBlock ch2Code
+        ch1Target <- translateBlock ch1Code
+        emitAt ch1JmpLoc $ BJ ch1Target
+
+        ch2Target <- translateBlock ch2Code
+        emitAt ch2JmpLoc $ BJ ch2Target
 
         return ret
 
@@ -374,13 +381,13 @@ translateConcurrent (IId lID rID) = do
     emit $ BChID rID
     return ret
 
-translateConcurrent (IPlug tChannels ((p1Chs, p1Code), (p2Chs, p2Code))) = do
+translateConcurrent (IPlug newChannels ((p1Chs, p1Code), (p2Chs, p2Code))) = do
     ret <- emit $ BI B_AM_PLUG
 
     p1CodeLoc <- skip
     p2CodeLoc <- skip
 
-    translateChannelList tChannels
+    translateChannelList newChannels
     translateChannelList p1Chs
     translateChannelList p2Chs
     
@@ -414,6 +421,9 @@ translateConcurrent (IRun localTrans fun nargs) = let
         emit $ BI B_AM_RUN
         emit $ BFunID fun
         translateMapping localTrans
+
+        emit $ BI B_AM_UNSTOR_N
+        emit $ BU $ fromIntegral nargs
 
         return ret
 
@@ -505,14 +515,6 @@ translateMainTranslation list = let
         ret <- location
         translateMainTranslation' list
         return ret
-
-
-
-
-
--- TODO increment BIdx
--- TODO increment LocalChanID
--- TODO increment GlobalChanID
 
 translateMachineState :: InitAMPLMachState -> [BytecodeEntry]
 translateMachineState state = let
@@ -628,5 +630,3 @@ formatBytecodeString sep list = let
         formatBytecodeString' sep (head:[]) count =  (show count) ++ ":\t" ++ (show head)
         formatBytecodeString' sep (head:rest) count = (show count) ++ ":\t" ++ (show head) ++ sep ++ (formatBytecodeString' sep rest (count + 1))
     in formatBytecodeString' sep list 0
-
-
