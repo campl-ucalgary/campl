@@ -269,7 +269,7 @@ translateSequential (ICase casesArray) = let
         emit $ BU $ fromIntegral 0
         emit $ BI B_AM_JMP
         afterInstructionLoc <- skip
-        genCaseList start caseList
+        genCaseList start False caseList
 
         loc <- location
         emitAt afterInstructionLoc $ BJ $ fromIntegral loc
@@ -285,7 +285,7 @@ translateSequential (IRec entryInstructions) = let
         emit $ BU $ fromIntegral 0
         emit $ BI B_AM_JMP
         afterInstructionLoc <- skip
-        genCaseList start caseList
+        genCaseList start False caseList
 
         loc <- location
         emitAt afterInstructionLoc $ BJ $ fromIntegral loc
@@ -309,13 +309,16 @@ translateSequential v@(IAppend)      = error $ "Unimplemented instruction: " ++ 
 translateSequential v@(ITuple _)     = error $ "Unimplemented instruction: " ++ (show v)
 translateSequential v@(ITupleElem _) = error $ "Unimplemented instruction: " ++ (show v)
 
-genCaseList :: Int -> [[Instr]] -> State BytecodeState ()
-genCaseList idx (instBlk:rest) = do
+genCaseList :: Int -> Bool -> [[Instr]] -> State BytecodeState ()
+genCaseList idx addDone (instBlk:rest) = do
     target <- translateBlock instBlk
     emitAt idx $ BJ target
-    genCaseList (idx + 1) rest
+    if addDone
+        then emit $ BI B_AM_DONE 
+        else return 0
+    genCaseList (idx + 1) addDone rest
     return ()
-genCaseList _ [] = return ()
+genCaseList _ _ [] = return ()
 
 translateConcurrent :: ConcurrentInstr -> State BytecodeState Int
 translateConcurrent (IGet id) = do 
@@ -358,9 +361,11 @@ translateConcurrent (IFork
 
         ch1Target <- translateBlock ch1Code
         emitAt ch1JmpLoc $ BJ ch1Target
+        emit $ BI B_AM_DONE 
 
         ch2Target <- translateBlock ch2Code
         emitAt ch2JmpLoc $ BJ ch2Target
+        emit $ BI B_AM_DONE 
 
         return ret
 
@@ -397,7 +402,10 @@ translateConcurrent (IPlug newChannels ((p1Chs, p1Code), (p2Chs, p2Code))) = do
     afterInstructionLoc <- skip
 
     p1CodeTarget <- translateBlock p1Code
+    emit $ BI B_AM_DONE 
+
     p2CodeTarget <- translateBlock p2Code
+    emit $ BI B_AM_DONE 
 
     emitAt p1CodeLoc $ BJ $ fromIntegral p1CodeTarget
     emitAt p2CodeLoc $ BJ $ fromIntegral p2CodeTarget
@@ -443,7 +451,7 @@ translateConcurrent (IHCase chID caseArr) = let
         emit $ BU $ fromIntegral 0
         emit $ BI B_AM_JMP
         afterInstructionLoc <- skip
-        genCaseList start caseList
+        genCaseList start True caseList
 
         loc <- location
         emitAt afterInstructionLoc $ BJ loc
@@ -455,8 +463,13 @@ translateConcurrent (IRace ((a, ac):(b, bc):[])) = do
     aLoc <- skip
     emit $ BChID b
     bLoc <- skip
+
     aBlockLoc <- translateBlock ac
+    emit $ BI B_AM_DONE
+
     bBlockLoc <- translateBlock bc
+    emit $ BI B_AM_DONE
+
     emitAt aLoc $ BJ aBlockLoc
     emitAt bLoc $ BJ bBlockLoc
     return ret
@@ -516,7 +529,7 @@ translateMainTranslation list = let
         translateMainTranslation' list
         return ret
 
-translateMachineState :: InitAMPLMachState -> [BytecodeEntry]
+translateMachineState :: InitAMPLMachState -> ([BytecodeEntry], [(Int, FunID)])
 translateMachineState state = let
         patchFunctionLocations :: [(Int, FunID)] -> BytecodeEntry -> BytecodeEntry
         patchFunctionLocations fs (BFunID id) = BJ $ lookupFunction fs id
@@ -584,11 +597,11 @@ translateMachineState state = let
 
         (bytecode, fs) = fst $ runState (translate state) initBytecodeState
         channelOffset = -(getLowestChannelId bytecode) + 1
-    in map ((patchFunctionLocations fs).(incrementBytecodeIndex 1).(incrementChannelId channelOffset).convertCellToIntegers) bytecode
+    in (map ((patchFunctionLocations fs).(incrementBytecodeIndex 1).(incrementChannelId channelOffset).convertCellToIntegers) bytecode, fs)
 
 printInitMachineStateToBytecodeFile :: String -> InitAMPLMachState -> IO ()
 printInitMachineStateToBytecodeFile filename state = do
-        let translatedMachine = translateMachineState state
+        let (translatedMachine, _) = translateMachineState state
         -- putStrLn $ formatBytecodeString "\n" translatedMachine
 
         handle <- openFile filename (WriteMode)
@@ -630,3 +643,9 @@ formatBytecodeString sep list = let
         formatBytecodeString' sep (head:[]) count =  (show count) ++ ":\t" ++ (show head)
         formatBytecodeString' sep (head:rest) count = (show count) ++ ":\t" ++ (show head) ++ sep ++ (formatBytecodeString' sep rest (count + 1))
     in formatBytecodeString' sep list 0
+
+
+initMachineStateToBytecodeString :: InitAMPLMachState -> String
+initMachineStateToBytecodeString mach = let
+        (bytecode, fs) = translateMachineState mach
+    in ((formatBytecodeString "\n" bytecode) ++ "\n" ++ (show fs))
