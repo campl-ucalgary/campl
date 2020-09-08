@@ -306,10 +306,7 @@ typeCheckExpr = para f
         ttypestable <- freshTypeTag
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
-        ~(SymEntry lkuptp (SymSeqCall lkupdef)) <- zoom (envLcl % typeInfoSymTab ) $ do
-            res <- guse $ symTabExpr % at (n ^. uniqueTag)
-            tell $ review _InternalError $ maybe [_CannotCallTerm # n] (const []) res
-            return $ fromJust res
+        ~(SymEntry lkuptp (SymSeqCall lkupdef)) <- fmap fromJust $ zoom (envLcl % typeInfoSymTab ) $ lookupSymExpr n
 
         arrenv <- freshInstantiateArrEnv
         let ann = _EVar # (cxt, n) :: MplExpr MplRenamed
@@ -409,18 +406,9 @@ typeCheckExpr = para f
             $ flip runStateT arrenv $ do
                 -- the first phrase is the type of the overal expresion... 
                 let (cxt, ident, patts, (expr, mexpr)) = phrase
-                ~(SymEntry lkuptp (SymSeqPhraseCall (DataDefn seqdef))) <- 
-                    lift $ zoom (envLcl % typeInfoSymTab) $ do
-                        res <- guse $ symTabExpr % at (ident ^. uniqueTag)
-                        let callterm = maybe (_Just % _CannotCallTerm # ident) (const Nothing) res
-                        tell $ review _InternalError $ maybeToList $ callterm
-                        tell $ review _InternalError $ maybeToList $ 
-                            res ^? _Just 
-                                % symEntryInfo 
-                                % _SymSeqPhraseCall 
-                                % _DataDefn 
-                                % to (review _IllegalExprCodataCallGotDataInstead . (expr,))
-                        return $ fromJust res
+                ~(SymEntry lkuptp seqdef) <- lift $ fmap fromJust 
+                    $ zoom (envLcl % typeInfoSymTab) 
+                    $ lookupSymExprDataPhrase (ident, expr)
 
                 undefined
                 for phrases $ \(cxt, ident, patts, (expr, mexpr)) -> do
@@ -478,7 +466,9 @@ typeCheckExpr = para f
         ttypestable <- freshTypeTag
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
-        ~(SymEntry lkuptp (SymSeqPhraseCall seqdef)) <- zoom (envLcl % typeInfoSymTab) $ lookupSymExpr ident
+        ~(SymEntry lkuptp (SymSeqPhraseCall seqdef)) <- fmap fromJust 
+            $ zoom (envLcl % typeInfoSymTab) 
+            $ lookupSymExpr ident
 
         (ttypeargs, (args', argseqns)) <- fmap (second unzip <<< unzip) $
             for args $ \(_, mexpreqns) -> withFreshTypeTag mexpreqns
@@ -522,7 +512,7 @@ typeCheckExpr = para f
         ttypestable <- freshTypeTag
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
-        ~(SymEntry lkuptp (SymSeqCall seqdef)) <- zoom (envLcl % typeInfoSymTab) $ lookupSymExpr ident
+        ~(SymEntry lkuptp (SymSeqCall seqdef)) <- fmap fromJust $ zoom (envLcl % typeInfoSymTab) $ lookupSymExpr ident
 
         (ttypeargs, (args', argseqns)) <- fmap (second unzip <<< unzip) $
             for args $ \(_, mexpreqns) -> withFreshTypeTag mexpreqns
@@ -583,18 +573,8 @@ typeCheckExpr = para f
                 *** (toListOf (instantiateArrEnvInstantiated % folded)))
             $ flip runStateT arrenv
             $ for phrases $ \(_, ident, (patts, (expr, mexpreqn))) -> do
-                ~(SymEntry lkuptp (SymSeqPhraseCall (CodataDefn seqdef))) <- 
-                    lift $ zoom (envLcl % typeInfoSymTab) $ do
-                        res <- guse $ symTabExpr % at (ident ^. uniqueTag)
-                        let callterm = maybe (_Just % _CannotCallTerm # ident) (const Nothing) res
-                        tell $ review _InternalError $ maybeToList $ callterm
-                        tell $ review _InternalError $ maybeToList $ 
-                            res ^? _Just 
-                                % symEntryInfo 
-                                % _SymSeqPhraseCall 
-                                % _DataDefn 
-                                % to (review _IllegalExprCodataCallGotDataInstead . (expr,))
-                        return $ fromJust res
+                ~(SymEntry lkuptp seqdef) <- fmap fromJust $ lift $ zoom (envLcl % typeInfoSymTab) $
+                        lookupSymExprCodataPhrase (ident,expr)
 
                 ~(ttypepatts, (patts', pattseqns)) <- lift 
                     $ fmap (second unzip <<< unzip) 

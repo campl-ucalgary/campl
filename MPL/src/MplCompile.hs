@@ -29,7 +29,7 @@ codata S -> Tuple(A,B) =
 codata S -> Fun(A,B) =
     App :: A,S -> B
 
-fun prj0 :: Fun(A,B), A -> B=
+fun prj0 :: Fun(A,B), A -> B =
     (App := f), a -> f(a)
 
 fun undefined :: -> A =
@@ -38,7 +38,9 @@ fun undefined :: -> A =
 data Wrapper(A) -> S =
     Wrapper :: A -> S
 
-
+fun testing =
+    Succ(a) -> Succ(Succ(a))
+    a -> a
 
 {- TODO
 fun foldtest =
