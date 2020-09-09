@@ -1,8 +1,16 @@
 # MPL
 
+# TODO List for Documentation 
+- Write up the type equations for all the expressions... Some of the type equations used differ from the one's in Prashant's thesis so the changes should be documented.
+- Edit CMachine document(?) (Mainly for Niran)
+- Write up documentation for the MPL, AMPLASM,CoreMpl... The code is a little confusing for newcomers! 
+
+- And finally, when this is all written up, there should be documentation with how to use everything...
+
 # TODO List for Code
 Unfortunately, this is unfinished!
-We have lots to do still!
+We have lots to do still although this is fairly detailed of what needs to be done, so just tackling this stuff one piece at at time would probably be best.
+Starting bottom up would be a good idea.
 
 For AMPL, we need to:
 - Add a time outprimitive (see Timeout.md for more details)
@@ -29,12 +37,21 @@ For MPL (compiler front end), we need to:
   - Remark: building codata records may need to be revisited... i.e., writing (D := a,b,c -> ... ) or (D := -> somefun) may both be accepted -- i.e., given records of higher order functions, we may either explictly write the lambda or directly write the function in as if it is partially applied (but we CANNOT partially apply a function in general). This needs more thought / investigation in general.
   - Test cases for higher order unfolds of codata need to be put in.
 
+- Kind checking (in the type checking phrase) needs to be revisited
+  - I would like to see a proper kind checking system in the future (checking the types of types!). We would have 4 kinds:
+    - ``=>" (concurrent arrow)
+    - ``->" (sequential arrow)
+    - ``+" (concurrent type?)
+    - ``*" (sequential type?)
+   And hopefully alllow higher kinded data being passed around. This is pretty much necassary to think about if we decide to add a type class system in the future...
+
 - Parsing / renaming / typechecking NEED a pretty printer for error messages.. Certain error messages will cause the system to INFINITE LOOP because it stores the graph of data types (data, codata, protocol, coprotocol) and simply uses the show instance to print it which indeed has cycles within it.
 
 - Parsing needs revisting but is manageable for now...
-  - In the future, I would like to remove the BNFC dependency.. BNFC does not allow you to get the position of a token which is also a layout keyword. In particular, when giving error messages with the keywords ``race" and ``plug", we cannot know the position of those commands because they are layout keywords. Possible alternatives include: writing the lex / happy file up, or using a monadic parser combinator library.
+  - In the future, I would like to remove the BNFC dependency.. BNFC does not allow you to get the position of a token which is also a layout keyword (i.e., we cannot lex a token as both a ``position token" and a ``layout" word). In particular, when giving error messages with the keywords ``race" and ``plug", we cannot know the position of those commands because they are layout keywords. Possible alternatives include: writing the lex / happy file up, or using a monadic parser combinator library.
   - Although, I think the monadic parser combinator library option is the better option because there are keywords that are both a regular keyword and a layout keyword -- but choosing which kind of keyword it is cannot be known at lex time. For example ``=>" is normally not a layout keyword, but in the pressence of an unfold expression (as given in Prashant's thesis) it is. Currently, the work around is to use ``of" in place of ``=>" as the layout keyword.
-  - Also, I would like to support both the syntax ``(D := a)" and ``(D := -> a)" when building records of codata in the future.. Currently, only the latter is accepted because there are reduce/shift errors when dissambugating the commas in the patterns and commas between defining the destructors. This would be a fairly substantial change to the grammar (which a change to a monadic parser library would justify this!)
+  - Also, I would like to support both the syntax ``(D := a)" and ``(D := -> a)" when building records of codata in the future.. Currently, only the latter is accepted because there are reduce/shift errors when dissambugating the commas in the patterns and commas between defining the destructors. This would be a fairly substantial change to the grammar (which a change to a monadic parser library would justify this change!)
+  - Note that defining your own operators is not allowed either! In the future, this should be changed... Although, I think we will be stuck to having tensor and par being builtin operators because they re-define brackets...
 
 - Adding ``let" expressions in ``do" blocks. 
   - Note that we changed the grammar to allow a pattern to be present in a phrase like ``get a on channel", so if we write:
@@ -45,7 +62,7 @@ For MPL (compiler front end), we need to:
     The reason why this was changed was because writing syntax like ``get _ on channel" would be very nice for not caring about a value given (instead of trying to come up with a unique name yourself), and since ``_" is used in patterns already, I thought wouldn't it be nice to be able to completely pattern match against something from a ``get" command.  Moreover, the assembly language does permit intermediate computations like this so it is only natural to allow the the full front end to have this as well.
 
 - Compilation of folds / unfolds (which were deprecated)
-  - some discussion on lazily generating map functions and if the map function even exists.
+  - some discussion on lazily generating map functions and if the map function even exists 
 
 - Lambda lifting needs to be completed
   - Alpha renaming is done already, so this should be fairly straightforward...
@@ -53,12 +70,14 @@ For MPL (compiler front end), we need to:
 - Compilation of pattern matching need to be completed
   - We need to insert the errors for non exhaustive pattern matching for data and codata as well. Type checking does not check if building or pattern matching against a codata record is exhaustive or not.
 
-- There is lots of areas to tidy up the code. In particular, I am certain that this is innefficient with the use of unique values.
+- Code cleaning:
+  - There is no interface to use the system. Currently, it is just a play with in GHCi sort of thing. Write a proper command line interface to the system.
+  - Remove all cases of Debug.Trace... right now, it is being used for displaying type equations (useless!)
 
-# TODO List for Documentation 
-- Write up the type equations for all the expressions... Some of the type equations used differ from the one's in Prashant's thesis so the changes should be documented.
-- Edit CMachine document
-- Write up documenation for the MPL, AMPLASM,CoreMpl... The code is a little confusing for newcomers!
+- Inefficiencies:
+  - I am certain that this system does not optimally use unique values (i.e., sometimes it will increment the counter too many times)
+  - In the type checker, we can change the Data.Map to use an array (or some other more efficent data structure perhaps a hash map) because we tagged everything with a unique Word id... Although, because of mutability, this would force everything to be in either the ST monad or IO monad.. For now, Data.Map seems to be working fine.
+
 
 ## Wrapping up list...
 -- package up to a *tar* and send to Cockett so it is backed up formally...
