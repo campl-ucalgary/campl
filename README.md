@@ -1,47 +1,69 @@
-# AMPL / AMPLC
+# MPL
 
-This contains the folders for AMPL and AMPLC
+# TODO List for Code
+Unfortunately, this is unfinished!
+We have lots to do still!
 
-# What is AMPL? / What is AMPLC?
+For AMPL, we need to:
+- Add a time outprimitive (see Timeout.md for more details)
+- Add support for string services (Previously, there was some confusion on how to do this because the C machine is concerned about the physical hardware representation of strings. I think the solution we are going to go with is just hard code certain constructors to be a string (like what Prashant did))
+- Removing machine state logging (Currently, it logs each machine state out to a file.. this is slow.)
+- Change the machine to use lenses (instead of using the crappy ghetto reimplementation of lenses it currently uses) 
+- Change services to be a fold over some data type -- much more general and allows extensibility for people to define their own services
 
-AMPL is a concurrent abstract machine for message passing language with support for TCP connections to clients.
-AMPL's project files can be found in `AMPL/`.
+For AMPLC (terminal client for AMPL), we need to:
+- Polish rough edges -- unnecessary debug information of passwords and IP addresses is dumped to the console
+- Does not support strings! 
 
-AMPLC is the client for the networked AMPL connections which gives us the classic IntTerm and CharTerm
-AMPLC's project files can be found in `AMPLC/`.
+For AMPLASM (Assembler for an AMPL assembly language), we need to:
+- write a pretty printer for error messages (currently just uses the Show instance for the error messages data type)
+- Review how it handles non exhaustive patterns (I think it does this in reverse order for now? this needs some revisting... But, the frontend compiler should insert the error instances in..)
+- Change the code so it uses lenses instead of the ghetto reimplementation of classy prisms (cleaner!)
 
-# How to use...
-Type:
-```
-cd AMPLC/           # Change directory to AMPLC
-stack install       # This will install the client which is required for AMPL
-                    # Note: by default, stack will just compile and copy the executable,
-                    # amplc, to ~/.local/bin/amplc (which should be in your path)
-cd ..               # Go back a directory..
-cd AMPL             # Change directory to AMPL
-stack ghci          # Open GHCi
-```
-If GHCi asks you about 2 possible mains, just press `1` to choose the `main` function from AMPL.
+For Core MPL (strange Haskell data type used to translate the front end AST to AMPLASM), we need to:
+- Test if this actually works... At the time, the author never finished to front end and never had a chance to see if it really did generate ASM code properly.
+- Get rid of Core MPL and just use the MPL AST (from the front end) and compile that straight down to assembly since it is an extensible AST with pretty printers already.
 
-In GHCi, we can run a few examples. All examples can be found in `AMPL/src/Tests.hs`.
+For MPL (compiler front end), we need to:
+- Type checking / renaming is missing support for built in types (still! The author at the time got sick between the end of the work semester and before school and couldn't quite finish this up! Although, only the ``easy built in types" cases are left, so it should not be too bad to fill in these remaining cases)
+  - Remark: building codata records may need to be revisited... i.e., writing (D := a,b,c -> ... ) or (D := -> somefun) may both be accepted -- i.e., given records of higher order functions, we may either explictly write the lambda or directly write the function in as if it is partially applied (but we CANNOT partially apply a function in general). This needs more thought / investigation in general.
+  - Test cases for higher order unfolds of codata need to be put in.
 
-For example, to test the parallel or, in GHCi, type:
-```
-parallelOrServiceTest
-```
-And provided `xterm` and `read` are installed (these are a terminal and a command
-line utility to read input), two windows will pop up asking for a character as input.
-In this program, `true` is denoted as the character `t` and `false` is any other character.
+- Parsing / renaming / typechecking NEED a pretty printer for error messages.. Certain error messages will cause the system to INFINITE LOOP because it stores the graph of data types (data, codata, protocol, coprotocol) and simply uses the show instance to print it which indeed has cycles within it.
 
-See the projects' individual `README.md` for more information i.e., look at `AMPL/README.md` or `AMPLC/README.md` for more information.
+- Parsing needs revisting but is manageable for now...
+  - In the future, I would like to remove the BNFC dependency.. BNFC does not allow you to get the position of a token which is also a layout keyword. In particular, when giving error messages with the keywords ``race" and ``plug", we cannot know the position of those commands because they are layout keywords. Possible alternatives include: writing the lex / happy file up, or using a monadic parser combinator library.
+  - Although, I think the monadic parser combinator library option is the better option because there are keywords that are both a regular keyword and a layout keyword -- but choosing which kind of keyword it is cannot be known at lex time. For example ``=>" is normally not a layout keyword, but in the pressence of an unfold expression (as given in Prashant's thesis) it is. Currently, the work around is to use ``of" in place of ``=>" as the layout keyword.
+  - Also, I would like to support both the syntax ``(D := a)" and ``(D := -> a)" when building records of codata in the future.. Currently, only the latter is accepted because there are reduce/shift errors when dissambugating the commas in the patterns and commas between defining the destructors. This would be a fairly substantial change to the grammar (which a change to a monadic parser library would justify this!)
 
+- Adding ``let" expressions in ``do" blocks. 
+  - Note that we changed the grammar to allow a pattern to be present in a phrase like ``get a on channel", so if we write:
+        ``get SomeConstructor(a) on channel", 
+    This needs to be compiled down to 
+        ``let fun a = -> case a of SomeConstructor(a) -> a
+          get a on channel".  
+    The reason why this was changed was because writing syntax like ``get _ on channel" would be very nice for not caring about a value given (instead of trying to come up with a unique name yourself), and since ``_" is used in patterns already, I thought wouldn't it be nice to be able to completely pattern match against something from a ``get" command.  Moreover, the assembly language does permit intermediate computations like this so it is only natural to allow the the full front end to have this as well.
+
+- Compilation of folds / unfolds (which were deprecated)
+  - some discussion on lazily generating map functions and if the map function even exists.
+
+- Lambda lifting needs to be completed
+  - Alpha renaming is done already, so this should be fairly straightforward...
+
+- Compilation of pattern matching need to be completed
+  - We need to insert the errors for non exhaustive pattern matching for data and codata as well. Type checking does not check if building or pattern matching against a codata record is exhaustive or not.
+
+- There is lots of areas to tidy up the code. In particular, I am certain that this is innefficient with the use of unique values.
+
+# TODO List for Documentation 
+- Write up the type equations for all the expressions... Some of the type equations used differ from the one's in Prashant's thesis so the changes should be documented.
+- Edit CMachine document
+- Write up documenation for the MPL, AMPLASM,CoreMpl... The code is a little confusing for newcomers!
+
+## Wrapping up list...
 -- package up to a *tar* and send to Cockett so it is backed up formally...
 -- maybe change the ending...
 
 -- try to get it so that we can tie it up in the future...
 
 -- by WEDNESDAY next week (September 9)
-
--- category theory: 
-    -- most likely 3:30pm  mondays and wednesdays?
-    -- Or tuesday/thursday?
