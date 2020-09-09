@@ -17,7 +17,7 @@
             };
             Mem.Put : { 
                 get y on mem ;
-                run memory(y | mem => ) ;
+                run memory(y | mem => ) ; 
             } ;
             Mem.Close : { halt mem ; } ;
         };
