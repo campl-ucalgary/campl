@@ -82,6 +82,10 @@ spec = do
         , v39 
         , v40 
         , v41 
+        , v42 
+        , v43 
+        , v44 
+        , v45 
         ]
 
     mapM_ (`describeAnyErrors` ("Type unification for all failure", 
@@ -108,6 +112,9 @@ spec = do
         , nm9
         , nm10
         , nm11
+        , nm12
+        , nm13
+        , nm14
         ]
 
     mapM_ (`describeAnyErrors` ("Occurs check", 
@@ -552,6 +559,105 @@ fun v41 :: Fun(A,B), A -> B=
     (App := f), a -> f(a)
 |]
 
+v42 = [r|
+data Nat -> S =
+    Succ :: S -> S
+    Zero ::   -> S
+
+fun foldtest :: Nat -> Nat =
+    a -> fold a of
+        Succ : b -> Succ(b)
+        Zero : -> Zero
+
+|]
+
+v43 =[r|
+data Nat -> S =
+    Succ :: S -> S
+    Zero ::   -> S
+
+data 
+    Rose(A) -> S =
+        Branches :: A, T -> S
+    and
+    Forest(A) -> T =
+        ForestCons :: S,T -> T
+        ForestNil ::      -> T
+
+data Wrapper(A) -> S =
+    Wrapper :: A -> S
+
+fun foldtest  =
+    a -> fold a of
+        Branches : v, Wrapper(rst) -> rst
+        ForestCons : a,Wrapper(b) -> 
+            Wrapper(
+                    fold a of
+                        Succ : a -> Succ(a)
+                        Zero : -> b
+                )
+        ForestNil : -> Wrapper(Zero)
+|]
+
+
+v44 = [r|
+data Nat -> S =
+    Succ :: S -> S
+    Zero ::   -> S
+
+data Wrapper(A) -> S =
+    Wrapper :: A -> S
+
+data Unit -> S =
+    Unit :: -> S
+
+codata S -> Tuple(A,B,C) =
+    P1 :: S -> A
+    P2 :: S -> B
+    P3 :: S -> C
+
+fun unfoldtest :: Nat -> Tuple(Nat, Wrapper(Nat), Unit) =
+    a -> unfold a of
+        Succ(b) of
+            P1 : -> b
+            P2 : -> Wrapper(b)
+            P3 : -> Unit
+
+|]
+
+v45 = [r|
+data Nat -> S =
+    Succ :: S -> S
+    Zero ::   -> S
+
+data NegNat -> S =
+    Pred :: S -> S
+    NZero ::   -> S
+
+codata S -> Tuple(A,B) =
+    P1 :: S -> A
+    P2 :: S -> B
+
+codata 
+    S -> Zig(A,B) =
+        HeadA :: S -> A
+        TailA :: S -> T
+    and 
+    T -> Zag(A,B) =
+        HeadB :: T -> B
+        TailB :: T -> S
+        
+fun v45 :: -> Zig(NegNat(), Nat())=
+    -> unfold (P1 := -> NZero, P2 := -> Zero) of
+        (P1 := n, P2 := i) of
+            HeadA : -> n
+            TailA : -> (P1 := -> i, P2 := -> Pred(n))
+        (P1 := i, P2 := n) of
+            HeadB : -> i
+            TailB : -> (P1 := -> n, P2 := -> Succ(i))
+|]
+
+
 -- Invalid tests  
 ----------------------------
 
@@ -751,6 +857,78 @@ proc nm11 :: Nat() | TopBot => =
             Zero -> do
                 get _ on b
                 halt b
+|]
+
+nm12 = [r|
+data Nat -> S =
+    Succ :: S -> S
+    Zero ::   -> S
+
+data Unit -> S = 
+    Unit :: -> S
+
+fun nm12 =
+    a -> fold a of
+        Succ : b -> Succ(b)
+        Zero : -> Unit
+|]
+
+nm13 = [r|
+data Nat -> S =
+    Succ :: S -> S
+    Zero ::   -> S
+
+data 
+    Rose(A) -> S =
+        Branches :: A, T -> S
+    and
+    Forest(A) -> T =
+        ForestCons :: S,T -> T
+        ForestNil ::      -> T
+
+data Wrapper(A) -> S =
+    Wrapper :: A -> S
+
+fun nm13  =
+    a -> fold a of
+        Branches : v, rst -> rst
+        ForestCons : a,Wrapper(b) -> fold a of
+            Succ : a -> Succ(a)
+            Zero : -> b
+        ForestNil : -> Zero
+|]
+
+nm14 = [r|
+data Nat -> S =
+    Succ :: S -> S
+    Zero ::   -> S
+
+data NegNat -> S =
+    Pred :: S -> S
+    NZero ::   -> S
+
+codata S -> Tuple(A,B) =
+    P1 :: S -> A
+    P2 :: S -> B
+
+codata 
+    S -> Zig(A,B) =
+        HeadA :: S -> A
+        TailA :: S -> T
+    and 
+    T -> Zag(A,B) =
+        HeadB :: T -> B
+        TailB :: T -> S
+        
+
+fun nm14 =
+    -> unfold (P1 := -> NZero, P2 := -> Zero) of
+        (P1 := n, P2 := i) of
+            HeadA : -> n
+            TailA : -> (P1 := -> i, P2 := -> Pred(n))
+        (P1 := n, P2 := i) of
+            HeadB : -> i
+            TailB : -> (P1 := -> n, P2 := -> Succ(i))
 |]
 
 

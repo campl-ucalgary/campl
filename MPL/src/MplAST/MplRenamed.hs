@@ -144,6 +144,7 @@ type instance XELet MplRenamed = ()
 type instance XEFold MplRenamed = ()
 type instance XEFoldPhrase MplRenamed = ()
 type instance XEUnfold MplRenamed = ()
+type instance XEUnfoldSubPhrase MplRenamed = ()
 type instance XEUnfoldPhrase MplRenamed = ()
 type instance XESwitch MplRenamed = ()
 

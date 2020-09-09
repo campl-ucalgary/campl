@@ -171,6 +171,7 @@ instance CollectSeqSymObj DataDefnTag where
       where
         -- should call nub here? although doesn't really matter..
         tpvars = foldMapOf (typeClauseSpineClauses % folded) (map NamedType . view typeClauseArgs) spine
+                <> foldMapOf (typeClauseSpineClauses % folded) (pure . NamedType . view typeClauseStateVar) spine
         stsubs = typeClauseSpineStateVarClauseSubs spine
         f phrase = 
                 ( phrase ^. typePhraseName % uniqueTag
@@ -196,6 +197,7 @@ instance CollectSeqSymObj CodataDefnTag where
         -- binding closest to the clause while including some of the ``out of scope" variables
         -- which should just error anyways...
         tpvars = foldMapOf (typeClauseSpineClauses % folded) (map NamedType . view typeClauseArgs) spine
+                <> foldMapOf (typeClauseSpineClauses % folded) (pure . NamedType . view typeClauseStateVar) spine
         stsubs = typeClauseSpineStateVarClauseSubs spine
         f phrase = 
                 ( phrase ^. typePhraseName % uniqueTag

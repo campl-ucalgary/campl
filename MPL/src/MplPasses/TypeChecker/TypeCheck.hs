@@ -363,13 +363,16 @@ typeCheckExpr = para f
 
         return ( _ELet # (cxt, NE.fromList lets', expr') , expreqns) 
 
-    f (EFoldF cxt (_, foldon) (phrase :| phrases)) = do
+    f (EFoldF cxt (foldonexpr, foldon) (phrase :| phrases)) = do
         ttype <- guse (envLcl % typeInfoEnvTypeTag)
         ttypestable <- freshTypeTag
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
-        (ttypefoldon, (foldon, foldoneqns)) <- withFreshTypeTag foldon
+        let foldexpr = EFold cxt foldonexpr (over (mapped % _4) fst $ phrase :| phrases) :: MplExpr MplRenamed
+            ttypep = annotateTypeTag ttype foldexpr
 
+        (ttypefoldon, (foldon', foldoneqns)) <- withFreshTypeTag foldon
+        let ttypepfoldon = annotateTypeTag ttypefoldon foldonexpr 
         {- Remarks..
          - Given a fold expression:
          - fold a of
@@ -380,46 +383,341 @@ typeCheckExpr = para f
          - The type of the overall expression is the type of the state 
          - variable for THE FIRST CONSTRUCTOR even given a mutually 
          - recursive case....
-         -
-         - So first, we do our ``magic" with the first phrase, then all 
-         - the other phrases should follow after... Moreover, in the future,
-         - we need to keep track that all the phrases are ``reachable" from
-         - the first phrase... Actually, I think this should be checked when
-         - checking the data clause -- but oh well, we will think about this later..
-         - TODO
          -}
 
-        {- tomorrow morning todo...
-         - Get the fold and unfold done...
-         - And chase all the non exhaustive patterns...
-         - Then a pretty printer...
-         -
-         - AND APPLY FOR THE PHILLIP WADDLER THING.
-         -
-         -}
-        -- ((), identr, patts, (expr (para), mexpr) )
         arrenv <- freshInstantiateArrEnv
-        -- (phrases', phraseseqns) <- fmap 
-        _ <- fmap 
-            -- (t p(second NE.unzip . NE.unzip) *** (toListOf (instantiateArrEnvInstantiated % folded)))
-            (id *** toListOf (instantiateArrEnvInstantiated % folded))
+        ((phrases', phraseeqns), instt) <- fmap 
+            (second (toListOf (instantiateArrEnvInstantiated % folded)))
             $ flip runStateT arrenv $ do
-                -- the first phrase is the type of the overal expresion... 
+                -- the first phrase is the type of the overall expresion... 
                 let (cxt, ident, patts, (expr, mexpr)) = phrase
+
                 ~(SymEntry lkuptp seqdef) <- lift $ fmap fromJust 
                     $ zoom (envLcl % typeInfoSymTab) 
                     $ lookupSymExprDataPhrase (ident, expr)
 
-                undefined
-                for phrases $ \(cxt, ident, patts, (expr, mexpr)) -> do
-                    undefined
-        -- TODO 
+                (ttypepfroms, ttypestvar, ttypeclause) <- state $ runState $ do
+                    let (freevars, froms, to) = fromJust $ lkuptp ^? _SymDataPhrase % originalType 
+                    subs <- updateInstantiatedAndGetSubs freevars
+                       
+                    return ( fromJust $ traverse (instantiateTypeWithSubs subs) froms
+                           , fromJust $ instantiateTypeWithSubs subs to
+                           , seqdef ^. typePhraseExt % Optics.to 
+                                ( fromJust 
+                                . instantiateTypeWithSubs subs
+                                . typeClauseToMplType 
+                                )
+                           )
 
-        panicNotImplemented
-        panicDeprecated
+                (ttypepatts, (patts', pattseqns)) <- lift 
+                    $ fmap (second unzip <<< unzip) 
+                    $ traverse (withFreshTypeTag . typeCheckPattern) patts 
 
-    f (EUnfoldF cxt unfoldon phrases) = do
-        panicDeprecated
+                (ttypeexpr, (expr', expreqns)) <- lift $ withFreshTypeTag mexpr
+
+                let reachablephrases = foldMapOf 
+                        ( typePhraseExt 
+                        % typeClauseExt 
+                        % typeClauseSpineClauses 
+                        % folded 
+                        % typeClausePhrases 
+                        % folded 
+                        % typePhraseName ) (:[]) seqdef
+                    phrase' = (seqdef, ident, patts', expr')
+                    ttypeppatts = annotateTypeTags ttypepatts patts
+                    ttypepexpr = annotateTypeTag ttypeexpr expr
+                    phraseeqn = TypeEqnsExist (ttypepexpr : ttypeppatts) $ 
+                        -- the type of the overall expression is the type of 
+                        -- the first state variable that is being folded to
+                        [ TypeEqnsEq (typePtoTypeVar ttypep, ttypestvar) 
+                        -- moreover, the fold on should be the same type as this
+                        -- as the clause of the first fold phrase....
+                        , TypeEqnsEq (typePtoTypeVar ttypepfoldon,  ttypeclause) 
+                        , TypeEqnsEq 
+                            ( mkTypeSubSeqArr (map typePtoTypeVar ttypeppatts, typePtoTypeVar ttypepexpr)  
+                            , mkTypeSubSeqArr (ttypepfroms, ttypestvar)  
+                            )
+                        ] 
+                        <> expreqns
+                        <> fold pattseqns
+
+                (phrases', phraseseqns) <- fmap unzip 
+                    $ for phrases 
+                    -- duplciated code, but we remove the requirement of the 
+                    -- state variable being the type of the overall expression
+                    -- REMARK: We should really test if each of the phrases 
+                    -- are indeed from the same data graph here!! TODO in the
+                    -- future (THIS REALLY SHOULD BE DONE)!
+                    $ \(cxt, ident, patts, (expr, mexpr)) -> do
+                        ~(SymEntry lkuptp seqdef) <- lift $ fmap fromJust 
+                            $ zoom (envLcl % typeInfoSymTab) 
+                            $ lookupSymExprDataPhrase (ident, expr)
+
+                        tell $ review _ExternalError $ bool
+                            []
+                            [_ExpectedFoldPhraseToBeEitherButGot # (reachablephrases, seqdef ^. typePhraseName)]
+                            $ seqdef ^. typePhraseName `notElem` reachablephrases
+
+                        (ttypepfroms, ttypestvar) <- state $ runState $ do
+                            let (freevars, froms, to) = fromJust $ lkuptp ^? _SymDataPhrase % originalType 
+                            subs <- updateInstantiatedAndGetSubs freevars
+                               
+                            return ( fromJust $ traverse (instantiateTypeWithSubs subs) froms
+                                   , fromJust $ instantiateTypeWithSubs subs to)
+
+                        (ttypepatts, (patts', pattseqns)) <- lift 
+                            $ fmap (second unzip <<< unzip) 
+                            $ traverse (withFreshTypeTag . typeCheckPattern) patts 
+
+                        (ttypeexpr, (expr', expreqns)) <- lift $ withFreshTypeTag mexpr
+
+                        let phrase' = (seqdef, ident, patts', expr')
+                            ttypeppatts = annotateTypeTags ttypepatts patts
+                            ttypepexpr = annotateTypeTag ttypeexpr expr
+                            phraseeqn = TypeEqnsExist (ttypepexpr : ttypeppatts) $ 
+                                -- patterns should match the type of constructor without 
+                                [ TypeEqnsEq 
+                                    ( mkTypeSubSeqArr (map typePtoTypeVar ttypeppatts, typePtoTypeVar ttypepexpr)  
+                                    , mkTypeSubSeqArr (ttypepfroms, ttypestvar)  
+                                    )
+                                ] 
+                                <> expreqns
+                                <> fold pattseqns
+                        return (phrase', phraseeqn)
+
+                return (phrase' :| phrases', phraseeqn : phraseseqns)
+
+        let eqns = TypeEqnsExist (ttypepfoldon : instt) $
+                [ genStableEqn ttypestable ttypep ]
+                <> phraseeqns 
+                <> foldoneqns
+        return 
+            ( _EFold # 
+                ( fromJust $ ttypemap ^? at ttypestable % _Just % _SymTypeSeq
+                , foldon'
+                , phrases'
+                )
+            , [eqns]
+            )
+
+    f (EUnfoldF cxt (unfoldorigexpr, unfoldonexpr) (phrase :| phrases)) = do
+        ttype <- guse (envLcl % typeInfoEnvTypeTag)
+        ttypestable <- freshTypeTag
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        let unfoldexpr = EUnfold cxt unfoldorigexpr 
+                (over (mapped % _3 % mapped % _4) fst $ phrase :| phrases) :: MplExpr MplRenamed
+            ttypep = annotateTypeTag ttype unfoldexpr
+
+        (ttypeunfoldonexpr, (unfoldonexpr', unfoldonexpreqns)) <- withFreshTypeTag unfoldonexpr
+        let ttypepunfoldonexpr = annotateTypeTag ttypeunfoldonexpr unfoldorigexpr 
+        {- Remarks..
+         - Given an unfold expression:
+         - unfold a of
+         -      pattern0 of
+         -          Destructor0A : a b c -> expr0A
+         -          Destructor0B : a b c -> expr0B
+         -      pattern1 of
+         -          Destructor1A : a b c -> expr1A
+         -          Destructor1B : a b c -> expr1B
+         -
+         - The type of the overall expression is the type of the state 
+         - variable for THE FIRST unfold phrase, and the type of the type
+         - of the whole expression is the type of the clause in the FIRST
+         - unfold phrase
+         -
+         - TODO -- we need to check for unreachable unfold phrases! 
+         -}
+
+        arrenv <- freshInstantiateArrEnv
+        ((phrases', phraseeqns), instt) <- fmap 
+            (second (toListOf (instantiateArrEnvInstantiated % folded)))
+            $ flip runStateT arrenv $ do
+                -- the first phrase is the type of the overall expresion... 
+                let (cxt, unfoldonpatt, phrasesubphrases@((_, ident, _ ,_):|_)) = phrase
+
+                -- get rid of this at the end
+                (ttypeunfoldonpatt, (unfoldonpatt', unfoldonpatteqns)) <- lift $ withFreshTypeTag $ typeCheckPattern unfoldonpatt
+                let ttypepunfoldonpatt = annotateTypeTag ttypeunfoldonpatt unfoldonpatt
+
+                ttypesubphrase <- freshTypeTag
+                let ttypepsubphrase = annotateTypeTag ttypesubphrase ()
+
+                -- need to compute the reachable phrases..
+                ~seqdef <- lift 
+                    $ fmap (fromJust . fromJust)
+                    $ zoom (envLcl % typeInfoSymTab) 
+                    $ runZoomedLookup
+                    $ zoomSymExpr ident 
+                    $ zoomSymExprSeqPhrase 
+                    $ guses equality (preview _CodataDefn)
+
+                let reachablephrases = foldMapOf 
+                        ( typePhraseExt 
+                        % typeClauseExt 
+                        % typeClauseSpineClauses 
+                        % folded 
+                        % typeClausePhrases 
+                        % folded 
+                        % typePhraseName ) (:[]) seqdef
+                
+                (phrasesubphrases', phrasesubphraseseqns) <- fmap NE.unzip $ for phrasesubphrases $ \(cxt, ident, patts, (expr, mexpr)) -> do
+                    ~(SymEntry lkuptp seqdef) <- lift $ fmap fromJust 
+                        $ zoom (envLcl % typeInfoSymTab) 
+                        $ lookupSymExprCodataPhrase (ident, expr)
+
+                    tell $ review _ExternalError $ bool
+                        []
+                        [ _ExpectedUnfoldPhraseToBeEitherButGot # 
+                            ( reachablephrases
+                            , seqdef ^. typePhraseName)
+                            ]
+                        $ seqdef ^. typePhraseName `notElem` reachablephrases
+
+                    (ttypepfroms, ttypestvar, ttypeto, ttypeclause) <- state $ runState $ do
+                        let (freevars, (froms, st), to) = fromJust $ lkuptp ^? _SymCodataPhrase % originalType 
+                        subs <- updateInstantiatedAndGetSubs freevars
+                           
+                        return ( fromJust $ traverse (instantiateTypeWithSubs subs) froms
+                               , fromJust $ instantiateTypeWithSubs subs st
+                               , fromJust $ instantiateTypeWithSubs subs to
+                               , seqdef ^. typePhraseExt % Optics.to 
+                                    ( fromJust 
+                                    . instantiateTypeWithSubs subs
+                                    . typeClauseToMplType 
+                                    )
+                               )
+
+                    (ttypepatts, (patts', pattseqns)) <- lift 
+                        $ fmap (second unzip <<< unzip) 
+                        $ traverse (withFreshTypeTag . typeCheckPattern) patts 
+
+                    (ttypeexpr, (expr', expreqns)) <- lift $ withFreshTypeTag mexpr
+
+                    let subphrase' = (seqdef, ident, patts', expr')
+                        ttypeppatts = annotateTypeTags ttypepatts patts
+                        ttypepexpr = annotateTypeTag ttypeexpr expr
+                        subphraseeqn = TypeEqnsExist (ttypepexpr : ttypepunfoldonpatt : ttypeppatts) $ 
+                            -- the type of the overall expression is the type of 
+                            -- the clause of the first unfold subphrase
+                            [ TypeEqnsEq (typePtoTypeVar ttypep, ttypeclause) 
+                            -- The type of the state var is the same
+                            -- as the unfoldon pattern 
+                            , TypeEqnsEq (typePtoTypeVar ttypepunfoldonpatt, ttypestvar) 
+                            -- The type of the type of the unfoldonpatt is the same as
+                            -- the as the unfoldonexpr
+                            , TypeEqnsEq (typePtoTypeVar ttypepunfoldonpatt, typePtoTypeVar ttypepunfoldonexpr) 
+                            -- of course, we need the patternsand the expression sto match
+                            , TypeEqnsEq 
+                                ( mkTypeSubSeqArr (map typePtoTypeVar ttypeppatts, typePtoTypeVar ttypepexpr)  
+                                , mkTypeSubSeqArr (ttypepfroms, ttypeto)  
+                                )
+                            -- Think of this subphrase like case.. Each of these 
+                            -- expressions must be the same..
+                            , TypeEqnsEq
+                                ( typePtoTypeVar ttypepsubphrase
+                                , ttypeclause
+                                )
+                            ] 
+                            <> unfoldonpatteqns
+                            <> expreqns
+                            <> fold pattseqns
+                    return (subphrase', subphraseeqn)
+
+                let phraseeqn = unfoldonexpreqns <> NE.toList phrasesubphraseseqns
+                    phrase' = (cxt, unfoldonpatt', phrasesubphrases')
+
+                (phrases', (phraseseqns, ttypepsubphrases)) <- 
+                    fmap (second unzip . unzip) 
+                    $ for phrases $ \(cxt, unfoldonpatt, phrasesubphrases) -> do
+                        (ttypeunfoldonpatt, (unfoldonpatt', unfoldonpatteqns)) <- lift $ withFreshTypeTag $ typeCheckPattern unfoldonpatt
+                        -- duplciated code..
+                        let ttypepunfoldonpatt = annotateTypeTag ttypeunfoldonpatt unfoldonpatt
+
+                        ttypesubphrase <- freshTypeTag
+                        let ttypepsubphrase = annotateTypeTag ttypesubphrase ()
+                        
+                        (phrasesubphrases', phrasesubphraseseqns) <- fmap NE.unzip $ for phrasesubphrases $ \(cxt, ident, patts, (expr, mexpr)) -> do
+                            ~(SymEntry lkuptp seqdef) <- lift $ fmap fromJust 
+                                $ zoom (envLcl % typeInfoSymTab) 
+                                $ lookupSymExprCodataPhrase (ident, expr)
+
+                            tell $ review _ExternalError $ bool
+                                []
+                                [ _ExpectedUnfoldPhraseToBeEitherButGot # 
+                                    ( reachablephrases
+                                    , seqdef ^. typePhraseName)
+                                    ]
+                                $ seqdef ^. typePhraseName `notElem` reachablephrases
+
+                            (ttypepfroms, ttypestvar, ttypeto, ttypeclause) <- state $ runState $ do
+                                let (freevars, (froms, st), to) = fromJust $ lkuptp ^? _SymCodataPhrase % originalType 
+                                subs <- updateInstantiatedAndGetSubs freevars
+                                   
+                                return ( fromJust $ traverse (instantiateTypeWithSubs subs) froms
+                                       , fromJust $ instantiateTypeWithSubs subs st
+                                       , fromJust $ instantiateTypeWithSubs subs to
+                                       , seqdef ^. typePhraseExt % Optics.to 
+                                            ( fromJust 
+                                            . instantiateTypeWithSubs subs
+                                            . typeClauseToMplType 
+                                            )
+                                       )
+
+                            (ttypepatts, (patts', pattseqns)) <- lift 
+                                $ fmap (second unzip <<< unzip) 
+                                $ traverse (withFreshTypeTag . typeCheckPattern) patts 
+
+                            (ttypeexpr, (expr', expreqns)) <- lift $ withFreshTypeTag mexpr
+
+                            let subphrase' = (seqdef, ident, patts', expr')
+                                ttypeppatts = annotateTypeTags ttypepatts patts
+                                ttypepexpr = annotateTypeTag ttypeexpr expr
+                                phraseeqn = TypeEqnsExist (ttypepunfoldonpatt : ttypepexpr : ttypeppatts) $ 
+                                    -- The type of the state var is the same
+                                    -- as the unfoldon pattern 
+                                    [ TypeEqnsEq (typePtoTypeVar ttypepunfoldonpatt, ttypestvar) 
+                                    -- of course, we need the patternsand the expression sto match
+                                    , TypeEqnsEq 
+                                        ( mkTypeSubSeqArr (map typePtoTypeVar ttypeppatts, typePtoTypeVar ttypepexpr)  
+                                        , mkTypeSubSeqArr (ttypepfroms, ttypeto)  
+                                        )
+                                    -- Think of this subphrase like case.. Each of these 
+                                    -- expressions must be the same..
+                                    , TypeEqnsEq
+                                        ( typePtoTypeVar ttypepsubphrase
+                                        , ttypeclause
+                                        )
+                                    ] 
+                                    <> expreqns
+                                    <> fold pattseqns
+                                    <> unfoldonpatteqns
+
+                            return (subphrase', phraseeqn)
+
+                        let phrase' = (cxt, unfoldonpatt', phrasesubphrases')
+                            eqns = TypeEqnsExist [ttypepunfoldonpatt, ttypepsubphrase] $ unfoldonpatteqns <> NE.toList phrasesubphraseseqns
+                        return (phrase', ([eqns], ttypepsubphrase))
+
+                let nunfoldphrases' = phrase' :| phrases'
+                    eqns = TypeEqnsExist (ttypepsubphrase : ttypepsubphrases) $
+                            phraseeqn <> fold phraseseqns
+
+                return (nunfoldphrases', [eqns] )
+
+        let eqns = TypeEqnsExist (ttypepunfoldonexpr:instt) $
+                [ genStableEqn ttypestable ttypep ]
+                <> unfoldonexpreqns
+                <> phraseeqns
+
+        return 
+            ( _EUnfold # 
+                ( fromJust $ ttypemap ^? at ttypestable % _Just % _SymTypeSeq
+                , unfoldonexpr'
+                , phrases' 
+                )
+            , [eqns]
+            )
 
     f (ESwitchF _ _) = panicNotImplemented
 

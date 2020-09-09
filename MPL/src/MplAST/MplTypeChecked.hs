@@ -145,10 +145,14 @@ type instance XEIf MplTypeChecked = MplSeqType MplTypeChecked
 type instance XELet MplTypeChecked = ()
 type instance XEFold MplTypeChecked = MplSeqType MplTypeChecked
 type instance XEFoldPhrase MplTypeChecked = 
-    (MplTypePhrase MplTypeChecked (SeqObjTag DataDefnTag), MplSeqType MplTypeChecked)
+    -- (MplTypePhrase MplTypeChecked (SeqObjTag DataDefnTag), MplSeqType MplTypeChecked)
+    MplTypePhrase MplTypeChecked (SeqObjTag DataDefnTag)
 type instance XEUnfold MplTypeChecked = MplSeqType MplTypeChecked
 type instance XEUnfoldPhrase MplTypeChecked = 
-    (MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag), MplSeqType MplTypeChecked)
+    ()
+type instance XEUnfoldSubPhrase MplTypeChecked = 
+    MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag)
+    -- (MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag), MplSeqType MplTypeChecked)
 type instance XESwitch MplTypeChecked = MplSeqType MplTypeChecked
 
 -- Pattern instances..

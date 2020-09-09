@@ -200,16 +200,14 @@ typeCheckPattern = para f
         ttypestable <- freshTypeTag
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
-
         let ann = _TypeAnnPatt # (PVar cxt v)
             ttypep =  _TypeIdentT # (ttype, TypeIdentTInfoTypeAnn ann)
-            mplttype =  _TypeVar # (Just ann, ttypep)
-            eqns = [ TypeEqnsEqStable (ttypep & typeIdentTUniqueTag .~ ttypestable, mplttype ) ]
+            eqns = [ genStableEqn ttypestable ttypep ]
 
-            res = PVar (fromJust $ ttypemap ^? at ttypestable % _Just % _SymTypeSeq) v 
+            res = _PVar # (fromJust $ ttypemap ^? at ttypestable % _Just % _SymTypeSeq, v)
 
         envLcl % typeInfoSymTab % symTabExpr % at (v ^. uniqueTag) ?= 
-            _SymEntry # (_SymImplicit # mplttype, _SymSeqCall % _ExprCallPattern # res )
+            _SymEntry # (_SymImplicit # typePtoTypeVar ttypep , _SymSeqCall % _ExprCallPattern # res )
 
         return (res, eqns)
 

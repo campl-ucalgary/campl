@@ -104,6 +104,7 @@ type instance XEFold MplParsed = ()
 type instance XEFoldPhrase MplParsed = ()
 type instance XEUnfold MplParsed = ()
 type instance XEUnfoldPhrase MplParsed = ()
+type instance XEUnfoldSubPhrase MplParsed = ()
 type instance XESwitch MplParsed = ()
 
 -- Pattern instances..

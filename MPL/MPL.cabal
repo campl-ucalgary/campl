@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4ce088456ce28c72357d7ca1715e67c6fcb14ee402b4bf8966f1d9bc831ca914
+-- hash: 173d88ec8ee78c7c23f354ecd1ae3c3849832e24d796beda87e107971bcdc834
 
 name:           MPL
 version:        0.1.0.0
@@ -48,7 +48,6 @@ library
       MplAST.MplPattern
       MplAST.MplPrinter
       MplAST.MplProg
-      MplAST.MplProgGraph
       MplAST.MplProgUtil
       MplAST.MplRenamed
       MplAST.MplType

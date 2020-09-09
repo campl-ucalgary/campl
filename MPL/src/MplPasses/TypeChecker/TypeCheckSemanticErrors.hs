@@ -61,6 +61,12 @@ data TypeCheckSemanticErrors =
     | ExpectedStateVarButGot (IdP MplRenamed) (IdP MplRenamed)
         -- expected, actual
  
+    -- Expression errors 
+    --------------------------------
+    -- | fold phrases must all be within the same data graph as the FIRST 
+    -- phrase given...
+    | ExpectedFoldPhraseToBeEitherButGot [IdP MplRenamed] (IdP MplRenamed) 
+    | ExpectedUnfoldPhraseToBeEitherButGot [IdP MplRenamed] (IdP MplRenamed) 
 
     -- Process definition errors...
     --------------------------------

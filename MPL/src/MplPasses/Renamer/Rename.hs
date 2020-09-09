@@ -33,7 +33,7 @@ import MplUtil.UniqueSupply
 import Data.Bool
 import Data.Maybe
 import Data.List
-import Data.Functor.Foldable (Base, cata)
+import Data.Functor.Foldable (Base, cata, embed)
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
 
@@ -261,7 +261,7 @@ renameExpr = cata f
             evalStateT (renameStmt stmt) (st & uniqueSupply .~ sup & envGbl .~ lcl)
 
     f (EFoldF cxt foldon phrases) = do
-        symtab <- guse envLcl
+        symtab <- guse envLcl 
 
         foldon' <- foldon
 
@@ -298,33 +298,12 @@ renameExpr = cata f
 
         return $ _EUnfold # (cxt, unfoldon', phrases')
 
+
 -- Renaming commands...
 renameCmds ::
     Rename (NonEmpty (MplCmd MplCmdFreeVars)) (NonEmpty (MplCmd MplRenamed))
-renameCmds (cmd :| []) = do
-    {-
-    case cmd of
-        (CClose cxt _) -> tell [_IllegalLastCommand # cxt]
-        (CGet cxt _ _) -> tell [_IllegalLastCommand # cxt]
-        (CPut cxt _ _) -> tell [_IllegalLastCommand # cxt]
-        (CHPut cxt _ _) -> tell [_IllegalLastCommand # cxt]
-        (CSplit cxt _ _) -> tell [_IllegalLastCommand # cxt]
-        _ -> tell []
-    -}
-    (:|[]) <$> renameCmd cmd
+renameCmds (cmd :| []) = (:|[]) <$> renameCmd cmd
 renameCmds (cmd :| rst) = do
-    {-
-    case cmd of
-        CFork cxt _ _ -> tell [_IllegalNonLastCommand # cxt]
-        CId cxt _ -> tell [_IllegalNonLastCommand # cxt]
-        CIdNeg cxt _ -> tell [_IllegalNonLastCommand # cxt]
-        CRun _ cxt _ _ _ -> tell [review _IllegalNonLastCommand $ cxt ^. identPNameOcc % to KeyWordNameOcc]
-            -- techincally not a keyword..
-        CHCase cxt _ _ -> tell [_IllegalNonLastCommand # cxt]
-        CHalt cxt _ -> tell [_IllegalNonLastCommand # cxt]
-        CRace cxt _ -> tell [_IllegalNonLastCommand # cxt]
-        _ -> tell []
-    -}
     cmd' <- renameCmd cmd
     rst' <- NE.toList <$> renameCmds (NE.fromList rst)
     return (cmd' :| rst')
@@ -356,8 +335,6 @@ renameCmd = f
             [ maybe [_OutOfScope # ident] mempty identlkup
             , outOfScopesWith lookupCh symtab ins 
             , outOfScopesWith lookupCh symtab outs ]
-        -- tell $ maybe (concatMap expectedInputPolarity $ zip ins inslkup') (const []) $ inslkup
-        -- tell $ maybe (concatMap expectedOutputPolarity $ zip ins outslkup') (const []) $ outslkup
 
         seqs' <- traverse (\expr -> do
                 expr' <- splitUniqueSupply >=> renameExpr $ pure expr
@@ -423,14 +400,6 @@ renameCmd = f
                 ident' = tagIdentPWithSymEntry ident lkup'
 
                 ch'' = fromJust ch'
-            {-
-            tell $ bool [] 
-                (hCaseError 
-                    (ch'' ^. chIdentRIdentR % identRIdentP, ch'' ^. polarity)
-                    (ident' ^. identRIdentP, lkup' ^. symEntryInfo)
-                    ) 
-                (isJust ch' && isJust lkup)
-                -}
 
             cmds' <- splitUniqueSupply $ renameCmds cmds
             envLcl .= symtab
@@ -446,15 +415,6 @@ renameCmd = f
             lkup = lookupConcPhrase ident symtab
             lkup' = fromJust lkup 
             ident' = tagIdentPWithSymEntry ident lkup'
-
-        {-
-        tell $ bool [] 
-            (hPutError 
-                (ch' ^. chIdentRIdentR % identRIdentP, ch' ^. polarity)
-                (ident' ^. identRIdentP, lkup' ^. symEntryInfo)
-                ) 
-            (isJust chlkup && isJust lkup)
-        -}
 
         return $ CHPut cxt ident' ch'
         
@@ -499,8 +459,6 @@ renameCmd = f
             else return ()
 
         envLcl %= deleteCh ch
-
-        -- tell $ forkExpectedDisjointChannelsButHasSharedChannels cxt1 cxt2
 
         ch1' <- fmap (review _ChIdentR . (,ch' ^. polarity)) $ splitUniqueSupply $ tagIdentP ch1
         ch2' <- fmap (review _ChIdentR . (,ch' ^. polarity)) $ splitUniqueSupply $ tagIdentP ch2

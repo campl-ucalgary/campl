@@ -295,6 +295,7 @@ type family XEIf x
 type family XELet x
 type family XEFold x
 type family XEFoldPhrase x
+type family XEUnfoldSubPhrase x
 type family XEUnfold x
 type family XEUnfoldPhrase x
 type family XESwitch x
@@ -326,6 +327,7 @@ type ForallMplExpr (c :: Type -> Constraint) x =
     , c (XELet x)
     , c (XEFold x)
     , c (XEFoldPhrase x)
+    , c (XEUnfoldSubPhrase x)
     , c (XEUnfold x)
     , c (XEUnfoldPhrase x)
     , c (XESwitch x)
@@ -369,7 +371,7 @@ data MplExpr x =
         ( NonEmpty 
             ( XEUnfoldPhrase x
             , XMplPattern x
-            , NonEmpty (XEFoldPhrase x, IdP x, [XMplPattern x], (MplExpr x))
+            , NonEmpty (XEUnfoldSubPhrase x, IdP x, [XMplPattern x], (MplExpr x))
             )
         )
     | ESwitch !(XESwitch x) (NonEmpty ((MplExpr x), (MplExpr x)))
