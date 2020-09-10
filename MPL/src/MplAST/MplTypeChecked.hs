@@ -38,6 +38,9 @@ import MplAST.MplExt
 import MplAST.MplKind 
 import MplUtil.UniqueSupply 
 
+{- Module for defining the AST after the AST has been type checked
+  -}
+
 type IdentT = IdentR
 
 data TypeT = 

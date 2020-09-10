@@ -12,6 +12,9 @@ module MplAST.MplCore (
     , module MplAST.MplRenamed 
     , module MplAST.MplKind 
     ) where
+{- Module for rexporting things related to the AST..
+ -
+ -}
 
 import MplAST.MplExpr
 import MplAST.MplPattern

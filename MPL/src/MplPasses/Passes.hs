@@ -36,6 +36,11 @@ import Data.List
 
 import Debug.Trace
 
+{- This module conglomerates all the passes together and runs them all at
+ - once producing one unified error data type (if the program is invalid) 
+ - or a fully annotated AST tree.
+ -}
+
 data MplPassesErrors =
     MplBnfcErrors B.BnfcErrors
     | MplParseErrors ParseErrors
@@ -85,6 +90,7 @@ runPasses ::
     Either [MplPassesErrors] _
 runPasses MplPassesEnv{mplPassesEnvUniqueSupply = supply, mplPassesTopLevel = toplvl} = 
     runTypeCheck' (toplvl, rs) 
+    -- TODO remove the trace in the future...
     <=< fmap tracePprint . runRename' (toplvl, ls)
     <=< runParse' 
     <=< B.runBnfc

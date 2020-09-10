@@ -13,6 +13,10 @@ import MplUtil.UniqueSupply
 
 import Data.List.NonEmpty
 
+{- Module for defining utilities of types which are / may be substituted
+ -
+ -}
+
 newtype TypeTag = TypeTag UniqueTag
   deriving (Show, Eq, Ord)
 

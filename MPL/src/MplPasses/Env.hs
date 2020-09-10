@@ -10,6 +10,10 @@ import Control.Monad.State
 
 import MplUtil.UniqueSupply 
 
+{- Module that defines the environment for which all passes work in.
+ -
+ -}
+
 data TopLevel = TopLevel
   deriving Show
 
@@ -26,22 +30,18 @@ data Env gbl lcl = Env {
 
 }  deriving Show
 
-
-
 $(makePrisms ''Env)
 $(makeLenses ''Env)
-
 
 instance HasUniqueSupply (Env a b) where
     uniqueSupply = envUniqueSupply 
 
--- | locall runs an action in the environemnt
+-- | localEnvSt runs an action in the environemnt
 -- while managing the unique supply foryou..
 localEnvSt :: 
     ( s ~ Env gbl lcl
     , MonadState s m ) => 
     (s -> s) ->
-    -- StateT s m a -> 
     m a -> 
     m a
 localEnvSt f act = do
@@ -55,10 +55,3 @@ localEnvSt f act = do
 
     equality .= st
     return act'
-
-    {-
-    flip evalStateT 
-        ( st & uniqueSupply .~ sup
-             & equality %~ f
-        ) $ act
-    -}

@@ -1,5 +1,10 @@
 module MplUtil.Data.Stream where
 
+{- Module for defining a Stream
+ - TODO: I do not think this is actually used anywhere?
+ - Remove this in the future...
+ -}
+
 infixr 5 :/
 
 data Stream a = a :/ Stream a

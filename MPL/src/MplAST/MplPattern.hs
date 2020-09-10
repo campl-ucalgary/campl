@@ -35,11 +35,8 @@ import GHC.Generics
 import Data.Data
 import Data.Typeable
 
-
-#define Mpl_TYPE_AST_PLAIN_DATA_DERIVING_CLAUSE ( Eq, Ord, Read, Show, Generic, Out, Data, Typeable )
---------------------------
--- Expr definition
---------------------------
+{- Module for the AST data type of a pattern in MPL...
+ -}
 
 type family XMplPattern x
 

@@ -23,6 +23,9 @@ import Language.ParMPL
 import Language.PrintMPL
 import Language.SkelMPL
 
+{- Module for defining wrappers around BNFC's generated code
+ -}
+
 newtype BnfcErrors = 
     BnfcParseError String
   deriving Show

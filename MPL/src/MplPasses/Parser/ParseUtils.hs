@@ -25,6 +25,10 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Control.Arrow
 import Data.Kind
 
+{- Module for defining utility functions when parsing
+ -
+ -}
+
 type BnfcParse bnfc ast = 
     forall e m.
     ( AsParseErrors e

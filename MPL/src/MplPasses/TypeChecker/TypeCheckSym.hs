@@ -31,6 +31,9 @@ import Data.Maybe
 
 import Data.Kind
 
+{- Module for defining the symbol table
+ -}
+
 
 type SymTabType = Map UniqueTag (MplObjectDefn MplTypeCheckedClause)
 type SymTabExpr = Map UniqueTag (SymEntry SymSeqType SymExprInfo)

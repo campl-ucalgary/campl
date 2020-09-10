@@ -44,6 +44,11 @@ import Data.Bool
 
 import Debug.Trace
 
+
+{- Module for utilities in looking things up in the symbol
+ - table..
+ -}
+
 type TypeCheckSymLookup from to =
     forall e0 e1 m0 m1 n. 
     ( AsTypeCheckCallErrors e1 

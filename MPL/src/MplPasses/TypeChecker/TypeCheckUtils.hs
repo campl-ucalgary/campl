@@ -56,6 +56,9 @@ import Data.Kind
 
 import Debug.Trace
 
+{- Module for defining useful utilities in type checking..
+ -}
+
 type TypeCheckEnv = Env SymTab TypeInfoEnv
 
 data TypeInfoEnv = TypeInfoEnv {

@@ -43,6 +43,10 @@ import Debug.Trace
 
 import Data.Maybe
 
+{- Module for defining semantic errors in type checking
+ -
+ -}
+
 data TypeCheckSemanticErrors = 
     ---- Errors from the more ``heavy lifting" algorithms
     --------------------------------

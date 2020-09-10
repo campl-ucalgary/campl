@@ -60,6 +60,11 @@ import Data.Maybe
 import Control.Arrow
 import Data.Kind
 
+{- Module for a pretty printer of the AST (useful for debugging)
+ - Note this just translates back to the BNFC representation and uses
+ - BNFC to print the AST.
+ -}
+
 class PPrint a where
     pprint :: a -> String
 

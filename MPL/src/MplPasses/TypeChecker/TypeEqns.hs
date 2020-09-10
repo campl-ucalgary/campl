@@ -60,6 +60,10 @@ import Data.Text.Prettyprint.Doc
 
 import Debug.Trace
 
+{- Module for type equations and solving them (i.e., the unification
+ - algorithm..
+ -}
+
 data TypeEqns x =
     TypeEqnsEq (MplType x, MplType x)
     | TypeEqnsExist [TypeP x] [TypeEqns x]

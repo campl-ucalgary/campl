@@ -23,6 +23,10 @@ import Control.Monad.State
 import Control.Arrow
 import Data.Ix
 
+{- Module that defines data types / utilities for how things 
+ - in the AST is identified..
+ -}
+
 type family IdP x 
 
 newtype Name = 
@@ -39,6 +43,7 @@ data NameOcc = NameOcc {
     , _nameOccLocation :: Location 
 }  deriving Show
 
+-- equality should not dependon the location of the name..
 instance Eq NameOcc where
     NameOcc a _ == NameOcc b _ = a == b
 
@@ -104,6 +109,7 @@ tupleName ::
 tupleName n = Name $ "(" ++ replicate (n-1) ',' ++ ")"
 
 
+-- fold over the polarity
 inputOutput :: Polarity -> a -> a -> a
 inputOutput Input a _ = a
 inputOutput Output _ b = b

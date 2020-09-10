@@ -35,6 +35,11 @@ import GHC.Generics
 import Data.Data
 import Data.Typeable 
 
+{- Module for defining the kinds for types (types of types)
+ - Note that most of this module is unused -- we opted to go
+ - with a very trivial kind checking system..
+ -}
+
 type family XMplKind x
 
 type family XSeqKind x
@@ -71,8 +76,6 @@ deriving instance (Show (XSeqKind x), Show (XConcKind x)) =>
 
 deriving instance (Eq (XSeqKind x), Eq (XConcKind x)) => 
     Eq (MplPrimitiveKind x)
-
-
 
 instance AsMplPrimitiveKind (MplKind x) x where
     _MplPrimitiveKind = _PrimitiveKind

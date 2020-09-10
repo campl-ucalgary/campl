@@ -37,6 +37,10 @@ import Data.List.NonEmpty
 import Data.Data
 import Data.Kind
 
+{- Module for data types defining an MPL program
+ -
+ -}
+
 newtype MplProg x = MplProg { _prog :: [MplStmt x] }
   deriving (Semigroup, Monoid )
 

@@ -41,9 +41,16 @@ import Data.Foldable
 
 import Debug.Trace
 
-
 import Data.Foldable
 import Data.Void
+
+{- Module for getting the free variables in mpl commands..
+ - This is needed to find the context for which a Fork / plug command
+ - are called with. The algorithm is as follows.
+ -  - First, work bottom up and collect all of the free variables at each binder
+ -  - Then, work top down (while knowing the variables that are actually bound)
+ -      and with that, resolve the variable declarations working down the AST
+ -}
 
 type FreeVars = [IdP MplParsed]
 

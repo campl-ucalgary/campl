@@ -34,6 +34,10 @@ import MplAST.MplIdent
 import MplAST.MplProg
 import MplAST.MplExt
 
+{- Module that defines the AST that is generated 
+ - after the parsing pass is completed..
+ -}
+
 data IdentP = IdentP { 
         _identPNameOcc :: NameOcc
         , _identPNamespace :: Namespace

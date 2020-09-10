@@ -11,6 +11,10 @@ import MplAST.MplParsed
 
 import Data.List.NonEmpty (NonEmpty (..))
 
+{- Module for defining possible parse errors
+ -
+ -}
+
 data ParseErrors =
     ExpectedGetOrPutButGot IdentP
     | InvalidInt IdentP

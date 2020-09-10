@@ -43,6 +43,11 @@ import Data.Foldable
 import Data.Functor.Foldable (Base, cata)
 import Data.Function
 
+{- Module for generalized utility functions over the AST
+ -
+ -
+ -}
+
 class MplProgUtil x where
     mplStmtTopLevelIdents :: MplStmt x -> NonEmpty (IdP x)
     mplDefnIdents :: MplDefn x -> NonEmpty (IdP x)

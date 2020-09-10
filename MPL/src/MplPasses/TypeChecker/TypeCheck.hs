@@ -64,6 +64,8 @@ import Data.Foldable
 import Data.Functor.Foldable (Base, cata, para)
 import Data.Tuple
 
+{- Module for type checking..  -}
+
 runTypeCheck' ::
     ( AsAllTypeCheckErrors err ) =>
     (TopLevel, UniqueSupply) ->

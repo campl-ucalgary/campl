@@ -37,6 +37,11 @@ import MplAST.MplExt
 import MplUtil.UniqueSupply 
 
 
+{- Module for defining the AST after it is renamed..
+ -
+ -}
+
+
 data IdentR = IdentR { 
     _identRIdentP :: IdentP
     , _identRUniqueTag :: UniqueTag

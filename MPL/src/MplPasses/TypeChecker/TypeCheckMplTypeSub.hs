@@ -44,6 +44,11 @@ import Data.Tuple
 
 import Debug.Trace
 
+{- Module for defining type which is to be substituted..
+ -
+ - 
+ -}
+
 data MplTypeSub 
 
 type instance IdP MplTypeSub = IdP MplTypeChecked

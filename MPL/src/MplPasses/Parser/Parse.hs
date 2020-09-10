@@ -27,6 +27,10 @@ import Control.Arrow
 
 import Data.Coerce
 
+{- Module for running the parser -}
+
+-- | Runs the Parser for an Mpl program (meant to be the interface function called
+-- externally.. all other functions are meant for internal use only...)
 runParse' :: 
     ( AsParseErrors err ) =>
     B.MplProg -> 
@@ -38,21 +42,23 @@ runParse' =
     . runExceptT 
     . runParse
 
+-- | Parses an Mpl program
 runParse :: BnfcParse B.MplProg (MplProg MplParsed)
 runParse (B.MPL_PROG prog) = do
     MplProg <$> traverseTryEach parseBnfcStmt prog 
 
+-- | Parses a statement
 parseBnfcStmt :: BnfcParse B.MplStmt (MplStmt MplParsed)
 parseBnfcStmt (B.MPL_DEFN_STMS_WHERE defs wheres) = do
     MplStmt 
         <$> traverseTryEach parseBnfcDefn (NE.fromList defs) 
         <*> traverseTryEach (\case (B.MPL_WHERE stmt) -> parseBnfcStmt stmt) wheres
-
 parseBnfcStmt (B.MPL_DEFN_STMS defs) = 
     parseBnfcStmt (B.MPL_DEFN_STMS_WHERE defs [])
 parseBnfcStmt (B.MPL_STMT def) = 
     parseBnfcStmt (B.MPL_DEFN_STMS_WHERE [def] [])
 
+-- | Parses a definition
 parseBnfcDefn :: BnfcParse B.MplDefn (MplDefn MplParsed)
 parseBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.DATA_DEFN clauses)) =  
     review (_SeqObjDefn % _DataDefn) . UMplTypeClauseSpine . NE.fromList 
@@ -110,7 +116,7 @@ parseBnfcDefn (B.MPL_CONCURRENT_TYPE_DEFN (B.PROTOCOL_DEFN clauses)) =
                 . toChIdentP
                 ) handles
 
--- duplciated code
+-- duplicated code 
 parseBnfcDefn (B.MPL_CONCURRENT_TYPE_DEFN (B.COPROTOCOL_DEFN clauses)) =  
     review (_ConcObjDefn % _CoprotocolDefn) . UMplTypeClauseSpine . NE.fromList 
         <$> traverseTryEach f clauses

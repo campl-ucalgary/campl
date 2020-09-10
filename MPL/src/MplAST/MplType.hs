@@ -36,6 +36,9 @@ import GHC.Generics
 import Data.Data
 import Data.Typeable
 
+{- Module for defining the AST for MPL Types.
+  -}
+
 
 type family XMplType x
 type family TypeP x
