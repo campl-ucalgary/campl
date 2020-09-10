@@ -1,6 +1,5 @@
 # MPL
 
-
 # The Code Base..
 `src/*` contains source files as as library (most of the source code resides in this folder).
 `app/*` includes the files to generate the executable.

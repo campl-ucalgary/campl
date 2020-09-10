@@ -1,4 +1,23 @@
-# MPL
+# MPL project
+
+# What's what?
+`AMPL/` is the abstract machine..
+`AMPLASM/` is the assembler for writing code in the abstract machine...
+`AMPLC/` is the client for the abstract machines' service channels.
+`CMPL/` (Core Mpl) is the Haskell data type which will compile down to a text file that can be processed by AMPLASM
+`MPL/` is the compiler front end for the abstract machine
+`mpl-lib/` was an attempt to generalize some of the common functions between the assembler and the front end, but this should be deprecated in the future i.e., it was a terrible idea.
+
+`Timeout.md` includes notes on the timeout function which was never implemented yet.
+
+# How to use..
+Well, this thing is unfinished -- so it can't be really used yet. 
+
+The front end has no infrastrucutre for actually trying to compile a file put in. For now, it is meant to be just played with in GHCi then after all those cases are sorted out, the plan was to make it a complete command line application people can actually use.. But for now, we cannot do anything with it aside from play with expressions in GHCi.
+
+Although, the assembler and abstract machine work (mostly, if we take away the rough edges)
+
+Below, is a TODO list with everything that needs to be done... Some of them are optional (i.e., would be nice) but others need to be done to get code pushing from front end to abstract machine.
 
 # TODO List for Documentation 
 - Write up the type equations for all the expressions... Some of the type equations used differ from the one's in Prashant's thesis so the changes should be documented.
