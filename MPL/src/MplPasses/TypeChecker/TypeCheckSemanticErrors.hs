@@ -320,5 +320,5 @@ cutCycles (start@(startins,startouts) :| phrases) = execWriter
         f [] = Nothing
         f (phrase:phrases) 
             | p ch phrase = Just (phrase, phrases)
-            -- | ch `elem` uncurry (<>) phrase = Just (phrase, phrases)
+            -- ch `elem` uncurry (<>) phrase = Just (phrase, phrases)
             | otherwise = second (phrase:) <$> f phrases

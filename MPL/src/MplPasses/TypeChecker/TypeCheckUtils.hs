@@ -71,9 +71,7 @@ data TypeInfoEnv = TypeInfoEnv {
     , _typeInfoEnvMap :: TypeTagMap 
 }
 
-$(concat <$> traverse makeLenses 
-    [ ''TypeInfoEnv ]
- )
+$(makeLenses ''TypeInfoEnv)
 
 freshTypeInfoEnv :: 
     ( HasUniqueSupply s
@@ -121,27 +119,37 @@ type TypeCheck renamed typechecked =
 
 
 -- Utility functions..
-genStableEqn :: 
-    TypeTag -> 
-    TypeP MplTypeSub ->  
-    TypeEqns MplTypeSub
-genStableEqn tag typep = _TypeEqnsEqStable # (typep & typeIdentTUniqueTag .~ tag, typePtoTypeVar typep)
-
 genTypeEqEqns :: 
     [MplType MplTypeSub] ->  
     [MplType MplTypeSub] ->  
     [TypeEqns MplTypeSub]
 genTypeEqEqns = zipWith (\a -> review _TypeEqnsEq . (a,) )
 
+{- | converts a package to the tag map (tags to types) -}
 packageToTypeTagMap :: 
     ( AsTypeCheckSemanticErrors e
     , MonadWriter [e] m ) => 
-    Package MplTypeSub -> m TypeTagMap 
-packageToTypeTagMap pkg = fmap Map.fromList 
-    $ traverse (\(tag, tp) -> fmap ((tag,) . fromJust) $ higherOrderCheck tp) tagstotypesub
+    Package MplTypeSub -> 
+    m TypeTagMap 
+packageToTypeTagMap pkg 
+    = fmap Map.fromList 
+    $ traverse (\(tag, tp) -> fmap ((tag,) . fromJust) $ higherOrderCheck tp) 
+    $ f
   where
-    tagstotypesub = pkg ^. packageSubs % to (map (first (view typeIdentTUniqueTag) . snd))
+    f :: [(TypeTag, MplType MplTypeSub)]
+    -- tagstotypesub = pkg ^. packageSubs % to (map (first (view typeIdentTUniqueTag)))
+    f = pkg ^. packageSubs % to (concatMap g)
 
+    g :: (TypeIdentT, MplType MplTypeSub) -> [(TypeTag, MplType MplTypeSub)]
+    g (typet, tp@(TypeVar cxt typet')) = 
+        [ (typet ^.  typeIdentTUniqueTag, tp) 
+        , (typet' ^. typeIdentTUniqueTag, TypeVar cxt typet)
+        ]
+    g (typet, tp) = [(typet ^. typeIdentTUniqueTag, tp)]
+
+
+{- | Checks if the inferred type has higher order functions AND scopes all of the free variables
+-}
 higherOrderCheck :: 
     ( AsTypeCheckSemanticErrors e
     , MonadWriter [e] m ) => 
@@ -193,7 +201,7 @@ higherOrderCheck tp
         args' <- traverseOf each (traverse snd) args
         return $ TypeConcWithArgs (snd cxt) n <$> traverseOf each sequenceA args'
     f  (TypeBuiltInF n) = fmap (fmap TypeBuiltIn) $ case n of
-            TypeIntF cxt -> undefined -- return $ Just $ TypeIntF cxt
+            TypeIntF cxt -> return $ Just $ TypeIntF cxt
 
             TypeTopBotF cxt -> return $ _Just % _TypeTopBotF # (cxt ^? _TypeChAnnNameOcc)
 
@@ -239,8 +247,16 @@ higherOrderCheck tp
                     tp'' <- tp'
                     return $ _TypeNegF # (cxt ^? _TypeChAnnNameOcc, tp'') 
 
+{- typeIdentTToTypeT. Converts a 'TypeIdentT' to 'TypeP MplTypeChecked' (recall this is just 'TypeT'). Note that we always use the outer most type tag since that is the one used in the unification algorithm.
+ -}
 typeIdentTToTypeT :: TypeIdentT -> TypeP MplTypeChecked
-typeIdentTToTypeT (TypeIdentT tag (TypeIdentTInfoTypeVar tp)) = tp
+typeIdentTToTypeT (TypeIdentT tag (TypeIdentTInfoTypeVar tp)) 
+    = case tp of
+        GenNamedType _ -> GenNamedType tag'
+        NamedType tp' -> NamedType 
+            (tp' & identRUniqueTag .~ tag')
+  where
+    tag' = tag ^. coerced
 typeIdentTToTypeT (TypeIdentT (TypeTag tag) _) = GenNamedType tag
 
 class MkTypeSubSeqArr t where

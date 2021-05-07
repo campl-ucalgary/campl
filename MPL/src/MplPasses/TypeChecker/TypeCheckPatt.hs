@@ -61,7 +61,6 @@ typeCheckPattern = para f
         -> _ (MplPattern MplTypeChecked, [TypeEqns MplTypeSub])
     f (PConstructorF cxt n patts) = do
         ttype <- guse (envLcl % typeInfoEnvTypeTag)
-        ttypestable <- freshTypeTag
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
         let patt = (PConstructor cxt n (map fst patts) :: MplPattern MplRenamed) 
@@ -97,14 +96,15 @@ typeCheckPattern = para f
                         ( lkuptp'
                         , mkTypeSubSeqArr (ttypeppatts, ttypep)
                         ) 
-                    -- stable equation for this expression
-                    ,  genStableEqn ttypestable ttypep ]
+                    ]
+                    -- CHANGED FROM STABLE EQN
                     -- accumulate the equations
                     <> concat pattacceqns
         
         return ( _PConstructor # 
                 ( (seqdef 
-                , fromJust $ ttypemap ^? at ttypestable % _Just % _SymTypeSeq )
+                    -- CHANGED FROM STABLE EQN
+                , fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq )
                 , n
                 , patts'
                 ), [eqns]
@@ -113,7 +113,6 @@ typeCheckPattern = para f
     -- This will look very similar to the record expressions!
     f (PRecordF cxt phrases) = do
         ttype <- guse (envLcl % typeInfoEnvTypeTag)
-        ttypestable <- freshTypeTag
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
         let patt = _PRecord # (cxt, phrases & mapped % _3 %~ fst) :: MplPattern MplRenamed
@@ -127,7 +126,7 @@ typeCheckPattern = para f
          - sure where we should put this error tho? Moreover, we should check for duplicated
          - pattern matching i.e., (P1 := a, P1 := b) -> a is allowed... 
          - I guess this is also a compilation of pattern matching sort of error thing
-         - going on again -- so we delay this ot later...
+         - going on again -- so we delay this to later...
          -}
 
         st <- guse equality
@@ -185,57 +184,38 @@ typeCheckPattern = para f
                 return ((ttypeppatt, (seqdef, ident, patt')), phraseeqns <> pattseqns)
 
         let eqn = TypeEqnsExist (ttypepinst <> NE.toList ttypeppatts) $
-                -- generate the stable equation for this pattern
-                [ genStableEqn ttypestable ttypep ]
-                <> fold phraseseqns
+                fold phraseseqns
 
         return 
             ( _PRecord # 
-              ( ( cxt, fromJust $ ttypemap ^? at ttypestable % _Just % _SymTypeSeq)
+              ( ( cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq)
               , phrases')
             , [eqn] )
 
     f (PVarF cxt v) = do
         ttype <- guse (envLcl % typeInfoEnvTypeTag)
-        ttypestable <- freshTypeTag
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
         let ann = _TypeAnnPatt # (PVar cxt v)
             ttypep =  _TypeIdentT # (ttype, TypeIdentTInfoTypeAnn ann)
-            eqns = [ genStableEqn ttypestable ttypep ]
+            eqns = [ TypeEqnsEq (typePtoTypeVar ttypep , typePtoTypeVar ttypep) ]
 
-            res = _PVar # (fromJust $ ttypemap ^? at ttypestable % _Just % _SymTypeSeq, v)
+            res = _PVar # (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq, v)
 
         envLcl % typeInfoSymTab % symTabExpr % at (v ^. uniqueTag) ?= 
-            _SymEntry # (_SymImplicit # typePtoTypeVar ttypep , _SymSeqCall % _ExprCallPattern # res )
+            _SymEntry # 
+                ( _SymImplicit # typePtoTypeVar ttypep 
+                , _SymSeqCall % _ExprCallPattern # res )
 
         return (res, eqns)
 
     f (PNullF cxt) = do 
         ttype <- guse (envLcl % typeInfoEnvTypeTag)
-        ttypestable <- freshTypeTag
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
         let patt = PNull cxt :: MplPattern MplRenamed
 
         return 
-            ( PNull (cxt, fromJust $ ttypemap ^? at ttypestable % _Just % _SymTypeSeq)
-            , [ genStableEqn ttypestable (annotateTypeTag ttype patt) ]
+            ( PNull (cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq)
+            , []
             )
-{-
-    PConstructor !(XPConstructor x) (IdP x) [MplPattern x]
-    | PRecord !(XPRecord x) (NonEmpty (XPRecordPhrase x, IdP x, MplPattern x) )
-    | PVar !(XPVar x) (IdP x)
-    | PNull !(XPNull x) 
-
-    -- built in patterns
-    | PUnit !(XPUnit x)
-    | PTuple !(XPTuple x) (MplPattern x, MplPattern x, [MplPattern x])
-    | PList !(XPList x) [MplPattern x]
-    | PString !(XPString x) [MplPattern x]
-    | PListCons !(XPListCons x) (MplPattern x) (MplPattern x)
-    | PChar !(XPChar x) Char
-    | PInt !(XPInt x) Int
-
-    | XPattern !(XXPattern x)
--}

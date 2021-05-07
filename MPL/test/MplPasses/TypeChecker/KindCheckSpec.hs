@@ -37,84 +37,28 @@ import MplPasses.TypeChecker.TypeCheckMplTypeSub
 import MplPasses.Passes
 import MplPasses.Env
 
+import Control.Arrow
+import System.Directory
+import System.FilePath
+
 -- Tests for overlapping declarations and out of scope errors 
-
+spec :: SpecWith ()
 spec = do
-    mapM_ (`describeValidTypeCheck` const (return ()))
-        [ v1 ]
+    let casesdir = "test/MplPasses/TypeChecker/cases/kindcheck/"
+    poscases <- runIO $ do 
+        let poscasesdir = casesdir </> "positive"
+        casesdir <- map (poscasesdir</>) <$> listDirectory poscasesdir
+        namedcases <- mapM ( sequence . (id &&& readFile) ) casesdir
+        return namedcases
 
-    mapM_ (`describeAnyErrors` ("higher kinded variable failure", 
-            _MplTypeCheckErrors 
-            % _TypeCheckKindErrors 
-            % _KindHigherKindedTypesAreNotAllowed))
-        [ nh1
-        , nh2 
-        , nh3 
-        , ns1
-        ]
+    mapM_ describeValidTypeCheck poscases
 
-    mapM_ (`describeAnyErrors` ("Kind primitive mismatch", 
-            _MplTypeCheckErrors 
-            % _TypeCheckKindErrors 
-            % _KindPrimtiveMismatchExpectedButGot))
-        [ nk1 ]
+    negcases <- runIO $ do 
+        let negcasesdir = casesdir </> "negativehigherkindedtype"
+        casesdir <- map (negcasesdir</>) <$> listDirectory negcasesdir
+        namedcases <- mapM ( sequence . (id &&& readFile) ) casesdir
+        return namedcases
 
-    mapM_ (`describeAnyErrors` ("Kind seq arity mismatch", 
-            _MplTypeCheckErrors 
-            % _TypeCheckKindErrors 
-            % _KindAritySeqMismatchExpectedButGot))
-        [ ns1 ]
-
--- Valid tests  
-----------------------------
-v1 = [r|
-|]
-
-
--- Invalid higher order types..
-----------------------------
-nh1 = [r|
-data 
-    Test(A,B) -> C =
-        Testt :: A,B -> C
-        Testtt :: A(B) -> C
-|]
-
-nh2 = [r|
-defn 
-    data 
-        Strange(A,B) -> C =
-            StrangeCts :: Test(A) -> C
-    data 
-        Test(A,B) -> C =
-            Testtt :: A(B) -> C
-|]
-
-nh3 =[r|
-data Nat(A) -> S =
-    Succ :: S,A(A) -> S
-    Zero ::   -> S
-
-fun myfun :: Nat(A) -> Nat(A) =
-    Succ(a), Succ(b) -> a
-|]
-
--- Invalid higher order types..
-----------------------------
-nk1 = [r|
-data 
-    Test(A,B) -> C =
-        Testtt :: TopBot -> C
-|]
-
--- Kind seqarity
-----------------------------
-ns1 = [r|
-defn 
-    data 
-        Strange(A,B) -> C =
-            StrangeCts :: Test(A) -> C
-    data 
-        Test(A,B) -> C =
-            Testtt :: A(B) -> C
-|]
+    mapM_ (`describeAnyErrorsFile` ("higher kinded variable failure", 
+            _MplTypeCheckErrors % _TypeCheckKindErrors)
+            ) negcases

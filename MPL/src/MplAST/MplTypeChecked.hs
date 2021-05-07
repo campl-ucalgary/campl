@@ -48,6 +48,7 @@ data TypeT =
     | GenNamedType UniqueTag
   deriving Show
 
+{- | Note that equality only depends on the unique tag -}
 instance Eq TypeT where
     NamedType a == NamedType b = a ^. uniqueTag == b ^. uniqueTag
     GenNamedType a == GenNamedType b = a  == b 
@@ -57,6 +58,16 @@ instance Eq TypeT where
 instance Ord TypeT where
     NamedType a <= NamedType b = a ^. uniqueTag <= b ^. uniqueTag
     GenNamedType a <= GenNamedType b = a <= b 
+
+instance HasUniqueTag TypeT where
+    uniqueTag = lens getter setter
+      where
+        getter (NamedType identt) = identt ^. uniqueTag
+        getter (GenNamedType tag) = tag
+
+        setter (NamedType identt) a = NamedType $ identt & uniqueTag .~ a
+        setter (GenNamedType _tag) a = GenNamedType a
+    
 
 $(makePrisms ''TypeT)
 
@@ -260,7 +271,6 @@ type instance XTypeSeqArrF MplTypeChecked = ()
 type instance XTypeConcArrF MplTypeChecked = ()
 
 type instance XXMplBuiltInTypesF MplTypeChecked = Void
-
 
 -- Kind info..
 -------------------------

@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TupleSections #-}
@@ -60,17 +61,24 @@ import Data.Text.Prettyprint.Doc
 
 import Debug.Trace
 
-{- Module for type equations and solving them (i.e., the unification
- - algorithm..
+{- Module for type equations and solving them (i.e., a variant of the unification algorithm)
+ -
+ - This is a mostly standard unification algorithm.
+ -
+ - Some differences. 
+ -      - We don't get rid of trivial type variables (since we would otherwise just 
+ -          replace them with trivial variables when looking up the type in the end.. 
+ -              so we just dont' get rid of them. TODO: remove this)
+ -
+ - For future work, it might be honestly best to replace this with the faster mutuable
+ - algorithm that does substitution in O(1) time and simply just must do matching traversals.
+ - This would also simplify the forall checking as well.
  -}
 
 data TypeEqns x =
     TypeEqnsEq (MplType x, MplType x)
     | TypeEqnsExist [TypeP x] [TypeEqns x]
-    | TypeEqnsForall [TypeP x] [TypeEqns x]
-
-    -- used to recover the intermediate types..
-    | TypeEqnsEqStable ( TypeP x, MplType x )
+    | TypeEqnsForall [([TypeP x], TypeP x, MplType x)] [TypeEqns x]
 
 -- deriving instance ( ForallMplType Show x , Show (IdP x) ) => 
     -- Show (TypeEqns x)
@@ -82,10 +90,6 @@ instance ( PPrint (MplType x), PPrint (IdP x), PPrint (TypeP x) ) => PPrint (Typ
             [ pretty (pprint a) 
             , pretty "==" 
             , pretty (pprint b) ]
-        f (TypeEqnsEqStable (a,b)) = hsep
-            [ pretty (pprint a) 
-            , pretty "=S=" 
-            , pretty (pprint b) ]
         f (TypeEqnsExist exists rst) = vsep 
             [ nest 2 $ vsep 
                 $ [ hsep [pretty "exists", pretty (map pprint exists), pretty "s.t."] ]
@@ -93,7 +97,7 @@ instance ( PPrint (MplType x), PPrint (IdP x), PPrint (TypeP x) ) => PPrint (Typ
 
         f (TypeEqnsForall forall rst) = vsep 
             [ nest 2 $ vsep 
-                $ [ hsep [pretty "forall", pretty (map pprint forall), pretty "s.t."] ]
+                $ [ hsep [pretty "forall", pretty (map (pprint . view _2) forall), pretty "s.t."] ]
                     <> map f rst ]
 
 instance ( PPrint (MplType x), PPrint (IdP x), PPrint (TypeP x) ) => Show (TypeEqns x) where
@@ -111,9 +115,9 @@ deriving instance ( Show (MplType x), ForallMplType Show x , Show (IdP x) ) =>
     Show (TypeUnificationError x)
 
 data Package x = Package {
-    _packageUnivVar :: Set (TypeP x)
-    , _packageExisVar :: Set (TypeP x)
-    , _packageSubs :: [(SubTag, ( TypeP x, MplType x ))]
+    -- _packageUnivVar :: Set (TypeP x)
+    _packageExisVar :: Set (TypeP x)
+    , _packageSubs :: [( TypeP x, MplType x)]
 }
 -- deriving instance ( Show (MplType x), ForallMplType Show x , Show (IdP x) ) => Show (Package x)
 instance ( PPrint (MplType x), PPrint (IdP x), PPrint (TypeP x) ) => Show (Package x) where
@@ -122,44 +126,32 @@ instance ( PPrint (MplType x), PPrint (IdP x), PPrint (TypeP x) ) => Show (Packa
 instance ( PPrint (MplType x), PPrint (IdP x), PPrint (TypeP x) ) => PPrint (Package x) where
     pprint = show . f
       where
-        f (Package univ exis subs) = vsep
+        f (Package {- univ -} exis subs) = vsep
             [ pretty "Package: "
-            , pretty "univ: " <> pretty (map pprint $ Set.toList univ)
+            -- , pretty "univ: " <> pretty (map pprint $ Set.toList univ)
             , pretty "exis: " <> pretty (map pprint $ Set.toList exis)
             , pretty "subs: " <> pretty (map g subs)
             ]
 
-        g (PlainSubTag, (tp, sub)) = show $ 
+        g (tp, sub) = show $ 
             pretty "(" 
             <> pretty (pprint tp) 
             <> pretty ","
             <> pretty (pprint sub)
             <> pretty ")"
-        g (StableSubTag, (tp, sub)) = show $ 
-            pretty "S(" 
-            <> pretty (pprint tp) 
-            <> pretty ","
-            <> pretty (pprint sub)
-            <> pretty ")"
 
-data SubTag = PlainSubTag | StableSubTag
-  deriving (Show, Eq)
 
 type Sub x = (TypeP x, MplType x)
-type TaggedSub x = (SubTag, Sub x)
 
 instance Ord (TypeP x) => Semigroup (Package x) where
-    Package a0 b0 c0 <> Package a1 b1 c1 = 
-        Package (a0 <> a1) (b0 <> b1) (c0 <> c1)
+    Package {- a0 -} b0 c0 <> Package {- a1 -} b1 c1 = 
+        Package {- (a0 <> a1) -} (b0 <> b1) (c0 <> c1)
 
 instance Ord (TypeP x) => Monoid (Package x) where
-    mempty = Package mempty mempty mempty
+    mempty = Package {- mempty -} mempty mempty
 
 $(makeClassyPrisms ''TypeUnificationError)
-$(concat <$> traverse makePrisms
-    [ ''TypeEqns
-    , ''SubTag ]
- )
+$(makePrisms ''TypeEqns)
 $(makeBaseFunctor ''TypeEqns)
 $(makeLenses ''Package)
 
@@ -200,13 +192,11 @@ substituteDelta ::
     (TypeP x, MplType x) -> 
     MplType x -> 
     (MplType x, Bool)
--- substituteDelta (v, sub) tp = trace ( pprint v ++  " -vsub- " ++ pprint sub ++ " subtp "++ pprint tp ++ "  res: " ++ pprint (fst res))  res
--- substituteDelta (v, sub) = second getAny . cata f 
 substituteDelta (v, sub) tp = res
   where
     res = 
         -- If it is a trivial substitution, then no change has occured...
-        second (bool getAny (const False) (isTrivialSub (PlainSubTag, (v,sub))))
+        second (bool getAny (const False) (isTrivialSub ((v,sub))))
         . cata f $ tp
 
     f (TypeVarF cxt v') 
@@ -232,7 +222,10 @@ match ::
     , PPrint (MplType x)
     , PPrint (IdP x)
     , PPrint (TypeP x)
-    ) => 
+
+    , ForallMplType Show x 
+    , Show (IdP x)
+    ) =>  
     MplType x -> MplType x -> 
     m [(TypeP x, MplType x)]
 match = f
@@ -240,7 +233,7 @@ match = f
     f (TypeVar cxt0 a) n = fmap pure $ mkValidSub a n
     f n (TypeVar cxt1 b) = fmap pure $ mkValidSub b n
 
-    f type0@(TypeSeqWithArgs cxt0 a args) type1@(TypeSeqWithArgs cxt1 b brgs) 
+    f type0@(TypeSeqWithArgs _cxt0 a args) type1@(TypeSeqWithArgs _cxt1 b brgs) 
         | a == b && length args == length brgs =
             concat <$> traverse (uncurry f) (zip args brgs)
         | otherwise = throwError $  _TypeMatchFailure # (type0, type1)
@@ -253,6 +246,12 @@ match = f
         | otherwise = throwError $  _TypeMatchFailure # (type0, type1)
     -- TypeConcVarWithArgs !(XTypeConcVarWithArgs x) (TypeP x) ([MplType x], [MplType x])
 
+    -- TODO: Actually, I think there's a bug here... We really should check if we are matching
+    -- concurrent types with concurrent type with no args (and vice versa)
+
+    f type0@(TypeWithNoArgs _ a) type1@(TypeWithNoArgs _ b) 
+        | a == b = return mempty
+        | otherwise = throwError $  _TypeMatchFailure # (type0, type1)
     f type0@(TypeConcWithArgs _ a args) type1@(TypeWithNoArgs _ b) 
         | a == b && has _Empty args = return mempty
         | otherwise = throwError $  _TypeMatchFailure # (type0, type1)
@@ -348,6 +347,7 @@ failsOccursCheck _ (TypeConcVarWithArgs _ _ ([],[])) = False
 failsOccursCheck n rst = n `elem` mplTypeCollectTypeP rst
 
 
+{- | Makes a valid substitution (i.e., it tests for occurs check) -}
 mkValidSub ::
     ( AsTypeUnificationError e x 
     , Eq (TypeP x)
@@ -362,6 +362,9 @@ mkValidSub ::
     m (TypeP x, MplType x)
 mkValidSub v exp = bool (pure (v, exp)) (throwError $ _TypeOccursCheck # (v,exp)) $ failsOccursCheck v exp
 
+{- | this takes a substitution and a list of substitutions and will
+essentially eliminate all occurences of that substitution (if possible)
+-}
 coalesce ::
     ( AsTypeUnificationError e x 
     , Eq (TypeP x)
@@ -370,19 +373,21 @@ coalesce ::
     , PPrint (MplType x)
     , PPrint (IdP x)
     , PPrint (TypeP x)
+
+    , ForallMplType Show x 
+    , Show (IdP x)
+
     , MonadError e m ) => 
     Sub x -> 
-    [TaggedSub x] ->
-    m [TaggedSub x]
+    [Sub x] ->
+    m [Sub x]
 coalesce (s, ssub) = fmap concat . traverse f
   where
-    f (PlainSubTag, (t, tsub)) 
-        | s == t = map (PlainSubTag,) <$> match ssub tsub
-        | otherwise = pure . (PlainSubTag,) <$> 
-            mkValidSub t (substitute (s, ssub) tsub)
-    f (StableSubTag, (t, tsub)) = pure . (StableSubTag,) <$> 
-            mkValidSub t (substitute (s, ssub) tsub)
+    f ((t, tsub)) 
+        | s == t = match ssub tsub
+        | otherwise = pure <$> mkValidSub t (substitute (s, ssub) tsub)
 
+{-| linearize.  This is unification for a set of constraints essentially. -}
 linearize ::
     ( AsTypeUnificationError e x 
     , Eq (TypeP x) 
@@ -391,119 +396,97 @@ linearize ::
     , PPrint (MplType x)
     , PPrint (IdP x)
     , PPrint (TypeP x)
+    , ForallMplType Show x 
+    , Show (IdP x)
+
     , MonadError e m ) => 
-    [TaggedSub x] -> 
-    m [TaggedSub x]
-linearize = fmap fst . f . ([],)
+    [Sub x] -> 
+    m [Sub x]
+linearize = go
   where
-    f :: ([_], [_]) -> _ ([_], [_])
-    f (subs, []) = pure (subs, [])
-    f (subs, (StableSubTag, t):ts) = 
-        f ((StableSubTag, t) : subs, ts)
-    f (subs, (PlainSubTag, t) : ts) =  
-        -- ((PlainSubTag, t) : g (subs, h subs),)
-        ((PlainSubTag, t) : g (h subs),)
-        <$> coalesce t 
-            ( alignSubs (t ^. _1)
-            . filter (not . isTrivialSub) $ ts)
-        >>= f
-      where
-        -- | We need to back substitute to keep the
-        -- system ``consistent".
+    go [] = pure []
+    go (t:ts) = do
+        ts' <- coalesce t (alignSubs (t ^. _1) ts)
+        ts'' <- go ts' 
+        return $ foldr (\t' -> second (substitute t')) t ts'' : ts''
 
-        -- | substitute until there are no more changes.
-        g (subs, delta)
-            | delta = g $ h subs
-            | otherwise = subs
-
-        -- | substitute helper (note: it is not necessary
-        -- to check for occurs check here because if an 
-        -- occurs check existed, it would have already happened
-        -- and not be back substituted)
-        h = second (any id) 
-            . unzip 
-            . map ( over (_2 % _2) fst &&& view (_2 % _2 % _2)
-                    <<< second (second (substituteDelta t)))
-
+{- | returns true if the substitution is trivial i.e., a = a -}
 isTrivialSub ::
     ( Eq (TypeP x) ) => 
-    TaggedSub x ->
+    Sub x ->
     Bool
-isTrivialSub (PlainSubTag, (s, expr)) = case expr of
+isTrivialSub (s, expr) = case expr of
     TypeVar _ t -> s == t
     TypeSeqVarWithArgs _ t [] -> s == t
     TypeConcVarWithArgs _ t ([],[]) -> s == t
     _ -> False
-isTrivialSub _ = False
 
+{- | align the substitutions according to a type. -}
 alignSubs ::    
     ( Eq (TypeP x) ) =>
     TypeP x ->
-    [TaggedSub x] ->
-    [TaggedSub x]
+    [Sub x] ->
+    [Sub x]
 alignSubs k = map f
   where
-    f t@(PlainSubTag, (a, TypeVar cxt b))
-        | k == b = (PlainSubTag, (b, TypeVar cxt a))
+    f t@(a, TypeVar cxt b)
+        | k == b = (b, TypeVar cxt a)
         | otherwise = t
-    f t@(PlainSubTag, (a, TypeConcVarWithArgs cxt b ([],[])))
-        | k == b = (PlainSubTag, (b, TypeConcVarWithArgs cxt a mempty))
+    f t@(a, TypeConcVarWithArgs cxt b ([],[]))
+        | k == b = (b, TypeConcVarWithArgs cxt a mempty)
         | otherwise = t
-    f t@(PlainSubTag, (a, TypeSeqVarWithArgs cxt b []))
-        | k == b = (PlainSubTag, (b, TypeSeqVarWithArgs cxt a mempty))
+    f t@(a, TypeSeqVarWithArgs cxt b [])
+        | k == b = (b, TypeSeqVarWithArgs cxt a mempty)
         | otherwise = t
     f n = n
 
+{- | look ups a type in the substitution list -}
 lookupSubList ::
     ( Eq (TypeP x) ) =>
     TypeP x -> 
-    [TaggedSub x] ->
+    [Sub x] ->
     Maybe (MplType x)
-lookupSubList v = lookupOf (folded % to f) (PlainSubTag, v)
+lookupSubList v = lookupOf (folded % to f)  v
   where
-    f (tag, (v', expr)) =  ((tag, v'), expr)
+    f (v', expr) =  (v', expr)
 
-
+{- | deletes a type within the substitution list -}
 deleteSubList ::
     ( Eq (TypeP x) ) =>
     TypeP x -> 
-    [TaggedSub x] ->
-    [TaggedSub x] 
+    [Sub x] ->
+    [Sub x] 
 deleteSubList v = f
   where
-    f (t@(PlainSubTag, (v', expr)) : rst) 
+    f (t@(v', expr) : rst) 
         | v == v' = rst
         | otherwise = t : f rst
-    f (t@(StableSubTag, (v', expr)) : rst) 
-        = t : f rst
     f [] = []
 
-
+{- | solves the type equations (essentially the unification algorithm) -}
 solveTypeEqns ::
     forall m e x.
     ( AsTypeUnificationError e x 
     , Ord (TypeP x) 
     , Eq (IdP x) 
     , Show (TypeP x) 
+
     , PPrint (MplType x)
     , PPrint (IdP x)
     , PPrint (TypeP x)
+
+    , ForallMplType Show x 
+    , Show (IdP x)
     , MonadError e m ) => 
     TypeEqns x -> 
     m (Package x)
-solveTypeEqns = cata f
+-- solveTypeEqns eqns = cata f eqns >>= traverseOf packageSubs linearize 
+solveTypeEqns eqns = cata f eqns >>= traverseOf packageSubs linearize  
   where
     f :: Base (TypeEqns x) (m (Package x)) -> m (Package x)
     f (TypeEqnsEqF (a,b)) = do  
-        subs <- map (PlainSubTag,) <$> match a b
+        subs <- match a b
         return $ mempty & packageSubs .~ subs
-    -- Note: no need for occurs checking! 
-    -- These equations really just free variables that 
-    -- are only substituted that match the corresponding
-    -- type equation given.
-    f (TypeEqnsEqStableF (a,b)) = do
-        return $ mempty & packageSubs .~ [(StableSubTag, (a,b))]
-
     f (TypeEqnsExistF vs acc) = do
         acc' <- mconcat <$> sequenceA acc
         packageExistentialElim $ acc' 
@@ -513,11 +496,30 @@ solveTypeEqns = cata f
                 -- arrow types ehre?
     f (TypeEqnsForallF vs acc) = do
         acc' <- mconcat <$> sequenceA acc
-        packageUniversalElim $ acc' 
-            & packageUnivVar %~ (Set.fromList vs `Set.union`)
-            & packageSubs %~ id 
-                -- something about simplifying 
-                -- arrow types ehre?
+        packageUniversalElim vs acc'
+
+{- | surface subs -}
+surfaceSubs :: 
+    forall x.
+    ( Ord (TypeP x) 
+    , Eq (IdP x) 
+    , Show (TypeP x) 
+
+    , PPrint (MplType x)
+    , PPrint (IdP x)
+    , PPrint (TypeP x)
+
+    , ForallMplType Show x 
+    , Show (IdP x)) => 
+    [TypeP x] -> 
+    Package x ->
+    Package x 
+surfaceSubs surface pkg = foldr go pkg surface
+  where
+    go s pkg = case lookup s $ alignSubs s $ pkg ^. packageSubs of
+        Just (TypeVar cxt s') -> pkg & packageSubs %~ map (second (substitute (s', TypeVar cxt s)))
+        _ -> pkg 
+
         
 packageExistentialElim  ::
     forall e x m.
@@ -529,6 +531,10 @@ packageExistentialElim  ::
     , PPrint (MplType x)
     , PPrint (IdP x)
     , PPrint (TypeP x)
+
+    , ForallMplType Show x 
+    , Show (IdP x)
+
     , MonadError e m ) => 
     Package x ->
     m (Package x)
@@ -537,28 +543,26 @@ packageExistentialElim pkg = do
         packageSubs linearize
   where
     pkg' = pkg & packageExisVar .~ mempty
-               & packageSubs %~ filter (not . isTrivialSub)
+               -- & packageSubs %~ filter (not . isTrivialSub)
+               & packageSubs %~ id
 
     f :: TypeP x -> Package x -> m (Package x)
     f v acc = let subs = acc ^. packageSubs % to (alignSubs v) in case lookupSubList v subs of
         Just sub -> do
             let subs' = deleteSubList v subs
             vsub <- mkValidSub v sub
-            subs'' <- coalesce vsub $ subs'
-            -- let changed = subs'' == subs'
+            subs'' <- fmap (vsub:) (coalesce vsub subs') >>= linearize
             let changed = v `elem` foldMap collectvars subs'
             return $ acc
-                & packageSubs .~ bool ((PlainSubTag, vsub):) id changed subs''
+                & packageSubs .~ bool (vsub:) id changed subs''
                 & packageExisVar %~ bool (Set.singleton v `Set.union`) id changed 
         Nothing -> return $
             acc & packageExisVar %~ (Set.singleton v `Set.union`)
 
-    collectvars (PlainSubTag, (tp, mpltp)) = tp : mplTypeCollectTypeP mpltp
-    -- stable vars do not change the system at all...
-    collectvars (StableSubTag, (tp, mpltp)) = []
-
+    collectvars (tp, mpltp) = tp : mplTypeCollectTypeP mpltp
 
 packageUniversalElim  ::
+    forall e m x.
     ( AsTypeUnificationError e x 
     , Ord (TypeP x) 
     , Eq (TypeP x) 
@@ -567,32 +571,56 @@ packageUniversalElim  ::
     , PPrint (MplType x)
     , PPrint (IdP x)
     , PPrint (TypeP x)
+
+    , ForallMplType Show x 
+    , Show (IdP x)
+
     , MonadError e m ) => 
+    [([TypeP x], TypeP x, MplType x)] ->
     Package x ->
     m (Package x)
-packageUniversalElim pkg = 
-    fmap (over packageSubs (filter (not . isTrivialSub)) )
-    $ foldrM f (pkg & packageUnivVar .~ mempty) (pkg ^. packageUnivVar)
+packageUniversalElim vs pkg = traverseOf packageSubs linearize pkg  >>= flip (foldrM f) vs
   where
-    f v acc =  
-        let subs = acc ^. packageSubs % to (alignSubs v) in
-        case lookupSubList v subs of
-            -- | TODO i think we need to check for the other trivial type variables too?
-            -- e.g. -> A , A(), A( | )
-            Just lkup@(TypeVar cxt v')
-                -- | trivial substititions are okay!
-                | v == v' -> return acc
-                -- | if the variable is an existential, simplify the
-                -- existential var first
-                | v' `elem` pkg ^. packageExisVar -> do
-                    nsub <- mkValidSub v lkup
-                    packageExistentialElim $ acc & packageSubs %~ ((PlainSubTag, nsub):)
-                -- | otherwise, its a forall match failure
-                | otherwise -> 
-                    throwError $ _TypeForallMatchFailure # (v, lkup)
-            -- | otherwise, its a forall match failure
-            Just err -> throwError $ _TypeForallMatchFailure # (v, err)
-            -- | if it's not there, then we done ( we could propogate it up :) )
-            Nothing -> return acc
+    f :: ([TypeP x], TypeP x, MplType x) -> Package x -> m (Package x)
+    f (foralls, v, vtp) acc = case acc' ^. packageSubs % to (lookup v) of
+        Just tp -> do 
+            match vtp tp >>= linearize >>= g 
+            return $ acc' & packageSubs %~ ((v,vtp):) . deleteSubList v
+        Nothing -> throwError $ _TypeForallMatchFailure # (v, vtp)
+      where
+        acc' = acc & packageSubs %~ alignSubs v
 
+        g :: [(TypeP x, MplType x)] -> m ()
+        g [] = return ()
+        g ((l, r@(TypeVar rcxt r')):rst)
+            -- trivial substitutions are okay or any matching to a non for all
+            | isTrivialSub (l, r) = g rst
+            | l `notElem` foralls && r' `notElem` foralls = g rst
+            | l `elem` foralls && r' `notElem` foralls = coalesce (r', TypeVar rcxt l) rst >>= g
+            | r' `elem` foralls && l `notElem` foralls = g ((r', (TypeVar rcxt l)):rst)
+            | otherwise = throwError $ _TypeForallMatchFailure # (l, r)
+        g ((l, r):rst)
+            | l `elem` foralls = throwError $ _TypeForallMatchFailure # (l, r)
+            | otherwise = g rst
+
+{- idea is roughly as follows.
+ - We need to find a substitution \sigma so that
+ -  \sigma(inferred type) = user provided type
+ - i.e.,
+ -  the user provided type is /general/ enough to informally fit within the inferred type.
+ -
+ - We do this by finding the most general unifier, and then testing if the 
+ -  most general unifier is such a \sigma i.e.,  each for all quantified type
+ -      - must map to at most one non for all type variable 
+ -          (otherwise we'd contradict the fact that the substitution sigma is a 
+ -          substitution)
+ - In plain english, if @a@ is a for all quantified type, we have:
+ -      - if @a@ maps to some variable @x@
+ -          - if @x@ is @a@, this is allowed
+ -          - if @x@ is not @a@, then we must check to see if @x@ maps to 
+ -                 something else which would lead to a failure given by these cases
+ -                 (there is some nuances with @a = x@, @b = x@ that must be accounted for)
+ -      - if @a@ maps to some type @X@
+ -          - fail
+ -}
 

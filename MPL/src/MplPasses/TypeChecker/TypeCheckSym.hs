@@ -74,8 +74,10 @@ instance Monoid SymTab where
 data SymExprInfo = 
     SymSeqCall ExprCallDef
     | SymSeqPhraseCall (MplSeqObjDefn MplTypeCheckedPhrase)
-    -- | SymConcPhraseCall (MplConcObjDefn MplTypeCheckedPhrase)
-    -- | SymChInfo ChIdentR
+    {-
+        | SymConcPhraseCall (MplConcObjDefn MplTypeCheckedPhrase)
+        | SymChInfo ChIdentR
+    -}
 
 data SymConcInfo = 
     SymConcPhraseCall 
@@ -108,9 +110,13 @@ data SymSeqType =
             ([TypeP MplTypeChecked], ([MplType MplTypeChecked], MplType MplTypeChecked), MplType MplTypeChecked)
         )
 
-data SymConcType = 
-    SymConcCallType (SymCallType 
-        ([TypeP MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked]))
+data SymConcType 
+    = SymConcCallType (SymCallType 
+        ( [TypeP MplTypeChecked]
+        , [MplType MplTypeChecked]
+        , [MplType MplTypeChecked]
+        , [MplType MplTypeChecked])
+        )
     | SymConcPhrase ( [TypeP MplTypeChecked], MplType MplTypeChecked )
         -- (free vars, unwrapped type, clause type)
 

@@ -15,6 +15,10 @@ extra-source-files:
     - src/Language/LexMPL.x
     - src/Language/ParMPL.y
 
+    # These are test files
+    - test/MplParse/cases/pMplDataClauseSpine/negative/*.mpl
+    - test/MplParse/cases/pMplDataClauseSpine/positive/*.mpl
+
 # Metadata used when publishing your package
 # synopsis:            Short description of your package
 # category:            Web
@@ -27,18 +31,23 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
     - base >= 4.7 && < 5
     - containers
-
-      # - unordered-containers
-      # - hashable
+    - unordered-containers
+    - hashable
+    - parsec
 
     - mtl
 
     - prettyprinter
     - array
     - optics
+    - optics-extra
     - recursion-schemes
 
+    - directory
+    - filepath
+
     - raw-strings-qq
+    - deepseq
 
 
 library:

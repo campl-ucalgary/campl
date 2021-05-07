@@ -1,10 +1,10 @@
 cabal-version: 1.18
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 173d88ec8ee78c7c23f354ecd1ae3c3849832e24d796beda87e107971bcdc834
+-- hash: fad30a4c60ede1f75748f3a82c93e0b6dacba5bae2c5876f0e08604fb9078a70
 
 name:           MPL
 version:        0.1.0.0
@@ -21,6 +21,17 @@ extra-source-files:
     src/MPL.bnfc
     src/Language/LexMPL.x
     src/Language/ParMPL.y
+    test/MplParse/cases/pMplDataClauseSpine/negative/1.mpl
+    test/MplParse/cases/pMplDataClauseSpine/negative/2.mpl
+    test/MplParse/cases/pMplDataClauseSpine/negative/3.mpl
+    test/MplParse/cases/pMplDataClauseSpine/negative/4.mpl
+    test/MplParse/cases/pMplDataClauseSpine/negative/5.mpl
+    test/MplParse/cases/pMplDataClauseSpine/negative/6.mpl
+    test/MplParse/cases/pMplDataClauseSpine/positive/1.mpl
+    test/MplParse/cases/pMplDataClauseSpine/positive/2.mpl
+    test/MplParse/cases/pMplDataClauseSpine/positive/3.mpl
+    test/MplParse/cases/pMplDataClauseSpine/positive/4.mpl
+    test/MplParse/cases/pMplDataClauseSpine/positive/5.mpl
 extra-doc-files:
     README.md
     ChangeLog.md
@@ -44,6 +55,7 @@ library
       MplAST.MplExt
       MplAST.MplIdent
       MplAST.MplKind
+      MplAST.MplNewParsed
       MplAST.MplParsed
       MplAST.MplPattern
       MplAST.MplPrinter
@@ -54,6 +66,10 @@ library
       MplAST.MplTypeChecked
       MplCompile
       MPLMain
+      MplParse.MplInfixity
+      MplParse.MplParse
+      MplParse.Stack
+      MplParse.Util
       MplPasses.Env
       MplPasses.Parser.BnfcParse
       MplPasses.Parser.Parse
@@ -86,6 +102,8 @@ library
       MplPasses.TypeChecker.TypeCheckSymUtils
       MplPasses.TypeChecker.TypeCheckUtils
       MplPasses.TypeChecker.TypeEqns
+      MplPasses.TypeInferencer.TypeInference
+      MplPasses.TypeInferencer.TypeInferenceError
       MplUtil.Data.Stream
       MplUtil.Data.Tuple.Optics
       MplUtil.UniqueSupply
@@ -97,11 +115,18 @@ library
       array
     , base >=4.7 && <5
     , containers
+    , deepseq
+    , directory
+    , filepath
+    , hashable
     , mtl
     , optics
+    , optics-extra
+    , parsec
     , prettyprinter
     , raw-strings-qq
     , recursion-schemes
+    , unordered-containers
   default-language: Haskell2010
 
 executable mpl
@@ -116,17 +141,26 @@ executable mpl
     , array
     , base >=4.7 && <5
     , containers
+    , deepseq
+    , directory
+    , filepath
+    , hashable
     , mtl
     , optics
+    , optics-extra
+    , parsec
     , prettyprinter
     , raw-strings-qq
     , recursion-schemes
+    , unordered-containers
   default-language: Haskell2010
 
 test-suite MPL-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      MplParse.Assertions
+      MplParse.MplParseSpec
       MplPasses.Assertions
       MplPasses.Renamer.RenameSpec
       MplPasses.TypeChecker.KindCheckSpec
@@ -143,10 +177,17 @@ test-suite MPL-test
     , array
     , base >=4.7 && <5
     , containers
+    , deepseq
+    , directory
+    , filepath
+    , hashable
     , hspec
     , mtl
     , optics
+    , optics-extra
+    , parsec
     , prettyprinter
     , raw-strings-qq
     , recursion-schemes
+    , unordered-containers
   default-language: Haskell2010

@@ -4,6 +4,12 @@ module MplPasses.TypeChecker.TypeCheckErrorPkg where
 import Optics 
 import Optics.State.Operators 
 
+{- | TypeCheckErrorPkg external internal.
+What is an external error vs internal error?
+If I recall correctly, these are needed to distinguish which 
+    thunk is to be evaluated when creating the lazy graph of 
+    the AST.
+ -}
 data TypeCheckErrorPkg external internal = TypeCheckErrorPkg {
     _pkgExternalError :: [external]
     , _pkgInternalError :: [internal]

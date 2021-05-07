@@ -79,6 +79,10 @@ type family XXMplBuiltInTypesF x
 
 data MplType x  =
     TypeVar !(XTypeVar x) (TypeP x) 
+    -- | Why is this here? Well, we previously could have @Bool@ which is different from @Bool()@ which
+    -- is different from @Bool(| =>)@ i.e., we do not know which sequential vs concurrent immediately from the
+    -- context of just writing @Bool@.
+    -- Indeed, this is NOT a type variable, and the annotation is important to realize which type it is.
     | TypeWithNoArgs !(XTypeWithNoArgs x) (IdP x) 
 
     | TypeSeqWithArgs !(XTypeSeqWithArgs x) (IdP x) [MplType x]
@@ -118,6 +122,25 @@ data MplBuiltInTypesF x r =
     | XTypeBuiltIn !(XXMplBuiltInTypesF x)
   deriving (Functor, Foldable, Traversable)
 
+embedBuiltInTypes :: 
+    ( XTypeTupleF x1 ~ XTypeTupleF x2
+    , XTypeStringF x1 ~ XTypeStringF x2
+    , XTypeTensor x1 ~ XTypeTensor x2
+    , XTypeCharF x1 ~ XTypeCharF x2
+    , XTypeDoubleF x1 ~ XTypeDoubleF x2
+    , XTypePar x1 ~ XTypePar x2
+    , XTypeUnitF x1 ~ XTypeUnitF x2
+    , XTypeSeqArrF x1 ~ XTypeSeqArrF x2
+    , XTypeListF x1 ~ XTypeListF x2
+    , XTypeTopBot x1 ~ XTypeTopBot x2
+    , XTypePut x1 ~ XTypePut x2
+    , XTypeIntF x1 ~ XTypeIntF x2
+    , XTypeGet x1 ~ XTypeGet x2
+    , XTypeNeg x1 ~ XTypeNeg x2
+    , XTypeBoolF x1 ~ XTypeBoolF x2
+    , XTypeConcArrF x1 ~ XTypeConcArrF x2 ) =>
+    MplBuiltInTypesF x1 r -> 
+    MplBuiltInTypesF x2 r
 embedBuiltInTypes (TypeIntF cxt) = TypeIntF cxt
 embedBuiltInTypes (TypeCharF cxt) = TypeCharF cxt
 embedBuiltInTypes (TypeDoubleF cxt) = TypeDoubleF cxt

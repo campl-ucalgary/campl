@@ -91,7 +91,7 @@ type instance XXMplBuiltInTypesF MplTypeSub = ()
 data InstantiateArrEnv = InstantiateArrEnv  {
     _instantiateArrEnvInstantiated :: Map (TypeP MplTypeChecked) (TypeP MplTypeSub)
     , _instantiatArrEnvUniqueSupply :: UniqueSupply
-}
+}  deriving Show
 
 $(makeLenses ''InstantiateArrEnv)
 
@@ -107,7 +107,7 @@ freshInstantiateArrEnv = do
 
 runInstantiateArrType :: 
     State InstantiateArrEnv a -> InstantiateArrEnv -> ([TypeP MplTypeSub], a)
-runInstantiateArrType ~act = 
+runInstantiateArrType act = 
     first (toListOf (instantiateArrEnvInstantiated % folded)) 
     . swap 
     . runState act 
@@ -162,9 +162,6 @@ instance TypeP MplTypeChecked ~ tp => InstantiateArrType ([tp], [MplType MplType
                 , fromJust (traverse (instantiateTypeWithSubs subs) ins)
                 , fromJust (traverse (instantiateTypeWithSubs subs) outs)
                 )
-           
-
-            -- typeps
 
 instance InstantiateArrType (MplType MplTypeSub) where
     instantiateArrType ann tp = return tp
@@ -174,7 +171,7 @@ instance TypeP MplTypeChecked ~ tp => InstantiateArrType ([tp], [MplType MplType
         updateInstantiated tpvars
         subs <- getInstantiatedSubs
         -- TODO: this actualyl will not preserve the annotation information here...
-        return $ ( fromJust $ instantiateTypeWithSubs subs to )
+        return $ fromJust $ instantiateTypeWithSubs subs to
         
     instantiateArrType ann (tpvars, froms, to) = do
         updateInstantiated tpvars
@@ -198,7 +195,14 @@ instantiateTypeWithSubs sublist = cata f
   where
     f :: Base (MplType MplTypeChecked) 
         (Maybe (MplType MplTypeSub)) -> Maybe (MplType MplTypeSub)
-    f (TypeVarF cxt typep) = lookup typep sublist
+    f (TypeVarF cxt typep) = return $ fromMaybe 
+        -- TODO: I can't really remember how to annotate types rn
+        -- but perhaps it would be better to give an annotation here.
+        (TypeVar Nothing
+            (TypeIdentT (TypeTag $ typep ^. uniqueTag) 
+            $ TypeIdentTInfoTypeVar typep)
+        )
+        (lookup typep sublist)
     f (TypeWithNoArgsF cxt id) = return $ TypeWithNoArgs cxt id
     f (TypeSeqWithArgsF cxt id args) =
         TypeSeqWithArgs (mempty, cxt) id <$> sequenceA args 
@@ -245,7 +249,8 @@ substituteTypeVars sublist = cata f
   where
     f :: Base (MplType MplTypeChecked) 
         (MplType MplTypeChecked) -> MplType MplTypeChecked
-    f (TypeVarF cxt typep) = fromMaybe (_TypeVar # (cxt, typep)) $ lookup typep sublist
+    f (TypeVarF cxt typep) = fromMaybe (_TypeVar # (cxt, typep)) $ 
+        lookup typep sublist
     f (TypeSeqWithArgsF cxt id args) = TypeSeqWithArgs cxt id args 
     f (TypeConcWithArgsF cxt id args) = TypeConcWithArgs cxt id args 
     f n = embed n

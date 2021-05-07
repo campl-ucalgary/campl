@@ -17,6 +17,8 @@ import Data.Data
 import MplUtil.UniqueSupply
 import MplUtil.Data.Stream
 
+import MplParse.Util
+
 import Data.Coerce
 import Data.Proxy
 import Control.Monad.State
@@ -35,7 +37,8 @@ newtype Name =
 
 data Location = 
     Location (Int,Int)
-    | Span (Int, Int) (Int, Int)
+    -- old version which was inconsistent
+    -- Span (Int, Int) (Int, Int)
   deriving (Show, Eq)
 
 data NameOcc = NameOcc { 

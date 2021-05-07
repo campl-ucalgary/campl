@@ -177,17 +177,17 @@ toSpanLocation ::
     l1 -> 
     l2 -> 
     Location
-toSpanLocation a b = 
-    Span (minLoc a') (maxLoc b')
+toSpanLocation a b =  a'
+    -- Span (minLoc a') (maxLoc b')
   where
     a' = toLocation a 
     b' = toLocation b
 
     minLoc (Location a) = a
-    minLoc (Span a b) = a
+    -- minLoc (Span a b) = a
 
     maxLoc (Location a) = a
-    maxLoc (Span a b) = b
+    -- maxLoc (Span a b) = b
 
 traverseTryEach ::
     ( AsParseErrors e

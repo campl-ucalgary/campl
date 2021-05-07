@@ -4,6 +4,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -25,6 +26,8 @@ import MplPasses.TypeChecker.TypeCheckSemanticErrors
 import MplPasses.TypeChecker.TypeCheckCallErrors
 import MplPasses.TypeChecker.TypeCheckErrorPkg
 import MplPasses.Env
+import MplAST.MplProgUtil
+
 
 import Control.Monad.State
 import Control.Monad.Writer
@@ -134,8 +137,6 @@ lookupSymExprDataPhrase (ident, expr) = runZoomedLookup $
             lkuptp <- entry ^? _Just % symEntryType
             defn <- defn ^? _Just % _DataDefn
             return $ SymEntry lkuptp defn
-
-
 
 {-
 lookupSymExprDataPhrase :: 
@@ -314,22 +315,55 @@ collectSymTabDefn def = do
                 _ -> mempty
             FunctionDefn def -> pure 
                 ( def ^. funName % uniqueTag
-                , SymEntry (fromJust $ tsymtab ^? at (def ^. funName % uniqueTag) % _Just % symEntryType) 
+                , SymEntry 
+                    ( fromJust $ tsymtab ^? at (def ^. funName % uniqueTag) % _Just % symEntryType) 
                     $ _SymSeqCall % _ExprCallFun # def)
             _ -> mempty
 
     return syms
 
+
+{- | This will get all of the symbol table variables which are not scoped. This is needed
+because given a program like
+@ 
+f a = let g b = a in g a
+@
+we need to make sure that the type of @g@ is @b -> a@ where @a@ is the same type as 
+the value @a@ in the parameters of @f@.
+-}
+collectNotScopedSymTabTypeVariables ::
+    ( MonadState SymTab m ) => 
+    m [TypeT]
+collectNotScopedSymTabTypeVariables = do
+    implicitseqcollected <- guse $ symTabExpr % folded % to collectexpr
+    _ <- guse symTabConc
+    return implicitseqcollected
+  where
+    collectexpr :: SymEntry SymSeqType SymExprInfo -> [TypeT]
+    collectexpr symentry = case symentry ^? symEntryType % _SymSeqCallType of
+        Just calltype -> case calltype of
+            SymImplicit ty -> map typeIdentTToTypeT $ mplTypeCollectTypeP ty
+            SymExplicit (scoped, args, res) -> filter (`notElem` scoped) $ 
+                concat [ concatMap mplTypeCollectTypeP args, mplTypeCollectTypeP res ]
+        Nothing -> []
+
 -- | recollects symbol table definitions after a recursive group
 -- is defined.. Note that object definitions do not need recollection
 -- but recursive function/process calls need to be recollected....
+-- We do this since after the type is inferred, we now get an explicit type to work with.
 recollectSymTabDefn ::
-    ( MonadState SymTab m ) => MplDefn MplTypeChecked -> m ()
-recollectSymTabDefn (ObjectDefn _) = return ()
-recollectSymTabDefn (FunctionDefn (MplFunction name tp bdy)) = 
-    symTabExpr % at (name ^. uniqueTag) % _Just % symEntryType .= _SymExplicit # tp
-recollectSymTabDefn (ProcessDefn (MplProcess name tp bdy)) = 
-    symTabConc % at (name ^. uniqueTag) % _Just % symEntryType .= _SymExplicit # tp
+    ( MonadState SymTab m ) => 
+    MplDefn MplTypeChecked -> 
+    m ()
+recollectSymTabDefn defn = do
+    let go = case defn of
+            (ObjectDefn _) -> return ()
+            (FunctionDefn (MplFunction name tp bdy))  ->
+                symTabExpr % at (name ^. uniqueTag) % _Just % symEntryType .= _SymExplicit # tp
+            (ProcessDefn (MplProcess name tp bdy)) ->
+                symTabConc % at (name ^. uniqueTag) % _Just % symEntryType 
+                    .= _SymExplicit # tp
+    go 
 
 class EliminateSymTabObj (t :: ObjectDefnTag) where
     eliminateSymTabObj :: ( MonadState SymTab m ) =>

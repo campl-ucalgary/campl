@@ -43,6 +43,7 @@ data IdentP = IdentP {
         , _identPNamespace :: Namespace
     }
   deriving Show
+
 $(makeClassy ''IdentP)
 $(makePrisms ''IdentP)
 
@@ -71,8 +72,7 @@ type instance TypeP MplParsed = IdentP
 -- definitions.
 type instance XDataDefn MplParsed  = 
     MplTypeClauseSpine MplParsed (SeqObjTag DataDefnTag)
-type instance XCodataDefn MplParsed  = 
-    MplTypeClauseSpine MplParsed (SeqObjTag CodataDefnTag)
+type instance XCodataDefn MplParsed  = MplTypeClauseSpine MplParsed (SeqObjTag CodataDefnTag)
 type instance XProtocolDefn MplParsed  = 
     MplTypeClauseSpine MplParsed (ConcObjTag ProtocolDefnTag)
 type instance XCoprotocolDefn MplParsed  = 
