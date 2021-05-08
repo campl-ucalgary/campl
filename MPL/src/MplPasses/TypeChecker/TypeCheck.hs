@@ -100,7 +100,7 @@ runTypeCheck ::
     , SymZooms m0 m1 symm
     ) =>
     MplProg MplRenamed -> n (MplProg MplTypeChecked)
-runTypeCheck (MplProg stmts) = MplProg <$> traverse typeCheckStmt stmts
+runTypeCheck (MplProg stmts) = MplProg . map fst <$> traverse typeCheckStmt stmts
 
 typeCheckStmt ::
     forall e m0 m1 symm n. 
@@ -114,11 +114,12 @@ typeCheckStmt ::
     , Zoom symm n SymTab TypeCheckEnv
     , SymZooms m0 m1 symm
     ) =>
-    MplStmt MplRenamed -> n (MplStmt MplTypeChecked)
+    MplStmt MplRenamed -> 
+    n (MplStmt MplTypeChecked, [Sub MplTypeSub])
 typeCheckStmt (MplStmt defns wheres) = do
     notscoped <- zoom envGbl $ collectNotScopedSymTabTypeVariables
 
-    wheres' <- traverse typeCheckStmt wheres
+    wheres' <- fmap (map fst) $ traverse typeCheckStmt wheres
 
     envLcl % typeInfoSymTab .= mempty
     rec envLcl % typeInfoEnvMap .= tagmap
@@ -137,11 +138,12 @@ typeCheckStmt (MplStmt defns wheres) = do
                 $ bool (return ()) 
                     (throwError mempty) erroccured 
                     >> withExceptT pure (solveTypeEqns eqns') 
+            subs' = either mempty (view packageSubs) pkg
+                                                                          
+            notscoped' = concatMap (`variableClosure` subs') $ map typeTToTypeIdentT notscoped
 
-        ~tagmap <- packageToTypeTagMap 
-                $ either mempty 
-                    id 
-                    (pkg :: Either [e] (Package MplTypeSub))
+        ~tagmap <- packageToTypeTagMap notscoped'
+                $ either mempty id (pkg :: Either [e] (Package MplTypeSub))
 
     tell terrs
     tell $ either id mempty pkg
@@ -151,7 +153,8 @@ typeCheckStmt (MplStmt defns wheres) = do
     -- If the function did type check, then we "recollect" the functions types
     -- and generalize their polymorphic types with for alls. Otherwise,
     -- we remove them from the symbol table and don't use them to type check anymore
-    -- (if they are called, I think an "Internal" error is thrown? I can't quite remember..)
+    -- (if they are called, I think an "Internal" error is thrown? I can't 
+    -- quite remember..)
     zoom envGbl $ bool 
         (traverse eliminateSymTabDefn defns') 
         (traverse recollectSymTabDefn defns') 
@@ -161,13 +164,16 @@ typeCheckStmt (MplStmt defns wheres) = do
     symtab' <- guse envGbl
     envLcl % typeInfoSymTab .= symtab'
 
-    return $ MplStmt defns' wheres'
+    return (MplStmt defns' wheres', subs')
 
 typeCheckDefns ::
     TypeCheck
         [MplDefn MplRenamed] 
         [ ( MplDefn MplTypeChecked
-          , ([([TypeP MplTypeSub], TypeP MplTypeSub, MplType MplTypeSub)], [TypeP MplTypeSub], [TypeEqns MplTypeSub])) ]
+          , ( [([TypeP MplTypeSub], TypeP MplTypeSub, MplType MplTypeSub)]
+            , [TypeP MplTypeSub], [TypeEqns MplTypeSub])
+          ) 
+        ]
 -- same as the rename step.. need to do the magic recursive do in order
 -- to get the recursive declarations together properly.
 typeCheckDefns (defn : defns) = do
@@ -210,7 +216,8 @@ typeCheckDefn (FunctionDefn fun@(MplFunction name Nothing defn)) = do
         ~(ttypephrases, (defn', acceqns)) <- second NE.unzip . NE.unzip <$> 
             traverse (withFreshTypeTag . typeCheckFunBody ) defn
 
-        let fun' = MplFunction name (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq) defn'
+        let fun' = MplFunction name 
+                (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq) defn'
             ttypep =  annotateTypeTag ttype fun
             ttypep' = typePtoTypeVar $ ttypep
             ttypephrases' = annotateTypeTags (NE.toList ttypephrases) $ NE.toList defn
@@ -430,28 +437,84 @@ typeCheckExpr = para f
 
         return (EVar (lkupdef, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) n, [eqn])
 
-    f (EPOpsF _ _ _ _ ) = panicNotImplemented
-    f (EBuiltInOpF _ _ _ _ ) = panicNotImplemented
-    f (EIntF _ _ ) = panicNotImplemented
+    f (EBuiltInOpF _ _ _ _) = panicNotImplemented
+
+    f (EPOpsF cxt op (lexpr, ml) (rexpr, mr)) = do
+        ttype <- guse (envLcl % typeInfoEnvTypeTag)
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        (ttypel, (l', leqns)) <- withFreshTypeTag ml
+        (ttyper, (r', reqns)) <- withFreshTypeTag mr
+
+        let opexpr = EPOps cxt op lexpr rexpr :: MplExpr MplRenamed
+            ttypep = annotateTypeTag ttype opexpr
+            ttypelp = annotateTypeTag ttypel lexpr
+            ttyperp = annotateTypeTag ttyper rexpr
+
+        let arithmetic = do
+                let eqn = TypeEqnsExist [ttypelp, ttyperp] $ 
+                        [ TypeEqnsEq (typePtoTypeVar ttypep, typePtoTypeVar ttypelp )
+                        , TypeEqnsEq (typePtoTypeVar ttypep, typePtoTypeVar ttyperp )
+                        , TypeEqnsEq (typePtoTypeVar ttypep, _TypeIntF % _Just % _TypeAnnExpr # opexpr )
+                        , TypeEqnsEq (typePtoTypeVar ttypelp, _TypeIntF % _Just % _TypeAnnExpr # lexpr )
+                        , TypeEqnsEq (typePtoTypeVar ttyperp, _TypeIntF % _Just % _TypeAnnExpr # rexpr )
+                        ]
+                        <> leqns
+                        <> reqns
+                return $ 
+                    ( EPOps ( fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) op l' r'
+                    , [eqn]
+                    )
+                        
+
+        case op of
+            PrimitiveAdd ->  arithmetic
+            PrimitiveSub ->  arithmetic
+            _ ->  error $ "not implemented op: " ++ show op
+
+
+    f (EIntF cxt n) = do
+        ttype <- guse (envLcl % typeInfoEnvTypeTag)
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        let ann =  _EInt # (cxt, n) :: MplExpr MplRenamed
+            ttypep = annotateTypeTag ttype ann
+            eqns = [ TypeEqnsEq (typePtoTypeVar ttypep, _TypeIntF % _Just % _TypeAnnExpr # ann ) ]
+
+        return ( EInt ( cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) n, eqns )
+
+    -- duplicated code from EIntF case
+    f (EDoubleF cxt n) = do
+        ttype <- guse (envLcl % typeInfoEnvTypeTag)
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        let ann =  _EDouble # (cxt, n) :: MplExpr MplRenamed
+            ttypep = annotateTypeTag ttype ann
+            eqns = [ TypeEqnsEq (typePtoTypeVar ttypep, _TypeDoubleF % _Just % _TypeAnnExpr # ann ) ]
+        return ( EDouble ( cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) n, eqns )
+
     f (ECharF _ _ ) = panicNotImplemented
-    f (EDoubleF _ _ ) = panicNotImplemented
+
     f (EListF _ _ ) = panicNotImplemented
-    f (EStringF _ _ ) = panicNotImplemented
+    f (EStringF _ _) = panicNotImplemented
     f (EUnitF _ ) = panicNotImplemented
-    f (ETupleF _ _ ) = panicNotImplemented
-    f (EIfF _ _ _ _) = panicNotImplemented
+    f (ETupleF _ _) = panicNotImplemented
+    f (EIfF cxt mcond mifc melsec) = panicNotImplemented
     f (ELetF cxt lets (_, mexpr)) = do
         st <- guse equality
         sup <- freshUniqueSupply
 
-        let ~(MplProg lets', errs) = runWriter 
+        -- traverse typeCheckStmt stmts
+        let ~((lets', subs), errs) 
+                = first unzip
+                $ runWriter 
                 $ flip evalStateT 
                     -- some awkwardness here that we need to update the 
                     -- global symbol table...
                     ( st & uniqueSupply .~ sup 
                          & envGbl .~ st ^. envLcl % typeInfoSymTab ) 
-                $ runTypeCheck
-                $ MplProg (NE.toList lets)
+                $ traverse typeCheckStmt
+                $ NE.toList lets
 
         tell $ review _ExternalError $ errs
 
@@ -464,7 +527,13 @@ typeCheckExpr = para f
 
         (expr', expreqns) <- mexpr
 
-        return ( _ELet # (cxt, NE.fromList lets', expr') , expreqns) 
+        return 
+            ( _ELet # (cxt, NE.fromList lets', expr') 
+            , concat 
+                [ expreqns 
+                , concatMap (map (\(t,ty) -> TypeEqnsEq (TypeVar Nothing t ,ty))) subs
+                ]
+            ) 
 
     f (EFoldF cxt (foldonexpr, foldon) (phrase :| phrases)) = do
         ttype <- guse (envLcl % typeInfoEnvTypeTag)

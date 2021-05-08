@@ -80,6 +80,9 @@ instance ToLocation B.PInteger  where
 instance ToLocation IdentP  where
     toLocation =  view (identPNameOcc % location)
 
+instance ToLocation B.PDouble  where
+    toLocation (B.PDouble (pos,str)) = toLocation pos
+
 class ToNameOcc ident where
     toNameOcc :: ident -> NameOcc
 
@@ -136,6 +139,10 @@ instance ToNameOcc B.UIdent where
 
 instance ToNameOcc B.PInteger where
     toNameOcc (B.PInteger posstr) = 
+        toNameOcc posstr
+
+instance ToNameOcc B.PDouble where
+    toNameOcc (B.PDouble posstr) = 
         toNameOcc posstr
 
 instance ToNameOcc B.TypeHandleName where
@@ -204,6 +211,11 @@ traverseTryEach f ns = do
     f' n = fmap Just (f n) `catchError` const (return Nothing)
 
 
+pIntegerToLocationInt :: B.PInteger -> Maybe (Location, Int)
 pIntegerToLocationInt a@(B.PInteger (_, str)) =
     (toLocation a,) <$> (readMaybe str :: Maybe Int)
+
+pDoubleToLocationDouble :: B.PDouble -> Maybe (Location, Double)
+pDoubleToLocationDouble a@(B.PDouble (_, str)) =
+    (toLocation a,) <$> (readMaybe str :: Maybe Double)
 

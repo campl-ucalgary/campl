@@ -17,7 +17,6 @@ import Data.Data
 import MplUtil.UniqueSupply
 import MplUtil.Data.Stream
 
-import MplParse.Util
 
 import Data.Coerce
 import Data.Proxy

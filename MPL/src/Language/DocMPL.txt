@@ -17,14 +17,7 @@ String literals //String// have the form
 except ``"`` unless preceded by ``\``.
 
 
-Character literals //Char// have the form
-``'``//c//``'``, where //c// is any single character.
 
-
-Double-precision float literals //Double// have the structure
-indicated by the regular expression ``digit+ '.' digit+ ('e' ('-')? digit+)?`` i.e.\
-two sequences of digits separated by a decimal point, optionally
-followed by an unsigned or negative exponent.
 
 
 
@@ -59,7 +52,16 @@ followed by an unsigned or negative exponent.
 
 
 PInteger literals are recognized by the regular expression
-`````(["-"] digit | digit) digit*`````
+`````('-' digit | digit) digit*`````
+
+PDouble literals are recognized by the regular expression
+`````digit+ '.' digit+ ('e' '-'? digit+)?`````
+
+PChar literals are recognized by the regular expression
+`````''' (char - ["'\"] | '\' ["'\fnrt"]) '''`````
+
+PString literals are recognized by the regular expression
+`````'"' (char - [""\"] | '\' [""\fnrt"])* '"'`````
 
 Par literals are recognized by the regular expression
 `````{"(+)"}`````
@@ -98,10 +100,10 @@ Infixl4op literals are recognized by the regular expression
 `````{"++"}`````
 
 Infixl5op literals are recognized by the regular expression
-`````'+' | '-'`````
+`````["+-"]`````
 
 Infixl6op literals are recognized by the regular expression
-`````'*' | '/' | '%'`````
+`````["%*/"]`````
 
 Infixr7op literals are recognized by the regular expression
 `````'^'`````
@@ -140,13 +142,13 @@ Case literals are recognized by the regular expression
 `````{"case"}`````
 
 UIdent literals are recognized by the regular expression
-`````('#' upper | upper) (letter | digit | '_')*`````
+`````('#' upper | upper) ('_' | digit | letter)*`````
 
 PIdent literals are recognized by the regular expression
-`````letter (letter | digit | '_' | ''')*`````
+`````letter (["'_"] | digit | letter)*`````
 
 UPIdent literals are recognized by the regular expression
-`````(letter | upper) (letter | digit | '_' | ''')*`````
+`````letter (["'_"] | digit | letter)*`````
 
 
 ===Reserved words and symbols===
@@ -155,228 +157,227 @@ The set of reserved words is the set of terminals appearing in the grammar. Thos
 The reserved words used in MPL are the following:
   | ``and`` | ``as`` | ``codata`` | ``coprotocol``
   | ``data`` | ``defn`` | ``do`` | ``else``
-  | ``fold`` | ``forall`` | ``fun`` | ``if``
-  | ``in`` | ``into`` | ``let`` | ``neg``
-  | ``of`` | ``on`` | ``plug`` | ``potato``
-  | ``proc`` | ``protocol`` | ``race`` | ``switch``
-  | ``then`` | ``unfold`` | ``where`` | ``with``
+  | ``fold`` | ``fun`` | ``if`` | ``in``
+  | ``into`` | ``let`` | ``neg`` | ``of``
+  | ``on`` | ``plug`` | ``potato`` | ``proc``
+  | ``protocol`` | ``race`` | ``switch`` | ``then``
+  | ``unfold`` | ``where`` | ``with`` |
 
 The symbols used in MPL are the following:
   | , | { | } | ;
-  | | | . | -> | =>
-  |   | = | :: | :=
+  | | | -> | = | ::
+  | => | := |  |
 
 ===Comments===
 Single-line comments begin with --.Multiple-line comments are  enclosed with {- and -}.
 
 ==The syntactic structure of MPL==
-Non-terminals are enclosed between < and >. 
-The symbols -> (production),  **|**  (union) 
-and **eps** (empty rule) belong to the BNF notation. 
+Non-terminals are enclosed between < and >.
+The symbols -> (production),  **|**  (union)
+and **eps** (empty rule) belong to the BNF notation.
 All other symbols are terminals.
 
   | //[PIdent]// | -> | **eps**
-  |  |  **|**  | //PIdent// 
-  |  |  **|**  | //PIdent// ``,`` //[PIdent]// 
-  | //MplProg// | -> | //[MplStmt]// 
-  | //MplStmt// | -> | ``defn`` ``{`` //[MplDefn]// ``}`` ``where`` ``{`` //[MplWhere]// ``}`` 
-  |  |  **|**  | ``defn`` ``{`` //[MplDefn]// ``}`` 
-  |  |  **|**  | //MplDefn// 
-  | //[MplDefn]// | -> | //MplDefn// 
-  |  |  **|**  | //MplDefn// ``;`` //[MplDefn]// 
+  |  |  **|**  | //PIdent//
+  |  |  **|**  | //PIdent// ``,`` //[PIdent]//
+  | //MplProg// | -> | //[MplStmt]//
+  | //MplStmt// | -> | ``defn`` ``{`` //[MplDefn]// ``}`` ``where`` ``{`` //[MplWhere]// ``}``
+  |  |  **|**  | ``defn`` ``{`` //[MplDefn]// ``}``
+  |  |  **|**  | //MplDefn//
+  | //[MplDefn]// | -> | //MplDefn//
+  |  |  **|**  | //MplDefn// ``;`` //[MplDefn]//
   | //[MplStmt]// | -> | **eps**
-  |  |  **|**  | //MplStmt// //[MplStmt]// 
-  | //MplWhere// | -> | //MplStmt// 
+  |  |  **|**  | //MplStmt// //[MplStmt]//
+  | //MplWhere// | -> | //MplStmt//
   | //[MplWhere]// | -> | **eps**
-  |  |  **|**  | //MplWhere// 
-  |  |  **|**  | //MplWhere// ``;`` //[MplWhere]// 
-  | //MplDefn// | -> | //SequentialTypeDefn// 
-  |  |  **|**  | //ConcurrentTypeDefn// 
-  |  |  **|**  | //FunctionDefn// 
-  |  |  **|**  | //ProcessDefn// 
-  |  |  **|**  | ``potato`` 
-  | //MplType// | -> | //MplType0// 
-  | //MplType0// | -> | //MplType1// //Par// //MplType1// 
-  |  |  **|**  | //MplType1// 
-  | //MplType1// | -> | //MplType2// //Tensor// //MplType2// 
-  |  |  **|**  | //MplType2// 
-  | //MplType2// | -> | //UIdent// //LBracket// //[MplType]// //RBracket// 
-  |  |  **|**  | //UIdent// //LBracket// //[MplType]// ``|`` //[MplType]// //RBracket// 
-  |  |  **|**  | //UIdent// 
-  |  |  **|**  | //LBracket// //RBracket// 
-  |  |  **|**  | //LBracket// //MplType// //RBracket// 
-  |  |  **|**  | //LSquareBracket// //MplType// //RSquareBracket// 
-  |  |  **|**  | //LBracket// //MplType// ``,`` //[TupleListType]// //RBracket// 
-  | //TupleListType// | -> | //MplType// 
-  | //ForallVarList// | -> | //UIdent// 
+  |  |  **|**  | //MplWhere//
+  |  |  **|**  | //MplWhere// ``;`` //[MplWhere]//
+  | //MplDefn// | -> | //SequentialTypeDefn//
+  |  |  **|**  | //ConcurrentTypeDefn//
+  |  |  **|**  | //FunctionDefn//
+  |  |  **|**  | //ProcessDefn//
+  |  |  **|**  | ``potato``
+  | //MplType// | -> | //MplType0//
+  | //MplType0// | -> | //MplType1// //Par// //MplType1//
+  |  |  **|**  | //MplType1//
+  | //MplType1// | -> | //MplType2// //Tensor// //MplType2//
+  |  |  **|**  | //MplType2//
+  | //MplType2// | -> | //UIdent// //LBracket// //[MplType]// //RBracket//
+  |  |  **|**  | //UIdent// //LBracket// //[MplType]// ``|`` //[MplType]// //RBracket//
+  |  |  **|**  | //UIdent//
+  |  |  **|**  | //LBracket// //RBracket//
+  |  |  **|**  | //LBracket// //MplType// //RBracket//
+  |  |  **|**  | //LSquareBracket// //MplType// //RSquareBracket//
+  |  |  **|**  | //LBracket// //MplType// ``,`` //[TupleListType]// //RBracket//
+  | //TupleListType// | -> | //MplType//
+  | //ForallVarList// | -> | //UIdent//
   | //[ForallVarList]// | -> | **eps**
-  |  |  **|**  | //ForallVarList// 
-  |  |  **|**  | //ForallVarList// `` `` //[ForallVarList]// 
-  | //[TupleListType]// | -> | //TupleListType// 
-  |  |  **|**  | //TupleListType// ``,`` //[TupleListType]// 
+  |  |  **|**  | //ForallVarList// //[ForallVarList]//
+  | //[TupleListType]// | -> | //TupleListType//
+  |  |  **|**  | //TupleListType// ``,`` //[TupleListType]//
   | //[MplType]// | -> | **eps**
-  |  |  **|**  | //MplType// 
-  |  |  **|**  | //MplType// ``,`` //[MplType]// 
-  | //SequentialTypeDefn// | -> | ``data`` //[SeqTypeClauseDefn]// 
-  |  |  **|**  | ``codata`` //[SeqTypeClauseDefn]// 
-  | //SeqTypeClauseDefn// | -> | //MplType// ``->`` //MplType// ``=`` ``{`` //[SeqTypePhraseDefn]// ``}`` 
-  | //SeqTypePhraseDefn// | -> | //[TypeHandleName]// ``::`` //[MplType]// ``->`` //MplType// 
-  | //[SeqTypeClauseDefn]// | -> | //SeqTypeClauseDefn// 
-  |  |  **|**  | //SeqTypeClauseDefn// ``and`` //[SeqTypeClauseDefn]// 
+  |  |  **|**  | //MplType//
+  |  |  **|**  | //MplType// ``,`` //[MplType]//
+  | //SequentialTypeDefn// | -> | ``data`` //[SeqTypeClauseDefn]//
+  |  |  **|**  | ``codata`` //[SeqTypeClauseDefn]//
+  | //SeqTypeClauseDefn// | -> | //MplType// ``->`` //MplType// ``=`` ``{`` //[SeqTypePhraseDefn]// ``}``
+  | //SeqTypePhraseDefn// | -> | //[TypeHandleName]// ``::`` //[MplType]// ``->`` //MplType//
+  | //[SeqTypeClauseDefn]// | -> | //SeqTypeClauseDefn//
+  |  |  **|**  | //SeqTypeClauseDefn// ``and`` //[SeqTypeClauseDefn]//
   | //[SeqTypePhraseDefn]// | -> | **eps**
-  |  |  **|**  | //SeqTypePhraseDefn// 
-  |  |  **|**  | //SeqTypePhraseDefn// ``;`` //[SeqTypePhraseDefn]// 
-  | //ConcurrentTypeDefn// | -> | ``protocol`` //[ConcurrentTypeClauseDefn]// 
-  |  |  **|**  | ``coprotocol`` //[ConcurrentTypeClauseDefn]// 
-  | //ConcurrentTypeClauseDefn// | -> | //MplType// ``=>`` //MplType// ``=`` ``{`` //[ConcurrentTypePhraseDefn]// ``}`` 
-  | //ConcurrentTypePhraseDefn// | -> | //[TypeHandleName]// ``::`` //MplType// ``=>`` //MplType// 
-  | //[ConcurrentTypeClauseDefn]// | -> | //ConcurrentTypeClauseDefn// 
-  |  |  **|**  | //ConcurrentTypeClauseDefn// ``and`` //[ConcurrentTypeClauseDefn]// 
+  |  |  **|**  | //SeqTypePhraseDefn//
+  |  |  **|**  | //SeqTypePhraseDefn// ``;`` //[SeqTypePhraseDefn]//
+  | //ConcurrentTypeDefn// | -> | ``protocol`` //[ConcurrentTypeClauseDefn]//
+  |  |  **|**  | ``coprotocol`` //[ConcurrentTypeClauseDefn]//
+  | //ConcurrentTypeClauseDefn// | -> | //MplType// ``=>`` //MplType// ``=`` ``{`` //[ConcurrentTypePhraseDefn]// ``}``
+  | //ConcurrentTypePhraseDefn// | -> | //[TypeHandleName]// ``::`` //MplType// ``=>`` //MplType//
+  | //[ConcurrentTypeClauseDefn]// | -> | //ConcurrentTypeClauseDefn//
+  |  |  **|**  | //ConcurrentTypeClauseDefn// ``and`` //[ConcurrentTypeClauseDefn]//
   | //[ConcurrentTypePhraseDefn]// | -> | **eps**
-  |  |  **|**  | //ConcurrentTypePhraseDefn// 
-  |  |  **|**  | //ConcurrentTypePhraseDefn// ``;`` //[ConcurrentTypePhraseDefn]// 
-  | //TypeHandleName// | -> | //UIdent// 
-  | //[TypeHandleName]// | -> | //TypeHandleName// 
-  |  |  **|**  | //TypeHandleName// ``,`` //[TypeHandleName]// 
-  | //Expr// | -> | //Expr0// 
-  |  |  **|**  | ``if`` //Expr// ``then`` //Expr// ``else`` //Expr// 
-  |  |  **|**  | ``let`` ``{`` //[LetExprPhrase]// ``}`` ``in`` //Expr// 
-  | //Expr0// | -> | //Expr1// //Colon// //Expr0// 
-  |  |  **|**  | //Expr1// 
-  | //Expr1// | -> | //Expr1// //Infixl1op// //Expr2// 
-  |  |  **|**  | //Expr2// 
-  | //Expr2// | -> | //Expr2// //Infixl2op// //Expr3// 
-  |  |  **|**  | //Expr3// 
-  | //Expr3// | -> | //Expr3// //Infixl3op// //Expr4// 
-  |  |  **|**  | //Expr4// 
-  | //Expr4// | -> | //Expr4// //Infixl4op// //Expr5// 
-  |  |  **|**  | //Expr5// 
-  | //Expr5// | -> | //Expr5// //Infixl5op// //Expr6// 
-  |  |  **|**  | //Expr6// 
-  | //Expr6// | -> | //Expr6// //Infixl6op// //Expr7// 
-  |  |  **|**  | //Expr7// 
-  | //Expr7// | -> | //Expr8// //Infixr7op// //Expr7// 
-  |  |  **|**  | //Expr8// 
-  | //Expr8// | -> | //Expr8// //Infixl8op// //Expr10// 
-  |  |  **|**  | //Expr10// 
-  | //Expr10// | -> | //LSquareBracket// //[Expr]// //RSquareBracket// 
-  |  |  **|**  | //PIdent// 
-  |  |  **|**  | //PInteger// 
-  |  |  **|**  | //String// 
-  |  |  **|**  | //Char// 
-  |  |  **|**  | //Double// 
-  |  |  **|**  | //LBracket// //RBracket// 
-  |  |  **|**  | ``fold`` //Expr// ``of`` ``{`` //[FoldExprPhrase]// ``}`` 
-  |  |  **|**  | ``unfold`` //Expr// ``of`` ``{`` //[UnfoldExprPhrase]// ``}`` 
-  |  |  **|**  | //Case// //Expr// ``of`` ``{`` //[PattExprPhrase]// ``}`` 
-  |  |  **|**  | ``switch`` ``{`` //[SwitchExprPhrase]// ``}`` 
-  |  |  **|**  | //UIdent// //LBracket// //[Expr]// //RBracket// 
-  |  |  **|**  | //UIdent// 
-  |  |  **|**  | //LBracket// //Expr// ``,`` //[TupleExprList]// //RBracket// 
-  |  |  **|**  | //PIdent// //LBracket// //[Expr]// //RBracket// 
-  |  |  **|**  | //LBracket// //[RecordExprPhrase]// //RBracket// 
-  |  |  **|**  | //LBracket// //Expr// //RBracket// 
-  | //UnfoldExprPhrase// | -> | //Pattern// ``of`` ``{`` //[FoldExprPhrase]// ``}`` 
-  | //[UnfoldExprPhrase]// | -> | //UnfoldExprPhrase// 
-  |  |  **|**  | //UnfoldExprPhrase// ``;`` //[UnfoldExprPhrase]// 
-  | //FoldExprPhrase// | -> | //UIdent// //Colon// //[Pattern]// ``->`` //Expr// 
-  | //[FoldExprPhrase]// | -> | //FoldExprPhrase// 
-  |  |  **|**  | //FoldExprPhrase// ``;`` //[FoldExprPhrase]// 
-  | //LetExprPhrase// | -> | //MplStmt// 
-  | //[LetExprPhrase]// | -> | //LetExprPhrase// 
-  |  |  **|**  | //LetExprPhrase// ``;`` //[LetExprPhrase]// 
-  | //TupleExprList// | -> | //Expr// 
-  | //[TupleExprList]// | -> | //TupleExprList// 
-  |  |  **|**  | //TupleExprList// ``,`` //[TupleExprList]// 
-  | //RecordExprPhrase// | -> | //UIdent// ``:=`` //PattExprPhrase// 
-  | //[RecordExprPhrase]// | -> | //RecordExprPhrase// 
-  |  |  **|**  | //RecordExprPhrase// ``,`` //[RecordExprPhrase]// 
-  | //SwitchExprPhrase// | -> | //Expr// ``->`` //Expr// 
-  | //[SwitchExprPhrase]// | -> | //SwitchExprPhrase// 
-  |  |  **|**  | //SwitchExprPhrase// ``;`` //[SwitchExprPhrase]// 
+  |  |  **|**  | //ConcurrentTypePhraseDefn//
+  |  |  **|**  | //ConcurrentTypePhraseDefn// ``;`` //[ConcurrentTypePhraseDefn]//
+  | //TypeHandleName// | -> | //UIdent//
+  | //[TypeHandleName]// | -> | //TypeHandleName//
+  |  |  **|**  | //TypeHandleName// ``,`` //[TypeHandleName]//
+  | //Expr// | -> | //Expr0//
+  |  |  **|**  | ``if`` //Expr// ``then`` //Expr// ``else`` //Expr//
+  |  |  **|**  | ``let`` ``{`` //[LetExprPhrase]// ``}`` ``in`` //Expr//
+  | //Expr0// | -> | //Expr1// //Colon// //Expr0//
+  |  |  **|**  | //Expr1//
+  | //Expr1// | -> | //Expr1// //Infixl1op// //Expr2//
+  |  |  **|**  | //Expr2//
+  | //Expr2// | -> | //Expr2// //Infixl2op// //Expr3//
+  |  |  **|**  | //Expr3//
+  | //Expr3// | -> | //Expr3// //Infixl3op// //Expr4//
+  |  |  **|**  | //Expr4//
+  | //Expr4// | -> | //Expr4// //Infixl4op// //Expr5//
+  |  |  **|**  | //Expr5//
+  | //Expr5// | -> | //Expr5// //Infixl5op// //Expr6//
+  |  |  **|**  | //Expr6//
+  | //Expr6// | -> | //Expr6// //Infixl6op// //Expr7//
+  |  |  **|**  | //Expr7//
+  | //Expr7// | -> | //Expr8// //Infixr7op// //Expr7//
+  |  |  **|**  | //Expr8//
+  | //Expr8// | -> | //Expr8// //Infixl8op// //Expr10//
+  |  |  **|**  | //Expr10//
+  | //Expr10// | -> | //LSquareBracket// //[Expr]// //RSquareBracket//
+  |  |  **|**  | //PIdent//
+  |  |  **|**  | //PInteger//
+  |  |  **|**  | //PString//
+  |  |  **|**  | //PChar//
+  |  |  **|**  | //PDouble//
+  |  |  **|**  | //LBracket// //RBracket//
+  |  |  **|**  | ``fold`` //Expr// ``of`` ``{`` //[FoldExprPhrase]// ``}``
+  |  |  **|**  | ``unfold`` //Expr// ``of`` ``{`` //[UnfoldExprPhrase]// ``}``
+  |  |  **|**  | //Case// //Expr// ``of`` ``{`` //[PattExprPhrase]// ``}``
+  |  |  **|**  | ``switch`` ``{`` //[SwitchExprPhrase]// ``}``
+  |  |  **|**  | //UIdent// //LBracket// //[Expr]// //RBracket//
+  |  |  **|**  | //UIdent//
+  |  |  **|**  | //LBracket// //Expr// ``,`` //[TupleExprList]// //RBracket//
+  |  |  **|**  | //PIdent// //LBracket// //[Expr]// //RBracket//
+  |  |  **|**  | //LBracket// //[RecordExprPhrase]// //RBracket//
+  |  |  **|**  | //LBracket// //Expr// //RBracket//
+  | //UnfoldExprPhrase// | -> | //Pattern// ``of`` ``{`` //[FoldExprPhrase]// ``}``
+  | //[UnfoldExprPhrase]// | -> | //UnfoldExprPhrase//
+  |  |  **|**  | //UnfoldExprPhrase// ``;`` //[UnfoldExprPhrase]//
+  | //FoldExprPhrase// | -> | //UIdent// //Colon// //[Pattern]// ``->`` //Expr//
+  | //[FoldExprPhrase]// | -> | //FoldExprPhrase//
+  |  |  **|**  | //FoldExprPhrase// ``;`` //[FoldExprPhrase]//
+  | //LetExprPhrase// | -> | //MplStmt//
+  | //[LetExprPhrase]// | -> | //LetExprPhrase//
+  |  |  **|**  | //LetExprPhrase// ``;`` //[LetExprPhrase]//
+  | //TupleExprList// | -> | //Expr//
+  | //[TupleExprList]// | -> | //TupleExprList//
+  |  |  **|**  | //TupleExprList// ``,`` //[TupleExprList]//
+  | //RecordExprPhrase// | -> | //UIdent// ``:=`` //PattExprPhrase//
+  | //[RecordExprPhrase]// | -> | //RecordExprPhrase//
+  |  |  **|**  | //RecordExprPhrase// ``,`` //[RecordExprPhrase]//
+  | //SwitchExprPhrase// | -> | //Expr// ``->`` //Expr//
+  | //[SwitchExprPhrase]// | -> | //SwitchExprPhrase//
+  |  |  **|**  | //SwitchExprPhrase// ``;`` //[SwitchExprPhrase]//
   | //[Expr]// | -> | **eps**
-  |  |  **|**  | //Expr// 
-  |  |  **|**  | //Expr// ``,`` //[Expr]// 
-  | //PattExprPhrase// | -> | //[Pattern]// ``->`` //Expr// 
-  | //Pattern// | -> | //Pattern0// 
+  |  |  **|**  | //Expr//
+  |  |  **|**  | //Expr// ``,`` //[Expr]//
+  | //PattExprPhrase// | -> | //[Pattern]// ``->`` //Expr//
+  | //Pattern// | -> | //Pattern0//
   | //[Pattern]// | -> | **eps**
-  |  |  **|**  | //Pattern// 
-  |  |  **|**  | //Pattern// ``,`` //[Pattern]// 
-  | //Pattern0// | -> | //Pattern1// //Colon// //Pattern0// 
-  |  |  **|**  | //Pattern1// 
-  | //Pattern1// | -> | //UIdent// //LBracket// //[Pattern]// //RBracket// 
-  |  |  **|**  | //UIdent// 
-  |  |  **|**  | //LBracket// //RBracket// 
-  |  |  **|**  | //LBracket// //[DestructorPatternPhrase]// //RBracket// 
-  |  |  **|**  | //LSquareBracket// //[Pattern]// //RSquareBracket// 
-  |  |  **|**  | //LBracket// //Pattern// ``,`` //[TupleListPattern]// //RBracket// 
-  |  |  **|**  | //PIdent// 
-  |  |  **|**  | //String// 
-  |  |  **|**  | //PInteger// 
-  |  |  **|**  | //NullPattern// 
-  |  |  **|**  | //LBracket// //Pattern// //RBracket// 
-  | //TupleListPattern// | -> | //Pattern// 
-  | //[TupleListPattern]// | -> | //TupleListPattern// 
-  |  |  **|**  | //TupleListPattern// ``,`` //[TupleListPattern]// 
-  | //DestructorPatternPhrase// | -> | //UIdent// ``:=`` //Pattern// 
-  | //[DestructorPatternPhrase]// | -> | //DestructorPatternPhrase// 
-  |  |  **|**  | //DestructorPatternPhrase// ``,`` //[DestructorPatternPhrase]// 
-  | //FunctionDefn// | -> | ``fun`` //PIdent// ``::`` //[MplType]// ``->`` //MplType// ``=`` ``{`` //[PattExprPhrase]// ``}`` 
-  |  |  **|**  | ``fun`` //PIdent// ``=`` ``{`` //[PattExprPhrase]// ``}`` 
-  | //[PattExprPhrase]// | -> | //PattExprPhrase// 
-  |  |  **|**  | //PattExprPhrase// ``;`` //[PattExprPhrase]// 
-  | //ProcessDefn// | -> | ``proc`` //PIdent// ``::`` //[MplType]// ``|`` //[MplType]// ``=>`` //[MplType]// ``=`` ``{`` //[ProcessPhrase]// ``}`` 
-  |  |  **|**  | ``proc`` //PIdent// ``=`` ``{`` //[ProcessPhrase]// ``}`` 
-  | //ProcessPhrase// | -> | //[Pattern]// ``|`` //[PIdent]// ``=>`` //[PIdent]// ``->`` //ProcessCommandsBlock// 
-  | //[ProcessPhrase]// | -> | //ProcessPhrase// 
-  |  |  **|**  | //ProcessPhrase// ``;`` //[ProcessPhrase]// 
-  | //ProcessCommandsBlock// | -> | ``do`` ``{`` //[ProcessCommand]// ``}`` 
-  |  |  **|**  | //ProcessCommand// 
-  | //[ProcessCommand]// | -> | //ProcessCommand// 
-  |  |  **|**  | //ProcessCommand// ``;`` //[ProcessCommand]// 
-  | //ProcessCommand// | -> | //PIdent// //LBracket// //[Expr]// ``|`` //[PIdent]// ``=>`` //[PIdent]// //RBracket// 
-  |  |  **|**  | //Close// //PIdent// 
-  |  |  **|**  | //Halt// //PIdent// 
-  |  |  **|**  | //Get// //Pattern// ``on`` //PIdent// 
-  |  |  **|**  | //Put// //Expr// ``on`` //PIdent// 
-  |  |  **|**  | //HCase// //PIdent// ``of`` ``{`` //[HCasePhrase]// ``}`` 
-  |  |  **|**  | //HPut// //UIdent// ``on`` //PIdent// 
-  |  |  **|**  | //Split// //PIdent// ``into`` //[SplitChannel]// 
-  |  |  **|**  | //Fork// //PIdent// ``as`` ``{`` //[ForkPhrase]// ``}`` 
-  |  |  **|**  | //PIdent// //ChId// //PIdent// 
-  |  |  **|**  | //PIdent// //ChId// ``neg`` //PIdent// 
-  |  |  **|**  | ``race`` ``{`` //[RacePhrase]// ``}`` 
-  |  |  **|**  | ``plug`` ``{`` //[PlugPhrase]// ``}`` 
-  |  |  **|**  | //Case// //Expr// ``of`` ``{`` //[ProcessCasePhrase]// ``}`` 
-  |  |  **|**  | ``switch`` ``{`` //[ProcessSwitchPhrase]// ``}`` 
-  | //HCasePhrase// | -> | //UIdent// ``->`` //ProcessCommandsBlock// 
+  |  |  **|**  | //Pattern//
+  |  |  **|**  | //Pattern// ``,`` //[Pattern]//
+  | //Pattern0// | -> | //Pattern1// //Colon// //Pattern0//
+  |  |  **|**  | //Pattern1//
+  | //Pattern1// | -> | //UIdent// //LBracket// //[Pattern]// //RBracket//
+  |  |  **|**  | //UIdent//
+  |  |  **|**  | //LBracket// //RBracket//
+  |  |  **|**  | //LBracket// //[DestructorPatternPhrase]// //RBracket//
+  |  |  **|**  | //LSquareBracket// //[Pattern]// //RSquareBracket//
+  |  |  **|**  | //LBracket// //Pattern// ``,`` //[TupleListPattern]// //RBracket//
+  |  |  **|**  | //PIdent//
+  |  |  **|**  | //String//
+  |  |  **|**  | //PInteger//
+  |  |  **|**  | //NullPattern//
+  |  |  **|**  | //LBracket// //Pattern// //RBracket//
+  | //TupleListPattern// | -> | //Pattern//
+  | //[TupleListPattern]// | -> | //TupleListPattern//
+  |  |  **|**  | //TupleListPattern// ``,`` //[TupleListPattern]//
+  | //DestructorPatternPhrase// | -> | //UIdent// ``:=`` //Pattern//
+  | //[DestructorPatternPhrase]// | -> | //DestructorPatternPhrase//
+  |  |  **|**  | //DestructorPatternPhrase// ``,`` //[DestructorPatternPhrase]//
+  | //FunctionDefn// | -> | ``fun`` //PIdent// ``::`` //[MplType]// ``->`` //MplType// ``=`` ``{`` //[PattExprPhrase]// ``}``
+  |  |  **|**  | ``fun`` //PIdent// ``=`` ``{`` //[PattExprPhrase]// ``}``
+  | //[PattExprPhrase]// | -> | //PattExprPhrase//
+  |  |  **|**  | //PattExprPhrase// ``;`` //[PattExprPhrase]//
+  | //ProcessDefn// | -> | ``proc`` //PIdent// ``::`` //[MplType]// ``|`` //[MplType]// ``=>`` //[MplType]// ``=`` ``{`` //[ProcessPhrase]// ``}``
+  |  |  **|**  | ``proc`` //PIdent// ``=`` ``{`` //[ProcessPhrase]// ``}``
+  | //ProcessPhrase// | -> | //[Pattern]// ``|`` //[PIdent]// ``=>`` //[PIdent]// ``->`` //ProcessCommandsBlock//
+  | //[ProcessPhrase]// | -> | //ProcessPhrase//
+  |  |  **|**  | //ProcessPhrase// ``;`` //[ProcessPhrase]//
+  | //ProcessCommandsBlock// | -> | ``do`` ``{`` //[ProcessCommand]// ``}``
+  |  |  **|**  | //ProcessCommand//
+  | //[ProcessCommand]// | -> | //ProcessCommand//
+  |  |  **|**  | //ProcessCommand// ``;`` //[ProcessCommand]//
+  | //ProcessCommand// | -> | //PIdent// //LBracket// //[Expr]// ``|`` //[PIdent]// ``=>`` //[PIdent]// //RBracket//
+  |  |  **|**  | //Close// //PIdent//
+  |  |  **|**  | //Halt// //PIdent//
+  |  |  **|**  | //Get// //Pattern// ``on`` //PIdent//
+  |  |  **|**  | //Put// //Expr// ``on`` //PIdent//
+  |  |  **|**  | //HCase// //PIdent// ``of`` ``{`` //[HCasePhrase]// ``}``
+  |  |  **|**  | //HPut// //UIdent// ``on`` //PIdent//
+  |  |  **|**  | //Split// //PIdent// ``into`` //[SplitChannel]//
+  |  |  **|**  | //Fork// //PIdent// ``as`` ``{`` //[ForkPhrase]// ``}``
+  |  |  **|**  | //PIdent// //ChId// //PIdent//
+  |  |  **|**  | //PIdent// //ChId// ``neg`` //PIdent//
+  |  |  **|**  | ``race`` ``{`` //[RacePhrase]// ``}``
+  |  |  **|**  | ``plug`` ``{`` //[PlugPhrase]// ``}``
+  |  |  **|**  | //Case// //Expr// ``of`` ``{`` //[ProcessCasePhrase]// ``}``
+  |  |  **|**  | ``switch`` ``{`` //[ProcessSwitchPhrase]// ``}``
+  | //HCasePhrase// | -> | //UIdent// ``->`` //ProcessCommandsBlock//
   | //[HCasePhrase]// | -> | **eps**
-  |  |  **|**  | //HCasePhrase// 
-  |  |  **|**  | //HCasePhrase// ``;`` //[HCasePhrase]// 
-  | //SplitChannel// | -> | //PIdent// 
-  | //[SplitChannel]// | -> | //SplitChannel// 
-  |  |  **|**  | //SplitChannel// ``,`` //[SplitChannel]// 
-  | //ForkPhrase// | -> | //PIdent// ``->`` //ProcessCommandsBlock// 
-  |  |  **|**  | //PIdent// ``with`` //[ForkChannel]// ``->`` //ProcessCommandsBlock// 
-  | //[ForkPhrase]// | -> | //ForkPhrase// 
-  |  |  **|**  | //ForkPhrase// ``;`` //[ForkPhrase]// 
-  | //ForkChannel// | -> | //PIdent// 
+  |  |  **|**  | //HCasePhrase//
+  |  |  **|**  | //HCasePhrase// ``;`` //[HCasePhrase]//
+  | //SplitChannel// | -> | //PIdent//
+  | //[SplitChannel]// | -> | //SplitChannel//
+  |  |  **|**  | //SplitChannel// ``,`` //[SplitChannel]//
+  | //ForkPhrase// | -> | //PIdent// ``->`` //ProcessCommandsBlock//
+  |  |  **|**  | //PIdent// ``with`` //[ForkChannel]// ``->`` //ProcessCommandsBlock//
+  | //[ForkPhrase]// | -> | //ForkPhrase//
+  |  |  **|**  | //ForkPhrase// ``;`` //[ForkPhrase]//
+  | //ForkChannel// | -> | //PIdent//
   | //[ForkChannel]// | -> | **eps**
-  |  |  **|**  | //ForkChannel// 
-  |  |  **|**  | //ForkChannel// ``;`` //[ForkChannel]// 
-  | //RacePhrase// | -> | //PIdent// ``->`` //ProcessCommandsBlock// 
+  |  |  **|**  | //ForkChannel//
+  |  |  **|**  | //ForkChannel// ``;`` //[ForkChannel]//
+  | //RacePhrase// | -> | //PIdent// ``->`` //ProcessCommandsBlock//
   | //[RacePhrase]// | -> | **eps**
-  |  |  **|**  | //RacePhrase// 
-  |  |  **|**  | //RacePhrase// ``;`` //[RacePhrase]// 
-  | //PlugPhrase// | -> | //ProcessCommandsBlock// 
-  |  |  **|**  | //[PIdent]// ``=>`` //[PIdent]// ``->`` //ProcessCommandsBlock// 
-  | //[PlugPhrase]// | -> | //PlugPhrase// 
-  |  |  **|**  | //PlugPhrase// ``;`` //[PlugPhrase]// 
-  | //ProcessCasePhrase// | -> | //Pattern// ``->`` //ProcessCommandsBlock// 
-  | //[ProcessCasePhrase]// | -> | //ProcessCasePhrase// 
-  |  |  **|**  | //ProcessCasePhrase// ``;`` //[ProcessCasePhrase]// 
-  | //ProcessSwitchPhrase// | -> | //Expr// ``->`` //ProcessCommandsBlock// 
-  | //[ProcessSwitchPhrase]// | -> | //ProcessSwitchPhrase// 
-  |  |  **|**  | //ProcessSwitchPhrase// ``;`` //[ProcessSwitchPhrase]// 
+  |  |  **|**  | //RacePhrase//
+  |  |  **|**  | //RacePhrase// ``;`` //[RacePhrase]//
+  | //PlugPhrase// | -> | //ProcessCommandsBlock//
+  |  |  **|**  | //[PIdent]// ``=>`` //[PIdent]// ``->`` //ProcessCommandsBlock//
+  | //[PlugPhrase]// | -> | //PlugPhrase//
+  |  |  **|**  | //PlugPhrase// ``;`` //[PlugPhrase]//
+  | //ProcessCasePhrase// | -> | //Pattern// ``->`` //ProcessCommandsBlock//
+  | //[ProcessCasePhrase]// | -> | //ProcessCasePhrase//
+  |  |  **|**  | //ProcessCasePhrase// ``;`` //[ProcessCasePhrase]//
+  | //ProcessSwitchPhrase// | -> | //Expr// ``->`` //ProcessCommandsBlock//
+  | //[ProcessSwitchPhrase]// | -> | //ProcessSwitchPhrase//
+  |  |  **|**  | //ProcessSwitchPhrase// ``;`` //[ProcessSwitchPhrase]//
 
 

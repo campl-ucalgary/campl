@@ -42,7 +42,6 @@ import qualified Language.LayoutMPL as B
 import qualified Language.LexMPL as B
 import qualified Language.ParMPL as B
 import qualified Language.PrintMPL as B
-import qualified Language.SkelMPL as B
 
 import Optics
 
@@ -69,6 +68,12 @@ class PPrint a where
     pprint :: a -> String
 
 instance PPrint Int where
+    pprint n = show n
+
+instance PPrint Double where
+    pprint n = show n
+
+instance PPrint Char where
     pprint n = show n
 
 instance PPrint String where
@@ -293,6 +298,9 @@ instance ( PPrint (IdP x), PPrint (TypeP x) ) => MplTypeToBnfc (MplType x) where
             TypeTopBotF cxt -> B.MPL_UIDENT_NO_ARGS_TYPE (toBnfcIdent "TopBot")
             TypeNegF cxt tp -> B.MPL_UIDENT_ARGS_TYPE (toBnfcIdent "Neg") bnfcKeyword [f tp] bnfcKeyword
 
+            TypeIntF _cxt -> B.MPL_UIDENT_NO_ARGS_TYPE $ toBnfcIdent "Int"
+            TypeDoubleF _cxt -> B.MPL_UIDENT_NO_ARGS_TYPE $ toBnfcIdent "Double"
+
 class MplClauseToBnfc x t res | t -> res where
     mplClauseToBnfc :: MplTypeClause x t -> res
 
@@ -473,11 +481,17 @@ class MplExprToBnfc t where
 instance MplPrintConstraints x => MplExprToBnfc (MplExpr x) where
     mplExprToBnfc = f
       where
-        f (EPOps _ op exp0 exp1) = undefined
+        f (EPOps _ op exp0 exp1) = case op of
+            PrimitiveAdd ->  B.INFIXL5_EXPR (f exp0) (toBnfcIdent op) (f exp1)
+            PrimitiveSub ->  B.INFIXL5_EXPR (f exp0) (toBnfcIdent op) (f exp1)
+            _ ->  error "primitive op not implemented yet"
         f (EVar _ id) = B.VAR_EXPR $ toBnfcIdent id
         f (EInt _ id) = B.INT_EXPR $ toBnfcIdent id
-        f (EChar _ id) = B.CHAR_EXPR id
-        f (EDouble _ id) = B.DOUBLE_EXPR id
+        -- f (EChar _ id) = B.CHAR_EXPR id
+        f (EChar _ id) = error "char not implemented"
+        -- f (EDouble _ id) = B.DOUBLE_EXPR id
+        f (EDouble _ id) = B.DOUBLE_EXPR $ toBnfcIdent id
+
         f (ECase _ expr pattexprs) = B.CASE_EXPR bnfcKeyword (f expr) $ NE.toList $ fmap g pattexprs
           where
             g (patt, expr) = B.PATTERN_TO_EXPR [mplPattToBnfc patt] (mplExprToBnfc expr)
@@ -546,11 +560,21 @@ instance MplPrintConstraints x => MplExprToBnfc (MplExpr x) where
     
         | XExpr !(XXExpr x) -}
 
+instance PPrint PrimitiveOperators where
+    pprint = go
+      where
+        go PrimitiveAdd = "+"
+        go PrimitiveSub = "-"
+        go _ = error "error in print -- not implemented yet"
+
 class ToBnfcIdent t where
     toBnfcIdent :: PPrint a => a -> t
 
 instance ToBnfcIdent B.PIdent where
     toBnfcIdent n =  B.PIdent ((-1,-1), pprint n)
+
+instance ToBnfcIdent B.PDouble where
+    toBnfcIdent n =  B.PDouble ((-1,-1), pprint n)
 
 instance ToBnfcIdent B.UIdent where
     toBnfcIdent n =  B.UIdent ((-1,-1), pprint n)
@@ -572,6 +596,10 @@ instance ToBnfcIdent B.ForallVarList where
 
 instance ToBnfcIdent B.TypeHandleName where
     toBnfcIdent n =  B.TYPE_HANDLE_NAME $ toBnfcIdent n
+
+
+instance ToBnfcIdent B.Infixl5op where
+    toBnfcIdent n =  B.Infixl5op ((-1,-1), pprint n) 
 
 class BnfcKeyword t where
     bnfcKeyword :: t

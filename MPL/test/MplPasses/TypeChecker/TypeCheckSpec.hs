@@ -61,7 +61,9 @@ spec = do
     mapM_ (`describeAnyErrorsFile` ("Type unification for all failure", 
             _MplTypeCheckErrors 
             % _TypeCheckUnificationErrors 
-            % _TypeForallMatchFailure)) negcases
+            -- % _TypeForallMatchFailure
+            )
+            ) negcases
 
 
     mapM_ (`describeAnyErrors` ("Type match failure", 

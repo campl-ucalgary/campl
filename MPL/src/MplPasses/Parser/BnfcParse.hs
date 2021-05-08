@@ -7,7 +7,6 @@ module MplPasses.Parser.BnfcParse (
     , module Language.LexMPL
     , module Language.ParMPL
     , module Language.PrintMPL
-    , module Language.SkelMPL
     , runBnfc
     , BnfcErrors (..)
     , AsBnfcErrors (..)
@@ -21,7 +20,6 @@ import Language.LayoutMPL
 import Language.LexMPL
 import Language.ParMPL
 import Language.PrintMPL
-import Language.SkelMPL
 
 {- Module for defining wrappers around BNFC's generated code
  -}

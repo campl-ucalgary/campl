@@ -16,8 +16,6 @@ extra-source-files:
     - src/Language/ParMPL.y
 
     # These are test files
-    - test/MplParse/cases/pMplDataClauseSpine/negative/*.mpl
-    - test/MplParse/cases/pMplDataClauseSpine/positive/*.mpl
 
 # Metadata used when publishing your package
 # synopsis:            Short description of your package
@@ -33,7 +31,6 @@ dependencies:
     - containers
     - unordered-containers
     - hashable
-    - parsec
 
     - mtl
 
@@ -48,6 +45,8 @@ dependencies:
 
     - raw-strings-qq
     - deepseq
+
+    - pretty-simple
 
 
 library:

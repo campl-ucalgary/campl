@@ -18,6 +18,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 data ParseErrors =
     ExpectedGetOrPutButGot IdentP
     | InvalidInt IdentP
+    | InvalidDouble IdentP
     | ExpectedTypeVarButGot (MplType MplParsed)
     | ExpectedTypeSeqWithArgsButGot (MplType MplParsed)
     | ExpectedTypeConcWithArgsButGot (MplType MplParsed)

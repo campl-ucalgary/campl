@@ -56,6 +56,7 @@ import qualified Data.Map as Map
 
 import Data.Bool
 import Data.List
+import Data.Tuple
 
 import Data.Text.Prettyprint.Doc
 
@@ -213,7 +214,8 @@ substituteDelta (v, sub) tp = res
     f n = (embed $ fmap fst n, foldMap snd n)
 
 
-match :: 
+
+matchCont :: 
     ( AsTypeUnificationError e x
     , MonadError e m
     , Eq (IdP x) 
@@ -226,9 +228,11 @@ match ::
     , ForallMplType Show x 
     , Show (IdP x)
     ) =>  
-    MplType x -> MplType x -> 
+    MplType x -> 
+    MplType x -> 
+    (MplType x -> MplType x -> m [(TypeP x, MplType x)]) -> 
     m [(TypeP x, MplType x)]
-match = f
+matchCont ty0 ty1 k = f ty0 ty1
   where
     f (TypeVar cxt0 a) n = fmap pure $ mkValidSub a n
     f n (TypeVar cxt1 b) = fmap pure $ mkValidSub b n
@@ -236,37 +240,39 @@ match = f
     f type0@(TypeSeqWithArgs _cxt0 a args) type1@(TypeSeqWithArgs _cxt1 b brgs) 
         | a == b && length args == length brgs =
             concat <$> traverse (uncurry f) (zip args brgs)
-        | otherwise = throwError $  _TypeMatchFailure # (type0, type1)
+        | otherwise = k type0 type1
 
     -- TypeSeqVarWithArgs !(XTypeSeqVarWithArgs x) (TypeP x) [MplType x]
         
     f type0@(TypeConcWithArgs _ a (args0, args1)) type1@(TypeConcWithArgs _ b (brgs0, brgs1)) 
         | a == b && length args0 == length brgs0 && length args1 == length brgs1 =
             concat <$> traverse (uncurry f) (zip (args0 <> args1) (brgs0 <> brgs1))
-        | otherwise = throwError $  _TypeMatchFailure # (type0, type1)
+        | otherwise = k type0 type1
     -- TypeConcVarWithArgs !(XTypeConcVarWithArgs x) (TypeP x) ([MplType x], [MplType x])
 
-    -- TODO: Actually, I think there's a bug here... We really should check if we are matching
-    -- concurrent types with concurrent type with no args (and vice versa)
-
+    -- TODO: Actually, I think there's a bug here... 
+    -- We really should check if we are matching concurrent types with 
+    -- concurrent type with no args (and vice versa) Although, I think this is handled
+    -- in the renaming stage.
     f type0@(TypeWithNoArgs _ a) type1@(TypeWithNoArgs _ b) 
         | a == b = return mempty
-        | otherwise = throwError $  _TypeMatchFailure # (type0, type1)
+        | otherwise = k type0 type1
     f type0@(TypeConcWithArgs _ a args) type1@(TypeWithNoArgs _ b) 
         | a == b && has _Empty args = return mempty
-        | otherwise = throwError $  _TypeMatchFailure # (type0, type1)
+        | otherwise = k type0 type1
     f type0@(TypeSeqWithArgs _ a args) type1@(TypeWithNoArgs _ b) 
         | a == b && has _Empty args = return mempty
-        | otherwise = throwError $  _TypeMatchFailure # (type0, type1)
+        | otherwise = k type0 type1
     f type0@(TypeWithNoArgs _ a) type1@(TypeConcWithArgs _ b brgs)
         | a == b && has _Empty brgs = return mempty
-        | otherwise = throwError $  _TypeMatchFailure # (type0, type1)
+        | otherwise = k type0 type1
     f type0@(TypeWithNoArgs _ a) type1@(TypeSeqWithArgs _ b brgs) 
         | a == b && has _Empty brgs = return mempty
-        | otherwise = throwError $  _TypeMatchFailure # (type0, type1)
+        | otherwise = k type0 type1
 
     f type0@(TypeBuiltIn a) type1@(TypeBuiltIn b) = case (a,b) of
         (TypeIntF a, TypeIntF b) -> return []
+        (TypeDoubleF a, TypeDoubleF b) -> return []
         (TypeTopBotF a, TypeTopBotF b) -> return []
 
         (TypeNegF cxt0 a, TypeNegF cxt1 b) -> f a b
@@ -285,7 +291,7 @@ match = f
             | length froms0 == length froms1 -> 
                 (<>) <$> (fold <$> traverse (uncurry f) (NE.zip froms0 froms1 ))
                      <*> f to0 to1
-            | otherwise -> throwError $ _TypeMatchFailure # (type0,type1)
+            | otherwise -> k type0 type1
         (TypeConcArrF cxt0 seqs0 froms0 tos0, TypeConcArrF cxt1 seqs1 froms1 tos1 ) 
             | getAll $  foldMap All 
                 [ length seqs0 == length seqs1
@@ -297,9 +303,54 @@ match = f
                     , zip froms0 froms1
                     , zip tos0 tos1
                     ]
-            | otherwise -> throwError $ _TypeMatchFailure # (type0,type1)
-        _ -> throwError $ _TypeMatchFailure # (type0,type1)
-    f type0 type1 = throwError $ _TypeMatchFailure # (type0,type1)
+            | otherwise -> k type0 type1
+        _ -> k type0 type1
+    f type0 type1 = k type0 type1
+
+{- | This is literally matching as you would expect from a unification algorithm -}
+match ::
+    ( AsTypeUnificationError e x
+    , MonadError e m
+    , Eq (IdP x) 
+    , Eq (TypeP x) 
+    , Show (TypeP x) 
+    , PPrint (MplType x)
+    , PPrint (IdP x)
+    , PPrint (TypeP x)
+
+    , ForallMplType Show x 
+    , Show (IdP x)
+    ) =>  
+    MplType x -> 
+    MplType x -> 
+    m [(TypeP x, MplType x)] 
+match ty0 ty1 = matchCont ty0 ty1 k
+  where
+    k type0 type1 = (throwError $ _TypeMatchFailure # (type0,type1))
+
+{- | This matches but cuts some slack for @Int@ and @Double@-}
+matchNumNudge ::
+    ( AsTypeUnificationError e x
+    , MonadError e m
+    , Eq (IdP x) 
+    , Eq (TypeP x) 
+    , Show (TypeP x) 
+    , PPrint (MplType x)
+    , PPrint (IdP x)
+    , PPrint (TypeP x)
+
+    , ForallMplType Show x 
+    , Show (IdP x)
+    ) =>  
+    MplType x -> 
+    MplType x -> 
+    m [(TypeP x, MplType x)] 
+matchNumNudge ty0 ty1 = matchCont ty0 ty1 k
+  where
+    k type0@(TypeBuiltIn a) type1@(TypeBuiltIn b) = case (a,b) of
+        (TypeIntF a, TypeIntF b) -> return []
+        (TypeDoubleF a, TypeDoubleF b) -> return []
+        _ -> (throwError $ _TypeMatchFailure # (type0,type1))
 
     {-
      -
@@ -381,16 +432,60 @@ coalesce ::
     Sub x -> 
     [Sub x] ->
     m [Sub x]
-coalesce (s, ssub) = fmap concat . traverse f
+coalesce (s, ssub) = fmap concat . traverse go
   where
-    f ((t, tsub)) 
+    go ((t, tsub)) 
         | s == t = match ssub tsub
         | otherwise = pure <$> mkValidSub t (substitute (s, ssub) tsub)
+
+{-| this is the same as coalesce but in the case we have subsitutions like: @A = Int, A = Double@,
+this will (informally) /nudge/ @A@ to be of type @Double@.
+In other words, this follows the convention that @Int <= Double@ i.e., @Double@ is the bigger type than @Int@, so we probably mean to implicitly cast the @Int@ to the @Double@.
+
+Input: A substitution
+Output: The potentially /nudged/ substitution, and the rest of the substitutions.
+ -}
+coalesceNumNudge ::
+    forall e x m.
+    ( AsTypeUnificationError e x 
+    , Eq (TypeP x)
+    , Eq (IdP x)
+    , Show (TypeP x) 
+    , PPrint (MplType x)
+    , PPrint (IdP x)
+    , PPrint (TypeP x)
+
+    , ForallMplType Show x 
+    , Show (IdP x)
+
+    -- we require that these annotations should be the same
+    , XTypeDoubleF x ~ XTypeIntF x
+
+    , MonadError e m ) => 
+    Sub x -> 
+    [Sub x] ->
+    m ([Sub x], Sub x)
+coalesceNumNudge (s, ssub) = flip runStateT (s,ssub) . go
+  where
+    go :: [(TypeP x, MplType x)] -> StateT (TypeP x, MplType x) m [(TypeP x, MplType x)]
+    go [] = return []
+    go ((t, tsub):rst) = do
+        (s, ssub) <- get
+        if s == t 
+            then case (ssub, tsub) of 
+                (TypeBuiltIn (TypeIntF a), TypeBuiltIn (TypeDoubleF _)) -> do
+                    equality .= (s, TypeBuiltIn (TypeDoubleF a))
+                    (:) <$> mkValidSub t tsub <*> go rst
+                (TypeBuiltIn (TypeDoubleF _ ), TypeBuiltIn (TypeIntF b)) -> do
+                    (:) <$> mkValidSub t (TypeBuiltIn (TypeDoubleF b)) <*> go rst
+                _ -> mappend <$> match ssub tsub <*> go rst
+            else (:) <$> mkValidSub t (substitute (s, ssub) tsub) <*> go rst
 
 {-| linearize.  This is unification for a set of constraints essentially. -}
 linearize ::
     ( AsTypeUnificationError e x 
     , Eq (TypeP x) 
+    , Ord (TypeP x) 
     , Eq (IdP x)
     , Show (TypeP x) 
     , PPrint (MplType x)
@@ -399,6 +494,9 @@ linearize ::
     , ForallMplType Show x 
     , Show (IdP x)
 
+    -- we require that these annotations should be the same
+    , XTypeDoubleF x ~ XTypeIntF x
+
     , MonadError e m ) => 
     [Sub x] -> 
     m [Sub x]
@@ -406,9 +504,22 @@ linearize = go
   where
     go [] = pure []
     go (t:ts) = do
-        ts' <- coalesce t (alignSubs (t ^. _1) ts)
+        -- ts' <- coalesce t (alignSubs (t ^. _1) ts)
+        (ts', nt) <- coalesceNumNudge t (alignSubs (t ^. _1) ts)
         ts'' <- go ts' 
-        return $ foldr (\t' -> second (substitute t')) t ts'' : ts''
+        return $ foldr (\t' -> second (substitute t')) nt ts'' : ts''
+
+{- | computes the variable closure of a variable e.g. the variable closure of @1@ and @[(1,2), (2,3), (4,3)]@ is @1,2,3,4@-}
+variableClosure ::
+    ( Eq (TypeP x) ) =>
+    TypeP x -> 
+    [Sub x] -> 
+    [TypeP x]
+variableClosure tp sub = go tp [tp] 
+  where
+    go tp visited = case lookup tp $ alignSubs tp sub of
+        Just (TypeVar cxt tp') | tp' `notElem` visited -> go tp' (tp' : visited)
+        _ -> visited
 
 {- | returns true if the substitution is trivial i.e., a = a -}
 isTrivialSub ::
@@ -475,6 +586,9 @@ solveTypeEqns ::
     , PPrint (IdP x)
     , PPrint (TypeP x)
 
+    -- we require that these annotations should be the same
+    , XTypeDoubleF x ~ XTypeIntF x
+
     , ForallMplType Show x 
     , Show (IdP x)
     , MonadError e m ) => 
@@ -485,7 +599,7 @@ solveTypeEqns eqns = cata f eqns >>= traverseOf packageSubs linearize
   where
     f :: Base (TypeEqns x) (m (Package x)) -> m (Package x)
     f (TypeEqnsEqF (a,b)) = do  
-        subs <- match a b
+        subs <- matchNumNudge a b
         return $ mempty & packageSubs .~ subs
     f (TypeEqnsExistF vs acc) = do
         acc' <- mconcat <$> sequenceA acc
@@ -498,7 +612,7 @@ solveTypeEqns eqns = cata f eqns >>= traverseOf packageSubs linearize
         acc' <- mconcat <$> sequenceA acc
         packageUniversalElim vs acc'
 
-{- | surface subs -}
+{- | surface subs. This isn't used -- but the idea was that if there is a substitution in a list, we want that substitution to appear in the final result. e.g., @A=B@, @C=B@ could have @C@ showing up in other substitutions, but in reality, we want @A@ to be in the other substitutions. (this depends on the order of how things are unified / linearized) -}
 surfaceSubs :: 
     forall x.
     ( Ord (TypeP x) 
@@ -519,7 +633,6 @@ surfaceSubs surface pkg = foldr go pkg surface
     go s pkg = case lookup s $ alignSubs s $ pkg ^. packageSubs of
         Just (TypeVar cxt s') -> pkg & packageSubs %~ map (second (substitute (s', TypeVar cxt s)))
         _ -> pkg 
-
         
 packageExistentialElim  ::
     forall e x m.
@@ -534,6 +647,9 @@ packageExistentialElim  ::
 
     , ForallMplType Show x 
     , Show (IdP x)
+
+    -- we require that these annotations should be the same
+    , XTypeDoubleF x ~ XTypeIntF x
 
     , MonadError e m ) => 
     Package x ->
@@ -551,7 +667,7 @@ packageExistentialElim pkg = do
         Just sub -> do
             let subs' = deleteSubList v subs
             vsub <- mkValidSub v sub
-            subs'' <- fmap (vsub:) (coalesce vsub subs') >>= linearize
+            subs'' <- fmap (uncurry $ flip (:)) (coalesceNumNudge vsub subs') >>= linearize
             let changed = v `elem` foldMap collectvars subs'
             return $ acc
                 & packageSubs .~ bool (vsub:) id changed subs''
@@ -574,6 +690,9 @@ packageUniversalElim  ::
 
     , ForallMplType Show x 
     , Show (IdP x)
+
+    -- we require that these annotations should be the same
+    , XTypeDoubleF x ~ XTypeIntF x
 
     , MonadError e m ) => 
     [([TypeP x], TypeP x, MplType x)] ->

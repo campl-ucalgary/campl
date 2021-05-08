@@ -125,15 +125,18 @@ genTypeEqEqns ::
     [TypeEqns MplTypeSub]
 genTypeEqEqns = zipWith (\a -> review _TypeEqnsEq . (a,) )
 
-{- | converts a package to the tag map (tags to types) -}
+{- | converts a package to the tag map (tags to types). Given a list of not scoped variables,
+ -  it will also ensure that it does NOT forall quantify those (this is needed for let bindings
+ -  which use variables not bound within their scope.) -}
 packageToTypeTagMap :: 
     ( AsTypeCheckSemanticErrors e
     , MonadWriter [e] m ) => 
+    [TypeP MplTypeSub] -> 
     Package MplTypeSub -> 
     m TypeTagMap 
-packageToTypeTagMap pkg 
+packageToTypeTagMap notscoped pkg 
     = fmap Map.fromList 
-    $ traverse (\(tag, tp) -> fmap ((tag,) . fromJust) $ higherOrderCheck tp) 
+    $ traverse (\(tag, tp) -> fmap ((tag,) . fromJust) $ higherOrderCheck notscoped tp) 
     $ f
   where
     f :: [(TypeTag, MplType MplTypeSub)]
@@ -148,14 +151,14 @@ packageToTypeTagMap pkg
     g (typet, tp) = [(typet ^. typeIdentTUniqueTag, tp)]
 
 
-{- | Checks if the inferred type has higher order functions AND scopes all of the free variables
--}
+{- | Checks if the inferred type has higher order functions AND scopes all of the free variables -}
 higherOrderCheck :: 
     ( AsTypeCheckSemanticErrors e
     , MonadWriter [e] m ) => 
+    [TypeP MplTypeSub] -> 
     MplType MplTypeSub -> 
     m (Maybe SymTypeEntry)
-higherOrderCheck tp 
+higherOrderCheck notscoped tp 
     | Just (cxt, seqs, ins, outs) <- tp ^? _TypeConcArrF = do
         seqs' <- traverse go seqs
         ins' <- traverse go ins
@@ -176,7 +179,9 @@ higherOrderCheck tp
             froms'' <- sequenceA froms'
             to'' <- to'
             return $ _SymTypeSeq # 
-                ( nub $ foldMap mplTypeCollectTypeP (NE.cons to'' froms'')
+                ( filter (`notElem` notscoped') 
+                    $ nub 
+                    $ foldMap mplTypeCollectTypeP (NE.cons to'' froms'')
                 , NE.toList froms''
                 , to'')
     | otherwise = do
@@ -188,8 +193,9 @@ higherOrderCheck tp
                 , mempty
                 , tp'')
   where
-    go = para f
+    notscoped' = map typeIdentTToTypeT notscoped
 
+    go = para f
     f :: Base (MplType MplTypeSub) (MplType MplTypeSub, _ (Maybe (MplType MplTypeChecked))) ->
         (_ (Maybe (MplType MplTypeChecked)))
     f  (TypeVarF cxt n) = return $ Just $ TypeVar Nothing (typeIdentTToTypeT n)
@@ -201,9 +207,11 @@ higherOrderCheck tp
         args' <- traverseOf each (traverse snd) args
         return $ TypeConcWithArgs (snd cxt) n <$> traverseOf each sequenceA args'
     f  (TypeBuiltInF n) = fmap (fmap TypeBuiltIn) $ case n of
-            TypeIntF cxt -> return $ Just $ TypeIntF cxt
+            TypeIntF _cxt -> return $ Just $ TypeIntF Nothing
+            TypeDoubleF _cxt -> return $ Just $ TypeDoubleF Nothing
 
-            TypeTopBotF cxt -> return $ _Just % _TypeTopBotF # (cxt ^? _TypeChAnnNameOcc)
+            TypeTopBotF cxt -> return $ _Just % _TypeTopBotF # 
+                (cxt ^? _TypeChAnnNameOcc)
 
 
             TypeGetF cxt (_, seq) (_, conc) -> do
@@ -247,7 +255,10 @@ higherOrderCheck tp
                     tp'' <- tp'
                     return $ _TypeNegF # (cxt ^? _TypeChAnnNameOcc, tp'') 
 
-{- typeIdentTToTypeT. Converts a 'TypeIdentT' to 'TypeP MplTypeChecked' (recall this is just 'TypeT'). Note that we always use the outer most type tag since that is the one used in the unification algorithm.
+{- typeIdentTToTypeT. Converts a 'TypeIdentT' to 'TypeP MplTypeChecked' 
+(recall this is just 'TypeT'). 
+Note that we always use the outer most type tag since that is the one used in the 
+unification algorithm.
  -}
 typeIdentTToTypeT :: TypeIdentT -> TypeP MplTypeChecked
 typeIdentTToTypeT (TypeIdentT tag (TypeIdentTInfoTypeVar tp)) 
@@ -258,6 +269,14 @@ typeIdentTToTypeT (TypeIdentT tag (TypeIdentTInfoTypeVar tp))
   where
     tag' = tag ^. coerced
 typeIdentTToTypeT (TypeIdentT (TypeTag tag) _) = GenNamedType tag
+
+typeTToTypeIdentT :: 
+    TypeP MplTypeChecked ->
+    TypeIdentT 
+typeTToTypeIdentT = go 
+  where
+    go tp 
+        = TypeIdentT (tp ^. uniqueTag % to TypeTag) $ TypeIdentTInfoTypeVar tp
 
 class MkTypeSubSeqArr t where
     mkTypeSubSeqArr :: t -> MplType MplTypeSub

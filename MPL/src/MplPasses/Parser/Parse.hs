@@ -182,7 +182,12 @@ parseBnfcExpr (B.INFIXL1_EXPR a op b) = error "not implemented instr"
 parseBnfcExpr (B.INFIXL2_EXPR a op b) = error "not implemented instr"
 parseBnfcExpr (B.INFIXL3_EXPR a op b) = error "not implemented instr"
 parseBnfcExpr (B.INFIXL4_EXPR a op b) = error "not implemented instr"
-parseBnfcExpr (B.INFIXL5_EXPR a op b) = error "not implemented instr"
+parseBnfcExpr (B.INFIXL5_EXPR a (B.Infixl5op (pos, op)) b) = do
+    ~[a', b']<- traverseTryEach parseBnfcExpr [a,b]
+    case op of
+        "+" -> return $ _EPOps #  ((), PrimitiveAdd, a',b') 
+        "-" -> return $ _EPOps #  ((), PrimitiveSub, a',b') 
+        _ -> error $ "not implemented: " ++ op
 parseBnfcExpr (B.INFIXL6_EXPR a op b) = error "not implemented instr"
 parseBnfcExpr (B.INFIXR7_EXPR a op b) = error "not implemented instr"
 parseBnfcExpr (B.INFIXL8_EXPR a op b) = error "not implemented instr"
@@ -192,8 +197,13 @@ parseBnfcExpr (B.INT_EXPR v) =
     case pIntegerToLocationInt v of
         Just n -> return $ _EInt # n
         Nothing -> tell [_InvalidInt # toTermIdentP v] >> throwError ()
+parseBnfcExpr (B.DOUBLE_EXPR v) = 
+    case pDoubleToLocationDouble v of 
+        Just n -> return $ _EDouble # n
+        Nothing -> tell [_InvalidDouble # toTermIdentP v] >> throwError ()
+        
+
 parseBnfcExpr (B.CHAR_EXPR v) = error "not implemented"
-parseBnfcExpr (B.DOUBLE_EXPR v) = error "not implemented"
 
 parseBnfcExpr (B.LIST_EXPR lbr exprs rbr) = error "not implemented instr"
 parseBnfcExpr (B.STRING_EXPR v) = error "not implemented"

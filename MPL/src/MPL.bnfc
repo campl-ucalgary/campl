@@ -15,6 +15,9 @@ layout stop "in" ;
 -- ====================================================================
 
 position token PInteger (["-"] digit | digit) digit* ;
+position token PDouble digit+ '.' digit+ ('e' '-'? digit+)?;
+position token PChar '\'' ((char - ["'\\"]) | ('\\' ["'\\tnrf"])) '\'';
+position token PString '"' ((char - ["\"\\"]) | ('\\' ["\"\\tnrf"]))* '"';
 
 position token Par {"(+)"} ;
 position token Tensor {"(*)"} ;
@@ -210,9 +213,9 @@ _            . Expr8 ::= Expr10 ;
 LIST_EXPR        . Expr10 ::= LSquareBracket [Expr] RSquareBracket ;
 VAR_EXPR         . Expr10 ::= PIdent ;
 INT_EXPR         . Expr10 ::= PInteger ;
-STRING_EXPR      . Expr10 ::= String ;
-CHAR_EXPR        . Expr10 ::= Char ;
-DOUBLE_EXPR      . Expr10 ::= Double ;
+STRING_EXPR      . Expr10 ::= PString ;
+CHAR_EXPR        . Expr10 ::= PChar ;
+DOUBLE_EXPR      . Expr10 ::= PDouble ;
 UNIT_EXPR        . Expr10 ::= LBracket RBracket ;
 
 FOLD_EXPR        . Expr10 ::= "fold" Expr "of" "{" [FoldExprPhrase] "}" ;

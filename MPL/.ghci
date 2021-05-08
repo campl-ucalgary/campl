@@ -37,8 +37,6 @@ import Data.Functor.Foldable (Base, cata, para, histo)
 import qualified Data.Map as Map
 import Data.Map (Map )
 import qualified Data.Set as Set
-import Data.Set (Set )
+import Data.Set (Set)
 
-import qualified Text.Parsec as P
-
-
+:set -interactive-print=Text.Pretty.Simple.pPrint

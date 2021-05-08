@@ -61,12 +61,11 @@ type instance XTypeConcWithArgs MplTypeSub = ((), MplConcObjDefn MplTypeCheckedC
 type instance XTypeConcVarWithArgs  MplTypeSub = Void
 
 type instance XTypeVar MplTypeSub = Maybe TypeAnn
-type instance XTypeWithNoArgs MplTypeSub = 
-    MplObjectDefn MplTypeCheckedClause
+type instance XTypeWithNoArgs MplTypeSub = MplObjectDefn MplTypeCheckedClause
 type instance XXType MplTypeSub = Void
-type instance XTypeIntF MplTypeSub = NameOcc
+type instance XTypeIntF MplTypeSub = Maybe TypeAnn
+type instance XTypeDoubleF MplTypeSub = Maybe TypeAnn
 type instance XTypeCharF MplTypeSub = NameOcc
-type instance XTypeDoubleF MplTypeSub = NameOcc
 type instance XTypeStringF MplTypeSub = NameOcc
 type instance XTypeUnitF MplTypeSub = NameOcc
 type instance XTypeBoolF MplTypeSub = NameOcc
@@ -209,10 +208,15 @@ instantiateTypeWithSubs sublist = cata f
     f (TypeConcWithArgsF cxt id args) =
         TypeConcWithArgs (mempty, cxt) id <$> traverseOf each sequenceA args 
     f (TypeBuiltInF rst) = case rst of
+        -- TODO: we can preserve some error information here.
+        TypeIntF cxt -> return $ _TypeIntF # Nothing
+        TypeDoubleF cxt -> return $ _TypeDoubleF # Nothing
+
         TypeGetF cxt seq conc -> do
             seq' <- seq
             conc' <- conc
             return $ _TypeGetF # (annotate cxt, seq', conc')
+
         TypePutF cxt seq conc -> do
             seq' <- seq
             conc' <- conc

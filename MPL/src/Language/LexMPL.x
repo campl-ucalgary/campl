@@ -5,74 +5,112 @@
 {-# OPTIONS_GHC -w #-}
 module Language.LexMPL where
 
-
-
 import qualified Data.Bits
 import Data.Word (Word8)
 import Data.Char (ord)
 }
 
 
-$l = [a-zA-Z\192 - \255] # [\215 \247]    -- isolatin1 letter FIXME
-$c = [A-Z\192-\221] # [\215]    -- capital isolatin1 letter FIXME
-$s = [a-z\222-\255] # [\247]    -- small isolatin1 letter FIXME
-$d = [0-9]                -- digit
-$i = [$l $d _ ']          -- identifier character
-$u = [\0-\255]          -- universal: any character
+$c = [A-Z\192-\221] # [\215]  -- capital isolatin1 letter (215 = \times) FIXME
+$s = [a-z\222-\255] # [\247]  -- small   isolatin1 letter (247 = \div  ) FIXME
+$l = [$c $s]         -- letter
+$d = [0-9]           -- digit
+$i = [$l $d _ ']     -- identifier character
+$u = [. \n]          -- universal: any character
 
 @rsyms =    -- symbols and non-identifier-like reserved words
-   \, | \{ | \} | \; | \| | \. | \- \> | \= \> | \  | \= | \: \: | \: \=
+   \, | \{ | \} | \; | \| | \- \> | \= | \: \: | \= \> | \: \=
 
 :-
-"--" [.]* ; -- Toss single line comments
-"{-" ([$u # \-] | \-+ [$u # [\- \}]])* ("-")+ "}" ;
+
+-- Line comments
+"--" [.]* ;
+
+-- Block comments
+\{ \- [$u # \-]* \- ([$u # [\- \}]] [$u # \-]* \- | \-)* \} ;
 
 $white+ ;
-@rsyms { tok (\p s -> PT p (eitherResIdent (TV . share) s)) }
-([\-]$d | $d)$d * { tok (\p s -> PT p (eitherResIdent (T_PInteger . share) s)) }
-\( \+ \) { tok (\p s -> PT p (eitherResIdent (T_Par . share) s)) }
-\( \* \) { tok (\p s -> PT p (eitherResIdent (T_Tensor . share) s)) }
-\( { tok (\p s -> PT p (eitherResIdent (T_LBracket . share) s)) }
-\) { tok (\p s -> PT p (eitherResIdent (T_RBracket . share) s)) }
-\[ { tok (\p s -> PT p (eitherResIdent (T_LSquareBracket . share) s)) }
-\] { tok (\p s -> PT p (eitherResIdent (T_RSquareBracket . share) s)) }
-\_ { tok (\p s -> PT p (eitherResIdent (T_NullPattern . share) s)) }
-\: { tok (\p s -> PT p (eitherResIdent (T_Colon . share) s)) }
-\| \| { tok (\p s -> PT p (eitherResIdent (T_Infixl1op . share) s)) }
-\& \& { tok (\p s -> PT p (eitherResIdent (T_Infixl2op . share) s)) }
-\= \= | \/ \= | \< | \> | \< \= | \> \= { tok (\p s -> PT p (eitherResIdent (T_Infixl3op . share) s)) }
-\+ \+ { tok (\p s -> PT p (eitherResIdent (T_Infixl4op . share) s)) }
-\+ | \- { tok (\p s -> PT p (eitherResIdent (T_Infixl5op . share) s)) }
-\* | \/ | \% { tok (\p s -> PT p (eitherResIdent (T_Infixl6op . share) s)) }
-\^ { tok (\p s -> PT p (eitherResIdent (T_Infixr7op . share) s)) }
-\! \! { tok (\p s -> PT p (eitherResIdent (T_Infixl8op . share) s)) }
-c l o s e { tok (\p s -> PT p (eitherResIdent (T_Close . share) s)) }
-h a l t { tok (\p s -> PT p (eitherResIdent (T_Halt . share) s)) }
-g e t { tok (\p s -> PT p (eitherResIdent (T_Get . share) s)) }
-p u t { tok (\p s -> PT p (eitherResIdent (T_Put . share) s)) }
-h c a s e { tok (\p s -> PT p (eitherResIdent (T_HCase . share) s)) }
-h p u t { tok (\p s -> PT p (eitherResIdent (T_HPut . share) s)) }
-s p l i t { tok (\p s -> PT p (eitherResIdent (T_Split . share) s)) }
-f o r k { tok (\p s -> PT p (eitherResIdent (T_Fork . share) s)) }
-\| \= \| { tok (\p s -> PT p (eitherResIdent (T_ChId . share) s)) }
-c a s e { tok (\p s -> PT p (eitherResIdent (T_Case . share) s)) }
-(\# $c | $c)($l | $d | \_)* { tok (\p s -> PT p (eitherResIdent (T_UIdent . share) s)) }
-$l ($l | $d | \_ | \')* { tok (\p s -> PT p (eitherResIdent (T_PIdent . share) s)) }
-($l | $c)($l | $d | \_ | \')* { tok (\p s -> PT p (eitherResIdent (T_UPIdent . share) s)) }
+@rsyms
+    { tok (\p s -> PT p (eitherResIdent TV s)) }
+(\- $d | $d)$d *
+    { tok (\p s -> PT p (eitherResIdent T_PInteger s)) }
+$d + \. $d + (e \- ? $d +)?
+    { tok (\p s -> PT p (eitherResIdent T_PDouble s)) }
+\' ([$u # [\' \\]] | \\ [\' \\ f n r t]) \'
+    { tok (\p s -> PT p (eitherResIdent T_PChar s)) }
+\" ([$u # [\" \\]] | \\ [\" \\ f n r t]) * \"
+    { tok (\p s -> PT p (eitherResIdent T_PString s)) }
+\( \+ \)
+    { tok (\p s -> PT p (eitherResIdent T_Par s)) }
+\( \* \)
+    { tok (\p s -> PT p (eitherResIdent T_Tensor s)) }
+\(
+    { tok (\p s -> PT p (eitherResIdent T_LBracket s)) }
+\)
+    { tok (\p s -> PT p (eitherResIdent T_RBracket s)) }
+\[
+    { tok (\p s -> PT p (eitherResIdent T_LSquareBracket s)) }
+\]
+    { tok (\p s -> PT p (eitherResIdent T_RSquareBracket s)) }
+\_
+    { tok (\p s -> PT p (eitherResIdent T_NullPattern s)) }
+\:
+    { tok (\p s -> PT p (eitherResIdent T_Colon s)) }
+\| \|
+    { tok (\p s -> PT p (eitherResIdent T_Infixl1op s)) }
+\& \&
+    { tok (\p s -> PT p (eitherResIdent T_Infixl2op s)) }
+\= \= | \/ \= | \< | \> | \< \= | \> \=
+    { tok (\p s -> PT p (eitherResIdent T_Infixl3op s)) }
+\+ \+
+    { tok (\p s -> PT p (eitherResIdent T_Infixl4op s)) }
+[\+ \-]
+    { tok (\p s -> PT p (eitherResIdent T_Infixl5op s)) }
+[\% \* \/]
+    { tok (\p s -> PT p (eitherResIdent T_Infixl6op s)) }
+\^
+    { tok (\p s -> PT p (eitherResIdent T_Infixr7op s)) }
+\! \!
+    { tok (\p s -> PT p (eitherResIdent T_Infixl8op s)) }
+c l o s e
+    { tok (\p s -> PT p (eitherResIdent T_Close s)) }
+h a l t
+    { tok (\p s -> PT p (eitherResIdent T_Halt s)) }
+g e t
+    { tok (\p s -> PT p (eitherResIdent T_Get s)) }
+p u t
+    { tok (\p s -> PT p (eitherResIdent T_Put s)) }
+h c a s e
+    { tok (\p s -> PT p (eitherResIdent T_HCase s)) }
+h p u t
+    { tok (\p s -> PT p (eitherResIdent T_HPut s)) }
+s p l i t
+    { tok (\p s -> PT p (eitherResIdent T_Split s)) }
+f o r k
+    { tok (\p s -> PT p (eitherResIdent T_Fork s)) }
+\| \= \|
+    { tok (\p s -> PT p (eitherResIdent T_ChId s)) }
+c a s e
+    { tok (\p s -> PT p (eitherResIdent T_Case s)) }
+(\# $c | $c)(\_ | ($d | $l)) *
+    { tok (\p s -> PT p (eitherResIdent T_UIdent s)) }
+$l ([\' \_]| ($d | $l)) *
+    { tok (\p s -> PT p (eitherResIdent T_PIdent s)) }
+$l ([\' \_]| ($d | $l)) *
+    { tok (\p s -> PT p (eitherResIdent T_UPIdent s)) }
 
-$l $i*   { tok (\p s -> PT p (eitherResIdent (TV . share) s)) }
-\" ([$u # [\" \\ \n]] | (\\ (\" | \\ | \' | n | t)))* \"{ tok (\p s -> PT p (TL $ share $ unescapeInitTail s)) }
-\' ($u # [\' \\] | \\ [\\ \' n t]) \'  { tok (\p s -> PT p (TC $ share s))  }
+$l $i*
+    { tok (\p s -> PT p (eitherResIdent TV s)) }
+\" ([$u # [\" \\ \n]] | (\\ (\" | \\ | \' | n | t | r | f)))* \"
+    { tok (\p s -> PT p (TL $ unescapeInitTail s)) }
 
-$d+ \. $d+ (e (\-)? $d+)? { tok (\p s -> PT p (TD $ share s)) }
+
+
 
 {
 
 tok :: (Posn -> String -> Token) -> (Posn -> String -> Token)
 tok f p s = f p s
-
-share :: String -> String
-share = id
 
 data Tok =
    TS !String !Int    -- reserved words and symbols
@@ -82,6 +120,9 @@ data Tok =
  | TD !String         -- double precision float literals
  | TC !String         -- character literals
  | T_PInteger !String
+ | T_PDouble !String
+ | T_PChar !String
+ | T_PString !String
  | T_Par !String
  | T_Tensor !String
  | T_LBracket !String
@@ -119,10 +160,12 @@ data Token =
  | Err Posn
   deriving (Eq,Show,Ord)
 
+printPosn :: Posn -> String
+printPosn (Pn _ l c) = "line " ++ show l ++ ", column " ++ show c
+
 tokenPos :: [Token] -> String
-tokenPos (PT (Pn _ l _) _ :_) = "line " ++ show l
-tokenPos (Err (Pn _ l _) :_) = "line " ++ show l
-tokenPos _ = "end of file"
+tokenPos (t:_) = printPosn (tokenPosn t)
+tokenPos [] = "end of file"
 
 tokenPosn :: Token -> Posn
 tokenPosn (PT p _) = p
@@ -135,17 +178,21 @@ posLineCol :: Posn -> (Int, Int)
 posLineCol (Pn _ l c) = (l,c)
 
 mkPosToken :: Token -> ((Int, Int), String)
-mkPosToken t@(PT p _) = (posLineCol p, prToken t)
+mkPosToken t@(PT p _) = (posLineCol p, tokenText t)
 
-prToken :: Token -> String
-prToken t = case t of
+tokenText :: Token -> String
+tokenText t = case t of
   PT _ (TS s _) -> s
   PT _ (TL s)   -> show s
   PT _ (TI s)   -> s
   PT _ (TV s)   -> s
   PT _ (TD s)   -> s
   PT _ (TC s)   -> s
+  Err _         -> "#error"
   PT _ (T_PInteger s) -> s
+  PT _ (T_PDouble s) -> s
+  PT _ (T_PChar s) -> s
+  PT _ (T_PString s) -> s
   PT _ (T_Par s) -> s
   PT _ (T_Tensor s) -> s
   PT _ (T_LBracket s) -> s
@@ -176,6 +223,8 @@ prToken t = case t of
   PT _ (T_PIdent s) -> s
   PT _ (T_UPIdent s) -> s
 
+prToken :: Token -> String
+prToken t = tokenText t
 
 data BTree = N | B String Tok BTree BTree deriving (Show)
 
@@ -188,16 +237,19 @@ eitherResIdent tv s = treeFind resWords
                               | s == a = t
 
 resWords :: BTree
-resWords = b "if" 21 (b "as" 11 (b ":=" 6 (b "->" 3 (b "," 2 (b " " 1 N N) N) (b "::" 5 (b "." 4 N N) N)) (b "=>" 9 (b "=" 8 (b ";" 7 N N) N) (b "and" 10 N N))) (b "do" 16 (b "data" 14 (b "coprotocol" 13 (b "codata" 12 N N) N) (b "defn" 15 N N)) (b "forall" 19 (b "fold" 18 (b "else" 17 N N) N) (b "fun" 20 N N)))) (b "protocol" 31 (b "of" 26 (b "let" 24 (b "into" 23 (b "in" 22 N N) N) (b "neg" 25 N N)) (b "potato" 29 (b "plug" 28 (b "on" 27 N N) N) (b "proc" 30 N N))) (b "where" 36 (b "then" 34 (b "switch" 33 (b "race" 32 N N) N) (b "unfold" 35 N N)) (b "|" 39 (b "{" 38 (b "with" 37 N N) N) (b "}" 40 N N))))
-   where b s n = let bs = id s
-                  in B bs (TS bs n)
+resWords = b "in" 19 (b "codata" 10 (b ";" 5 (b "::" 3 (b "->" 2 (b "," 1 N N) N) (b ":=" 4 N N)) (b "and" 8 (b "=>" 7 (b "=" 6 N N) N) (b "as" 9 N N))) (b "else" 15 (b "defn" 13 (b "data" 12 (b "coprotocol" 11 N N) N) (b "do" 14 N N)) (b "fun" 17 (b "fold" 16 N N) (b "if" 18 N N)))) (b "race" 29 (b "on" 24 (b "neg" 22 (b "let" 21 (b "into" 20 N N) N) (b "of" 23 N N)) (b "proc" 27 (b "potato" 26 (b "plug" 25 N N) N) (b "protocol" 28 N N))) (b "with" 34 (b "unfold" 32 (b "then" 31 (b "switch" 30 N N) N) (b "where" 33 N N)) (b "|" 36 (b "{" 35 N N) (b "}" 37 N N))))
+   where b s n = let bs = s
+                 in  B bs (TS bs n)
 
 unescapeInitTail :: String -> String
-unescapeInitTail = id . unesc . tail . id where
+unescapeInitTail = id . unesc . tail . id
+  where
   unesc s = case s of
     '\\':c:cs | elem c ['\"', '\\', '\''] -> c : unesc cs
     '\\':'n':cs  -> '\n' : unesc cs
     '\\':'t':cs  -> '\t' : unesc cs
+    '\\':'r':cs  -> '\r' : unesc cs
+    '\\':'f':cs  -> '\f' : unesc cs
     '"':[]    -> []
     c:cs      -> c : unesc cs
     _         -> []
@@ -239,7 +291,7 @@ tokens str = go (alexStartPos, '\n', [], str)
 alexGetByte :: AlexInput -> Maybe (Byte,AlexInput)
 alexGetByte (p, c, (b:bs), s) = Just (b, (p, c, bs, s))
 alexGetByte (p, _, [], s) =
-  case  s of
+  case s of
     []  -> Nothing
     (c:s) ->
              let p'     = alexMove p c

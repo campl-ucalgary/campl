@@ -252,14 +252,14 @@ type instance XTypeVar MplTypeChecked =
 type instance XTypeWithNoArgs MplTypeChecked = 
     MplObjectDefn MplTypeCheckedClause
 type instance XXType MplTypeChecked = Void
-type instance XTypeIntF MplTypeChecked = NameOcc
-type instance XTypeCharF MplTypeChecked = NameOcc
-type instance XTypeDoubleF MplTypeChecked = NameOcc
-type instance XTypeStringF MplTypeChecked = NameOcc
-type instance XTypeUnitF MplTypeChecked = NameOcc
-type instance XTypeBoolF MplTypeChecked = NameOcc
-type instance XTypeListF MplTypeChecked = NameOcc
-type instance XTypeTupleF MplTypeChecked = NameOcc
+type instance XTypeIntF MplTypeChecked = Maybe NameOcc
+type instance XTypeCharF MplTypeChecked = Maybe NameOcc
+type instance XTypeDoubleF MplTypeChecked = Maybe NameOcc
+type instance XTypeStringF MplTypeChecked = Maybe NameOcc
+type instance XTypeUnitF MplTypeChecked = Maybe NameOcc
+type instance XTypeBoolF MplTypeChecked = Maybe NameOcc
+type instance XTypeListF MplTypeChecked = Maybe NameOcc
+type instance XTypeTupleF MplTypeChecked = Maybe NameOcc
 
 type instance XTypeGet MplTypeChecked = Maybe NameOcc
 type instance XTypePut MplTypeChecked = Maybe NameOcc

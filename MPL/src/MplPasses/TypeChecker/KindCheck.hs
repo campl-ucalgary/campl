@@ -295,7 +295,7 @@ primitiveKindCheck = para f
                     , _TypeIntF # cxt)
                 ] [] $ noerr
 
-            return $ bool Nothing (_Just % _TypeIntF # cxt) noerr
+            return $ bool Nothing (_Just % _TypeIntF # Just cxt) noerr
 
         -- duplciated code..
         TypeCharF cxt -> do
@@ -309,7 +309,7 @@ primitiveKindCheck = para f
                     , _TypeCharF # cxt)
                 ] [] $ noerr
 
-            return $ bool Nothing (_Just % _TypeCharF # cxt) noerr
+            return $ bool Nothing (_Just % _TypeCharF # Just cxt) noerr
 
         -- duplciated code
         TypeDoubleF cxt -> do
@@ -323,7 +323,7 @@ primitiveKindCheck = para f
                     , _TypeDoubleF # cxt)
                 ] [] $ noerr
 
-            return $ bool Nothing (_Just % _TypeDoubleF # cxt) noerr
+            return $ bool Nothing (_Just % _TypeDoubleF # Just cxt) noerr
 
         TypeGetF ann (lr, l) (rr, r) -> do
             ekd <- guse kindCheckExpectedPrimitiveKind 

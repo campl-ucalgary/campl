@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: fad30a4c60ede1f75748f3a82c93e0b6dacba5bae2c5876f0e08604fb9078a70
+-- hash: 346acce7dc1380a244afd924c27e9e432d6b644641487a98970c787c65484f79
 
 name:           MPL
 version:        0.1.0.0
@@ -21,17 +21,6 @@ extra-source-files:
     src/MPL.bnfc
     src/Language/LexMPL.x
     src/Language/ParMPL.y
-    test/MplParse/cases/pMplDataClauseSpine/negative/1.mpl
-    test/MplParse/cases/pMplDataClauseSpine/negative/2.mpl
-    test/MplParse/cases/pMplDataClauseSpine/negative/3.mpl
-    test/MplParse/cases/pMplDataClauseSpine/negative/4.mpl
-    test/MplParse/cases/pMplDataClauseSpine/negative/5.mpl
-    test/MplParse/cases/pMplDataClauseSpine/negative/6.mpl
-    test/MplParse/cases/pMplDataClauseSpine/positive/1.mpl
-    test/MplParse/cases/pMplDataClauseSpine/positive/2.mpl
-    test/MplParse/cases/pMplDataClauseSpine/positive/3.mpl
-    test/MplParse/cases/pMplDataClauseSpine/positive/4.mpl
-    test/MplParse/cases/pMplDataClauseSpine/positive/5.mpl
 extra-doc-files:
     README.md
     ChangeLog.md
@@ -48,14 +37,12 @@ library
       Language.LexMPL
       Language.ParMPL
       Language.PrintMPL
-      Language.SkelMPL
       MplAST.MplCmd
       MplAST.MplCore
       MplAST.MplExpr
       MplAST.MplExt
       MplAST.MplIdent
       MplAST.MplKind
-      MplAST.MplNewParsed
       MplAST.MplParsed
       MplAST.MplPattern
       MplAST.MplPrinter
@@ -66,10 +53,6 @@ library
       MplAST.MplTypeChecked
       MplCompile
       MPLMain
-      MplParse.MplInfixity
-      MplParse.MplParse
-      MplParse.Stack
-      MplParse.Util
       MplPasses.Env
       MplPasses.Parser.BnfcParse
       MplPasses.Parser.Parse
@@ -102,8 +85,6 @@ library
       MplPasses.TypeChecker.TypeCheckSymUtils
       MplPasses.TypeChecker.TypeCheckUtils
       MplPasses.TypeChecker.TypeEqns
-      MplPasses.TypeInferencer.TypeInference
-      MplPasses.TypeInferencer.TypeInferenceError
       MplUtil.Data.Stream
       MplUtil.Data.Tuple.Optics
       MplUtil.UniqueSupply
@@ -122,7 +103,7 @@ library
     , mtl
     , optics
     , optics-extra
-    , parsec
+    , pretty-simple
     , prettyprinter
     , raw-strings-qq
     , recursion-schemes
@@ -148,7 +129,7 @@ executable mpl
     , mtl
     , optics
     , optics-extra
-    , parsec
+    , pretty-simple
     , prettyprinter
     , raw-strings-qq
     , recursion-schemes
@@ -159,8 +140,6 @@ test-suite MPL-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      MplParse.Assertions
-      MplParse.MplParseSpec
       MplPasses.Assertions
       MplPasses.Renamer.RenameSpec
       MplPasses.TypeChecker.KindCheckSpec
@@ -185,7 +164,7 @@ test-suite MPL-test
     , mtl
     , optics
     , optics-extra
-    , parsec
+    , pretty-simple
     , prettyprinter
     , raw-strings-qq
     , recursion-schemes

@@ -65,7 +65,7 @@ resolveLayout tp = res Nothing [if tl then Implicit 1 else Explicit]
         in moveAlong ns' ts1 ts2
 
     -- End of an implicit layout block
-    | newLine pt t0 && column t0 < n  = 
+    | newLine pt t0 && column t0 < n  =
            -- Insert a closing brace after the previous token.
        let b:t0':ts' = addToken (afterPrev pt) layoutClose (t0:ts)
            -- Repeat, with the current block removed from the stack
@@ -78,12 +78,17 @@ resolveLayout tp = res Nothing [if tl then Implicit 1 else Explicit]
             -- Explicit layout, just move on. The case above
             -- will push an explicit layout block.
             t1:_ | isLayoutOpen t1 -> moveAlong st [t0] ts
-                     -- at end of file, the start column doesn't matter
-            _ -> let col = if null ts then column t0 else column (head ts)
+                 -- The column of the next token determines the starting column
+                 -- of the implicit layout block.
+                 -- However, the next block needs to be strictly more indented
+                 -- than the previous block.
+            _ -> let col = max (indentation st + 1) $
+                       -- at end of file, the start column doesn't matter
+                       if null ts then column t0 else column (head ts)
                      -- insert an open brace after the layout word
                      b:ts' = addToken (nextPos t0) layoutOpen ts
                      -- save the start column
-                     st' = Implicit col:st 
+                     st' = Implicit col:st
                  in -- Do we have to insert an extra layoutSep?
                 case st of
                   Implicit n:_
@@ -96,18 +101,18 @@ resolveLayout tp = res Nothing [if tl then Implicit 1 else Explicit]
                   _ -> moveAlong st' [t0,b] ts'
 
     -- If we encounter a closing brace, exit the first explicit layout block.
-    | isLayoutClose t0 = 
+    | isLayoutClose t0 =
           let st' = drop 1 (dropWhile isImplicit st)
-           in if null st' 
-                 then error $ "Layout error: Found " ++ layoutClose ++ " at (" 
-                              ++ show (line t0) ++ "," ++ show (column t0) 
+           in if null st'
+                 then error $ "Layout error: Found " ++ layoutClose ++ " at ("
+                              ++ show (line t0) ++ "," ++ show (column t0)
                               ++ ") without an explicit layout block."
                  else moveAlong st' [t0] ts
 
   -- Insert separator if necessary.
   res pt st@(Implicit n:ns) (t0:ts)
     -- Encounted a new line in an implicit layout block.
-    | newLine pt t0 && column t0 == n = 
+    | newLine pt t0 && column t0 == n =
        -- Insert a semicolon after the previous token.
        -- unless we are the beginning of the file,
        -- or the previous token is a semicolon or open brace.
@@ -142,7 +147,7 @@ resolveLayout tp = res Nothing [if tl then Implicit 1 else Explicit]
             -> [Token] -- ^ Any tokens just processed.
             -> [Token] -- ^ the rest of the tokens.
             -> [Token]
-  moveAlong _  [] _  = error $ "Layout error: moveAlong got [] as old tokens"
+  moveAlong _  [] _  = error "Layout error: moveAlong got [] as old tokens"
   moveAlong st ot ts = ot ++ res (Just $ last ot) st ts
 
   newLine :: Maybe Token -> Token -> Bool
@@ -150,16 +155,22 @@ resolveLayout tp = res Nothing [if tl then Implicit 1 else Explicit]
     Nothing -> True
     Just t  -> line t /= line t0
 
-data Block = Implicit Int -- ^ An implicit layout block with its start column.
-           | Explicit
-             deriving Show
+data Block
+   = Implicit Int -- ^ An implicit layout block with its start column.
+   | Explicit
+   deriving Show
 
-type Position = Posn
+-- | Get current indentation.  0 if we are in an explicit block.
+indentation :: [Block] -> Int
+indentation (Implicit n : _) = n
+indentation _ = 0
 
 -- | Check if s block is implicit.
 isImplicit :: Block -> Bool
 isImplicit (Implicit _) = True
 isImplicit _ = False
+
+type Position = Posn
 
 -- | Insert a number of tokens at the begninning of a list of tokens.
 addTokens :: Position -- ^ Position of the first new token.
@@ -205,46 +216,43 @@ sToken :: Position -> String -> Token
 sToken p s = PT p (TS s i)
   where
     i = case s of
-      " " -> 1
-      "," -> 2
-      "->" -> 3
-      "." -> 4
-      "::" -> 5
-      ":=" -> 6
-      ";" -> 7
-      "=" -> 8
-      "=>" -> 9
-      "and" -> 10
-      "as" -> 11
-      "codata" -> 12
-      "coprotocol" -> 13
-      "data" -> 14
-      "defn" -> 15
-      "do" -> 16
-      "else" -> 17
-      "fold" -> 18
-      "forall" -> 19
-      "fun" -> 20
-      "if" -> 21
-      "in" -> 22
-      "into" -> 23
-      "let" -> 24
-      "neg" -> 25
-      "of" -> 26
-      "on" -> 27
-      "plug" -> 28
-      "potato" -> 29
-      "proc" -> 30
-      "protocol" -> 31
-      "race" -> 32
-      "switch" -> 33
-      "then" -> 34
-      "unfold" -> 35
-      "where" -> 36
-      "with" -> 37
-      "{" -> 38
-      "|" -> 39
-      "}" -> 40
+      "," -> 1
+      "->" -> 2
+      "::" -> 3
+      ":=" -> 4
+      ";" -> 5
+      "=" -> 6
+      "=>" -> 7
+      "and" -> 8
+      "as" -> 9
+      "codata" -> 10
+      "coprotocol" -> 11
+      "data" -> 12
+      "defn" -> 13
+      "do" -> 14
+      "else" -> 15
+      "fold" -> 16
+      "fun" -> 17
+      "if" -> 18
+      "in" -> 19
+      "into" -> 20
+      "let" -> 21
+      "neg" -> 22
+      "of" -> 23
+      "on" -> 24
+      "plug" -> 25
+      "potato" -> 26
+      "proc" -> 27
+      "protocol" -> 28
+      "race" -> 29
+      "switch" -> 30
+      "then" -> 31
+      "unfold" -> 32
+      "where" -> 33
+      "with" -> 34
+      "{" -> 35
+      "|" -> 36
+      "}" -> 37
       _ -> error $ "not a reserved word: " ++ show s
 
 -- | Get the position of a token.
@@ -264,7 +272,7 @@ column t = case position t of Pn _ _ c -> c
 -- | Check if a token is one of the given symbols.
 isTokenIn :: [String] -> Token -> Bool
 isTokenIn ts t = case t of
-  PT _ (TS r _) | elem r ts -> True
+  PT _ (TS r _) | r `elem` ts -> True
   _ -> False
 
 -- | Check if a word is a layout start token.
