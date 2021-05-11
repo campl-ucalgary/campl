@@ -43,9 +43,7 @@ import Debug.Trace
 
 import Data.Maybe
 
-{- Module for defining semantic errors in type checking
- -
- -}
+{- Module for defining semantic errors in type checking (non type errors, but still errors) -}
 
 data TypeCheckSemanticErrors = 
     ---- Errors from the more ``heavy lifting" algorithms
@@ -202,7 +200,7 @@ data CutCyclesEnv = CutCyclesEnv {
 
 $(makeLenses ''CutCyclesEnv)
 
-{- Tests if there is a cycle in the plug and if the plug
+{- | Tests if there is a cycle in the plug and if the plug
  - graph is fully connected...
  -
  - Might be a good idea to generalize this later? Really bound to just

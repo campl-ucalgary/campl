@@ -212,8 +212,12 @@ traverseTryEach f ns = do
 
 
 pIntegerToLocationInt :: B.PInteger -> Maybe (Location, Int)
-pIntegerToLocationInt a@(B.PInteger (_, str)) =
-    (toLocation a,) <$> (readMaybe str :: Maybe Int)
+-- old version that did NOT check for out of bounds.
+-- pIntegerToLocationInt a@(B.PInteger (_, str)) = (toLocation a,) <$> (readMaybe str :: Maybe Int)
+pIntegerToLocationInt a@(B.PInteger (_, str)) = do
+    res <- readMaybe str :: Maybe Integer
+    guard $ fromIntegral (minBound :: Int) <= res && res <= fromIntegral (maxBound :: Int) 
+    return $ (toLocation a, fromIntegral res) 
 
 pDoubleToLocationDouble :: B.PDouble -> Maybe (Location, Double)
 pDoubleToLocationDouble a@(B.PDouble (_, str)) =

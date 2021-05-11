@@ -451,7 +451,7 @@ typeCheckExpr = para f
             ttypelp = annotateTypeTag ttypel lexpr
             ttyperp = annotateTypeTag ttyper rexpr
 
-        let arithmetic = do
+        let addsubmul = do
                 let eqn = TypeEqnsExist [ttypelp, ttyperp] $ 
                         [ TypeEqnsEq (typePtoTypeVar ttypep, typePtoTypeVar ttypelp )
                         , TypeEqnsEq (typePtoTypeVar ttypep, typePtoTypeVar ttyperp )
@@ -464,13 +464,33 @@ typeCheckExpr = para f
                 return $ 
                     ( EPOps ( fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) op l' r'
                     , [eqn]
-                    )
-                        
+                    ) 
+            -- duplicated code from @addsubmul@
+            div = do
+                let eqn = TypeEqnsExist [ttypelp, ttyperp] $ 
+                        [ TypeEqnsEq (typePtoTypeVar ttypep, typePtoTypeVar ttypelp )
+                        , TypeEqnsEq (typePtoTypeVar ttypep, typePtoTypeVar ttyperp )
+                        , TypeEqnsEq (typePtoTypeVar ttypep, _TypeDoubleF % _Just % _TypeAnnExpr # opexpr )
+                        , TypeEqnsEq (typePtoTypeVar ttypelp, _TypeDoubleF % _Just % _TypeAnnExpr # lexpr )
+                        , TypeEqnsEq (typePtoTypeVar ttyperp, _TypeDoubleF % _Just % _TypeAnnExpr # rexpr )
+                        ]
+                        <> leqns
+                        <> reqns
+                return $ 
+                    ( EPOps ( fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) op l' r'
+                    , [eqn]
+                    ) 
+
 
         case op of
-            PrimitiveAdd ->  arithmetic
-            PrimitiveSub ->  arithmetic
-            _ ->  error $ "not implemented op: " ++ show op
+            PrimitiveAdd -> addsubmul
+            PrimitiveSub -> addsubmul
+            PrimitiveMul -> addsubmul
+            PrimitiveDiv -> div
+
+            PrimitiveEq -> undefined
+            PrimitiveNeq -> undefined
+            -- _ ->  error $ "not implemented op: " ++ show op
 
 
     f (EIntF cxt n) = do
@@ -493,7 +513,7 @@ typeCheckExpr = para f
             eqns = [ TypeEqnsEq (typePtoTypeVar ttypep, _TypeDoubleF % _Just % _TypeAnnExpr # ann ) ]
         return ( EDouble ( cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) n, eqns )
 
-    f (ECharF _ _ ) = panicNotImplemented
+    f (ECharF cxt c ) = panicNotImplemented
 
     f (EListF _ _ ) = panicNotImplemented
     f (EStringF _ _) = panicNotImplemented

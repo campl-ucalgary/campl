@@ -10,6 +10,7 @@ import Text.RawString.QQ
 
 import MplAST.MplCore
 import MplPasses.Assertions
+import MplPasses.PassesErrors
 
 import Data.Maybe
 import Data.List.NonEmpty ( NonEmpty (..) )

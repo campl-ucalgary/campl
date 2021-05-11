@@ -58,6 +58,8 @@ import Data.Bool
 import Data.List
 import Data.Tuple
 
+import Data.Proxy
+
 import Data.Text.Prettyprint.Doc
 
 import Debug.Trace
@@ -84,25 +86,25 @@ data TypeEqns x =
 -- deriving instance ( ForallMplType Show x , Show (IdP x) ) => 
     -- Show (TypeEqns x)
 
-instance ( PPrint (MplType x), PPrint (IdP x), PPrint (TypeP x) ) => PPrint (TypeEqns x) where
-    pprint = show . f
+instance ( PPrint (MplType x) y, PPrint (IdP x) y, PPrint (TypeP x) y) => PPrint (TypeEqns x) y where
+    pprint proxy = show . f
       where
         f (TypeEqnsEq (a,b)) = hsep 
-            [ pretty (pprint a) 
+            [ pretty (pprint proxy a) 
             , pretty "==" 
-            , pretty (pprint b) ]
+            , pretty (pprint proxy b) ]
         f (TypeEqnsExist exists rst) = vsep 
             [ nest 2 $ vsep 
-                $ [ hsep [pretty "exists", pretty (map pprint exists), pretty "s.t."] ]
+                $ [ hsep [pretty "exists", pretty (map (pprint proxy) exists), pretty "s.t."] ]
                     <> map f rst ]
 
         f (TypeEqnsForall forall rst) = vsep 
             [ nest 2 $ vsep 
-                $ [ hsep [pretty "forall", pretty (map (pprint . view _2) forall), pretty "s.t."] ]
+                $ [ hsep [pretty "forall", pretty (map (pprint proxy . view _2) forall), pretty "s.t."] ]
                     <> map f rst ]
 
-instance ( PPrint (MplType x), PPrint (IdP x), PPrint (TypeP x) ) => Show (TypeEqns x) where
-    show = pprint
+instance ( PPrint (MplType x) MplRenamed, PPrint (IdP x) MplRenamed, PPrint (TypeP x) MplRenamed) => Show (TypeEqns x) where
+    show = pprint (Proxy :: Proxy MplRenamed)
 
 deriving instance ( Eq (MplType x), ForallMplType Eq x , Eq (IdP x) ) => 
     Eq (TypeEqns x)
@@ -121,24 +123,24 @@ data Package x = Package {
     , _packageSubs :: [( TypeP x, MplType x)]
 }
 -- deriving instance ( Show (MplType x), ForallMplType Show x , Show (IdP x) ) => Show (Package x)
-instance ( PPrint (MplType x), PPrint (IdP x), PPrint (TypeP x) ) => Show (Package x) where
-    show = pprint
+instance ( PPrint (MplType x) MplRenamed, PPrint (IdP x) MplRenamed, PPrint (TypeP x) MplRenamed) => Show (Package x) where
+    show = pprint (Proxy :: Proxy MplRenamed)
 
-instance ( PPrint (MplType x), PPrint (IdP x), PPrint (TypeP x) ) => PPrint (Package x) where
-    pprint = show . f
+instance ( PPrint (MplType x) y, PPrint (IdP x) y, PPrint (TypeP x) y) => PPrint (Package x) y where
+    pprint proxy = show . f
       where
         f (Package {- univ -} exis subs) = vsep
             [ pretty "Package: "
             -- , pretty "univ: " <> pretty (map pprint $ Set.toList univ)
-            , pretty "exis: " <> pretty (map pprint $ Set.toList exis)
+            , pretty "exis: " <> pretty (map (pprint proxy) $ Set.toList exis)
             , pretty "subs: " <> pretty (map g subs)
             ]
 
         g (tp, sub) = show $ 
             pretty "(" 
-            <> pretty (pprint tp) 
+            <> pretty (pprint proxy tp) 
             <> pretty ","
-            <> pretty (pprint sub)
+            <> pretty (pprint proxy sub)
             <> pretty ")"
 
 
@@ -159,9 +161,9 @@ $(makeLenses ''Package)
 substitute ::
     ( Eq (TypeP x) 
     , Show (TypeP x) 
-    , PPrint (MplType x)
-    , PPrint (IdP x)
-    , PPrint (TypeP x)
+    , PPrint (MplType x) MplRenamed
+    , PPrint (IdP x) MplRenamed
+    , PPrint (TypeP x) MplRenamed
     ) =>
     (TypeP x, MplType x) -> 
     MplType x -> 
@@ -186,9 +188,9 @@ substitute sub  = fst . substituteDelta sub
 substituteDelta ::
     ( Eq (TypeP x)
     , Show (TypeP x) 
-    , PPrint (MplType x)
-    , PPrint (IdP x)
-    , PPrint (TypeP x)
+    , PPrint (MplType x) MplRenamed
+    , PPrint (IdP x) MplRenamed
+    , PPrint (TypeP x) MplRenamed
     ) =>
     (TypeP x, MplType x) -> 
     MplType x -> 
@@ -221,9 +223,9 @@ matchCont ::
     , Eq (IdP x) 
     , Eq (TypeP x) 
     , Show (TypeP x) 
-    , PPrint (MplType x)
-    , PPrint (IdP x)
-    , PPrint (TypeP x)
+    , PPrint (MplType x) MplRenamed
+    , PPrint (IdP x) MplRenamed
+    , PPrint (TypeP x) MplRenamed
 
     , ForallMplType Show x 
     , Show (IdP x)
@@ -314,9 +316,9 @@ match ::
     , Eq (IdP x) 
     , Eq (TypeP x) 
     , Show (TypeP x) 
-    , PPrint (MplType x)
-    , PPrint (IdP x)
-    , PPrint (TypeP x)
+    , PPrint (MplType x) MplRenamed
+    , PPrint (IdP x) MplRenamed
+    , PPrint (TypeP x) MplRenamed
 
     , ForallMplType Show x 
     , Show (IdP x)
@@ -335,9 +337,9 @@ matchNumNudge ::
     , Eq (IdP x) 
     , Eq (TypeP x) 
     , Show (TypeP x) 
-    , PPrint (MplType x)
-    , PPrint (IdP x)
-    , PPrint (TypeP x)
+    , PPrint (MplType x) MplRenamed
+    , PPrint (IdP x) MplRenamed
+    , PPrint (TypeP x) MplRenamed
 
     , ForallMplType Show x 
     , Show (IdP x)
@@ -385,9 +387,9 @@ matchNumNudge ty0 ty1 = matchCont ty0 ty1 k
 failsOccursCheck ::
     ( Eq (TypeP x) 
     , Show (TypeP x) 
-    , PPrint (MplType x)
-    , PPrint (IdP x)
-    , PPrint (TypeP x)
+    , PPrint (MplType x) MplRenamed
+    , PPrint (IdP x) MplRenamed
+    , PPrint (TypeP x) MplRenamed
     ) => 
     TypeP x ->
     MplType x ->
@@ -404,9 +406,9 @@ mkValidSub ::
     , Eq (TypeP x)
     , Eq (IdP x)
     , Show (TypeP x) 
-    , PPrint (MplType x)
-    , PPrint (IdP x)
-    , PPrint (TypeP x)
+    , PPrint (MplType x) MplRenamed
+    , PPrint (IdP x) MplRenamed
+    , PPrint (TypeP x) MplRenamed
     , MonadError e m ) => 
     TypeP x -> 
     MplType x ->
@@ -421,9 +423,9 @@ coalesce ::
     , Eq (TypeP x)
     , Eq (IdP x)
     , Show (TypeP x) 
-    , PPrint (MplType x)
-    , PPrint (IdP x)
-    , PPrint (TypeP x)
+    , PPrint (MplType x) MplRenamed
+    , PPrint (IdP x) MplRenamed
+    , PPrint (TypeP x) MplRenamed
 
     , ForallMplType Show x 
     , Show (IdP x)
@@ -451,9 +453,9 @@ coalesceNumNudge ::
     , Eq (TypeP x)
     , Eq (IdP x)
     , Show (TypeP x) 
-    , PPrint (MplType x)
-    , PPrint (IdP x)
-    , PPrint (TypeP x)
+    , PPrint (MplType x) MplRenamed
+    , PPrint (IdP x) MplRenamed
+    , PPrint (TypeP x) MplRenamed
 
     , ForallMplType Show x 
     , Show (IdP x)
@@ -488,9 +490,9 @@ linearize ::
     , Ord (TypeP x) 
     , Eq (IdP x)
     , Show (TypeP x) 
-    , PPrint (MplType x)
-    , PPrint (IdP x)
-    , PPrint (TypeP x)
+    , PPrint (MplType x) MplRenamed
+    , PPrint (IdP x) MplRenamed
+    , PPrint (TypeP x) MplRenamed
     , ForallMplType Show x 
     , Show (IdP x)
 
@@ -582,9 +584,9 @@ solveTypeEqns ::
     , Eq (IdP x) 
     , Show (TypeP x) 
 
-    , PPrint (MplType x)
-    , PPrint (IdP x)
-    , PPrint (TypeP x)
+    , PPrint (MplType x) MplRenamed
+    , PPrint (IdP x) MplRenamed
+    , PPrint (TypeP x) MplRenamed
 
     -- we require that these annotations should be the same
     , XTypeDoubleF x ~ XTypeIntF x
@@ -619,9 +621,9 @@ surfaceSubs ::
     , Eq (IdP x) 
     , Show (TypeP x) 
 
-    , PPrint (MplType x)
-    , PPrint (IdP x)
-    , PPrint (TypeP x)
+    , PPrint (MplType x) MplRenamed
+    , PPrint (IdP x) MplRenamed
+    , PPrint (TypeP x) MplRenamed
 
     , ForallMplType Show x 
     , Show (IdP x)) => 
@@ -641,9 +643,9 @@ packageExistentialElim  ::
     , Eq (TypeP x) 
     , Eq (IdP x)
     , Show (TypeP x) 
-    , PPrint (MplType x)
-    , PPrint (IdP x)
-    , PPrint (TypeP x)
+    , PPrint (MplType x) MplRenamed
+    , PPrint (IdP x) MplRenamed
+    , PPrint (TypeP x) MplRenamed
 
     , ForallMplType Show x 
     , Show (IdP x)
@@ -684,9 +686,9 @@ packageUniversalElim  ::
     , Eq (TypeP x) 
     , Eq (IdP x)
     , Show (TypeP x) 
-    , PPrint (MplType x)
-    , PPrint (IdP x)
-    , PPrint (TypeP x)
+    , PPrint (MplType x) MplRenamed
+    , PPrint (IdP x) MplRenamed
+    , PPrint (TypeP x) MplRenamed
 
     , ForallMplType Show x 
     , Show (IdP x)

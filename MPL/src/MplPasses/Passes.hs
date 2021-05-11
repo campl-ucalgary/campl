@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -24,6 +25,11 @@ import MplPasses.TypeChecker.TypeCheckCallErrors
 import MplPasses.TypeChecker.TypeCheckErrorPkg 
 import MplPasses.TypeChecker.TypeCheckMplTypeSub
 
+
+import Data.Proxy
+
+import MplPasses.PassesErrorsPprint
+
 import MplPasses.Env
 
 import MplAST.MplCore
@@ -37,45 +43,14 @@ import Data.Word
 import Data.Void
 import Data.List
 
+import MplPasses.PassesErrors
+
 import Debug.Trace
 
 {- This module conglomerates all the passes together and runs them all at
  - once producing one unified error data type (if the program is invalid) 
  - or a fully annotated AST tree.
  -}
-
-data MplPassesErrors =
-    MplBnfcErrors B.BnfcErrors
-    | MplParseErrors ParseErrors
-    | MplRenameErrors RenameErrors
-    | MplTypeCheckErrors TypeCheckErrors
-  deriving Show
-
-$(makeClassyPrisms ''MplPassesErrors)
-
-instance B.AsBnfcErrors MplPassesErrors where
-    _BnfcErrors = _MplBnfcErrors
-
-instance AsParseErrors MplPassesErrors where
-    _ParseErrors = _MplParseErrors
-
-instance AsRenameErrors MplPassesErrors where 
-    _RenameErrors = _MplRenameErrors
-
-instance AsTypeCheckErrors MplPassesErrors where
-    _TypeCheckErrors = _MplTypeCheckErrors 
-
-instance AsTypeCheckSemanticErrors MplPassesErrors where
-    _TypeCheckSemanticErrors = _MplTypeCheckErrors % _TypeCheckSemanticErrors 
-
-instance AsKindCheckErrors MplPassesErrors where
-    _KindCheckErrors = _MplTypeCheckErrors % _TypeCheckKindErrors 
-
-instance AsTypeCheckCallErrors MplPassesErrors where
-    _TypeCheckCallErrors = _MplTypeCheckErrors % _TypeCheckCallErrors 
-
-instance AsTypeUnificationError MplPassesErrors MplTypeSub where
-    _TypeUnificationError = _MplTypeCheckErrors % _TypeUnificationError 
 
 data MplPassesEnv = MplPassesEnv {
     mplPassesEnvUniqueSupply :: UniqueSupply
@@ -101,7 +76,7 @@ runPasses MplPassesEnv{mplPassesEnvUniqueSupply = supply, mplPassesTopLevel = to
   where
     (ls, rs) = split supply
 
-tracePprint n = trace (pprint n) n
+tracePprint n = trace (pprint (Proxy :: Proxy MplRenamed) n) n
 
 {-
 runPassesTester ::
@@ -110,10 +85,9 @@ runPassesTester ::
 -}
 runPassesTester str = do
     env <- mplPassesEnv
-    env <- mplPassesEnv
     case runPasses env str of
-        Right v -> putStrLn $ pprint v
-        Left v -> putStrLn $ intercalate "\n" $ map show v
+        Right v -> putStrLn $ pprint (Proxy :: Proxy MplRenamed) v
+        Left v -> putStrLn $ show $ vsep $ map pprintMplPassesErrors v
 
 huh = [r|
 {-
@@ -125,8 +99,42 @@ fun n6 =
                 -> 4.3
            in a + b + 3
 -}
+{-
+
 fun n6  :: -> Int =
     -> 3.4 + 3 
+-}
+
+{-
+data 
+    Fuk(A,B,C) -> S =
+        Fukk :: Fuk(A) -> S
+-}
+
+codata 
+    S -> Fun(A,B) =
+        App :: Fun(A),S -> B
+
+fun a5 =
+    f -> App(a5(f), f)
+{-
+proc v26 :: | TopBot (+) TopBot,TopBot => =
+    | a,other =>  -> do
+        fork a as
+            s -> do
+                close a 
+                halt s
+            t -> halt t
+-}
+    
+
+{-
+proc fk = 
+    | a => b -> do
+        put 123423423423234234234243 on b
+        close a
+        halt b
+-}
 {-
 fun n6 =
     -> 3 + 3.4

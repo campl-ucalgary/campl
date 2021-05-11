@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE FlexibleInstances #-}
 module MplPasses.Renamer.RenameErrors where
 
@@ -13,6 +14,7 @@ import MplAST.MplRenamed
 import MplUtil.UniqueSupply
 
 import MplPasses.Renamer.RenameSym
+import MplPasses.PassesErrorsPprint
 
 import Data.Foldable
 import Data.Function
@@ -68,10 +70,34 @@ instance OverlappingDeclarations (MplTypeClauseSpine MplParsed (ConcObjTag t)) w
         allstatevars = fmap (view typeClauseStateVar) spine 
 
 -- default out of scope lookup
-
+outOfScopeWith :: 
+    AsRenameErrors a =>
+     (IdentP -> t -> Maybe b) -> 
+     t -> 
+     IdentP -> 
+     [a]
 outOfScopeWith f symtab identp = 
     maybe [_OutOfScope # identp] (const []) 
         (f identp symtab)
 
+outOfScopesWith :: 
+    (Foldable t1, AsRenameErrors a) =>
+     (IdentP -> t2 -> Maybe b) -> 
+     t2 -> 
+     t1 IdentP -> [a]
 outOfScopesWith f symtab = 
     foldMap (outOfScopeWith f symtab)
+
+pprintRenameErrors :: RenameErrors -> MplDoc
+pprintRenameErrors = go
+  where
+    go :: RenameErrors -> MplDoc
+    go = \case
+        OverlappingDeclarations identps -> hsep
+            [ pretty "Overlapping declarations with"
+            , hsep $ map pprintIdentPWithLoc identps
+            ]
+        OutOfScope identp -> hsep
+            [ pretty "Out of scope identifier"
+            , pprintIdentPWithLoc identp
+            ]

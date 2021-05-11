@@ -371,13 +371,13 @@ annotateTypeTags tags = zipWith annotateTypeTag tags
 typePtoTypeVar :: TypeP MplTypeSub -> MplType MplTypeSub 
 typePtoTypeVar typep = _TypeVar # ( typep ^? typeIdentTInfo % _TypeIdentTInfoTypeAnn, typep ) 
 
-instance PPrint (MplBuiltInTypesF MplTypeSub (MplType MplTypeSub)) where
-    pprint n = pprint $ mplTypeToBnfc (TypeBuiltIn n)
+instance PPrint (MplBuiltInTypesF MplTypeSub (MplType MplTypeSub)) y where
+    pprint proxy n = pprint proxy $ mplTypeToBnfc proxy (TypeBuiltIn n)
 
-instance PPrint TypeTag where
-    pprint (TypeTag n) = pprint n
+instance PPrint TypeTag y where
+    pprint proxy (TypeTag n) = pprint proxy n
 
-instance PPrint TypeIdentT where
-    pprint (TypeIdentT tag (TypeIdentTInfoTypeVar v)) = pprint v  ++ "__" ++ pprint tag
-    pprint (TypeIdentT tag _) = pprint tag
+instance PPrint TypeIdentT y where
+    pprint proxy (TypeIdentT tag (TypeIdentTInfoTypeVar v)) = pprint proxy v  ++ "__" ++ pprint proxy tag
+    pprint proxy (TypeIdentT tag _) = pprint proxy tag
 

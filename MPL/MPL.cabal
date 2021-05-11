@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 346acce7dc1380a244afd924c27e9e432d6b644641487a98970c787c65484f79
+-- hash: 2a1c80cd35b3cc59337fbdee3c52ea61a264566b7d283b35c23d30d2cd5774b5
 
 name:           MPL
 version:        0.1.0.0
@@ -61,6 +61,8 @@ library
       MplPasses.Parser.ParseMplType
       MplPasses.Parser.ParseUtils
       MplPasses.Passes
+      MplPasses.PassesErrors
+      MplPasses.PassesErrorsPprint
       MplPasses.Renamer.Rename
       MplPasses.Renamer.RenameCmdFreeVars
       MplPasses.Renamer.RenameErrors

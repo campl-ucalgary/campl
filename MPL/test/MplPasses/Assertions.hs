@@ -12,6 +12,7 @@ import MplAST.MplPrinter
 
 import qualified MplPasses.Parser.BnfcParse as B
 import MplPasses.Parser.Parse
+import MplPasses.PassesErrors
 import MplPasses.Parser.ParseErrors
 import MplPasses.Renamer.Rename
 import MplPasses.Renamer.RenameErrors
@@ -22,6 +23,8 @@ import MplAST.MplCore
 import MplPasses.Passes
 import MplPasses.Env
 import MplUtil.UniqueSupply
+
+import Data.Proxy
 
 import Control.DeepSeq
 import Control.Monad
@@ -49,7 +52,7 @@ describeValidTypeCheck inp = describeValidTypeCheckWithContinuation inp k
   where
     -- we do this to check if the output returns any exceptions
     k :: MplProg MplTypeChecked -> IO () 
-    k prog = pprint prog `deepseq` return ()
+    k prog = pprint (Proxy :: Proxy MplRenamed) prog `deepseq` return ()
 
 describeValidTypeCheckWithContinuation :: 
     (FilePath, String) -> 
@@ -79,7 +82,7 @@ describeErrors prog (errmsg, pred) = do
         it ("Testing for " ++ errmsg ++ " error.") $ do
             case res of
                 Right prg -> assertFailure 
-                    $ "Program is valid when it should not be... \n "++ pprint prg
+                    $ "Program is valid when it should not be... \n "++ pprint (Proxy :: Proxy MplRenamed) prg
                 Left errs -> 
                     assertBool ("Expected " ++ errmsg ++ " but got " ++ show errs)
                     $ pred errs
@@ -97,7 +100,7 @@ describeErrorsFile (filename, prog) (errmsg, pred) = do
         it ("Testing for " ++ errmsg ++ " error.") $ do
             case res of
                 Right prg -> assertFailure 
-                    $ "Program is valid when it should not be... \n "++ pprint prg
+                    $ "Program is valid when it should not be... \n "++ pprint (Proxy :: Proxy MplRenamed) prg
                 Left errs -> 
                     assertBool ("Expected " ++ errmsg ++ " but got " ++ show errs)
                     $ pred errs

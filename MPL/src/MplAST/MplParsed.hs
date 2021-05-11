@@ -34,6 +34,11 @@ import MplAST.MplIdent
 import MplAST.MplProg
 import MplAST.MplExt
 
+
+import Data.Functor.Foldable
+import Control.Arrow
+import Debug.Trace
+
 {- Module that defines the AST that is generated 
  - after the parsing pass is completed..
  -}
@@ -209,3 +214,5 @@ type instance XTypeSeqArrF MplParsed = Void
 type instance XTypeConcArrF MplParsed = Void
 
 type instance XXMplBuiltInTypesF MplParsed = Void
+
+

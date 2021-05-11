@@ -40,6 +40,20 @@ data Location =
     -- Span (Int, Int) (Int, Int)
   deriving (Show, Eq)
 
+-- | Span for computing bounding boxes of a location.
+newtype Span = Span (Location, Location)
+
+memptySpan :: Span
+memptySpan = Span (Location (maxBound, maxBound), Location (minBound, minBound))
+
+{- | Semigroup / monoid instances compute the bounding box of the text -}
+instance Semigroup Span where
+    Span (Location (l00, l01), Location (r00, r01)) <> Span (Location (l10, l11), Location (r10, r11))
+        = Span (Location (min l00 l10, min l01 l11), Location (max r00 r10, max r01 r11))
+
+instance Monoid Span where
+    mempty = memptySpan
+
 data NameOcc = NameOcc { 
     _nameOccName :: Name 
     , _nameOccLocation :: Location 

@@ -28,12 +28,15 @@ import MplPasses.TypeChecker.TypeCheckErrorPkg
 import MplPasses.TypeChecker.TypeCheckCallErrors
 import MplPasses.Env
 
+import Data.Proxy
+
 import Control.Monad.Writer
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Except
 
-import Control.Arrow
+import Control.Arrow hiding ((<+>))
+import Data.Foldable
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -42,6 +45,7 @@ import Data.Maybe
 import Data.Bool
 
 import Data.Functor.Foldable (Base, cata, para)
+import MplPasses.PassesErrorsPprint
 
 import Debug.Trace
 
@@ -81,7 +85,6 @@ data KindCheckErrors =
     | KindGivenASequentialClauseButGotAConcurrentClause
         (IdP MplRenamed, [MplType MplRenamed]) (IdP MplRenamed, ([IdP MplRenamed], [IdP MplRenamed]))
 
-    | CannotLookupTypeConstructor (IdP MplRenamed)
   deriving Show
 
 $(makeLenses ''KindCheckEnv)
@@ -438,3 +441,86 @@ primitiveKindCheck = para f
                 (_Just % _TypeTopBotF # (Just cxt))
                 $ noerr 
 
+pprintKindCheckErrors :: KindCheckErrors -> MplDoc
+pprintKindCheckErrors = go
+  where
+    go :: KindCheckErrors -> MplDoc
+    go = \case 
+        KindAritySeqMismatchExpectedButGot expected got -> fold
+            [ pretty "Sequential arity mismatch for type. Expected call to be of the form"
+            , codeblock 
+                $ (pprintParsed :: MplType MplRenamed -> String)
+                $ uncurry (TypeSeqWithArgs ()) 
+                $ second (map (TypeVar ())) 
+                $ expected
+            , pretty "but got"
+            , codeblock
+                $ (pprintParsed :: MplType MplRenamed -> String)
+                $ got'
+            , pretty "at"  
+                <+> pprintSpan (typeLocationSpan got')
+            ]
+          where
+            got' = uncurry (TypeSeqWithArgs ()) $ got
+        KindArityConcMismatchExpectedButGot expected got -> fold
+            [ pretty "Concurrent arity mismatch for type. Expected call to be of the form"
+            , codeblock 
+                $ (pprintParsed :: MplType MplRenamed -> String)
+                $ uncurry (TypeConcWithArgs ()) 
+                $ second (map (TypeVar ()) *** map (TypeVar ()))
+                $ expected
+            , pretty "but got"
+            , codeblock
+                $ (pprintParsed :: MplType MplRenamed -> String)
+                $ got'
+            , pretty "at"  
+                <+> pprintSpan (typeLocationSpan got')
+            ]
+          where
+            got' = uncurry (TypeConcWithArgs ()) $ got
+        KindPrimtiveMismatchExpectedButGot expectedkind gotkind tpinquestion -> fold
+            [ pretty "Kind primitive mismatch. Expected a" 
+                <+> pprintKind expectedkind
+                <+> pretty "but got"
+                <+> pprintKind gotkind
+                <+> pretty "with type"
+            , codeblock
+                $ (pprintParsed :: MplType MplRenamed -> String)
+                $ tpinquestion
+            , pretty "at" 
+                <+> pprintSpan (typeLocationSpan tpinquestion)
+            ]
+
+        KindHigherKindedTypesAreNotAllowed highertp -> fold
+            [ pretty "Illegal higher kinded type."
+            , codeblock
+                $ (pprintParsed :: MplType MplRenamed -> String)
+                $ highertp
+            , pretty "at"
+                <+> pprintSpan (typeLocationSpan highertp)
+            ]
+
+        {-
+        KindGivenAConcurrentClauseButGotASequentialClause 
+            (IdP MplRenamed, ([MplAST.MplCore.MplType MplRenamed], [MplAST.MplCore.MplType MplRenamed]))
+            (IdP MplRenamed, [IdP MplRenamed])
+        -}
+
+    pprintKind :: MplPrimitiveKind MplTypeChecked -> MplDoc
+    pprintKind = \case
+        SeqKind _ -> pretty "sequential kind"
+        ConcKind _ -> pretty "concurrent kind"
+
+            
+  {-
+  | KindGivenAConcurrentClauseButGotASequentialClause (IdP
+                                                         MplRenamed,
+                                                       ([MplAST.MplCore.MplType MplRenamed],
+                                                        [MplAST.MplCore.MplType MplRenamed]))
+                                                      (IdP MplRenamed, [IdP MplRenamed])
+  | KindGivenASequentialClauseButGotAConcurrentClause (IdP
+                                                         MplRenamed,
+                                                       [MplAST.MplCore.MplType MplRenamed])
+                                                      (IdP MplRenamed,
+                                                       ([IdP MplRenamed], [IdP MplRenamed]))
+    -}

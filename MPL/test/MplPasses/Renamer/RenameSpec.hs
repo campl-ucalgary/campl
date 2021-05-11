@@ -20,6 +20,7 @@ import Data.Traversable
 
 import qualified MplPasses.Parser.BnfcParse as B
 import MplPasses.Parser.Parse
+import MplPasses.PassesErrors
 import MplPasses.Parser.ParseErrors
 import MplPasses.Renamer.Rename
 import MplPasses.Renamer.RenameErrors
