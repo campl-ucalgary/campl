@@ -202,8 +202,11 @@ parseBnfcExpr (B.DOUBLE_EXPR v) =
         Just n -> return $ _EDouble # n
         Nothing -> tell [_InvalidDouble # toTermIdentP v] >> throwError ()
         
+parseBnfcExpr (B.CHAR_EXPR v) = 
+    case pCharToLocationChar v of
+        Just n -> return $ _EChar # n
+        Nothing -> tell [_InvalidChar # toTermIdentP v] >> throwError ()
 
-parseBnfcExpr (B.CHAR_EXPR v) = error "not implemented"
 
 parseBnfcExpr (B.LIST_EXPR lbr exprs rbr) = error "not implemented instr"
 parseBnfcExpr (B.STRING_EXPR v) = error "not implemented"

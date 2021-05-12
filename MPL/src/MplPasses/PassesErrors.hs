@@ -67,20 +67,20 @@ pprintMplPassesErrors = vsep . go
   where
     go :: MplPassesErrors -> [MplDoc]
     go (MplBnfcErrors (B.BnfcParseError err)) = 
-        [ pretty "Error during BNFC parsing."
-        , pretty err
+        [ pretty "Error during BNFC parsing:"
+        , indent' $ pretty err
         ] 
     go (MplParseErrors err) = 
-        [ pretty "Error during parsing."
-        , P.pprintParseErrors err
+        [ pretty "Error during parsing:"
+        , indent' $ P.pprintParseErrors err
         ]
     go (MplRenameErrors err) = 
-        [ pretty "Error during renaming."
-        , R.pprintRenameErrors err
+        [ pretty "Error during renaming:"
+        , indent' $ R.pprintRenameErrors err
         ]
     go (MplTypeCheckErrors err) = 
-        [ pretty "Error during type checking."
-        , T.pprintTypeCheckErrors err
+        [ pretty "Error during type checking:"
+        , indent' $ T.pprintTypeCheckErrors err
         ]
 
     indent' = indent 4

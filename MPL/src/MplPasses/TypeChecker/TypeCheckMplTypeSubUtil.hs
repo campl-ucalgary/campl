@@ -17,6 +17,7 @@ import Data.List.NonEmpty
  -
  -}
 
+
 newtype TypeTag = TypeTag UniqueTag
   deriving (Show, Eq, Ord)
 
@@ -88,6 +89,29 @@ $(makePrisms ''TypeIdentT)
 $(makePrisms ''TypeIdentTInfo)
 $(makePrisms ''TypeChAnn)
 $(makeClassyPrisms ''TypeAnn)
+
+{- typeIdentTToTypeT. Converts a 'TypeIdentT' to 'TypeP MplTypeChecked' 
+(recall this is just 'TypeT'). 
+Note that we always use the outer most type tag since that is the one used in the 
+unification algorithm.
+ -}
+typeIdentTToTypeT :: TypeIdentT -> TypeP MplTypeChecked
+typeIdentTToTypeT (TypeIdentT tag (TypeIdentTInfoTypeVar tp)) 
+    = case tp of
+        GenNamedType _ -> GenNamedType tag'
+        NamedType tp' -> NamedType 
+            (tp' & identRUniqueTag .~ tag')
+  where
+    tag' = tag ^. coerced
+typeIdentTToTypeT (TypeIdentT (TypeTag tag) _) = GenNamedType tag
+
+typeTToTypeIdentT :: 
+    TypeP MplTypeChecked ->
+    TypeIdentT 
+typeTToTypeIdentT = go 
+  where
+    go tp 
+        = TypeIdentT (tp ^. uniqueTag % to TypeTag) $ TypeIdentTInfoTypeVar tp
 
 
 

@@ -79,7 +79,7 @@ typeCheckPattern = para f
             return $ fromJust res
 
         ~(ttypepatts, (patts', pattacceqns)) <- second unzip . unzip <$> 
-            traverse (withFreshTypeTag . snd ) patts
+            traverse (withFreshTypeTag . snd) patts
 
         arrenv <- freshInstantiateArrEnv 
         let ttypep = annotateTypeTag ttype patt
@@ -213,9 +213,51 @@ typeCheckPattern = para f
         ttype <- guse (envLcl % typeInfoEnvTypeTag)
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
-        let patt = PNull cxt :: MplPattern MplRenamed
+        -- let patt = PNull cxt :: MplPattern MplRenamed
+        let ann = _TypeAnnPatt # (PNull cxt)
+            ttypep =  _TypeIdentT # (ttype, TypeIdentTInfoTypeAnn ann)
+            eqns = [ TypeEqnsEq (typePtoTypeVar ttypep , typePtoTypeVar ttypep) ]
 
         return 
             ( PNull (cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq)
-            , []
+            , eqns
             )
+
+    f (PTupleF cxt (t0,t1,ts)) = do
+        ttype <- guse (envLcl % typeInfoEnvTypeTag)
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        (ttypet0, (t0pat, t0eqns)) <- withFreshTypeTag $ snd t0
+        (ttypet1, (t1pat, t1eqns)) <- withFreshTypeTag $ snd t1
+        (ttypests, (tspat, tseqns)) <- fmap (second unzip . unzip) $ traverse (withFreshTypeTag . snd) ts
+
+        let ann = _TypeAnnPatt # (PTuple cxt (fst t0, fst t1, map fst ts) :: MplPattern MplRenamed)
+            ttypep = _TypeIdentT # (ttype, TypeIdentTInfoTypeAnn ann)
+            eqns =
+                [ TypeEqnsEq 
+                    ( typePtoTypeVar ttypep
+                    , _TypeTupleF # 
+                        ( _Just % _NameOcc # (tupleName (2 + length ts), cxt)
+                        , 
+                            ( TypeVar Nothing 
+                                $ annotateTypeTag ttypet0 
+                                $ fst t0
+                            , TypeVar Nothing 
+                                $ annotateTypeTag ttypet1 
+                                $ fst t1
+                            , map (TypeVar Nothing . uncurry annotateTypeTag) 
+                                $ zip ttypests (map fst ts)
+                            )
+                        )
+                    )
+                ] 
+                <> t0eqns
+                <> t1eqns
+                <> concat tseqns
+            res = PTuple 
+                    (cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq)
+                    ( t0pat
+                    , t1pat
+                    , tspat
+                    )
+        return (res , eqns)

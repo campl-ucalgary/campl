@@ -146,8 +146,7 @@ expectedInputPolarity ch = maybeToList $
 
 
 
-{-
- - Tests for the following conditions:
+{- | 'cutConditions' tests for the following conditions:
  -      (c1) at most 2 occurences of each variable, 
  -      (c2) each variable must be of opposite polarity in each of the plug phrases
  -      (c3) each variable must be in a different phrase
@@ -155,9 +154,12 @@ expectedInputPolarity ch = maybeToList $
 cutConditions :: 
     forall e. 
     ( AsTypeCheckSemanticErrors e ) => 
+    -- | the channels which are plugged together
+    [IdentR]  ->
+    -- | the phrases provided in the plug 
     [([ChIdentR], [ChIdentR])] ->
     [e]
-cutConditions plugphrases = 
+cutConditions plugged plugphrases = 
     c1c2 plugphrases <> concatMap c3 plugphrases
   where
     c1c2 = concatMap g . toListOf folded . flip execState Map.empty . traverse f 
@@ -171,7 +173,14 @@ cutConditions plugphrases =
         for_ outs $ \ch -> at (ch ^. uniqueTag) %= Just . maybe ([], [ch]) (over _2 (ch:))
 
     g :: ([ChIdentR], [ChIdentR]) -> [e]
-    g res = fold [c1 res, c2 res]
+    g res = fold 
+        [ c1 res
+        -- for (c2), we should really should only check if the plugged variables have opposite polarity..
+        -- The other variables, have a fixed polarity as given by the argument declarations
+        , c2 $ 
+            (filter ((`elem`plugged) . view chIdentRIdentR) *** filter ((`elem`plugged) . view chIdentRIdentR)) 
+            res
+        ]
     
     c1 inputsoutputs 
         | uncurry (+) (over each length inputsoutputs) > 2 =

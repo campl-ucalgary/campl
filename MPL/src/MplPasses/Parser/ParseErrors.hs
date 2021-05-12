@@ -24,6 +24,7 @@ data ParseErrors
     = ExpectedGetOrPutButGot IdentP
     | InvalidInt IdentP
     | InvalidDouble IdentP
+    | InvalidChar IdentP
     | ExpectedTypeVarButGot (MplType MplParsed)
     | ExpectedTypeSeqWithArgsButGot (MplType MplParsed)
     | ExpectedTypeConcWithArgsButGot (MplType MplParsed)
@@ -71,6 +72,11 @@ pprintParseErrors = go
             , codeblock $ idp ^. identPNameOcc % nameOccName % (coerced :: Iso' Name String)
             , pretty "at" <+> pprintIdentPLoc idp
             ]
+        InvalidChar idp -> fold 
+            [ pretty "Invalid char with"
+            , codeblock $ idp ^. identPNameOcc % nameOccName % (coerced :: Iso' Name String)
+            , pretty "at" <+> pprintIdentPLoc idp
+            ]
         ExpectedTypeVarButGot tp -> fold
             [ pretty "Expected a type variable (upper case identifier) but instead got"
             , codeblock $ pprintParsed tp
@@ -113,6 +119,6 @@ pprintParseErrors = go
         {- PlugExpectedTwoOrMorePhrasesButGot (Maybe (CPlugPhrase MplParsed)) -}
 
         PlugExpectedARunProcessCallButGot procscall -> fold
-            [ pretty "Expected `run' to have a process call" ]
+            [ pretty "Expected `plug' to call a process" ]
         {- PlugExpectedARunProcessCallButGot (NonEmpty (MplCmd MplParsed)) -}
 

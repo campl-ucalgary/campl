@@ -37,6 +37,7 @@ import Control.Monad.Except
 
 import Control.Arrow hiding ((<+>))
 import Data.Foldable
+import Data.Traversable
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -328,6 +329,36 @@ primitiveKindCheck = para f
 
             return $ bool Nothing (_Just % _TypeDoubleF # Just cxt) noerr
 
+        TypeTupleF cxt (t0,t1,ts) -> do
+            ekd <- guse kindCheckExpectedPrimitiveKind 
+            
+            -- check if kind error 
+            let noerr = SeqKind () == ekd
+            tell $ review _ExternalError $ bool
+                [_KindPrimtiveMismatchExpectedButGot # 
+                    ( ekd
+                    , SeqKind ()
+                    , _TypeTupleF # 
+                        ( cxt
+                        , 
+                            ( fst t0
+                            , fst t1
+                            , map fst ts
+                            )
+                        )
+                    )
+                ] [] $ noerr
+
+            ~((t0':t1':ts'), lg) <- fmap (second and . unzip) $ for (t0:t1:ts) $ \t -> do
+                kindCheckExpectedPrimitiveKind .= _SeqKind # ()
+                (t', tlg) <- listen $ snd t
+                return (t', has _Empty tlg)
+
+            return $ bool 
+                Nothing
+                (review _TypeTupleF . (Just cxt,) <$> ((,,) <$> t0' <*> t1' <*> sequenceA ts'))
+                $ noerr && lg
+
         TypeGetF ann (lr, l) (rr, r) -> do
             ekd <- guse kindCheckExpectedPrimitiveKind 
             let noerr = ekd == _ConcKind # ()
@@ -500,11 +531,39 @@ pprintKindCheckErrors = go
                 <+> pprintSpan (typeLocationSpan highertp)
             ]
 
-        {-
-        KindGivenAConcurrentClauseButGotASequentialClause 
-            (IdP MplRenamed, ([MplAST.MplCore.MplType MplRenamed], [MplAST.MplCore.MplType MplRenamed]))
-            (IdP MplRenamed, [IdP MplRenamed])
-        -}
+        KindGivenAConcurrentClauseButGotASequentialClause given got -> fold
+            [ pretty "Illegal sequential type occuring in concurrent type in the type"
+            , codeblock
+                $ (pprintParsed :: MplType MplRenamed -> String)
+                $ given'
+            , pretty "at" 
+                <+> pprintSpan (typeLocationSpan given')
+                <+> pretty "but got an occurence of the sequential type"
+            , codeblock
+                $ (pprintParsed :: MplType MplRenamed -> String)
+                $ got'
+            ]
+          where
+            given' = uncurry (TypeConcWithArgs ()) $ given
+            got' = uncurry (TypeSeqWithArgs ()) $ second (map (TypeVar ())) $ got 
+
+        KindGivenASequentialClauseButGotAConcurrentClause given got -> fold
+            [ pretty "Illegal concurrent type occuring in sequential type in the type"
+            , codeblock
+                $ (pprintParsed :: MplType MplRenamed -> String)
+                $ given'
+            , pretty "at" 
+                <+> pprintSpan (typeLocationSpan given')
+                <+> pretty "but got an occurence of the sequential type"
+            , codeblock
+                $ (pprintParsed :: MplType MplRenamed -> String)
+                $ got'
+            ]
+          where
+            given' = uncurry (TypeSeqWithArgs ()) $ given
+            got' = uncurry (TypeConcWithArgs ()) $ second (map (TypeVar ()) *** map (TypeVar ())) $ got 
+
+
 
     pprintKind :: MplPrimitiveKind MplTypeChecked -> MplDoc
     pprintKind = \case
@@ -513,11 +572,6 @@ pprintKindCheckErrors = go
 
             
   {-
-  | KindGivenAConcurrentClauseButGotASequentialClause (IdP
-                                                         MplRenamed,
-                                                       ([MplAST.MplCore.MplType MplRenamed],
-                                                        [MplAST.MplCore.MplType MplRenamed]))
-                                                      (IdP MplRenamed, [IdP MplRenamed])
   | KindGivenASequentialClauseButGotAConcurrentClause (IdP
                                                          MplRenamed,
                                                        [MplAST.MplCore.MplType MplRenamed])

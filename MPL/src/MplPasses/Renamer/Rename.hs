@@ -195,6 +195,11 @@ renameExpr = cata f
     f (EIntF cxt n) = return $ _EInt # (cxt, n)
     f (EDoubleF cxt n) = return $ _EDouble # (cxt, n)
     f (ECharF cxt n) = return $ _EChar # (cxt, n)
+
+    f (ETupleF cxt (t0, t1, ts)) = do -- return $ _EChar # (cxt, n)
+        ~(t0':t1':ts') <- sequenceA $ t0:t1:ts
+        return $ _ETuple # (cxt, (t0',t1',ts'))
+
     f (ECaseF cxt caseon cases) = do
         caseon' <- caseon
         cases' <- traverse g cases
@@ -434,7 +439,11 @@ renameCmd = f
         symtab <- guse envLcl
         tell $ outOfScopeWith lookupCh symtab ch
         let chlkup = lookupCh ch symtab
-            chlkup' = fromJust chlkup
+
+        envLcl %= deleteCh ch
+
+        symtab <- guse envLcl
+        let chlkup' = fromJust chlkup
             ch' = fromJust $ tagIdentPToChIdentRWithSymEntry ch <$> chlkup
 
             cxt1' = zipWith tagIdentPToChIdentRWithSymEntry cxt1 
@@ -447,6 +456,7 @@ renameCmd = f
             -- scope, this will simply just ignore it... change this so that it really checks
             -- it, by providing the information of whether it was user supplied so we know whether
             -- to do out of scope checks.
+
         if p1 == UserProvidedContext
             then do 
                 tell $ outOfScopesWith lookupCh symtab cxt1 
@@ -458,7 +468,6 @@ renameCmd = f
                 tell $ overlappingDeclarations cxt1 
             else return ()
 
-        envLcl %= deleteCh ch
 
         ch1' <- fmap (review _ChIdentR . (,ch' ^. polarity)) $ splitUniqueSupply $ tagIdentP ch1
         ch2' <- fmap (review _ChIdentR . (,ch' ^. polarity)) $ splitUniqueSupply $ tagIdentP ch2

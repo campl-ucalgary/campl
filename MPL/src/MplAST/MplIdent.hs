@@ -66,6 +66,7 @@ instance Eq NameOcc where
 newtype KeyWordNameOcc = KeyWordNameOcc NameOcc
   deriving Show
 
+
 data Namespace = 
     TypeLevel
     | TermLevel
@@ -98,6 +99,9 @@ instance HasName NameOcc where
 
 instance HasLocation NameOcc where
     location = nameOccLocation
+
+instance HasLocation KeyWordNameOcc where
+    location = (coerced :: Iso' KeyWordNameOcc NameOcc) % nameOccLocation
 
 eqUniqueTag :: 
     HasUniqueTag a =>

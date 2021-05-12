@@ -65,12 +65,12 @@ type instance XTypeWithNoArgs MplTypeSub = MplObjectDefn MplTypeCheckedClause
 type instance XXType MplTypeSub = Void
 type instance XTypeIntF MplTypeSub = Maybe TypeAnn
 type instance XTypeDoubleF MplTypeSub = Maybe TypeAnn
-type instance XTypeCharF MplTypeSub = NameOcc
-type instance XTypeStringF MplTypeSub = NameOcc
-type instance XTypeUnitF MplTypeSub = NameOcc
-type instance XTypeBoolF MplTypeSub = NameOcc
-type instance XTypeListF MplTypeSub = NameOcc
-type instance XTypeTupleF MplTypeSub = NameOcc
+type instance XTypeCharF MplTypeSub = Maybe TypeAnn
+type instance XTypeStringF MplTypeSub = Maybe NameOcc
+type instance XTypeUnitF MplTypeSub = Maybe NameOcc
+type instance XTypeBoolF MplTypeSub = Maybe NameOcc
+type instance XTypeListF MplTypeSub = Maybe NameOcc
+type instance XTypeTupleF MplTypeSub = Maybe NameOcc
 
 type instance XTypeGet MplTypeSub = TypeChAnn
 type instance XTypePut MplTypeSub = TypeChAnn
@@ -211,6 +211,12 @@ instantiateTypeWithSubs sublist = cata f
         -- TODO: we can preserve some error information here.
         TypeIntF cxt -> return $ _TypeIntF # Nothing
         TypeDoubleF cxt -> return $ _TypeDoubleF # Nothing
+        TypeCharF cxt -> return $ _TypeCharF # Nothing
+
+
+        TypeTupleF cxt (t0,t1,ts) -> do
+            ~(t0':t1':ts') <- sequenceA $ t0:t1:ts
+            return $ _TypeTupleF # (cxt, (t0',t1',ts'))
 
         TypeGetF cxt seq conc -> do
             seq' <- seq
@@ -240,10 +246,7 @@ instantiateTypeWithSubs sublist = cata f
       where
         annotate cxt = fromMaybe (_TypeChAnnEmpty # ()) $ review _TypeChAnnNameOcc <$> cxt
 
-        -- undefined
-
     -- f (TypeBuiltInF rst) = TypeBuiltIn . embedBuiltInTypes <$> sequenceA rst 
-    --
 
 substituteTypeVars ::
     [(TypeP MplTypeChecked, MplType MplTypeChecked)] ->
@@ -378,6 +381,7 @@ instance PPrint TypeTag y where
     pprint proxy (TypeTag n) = pprint proxy n
 
 instance PPrint TypeIdentT y where
-    pprint proxy (TypeIdentT tag (TypeIdentTInfoTypeVar v)) = pprint proxy v  ++ "__" ++ pprint proxy tag
-    pprint proxy (TypeIdentT tag _) = pprint proxy tag
+    pprint proxy (TypeIdentT tag (TypeIdentTInfoTypeVar v)) = 
+        pprint proxy v  ++ "__" ++ pprint proxy tag
+    pprint proxy (TypeIdentT tag _) = "T" ++ pprint proxy tag
 

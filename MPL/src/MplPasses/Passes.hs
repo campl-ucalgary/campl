@@ -90,55 +90,41 @@ runPassesTester str = do
         Left v -> putStrLn $ show $ vsep $ map pprintMplPassesErrors v
 
 huh = [r|
-{-
-fun n6 =
-    -> 
-        let fun a = 
-                -> 3 
-        in let fun b =
-                -> 4.3
-           in a + b + 3
--}
-{-
 
-fun n6  :: -> Int =
-    -> 3.4 + 3 
--}
-
-{-
 data 
-    Fuk(A,B,C) -> S =
-        Fukk :: Fuk(A) -> S
--}
+    Unit -> S =
+        Unit ::  -> S
+data 
+    Unitt -> S =
+        Unitt ::  -> S
+data
+    Wrapper(A) -> S =
+        Wrapper :: A -> S
 
-codata 
-    S -> Fun(A,B) =
-        App :: Fun(A),S -> B
+fun testing =
+    'a':'b' -> ('a','b')
 
-fun a5 =
-    f -> App(a5(f), f)
-{-
-proc v26 :: | TopBot (+) TopBot,TopBot => =
-    | a,other =>  -> do
-        fork a as
-            s -> do
-                close a 
-                halt s
-            t -> halt t
--}
-    
 
 {-
-proc fk = 
-    | a => b -> do
-        put 123423423423234234234243 on b
-        close a
-        halt b
--}
-{-
-fun n6 =
-    -> 3 + 3.4
--}
+protocol Mem(A|) => P =
+    Put :: Put(A|P) => P
+    Get :: Get(A|P) => P
+    Cls :: TopBot => P
 
+protocol Passer(|A) => P =
+    Pass :: A (+) (Neg(A) (*) P) => P
+
+proc memory :: A | Mem(A|) => =
+    x | ch => -> do
+        hcase ch of
+            Put -> do
+                get y on ch
+                memory(y | ch => )
+            Get -> do
+                put x on ch
+                memory(x | ch => )
+            Cls -> do
+                halt ch
+-}
 
 |]

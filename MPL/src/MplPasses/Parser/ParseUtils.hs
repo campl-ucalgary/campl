@@ -83,6 +83,9 @@ instance ToLocation IdentP  where
 instance ToLocation B.PDouble  where
     toLocation (B.PDouble (pos,str)) = toLocation pos
 
+instance ToLocation B.PChar  where
+    toLocation (B.PChar (pos,str)) = toLocation pos
+
 class ToNameOcc ident where
     toNameOcc :: ident -> NameOcc
 
@@ -143,6 +146,10 @@ instance ToNameOcc B.PInteger where
 
 instance ToNameOcc B.PDouble where
     toNameOcc (B.PDouble posstr) = 
+        toNameOcc posstr
+
+instance ToNameOcc B.PChar where
+    toNameOcc (B.PChar posstr) = 
         toNameOcc posstr
 
 instance ToNameOcc B.TypeHandleName where
@@ -222,4 +229,9 @@ pIntegerToLocationInt a@(B.PInteger (_, str)) = do
 pDoubleToLocationDouble :: B.PDouble -> Maybe (Location, Double)
 pDoubleToLocationDouble a@(B.PDouble (_, str)) =
     (toLocation a,) <$> (readMaybe str :: Maybe Double)
+
+
+pCharToLocationChar :: B.PChar -> Maybe (Location, Char)
+pCharToLocationChar a@(B.PChar (_, str)) =
+    (toLocation a,) <$> (readMaybe str :: Maybe Char)
 

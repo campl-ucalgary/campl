@@ -111,6 +111,7 @@ instance {-# OVERLAPPING #-} PPrint ChIdentR MplParsed where
 instance {-# OVERLAPPING #-} PPrint ChIdentR MplRenamed where
     pprint proxy n = n ^. chIdentRIdentR % to (pprint proxy) ++ "__" ++ n ^. polarity % to (pprint proxy)
 
+
 instance PPrint PrimitiveOperators x where
     pprint _ = go
       where
@@ -127,6 +128,9 @@ instance ToBnfcIdent B.PIdent x where
 
 instance ToBnfcIdent B.PDouble x where
     toBnfcIdent proxy n =  B.PDouble ((-1,-1), pprint proxy n)
+
+instance ToBnfcIdent B.PChar x where
+    toBnfcIdent proxy n =  B.PChar ((-1,-1), pprint proxy n)
 
 instance ToBnfcIdent B.UIdent x where
     toBnfcIdent proxy n =  B.UIdent ((-1,-1), pprint proxy n)
@@ -258,6 +262,15 @@ instance ( PPrint (IdP x) t, PPrint (TypeP x) t) => MplTypeToBnfc (MplType x) t 
 
             TypeIntF _cxt -> B.MPL_UIDENT_NO_ARGS_TYPE $ toBnfcIdent proxy "Int"
             TypeDoubleF _cxt -> B.MPL_UIDENT_NO_ARGS_TYPE $ toBnfcIdent proxy "Double"
+            TypeCharF _cxt -> B.MPL_UIDENT_NO_ARGS_TYPE $ toBnfcIdent proxy "Char"
+
+            TypeTupleF cxt (t0, t1, ts) -> 
+                B.MPL_TUPLE_TYPE 
+                    bnfcKeyword
+                    (f t0)
+                    (map (B.TUPLE_LIST_TYPE . f) (t1 : ts))
+                    bnfcKeyword
+
 
 class UserProvidedTypeToBnfc t x where
     userProvidedTypeToBnfc :: Proxy x -> t -> Maybe B.MplType
@@ -342,6 +355,9 @@ instance ( PPrint (IdP x) y ) => MplPattToBnfc (MplPattern x) y where
           where
             g (_, id, patt) = B.DESTRUCTOR_PATTERN_PHRASE (toBnfcIdent proxy id) (f patt)
         f (PNull _) = B.NULL_PATTERN bnfcKeyword
+
+        f (PTuple _ (t0,t1,ts)) = 
+            B.TUPLE_PATTERN bnfcKeyword (f t0) (map (B.TUPLE_LIST_PATTERN . f) $ t1:ts) bnfcKeyword
 
 {- | Convert a phrase to a bnfc -}
 class MplPhraseToBnfc x t res y | t -> res where
@@ -509,10 +525,16 @@ instance
             _ ->  error "primitive op not implemented yet"
         f (EVar _ id) = B.VAR_EXPR $ toBnfcIdent proxy id 
         f (EInt _ id) = B.INT_EXPR $ toBnfcIdent proxy id 
-        -- f (EChar _ id) = B.CHAR_EXPR id
-        f (EChar _ id) = error "char not implemented"
-        -- f (EDouble _ id) = B.DOUBLE_EXPR id
+        f (EChar _ id) = B.CHAR_EXPR $ toBnfcIdent proxy id
         f (EDouble _ id) = B.DOUBLE_EXPR $ toBnfcIdent proxy id 
+
+        f (ETuple _ (t0,t1,ts)) = 
+            B.TUPLE_EXPR 
+            bnfcKeyword 
+                (f t0) 
+                (map (B.TUPLE_EXPR_LIST . f) (t1:ts))
+            bnfcKeyword
+        -- | TUPLE_EXPR LBracket Expr [TupleExprList] RBracket
 
         f (ECase _ expr pattexprs) = B.CASE_EXPR bnfcKeyword (f expr) $ NE.toList $ fmap g pattexprs
           where
@@ -778,24 +800,21 @@ instance MplPrintConstraints x y => PPrint (MplProg x) y where
 instance (PPrint (IdP x) y, MplPattToBnfc (XMplPattern x) y) => PPrint (MplPattern x) y where
     pprint proxy = B.printTree . mplPattToBnfc proxy
 
+instance 
+    ( PPrint (IdP x) y
+    , MplToForkPhrase (ChP x, XCForkPhrase x, NonEmpty (MplCmd x)) y
+    , MplToPlugPhrase (XCPlugPhrase x, ([ChP x], [ChP x]), NonEmpty (MplCmd x)) y
+    , PPrint (ChP x) y
+    , MplExprToBnfc (XMplExpr x) y
+    , MplPattToBnfc (XMplPattern x) y
+    ) => PPrint (MplCmd x) y where
+    pprint proxy = B.printTree . mplCmdToBnfc proxy
+
+instance MplPrintConstraints x y => PPrint (MplExpr x) y where
+    pprint proxy = B.printTree . mplExprToBnfc proxy
+
 
 {- | Wrapper function for 'pprint' specialized to 'MplParsed'. This is used most frequently when reprinting the AST to users -}
 pprintParsed :: ( PPrint a MplParsed ) => a -> String
 pprintParsed a = pprint (Proxy :: Proxy MplParsed) a
 
-{-
-
-instance 
-    ( PPrint (IdP x)
-    , PPrint (ChP x)
-    , MplExprToBnfc (XMplExpr x)
-    , MplPattToBnfc (XMplPattern x)
-    , MplToForkPhrase (ChP x, XCForkPhrase x, NonEmpty (MplCmd x))
-    , MplToPlugPhrase (XCPlugPhrase x, ([ChP x], [ChP x])
-    , NonEmpty (MplCmd x))
-    ) => PPrint (MplCmd x) where
-        pprint = B.printTree . mplCmdToBnfc
-
-
-
--}

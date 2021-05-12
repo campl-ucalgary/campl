@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts #-}
 module MplAST.MplCore (
     module MplAST.MplExpr
     , module MplAST.MplPattern
@@ -102,7 +103,6 @@ typeLocationSpan = cata go
     go :: MplTypeF x Span -> Span
     go = \case
         TypeVarF _ann typep -> locationToSpan typep
-        TypeSeqVarWithArgsF _ann typep rst -> sconcat $ locationToSpan typep :| rst 
         TypeWithNoArgsF _ann idp -> locationToSpan idp
 
         TypeSeqWithArgsF _ann idp rst -> sconcat $ locationToSpan idp :| rst 

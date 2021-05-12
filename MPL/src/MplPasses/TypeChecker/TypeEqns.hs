@@ -33,6 +33,7 @@ import MplPasses.TypeChecker.TypeCheckMplTypeSubUtil
 
 import MplUtil.UniqueSupply
 
+
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
 
@@ -51,6 +52,9 @@ import Data.Foldable
 import Data.Set (Set)
 import qualified Data.Set as Set
 
+
+import Data.Maybe
+
 import Data.Map (Map)
 import qualified Data.Map as Map
 
@@ -63,6 +67,8 @@ import Data.Proxy
 import Data.Text.Prettyprint.Doc
 
 import Debug.Trace
+
+import MplPasses.PassesErrorsPprint
 
 {- Module for type equations and solving them (i.e., a variant of the unification algorithm)
  -
@@ -109,10 +115,11 @@ instance ( PPrint (MplType x) MplRenamed, PPrint (IdP x) MplRenamed, PPrint (Typ
 deriving instance ( Eq (MplType x), ForallMplType Eq x , Eq (IdP x) ) => 
     Eq (TypeEqns x)
 
-data TypeUnificationError x =
-    TypeMatchFailure (MplType x) (MplType x)
+data TypeUnificationError x 
+    = TypeMatchFailure (MplType x) (MplType x)
     | TypeOccursCheck (TypeP x) (MplType x)
-    | TypeForallMatchFailure (TypeP x, MplType x)
+    | TypeForallMatchFailure (MplType x) (MplType x)
+        -- ^ given type, inferred type
 
 deriving instance ( Show (MplType x), ForallMplType Show x , Show (IdP x) ) => 
     Show (TypeUnificationError x)
@@ -273,11 +280,19 @@ matchCont ty0 ty1 k = f ty0 ty1
         | otherwise = k type0 type1
 
     f type0@(TypeBuiltIn a) type1@(TypeBuiltIn b) = case (a,b) of
-        (TypeIntF a, TypeIntF b) -> return []
-        (TypeDoubleF a, TypeDoubleF b) -> return []
+        (TypeIntF _a, TypeIntF _b) -> return []
+        (TypeDoubleF _a, TypeDoubleF _b) -> return []
+        (TypeCharF _a, TypeCharF _b) -> return []
+
         (TypeTopBotF a, TypeTopBotF b) -> return []
 
+
         (TypeNegF cxt0 a, TypeNegF cxt1 b) -> f a b
+        (TypeTupleF _cxt0 (l0, l1, ls), TypeTupleF _cxt1 (r0, r1, rs)) 
+            | length ls == length rs -> 
+                fmap concat $ mappend 
+                    <$> sequenceA [ f l0 r0 , f l1 r1 ] 
+                    <*> traverse (uncurry f) (zip ls rs)
 
         (TypeGetF cxt0 seq0 conc0, TypeGetF cxt1 seq1 conc1) -> 
             concat <$> sequenceA [f seq0 seq1, f conc0 conc1]
@@ -352,7 +367,8 @@ matchNumNudge ty0 ty1 = matchCont ty0 ty1 k
     k type0@(TypeBuiltIn a) type1@(TypeBuiltIn b) = case (a,b) of
         (TypeIntF a, TypeIntF b) -> return []
         (TypeDoubleF a, TypeDoubleF b) -> return []
-        _ -> (throwError $ _TypeMatchFailure # (type0,type1))
+        _ -> throwError $ _TypeMatchFailure # (type0,type1)
+    k type0 type1 = throwError $ _TypeMatchFailure # (type0,type1)
 
     {-
      -
@@ -703,26 +719,26 @@ packageUniversalElim  ::
 packageUniversalElim vs pkg = traverseOf packageSubs linearize pkg  >>= flip (foldrM f) vs
   where
     f :: ([TypeP x], TypeP x, MplType x) -> Package x -> m (Package x)
-    f (foralls, v, vtp) acc = case acc' ^. packageSubs % to (lookup v) of
-        Just tp -> do 
+    f (foralls, v, vtp) acc = acc' ^. packageSubs % to (pure . fromJust . lookup v) >>= \tp -> do
+            let throwerr = throwError $ _TypeForallMatchFailure # (vtp, tp)
+
+                g :: [(TypeP x, MplType x)] -> m ()
+                g [] = return ()
+                g ((l, r@(TypeVar rcxt r')):rst)
+                    -- trivial substitutions are okay or any matching to a non for all
+                    | isTrivialSub (l, r) = g rst
+                    | l `notElem` foralls && r' `notElem` foralls = g rst
+                    | l `elem` foralls && r' `notElem` foralls = coalesce (r', TypeVar rcxt l) rst >>= g
+                    | r' `elem` foralls && l `notElem` foralls = g ((r', (TypeVar rcxt l)):rst)
+                    | otherwise = throwerr -- throwError $ _TypeForallMatchFailure # (l, r)
+                g ((l, r):rst)
+                    | l `elem` foralls = throwerr -- throwError $ _TypeForallMatchFailure # (l, r)
+                    | otherwise = g rst
+
             match vtp tp >>= linearize >>= g 
             return $ acc' & packageSubs %~ ((v,vtp):) . deleteSubList v
-        Nothing -> throwError $ _TypeForallMatchFailure # (v, vtp)
       where
         acc' = acc & packageSubs %~ alignSubs v
-
-        g :: [(TypeP x, MplType x)] -> m ()
-        g [] = return ()
-        g ((l, r@(TypeVar rcxt r')):rst)
-            -- trivial substitutions are okay or any matching to a non for all
-            | isTrivialSub (l, r) = g rst
-            | l `notElem` foralls && r' `notElem` foralls = g rst
-            | l `elem` foralls && r' `notElem` foralls = coalesce (r', TypeVar rcxt l) rst >>= g
-            | r' `elem` foralls && l `notElem` foralls = g ((r', (TypeVar rcxt l)):rst)
-            | otherwise = throwError $ _TypeForallMatchFailure # (l, r)
-        g ((l, r):rst)
-            | l `elem` foralls = throwError $ _TypeForallMatchFailure # (l, r)
-            | otherwise = g rst
 
 {- idea is roughly as follows.
  - We need to find a substitution \sigma so that
@@ -745,3 +761,37 @@ packageUniversalElim vs pkg = traverseOf packageSubs linearize pkg  >>= flip (fo
  -          - fail
  -}
 
+{- | TODO: The whole annotation business needs to be cleaned up, and it should be actually used for error messages -}
+pprintTypeUnificationError ::
+    -- TypeUnificationError x -> 
+    TypeUnificationError MplTypeSub -> 
+    MplDoc
+pprintTypeUnificationError = go
+  where
+    -- go :: TypeUnificationError x -> MplDoc
+    go :: TypeUnificationError MplTypeSub -> MplDoc
+    go ty = case ty of 
+        TypeMatchFailure tp0 tp1 -> fold
+            [ pretty "Match failure with types"
+            , codeblock
+                $ pprintParsed tp0
+            , pretty "and"
+            , codeblock
+                $ pprintParsed tp1
+            ]
+        TypeOccursCheck tpp tp0 -> fold
+            [ pretty "Occurs check failure with"
+            , codeblock
+                $ pprintParsed $ typeIdentTToTypeT tpp
+            , pretty "and"
+            , codeblock
+                $ pprintParsed tp0
+            ]
+        TypeForallMatchFailure given inferred -> fold
+            [ pretty "Could not match user provided type with inferred type. The given type was"
+            , codeblock
+                $ pprintParsed given
+            , pretty "and this could not be match with the inferred type"
+            , codeblock
+                $ pprintParsed inferred
+            ]

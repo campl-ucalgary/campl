@@ -513,12 +513,64 @@ typeCheckExpr = para f
             eqns = [ TypeEqnsEq (typePtoTypeVar ttypep, _TypeDoubleF % _Just % _TypeAnnExpr # ann ) ]
         return ( EDouble ( cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) n, eqns )
 
-    f (ECharF cxt c ) = panicNotImplemented
+    -- duplicated code from the EIntF case
+    f (ECharF cxt n) = do
+        ttype <- guse (envLcl % typeInfoEnvTypeTag)
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        let ann =  _EChar # (cxt, n) :: MplExpr MplRenamed
+            ttypep = annotateTypeTag ttype ann
+            eqns = 
+                [ TypeEqnsEq 
+                    ( typePtoTypeVar ttypep
+                    , _TypeCharF % _Just % _TypeAnnExpr # ann 
+                    ) 
+                ]
+        return ( EChar ( cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) n, eqns )
+
+    f (ETupleF cxt (t0,t1,ts)) = do
+        ttype <- guse (envLcl % typeInfoEnvTypeTag)
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        (ttypet0, (t0', t0eqns)) <- withFreshTypeTag $ snd t0
+        (ttypet1, (t1', t1eqns)) <- withFreshTypeTag $ snd t1
+        (ttypets, (ts', tseqns)) <- fmap (second unzip . unzip) $ traverse (withFreshTypeTag . snd) ts
+
+        let tuplexpr = _ETuple # (cxt, (fst t0, fst t1, map fst ts)) :: MplExpr MplRenamed
+            ttypep = annotateTypeTag ttype tuplexpr
+            ttypept0 = annotateTypeTag ttypet0 $ fst t0
+            ttypept1 = annotateTypeTag ttypet1 $ fst t1
+            ttypepts = annotateTypeTags ttypets $ map fst ts
+
+            eqn = TypeEqnsExist (ttypept0:ttypept1:ttypepts) $ 
+                [ TypeEqnsEq 
+                    ( typePtoTypeVar ttypep
+                    , _TypeTupleF # 
+                        ( _Just % _NameOcc # (tupleName (2 + length ts), cxt)
+                        , 
+                            ( typePtoTypeVar ttypept0
+                            , typePtoTypeVar ttypept1
+                            , map typePtoTypeVar ttypepts
+                            )
+                        )
+                    )
+                ]
+                <> t0eqns
+                <> t1eqns
+                <> concat tseqns
+
+        return 
+            ( _ETuple # 
+                ( (cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq )
+                , (t0',t1',ts')
+                )
+            , [eqn]
+            )
 
     f (EListF _ _ ) = panicNotImplemented
     f (EStringF _ _) = panicNotImplemented
     f (EUnitF _ ) = panicNotImplemented
-    f (ETupleF _ _) = panicNotImplemented
+
     f (EIfF cxt mcond mifc melsec) = panicNotImplemented
     f (ELetF cxt lets (_, mexpr)) = do
         st <- guse equality
@@ -1772,7 +1824,7 @@ typeCheckCmd cmd = case cmd of
         -- see the cut condition things...
         let allphrases = phr1:phr2:phrs
             allphrasesgraph = map (view _2) allphrases
-        tell $ review _ExternalError $ cutConditions allphrasesgraph
+        tell $ review _ExternalError $ cutConditions plugs allphrasesgraph
         tell $ review _ExternalError $ cutCycles $ NE.fromList allphrasesgraph
 
         -- Get the map for the stable equations
@@ -1783,41 +1835,51 @@ typeCheckCmd cmd = case cmd of
         ttypechsstable <- traverse (const freshTypeTag) allchs 
         let stablerefs = Map.fromList $ zip allchs ttypechsstable
 
-        ~((phr1':phr2':phrs', acceqns), ttypesplugged) <- flip runStateT Map.empty $ fmap unzip $ for allphrases $ \(cxt, (ins, outs), cmds) -> do
-            let insr = map (view identR) ins
-                outsr = map (view identR) outs
-                pluggedins = map (review _ChIdentR . (,Input)) $ filter (\identr -> identr `elem` insr ) plugs 
-                pluggedouts = map (review _ChIdentR . (,Output)) $ filter (\identr -> identr `elem` outsr ) plugs 
+        ~((phr1':phr2':phrs', acceqns), ttypesplugged) <- flip runStateT Map.empty 
+            $ fmap unzip 
+            $ for allphrases 
+            $ \(cxt, (ins, outs), cmds) -> do
+                let insr = map (view identR) ins
+                    outsr = map (view identR) outs
+                    pluggedins = map (review _ChIdentR . (,Input)) 
+                        $ filter (\identr -> identr `elem` insr ) plugs 
+                    pluggedouts = map (review _ChIdentR . (,Output)) 
+                        $ filter (\identr -> identr `elem` outsr ) plugs 
 
-                phrsechsids = map (view uniqueTag) $ ins <> outs
+                    phrsechsids = map (view uniqueTag) $ ins <> outs
 
-            for_ (pluggedins <> pluggedouts) $ \ch -> do
-                ch' <- lift $ freshChTypeTag ch
-                at (ch ^. uniqueTag) %= Just . maybe (ch' :| []) (NE.cons ch')
+                for_ (pluggedins <> pluggedouts) $ \ch -> do
+                    ch' <- lift $ freshChTypeTag ch
+                    at (ch ^. uniqueTag) %= Just . maybe (ch' :| []) (NE.cons ch')
 
-            lift $ tell $ review _ExternalError $ foldMap expectedInputPolarity ins
-                <> foldMap expectedOutputPolarity outs
+                lift $ tell $ review _ExternalError $ foldMap expectedInputPolarity ins
+                    <> foldMap expectedOutputPolarity outs
 
-            (cmds', cmdseqns) <- lift 
-                $ localEnvSt (over (envLcl % typeInfoSymTab % symTabCh) (Map.filterWithKey (\k _ -> k `elem` phrsechsids)) )
-                $ typeCheckCmds cmds
+                (cmds', cmdseqns) <- lift 
+                    $ localEnvSt (over (envLcl % typeInfoSymTab % symTabCh) 
+                        (Map.filterWithKey (\k _ -> k `elem` phrsechsids)))
+                    $ typeCheckCmds cmds
 
-            let eqns = cmdseqns
-                ins' = map (\ch -> _ChIdentT # 
-                        ( ch
-                        , fromJust $ ttypemap ^? at (fromJust $ stablerefs ^. at (ch ^. uniqueTag)) % _Just % _SymTypeCh 
-                        )) ins
-                outs' = map (\ch -> _ChIdentT # 
-                        ( ch
-                        , fromJust $ ttypemap ^? at (fromJust $ stablerefs ^. at (ch ^. uniqueTag)) % _Just % _SymTypeCh 
-                        )) outs
+                let eqns = cmdseqns
+                    ins' = map (\ch -> _ChIdentT # 
+                            ( ch
+                            , fromJust $ ttypemap ^? at (fromJust $ stablerefs ^. at (ch ^. uniqueTag)) 
+                                % _Just 
+                                % _SymTypeCh 
+                            )) ins
+                    outs' = map (\ch -> _ChIdentT # 
+                            ( ch
+                            , fromJust $ ttypemap ^? at (fromJust $ stablerefs ^. at (ch ^. uniqueTag)) 
+                                % _Just 
+                                % _SymTypeCh 
+                            )) outs
 
-            return ((cxt, (ins', outs'), cmds'), eqns)
+                return ((cxt, (ins', outs'), cmds'), eqns)
 
         let (exists, pluggedeqns) = second fold 
                 $ unzip 
                 $ flip concatMap plugs 
-                $ (\ch -> 
+                $ \ch -> 
                     let f (h :| hs) = (:) (annotateTypeTag h (), []) 
                             $ map (\(prev, curr) -> 
                                     ( annotateTypeTag curr ()
@@ -1827,10 +1889,17 @@ typeCheckCmd cmd = case cmd of
                                     ) 
                                 ) 
                             $ zip (h:hs) hs
-                    in f . fromJust $ ttypesplugged ^. at (ch ^. uniqueTag))
+                    in f . fromJust $ ttypesplugged ^. at (ch ^. uniqueTag)
 
             eqn = TypeEqnsExist exists $ pluggedeqns <> fold acceqns
-            plugs' = map (\ch -> (ch, fromJust $ ttypemap ^? at (fromJust $ stablerefs ^. at (ch ^. uniqueTag)) % _Just % _SymTypeCh)) plugs
+            plugs' = map (\ch -> 
+                    ( ch
+                    , fromJust $ 
+                        ttypemap ^? at (fromJust $ stablerefs ^. at (ch ^. uniqueTag)) 
+                        % _Just 
+                        % _SymTypeCh
+                    )
+                ) plugs
 
         envLcl % typeInfoSymTab % symTabCh .= mempty
 

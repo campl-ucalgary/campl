@@ -196,6 +196,7 @@ higherOrderCheck notscoped tp
     notscoped' = map typeIdentTToTypeT notscoped
 
     go = para f
+
     f :: Base (MplType MplTypeSub) (MplType MplTypeSub, _ (Maybe (MplType MplTypeChecked))) ->
         (_ (Maybe (MplType MplTypeChecked)))
     f  (TypeVarF cxt n) = return $ Just $ TypeVar Nothing (typeIdentTToTypeT n)
@@ -207,12 +208,33 @@ higherOrderCheck notscoped tp
         args' <- traverseOf each (traverse snd) args
         return $ TypeConcWithArgs (snd cxt) n <$> traverseOf each sequenceA args'
     f  (TypeBuiltInF n) = fmap (fmap TypeBuiltIn) $ case n of
+            -- probably can retain some annotation information?
             TypeIntF _cxt -> return $ Just $ TypeIntF Nothing
             TypeDoubleF _cxt -> return $ Just $ TypeDoubleF Nothing
+            TypeCharF _cxt -> return $ Just $ TypeCharF Nothing
+
+            {-
+            TypeCharF _ -> undefined
+            TypeStringF _ -> undefined
+            TypeUnitF _ -> undefined
+            TypeBoolF _ -> undefined
+            TypeListF _  _ ->  undefined
+            TypeTupleF _  _ ->  undefined
+            TypeConcArrF _ _ _ _ ->  undefined
+            -}
+
+            TypeTupleF _cxt (t0, t1,ts) -> do
+                t0' <- snd t0
+                t1' <- snd t1
+                ts' <- traverse snd ts
+                -- probaly can retain some annotation information?
+                return $ fmap (TypeTupleF Nothing) $ (,,) 
+                    <$> t0' 
+                    <*> t1' 
+                    <*> sequenceA ts'
 
             TypeTopBotF cxt -> return $ _Just % _TypeTopBotF # 
                 (cxt ^? _TypeChAnnNameOcc)
-
 
             TypeGetF cxt (_, seq) (_, conc) -> do
                 seq' <- seq
@@ -255,28 +277,6 @@ higherOrderCheck notscoped tp
                     tp'' <- tp'
                     return $ _TypeNegF # (cxt ^? _TypeChAnnNameOcc, tp'') 
 
-{- typeIdentTToTypeT. Converts a 'TypeIdentT' to 'TypeP MplTypeChecked' 
-(recall this is just 'TypeT'). 
-Note that we always use the outer most type tag since that is the one used in the 
-unification algorithm.
- -}
-typeIdentTToTypeT :: TypeIdentT -> TypeP MplTypeChecked
-typeIdentTToTypeT (TypeIdentT tag (TypeIdentTInfoTypeVar tp)) 
-    = case tp of
-        GenNamedType _ -> GenNamedType tag'
-        NamedType tp' -> NamedType 
-            (tp' & identRUniqueTag .~ tag')
-  where
-    tag' = tag ^. coerced
-typeIdentTToTypeT (TypeIdentT (TypeTag tag) _) = GenNamedType tag
-
-typeTToTypeIdentT :: 
-    TypeP MplTypeChecked ->
-    TypeIdentT 
-typeTToTypeIdentT = go 
-  where
-    go tp 
-        = TypeIdentT (tp ^. uniqueTag % to TypeTag) $ TypeIdentTInfoTypeVar tp
 
 class MkTypeSubSeqArr t where
     mkTypeSubSeqArr :: t -> MplType MplTypeSub
