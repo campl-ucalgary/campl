@@ -249,8 +249,17 @@ matchCont ty0 ty1 k = f ty0 ty1
     f a (TypeBuiltIn (TypeNegF _ (TypeBuiltIn (TypeNegF _ b)))) 
         = f a b
 
-    f (TypeVar cxt0 a) n = fmap pure $ mkValidSub a n
-    f n (TypeVar cxt1 b) = fmap pure $ mkValidSub b n
+    f (TypeVar cxt0 a) b = fmap pure $ mkValidSub a b
+    f a (TypeVar cxt1 b) = fmap pure $ mkValidSub b a
+
+    -- weirdness to work with the idempotency of @Neg@. 
+    -- The idea is that @Neg(x)@ (where @x@ is a variable) matched against
+    -- anything is is potentially a match, since @x@ could be potentially
+    -- substituted for something like @x = Neg(y)@.
+    f (TypeBuiltIn (TypeNegF cxt0 (TypeVar _ a))) b =
+        fmap pure $ mkValidSub a $ TypeBuiltIn $ TypeNegF cxt0 b
+    f a (TypeBuiltIn (TypeNegF cxt1 (TypeVar _ b))) =
+        fmap pure $ mkValidSub b $ TypeBuiltIn $ TypeNegF cxt1 a
 
     f type0@(TypeSeqWithArgs _cxt0 a args) type1@(TypeSeqWithArgs _cxt1 b brgs) 
         | a == b && length args == length brgs =
@@ -290,9 +299,8 @@ matchCont ty0 ty1 k = f ty0 ty1
         (TypeCharF _a, TypeCharF _b) -> return []
 
         (TypeTopBotF a, TypeTopBotF b) -> return []
-
-
         (TypeNegF cxt0 a, TypeNegF cxt1 b) -> f a b
+
 
         (TypeTupleF _cxt0 (l0, l1, ls), TypeTupleF _cxt1 (r0, r1, rs)) 
             | length ls == length rs -> 
@@ -416,6 +424,7 @@ failsOccursCheck ::
     TypeP x ->
     MplType x ->
     Bool
+failsOccursCheck n (TypeBuiltIn (TypeNegF _ (TypeBuiltIn (TypeNegF _ a)))) = failsOccursCheck n a
 failsOccursCheck _ (TypeVar _ _) = False
 failsOccursCheck _ (TypeSeqVarWithArgs _ _ []) = False
 failsOccursCheck _ (TypeConcVarWithArgs _ _ ([],[])) = False
@@ -435,7 +444,9 @@ mkValidSub ::
     TypeP x -> 
     MplType x ->
     m (TypeP x, MplType x)
-mkValidSub v exp = bool (pure (v, exp)) (throwError $ _TypeOccursCheck # (v,exp)) $ failsOccursCheck v exp
+mkValidSub v exp = bool (pure (v, exp)) 
+    (throwError $ _TypeOccursCheck # (v,exp)) 
+    $ failsOccursCheck v exp
 
 {- | this takes a substitution and a list of substitutions and will
 essentially eliminate all occurences of that substitution (if possible)
@@ -618,10 +629,12 @@ solveTypeEqns ::
     , MonadError e m ) => 
     TypeEqns x -> 
     m (Package x)
--- solveTypeEqns eqns = cata f eqns >>= traverseOf packageSubs linearize 
+solveTypeEqns eqns = cata f eqns >>= traverseOf packageSubs linearize 
+{-
 solveTypeEqns eqns = do
     traceShowM eqns
     cata f eqns >>= traverseOf packageSubs linearize
+-}
   where
     f :: Base (TypeEqns x) (m (Package x)) -> m (Package x)
     f (TypeEqnsEqF (a,b)) = do  
@@ -734,6 +747,8 @@ packageUniversalElim vs pkg = traverseOf packageSubs linearize pkg >>= flip (fol
 
                 g :: [(TypeP x, MplType x)] -> m ()
                 g [] = return ()
+                g ((l, (TypeBuiltIn (TypeNegF _ (TypeBuiltIn (TypeNegF _ r))))):rst)  =  g $ (l,r):rst
+
                 g ((l, r@(TypeVar rcxt r')):rst)
                     -- trivial substitutions are okay or any matching to a non for all
                     | isTrivialSub (l, r) = g rst

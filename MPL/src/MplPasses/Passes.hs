@@ -111,14 +111,15 @@ data
         Wrapper :: A -> S
 -}
 
-{-
 fun testing :: Int -> Char=
     "asdf" -> "asdf"
     [] -> "asdf"
     ['a'] -> [1,2,3]
     () -> ()
--}
 
+
+
+{-
 -- memory cell example
 protocol Mem(M|) => S =
     MemPut :: Put(M|S) => S
@@ -144,15 +145,24 @@ proc memory :: A | Mem(A|) => =
                 memory(x | ch => )
             MemCls -> do
                 halt ch
-proc p2 =
-    b | => a -> do
-        hput MemPut on a
-        put b on a
-        hput MemCls on a
-        halt a
 
--- proc p2 :: | Passer(| Mem(A|)) => InpTerm(A|), Mem(A|) =
-proc p2 =
+proc p1 :: | => Passer(|Mem(A|)), InpTerm(A|) = 
+    | => passer, inp -> do
+        hput Passer on passer
+        split passer into mm,nmpp
+        hput MemGet on mm 
+        get y on mm
+        hput InpPut on inp
+        put y on inp
+        hput InpGet on inp
+        get x on inp
+        hput MemPut on mm
+        put x on mm
+        fork nmpp as
+            nm with mm -> nm |=| neg mm
+            pp with inp -> p1(| => pp, inp)
+
+proc p2 :: | Passer(| Mem(A|)) => InpTerm(A|), Mem(A|) =
     | passer => inp, mem -> do
         hcase passer of
             Passer -> do
@@ -165,11 +175,19 @@ proc p2 =
                 hput MemPut on mem
                 put x on mem
                 fork passer as
-                    mm -> do
+                    mm with mem -> do
                         mm |=| mem
-                    nmpp -> do
+                    nmpp with inp -> do
                         split nmpp into nm, pp
                         plug
                             p2( | pp => inp,z)
                             z,nm => -> z |=| neg nm
+
+proc run :: | => InpTerm(Int |) , InpTerm(Int|) =
+    | => inpterm0, inpterm1 -> do
+        plug
+            p1(| => passer, inpterm0)
+            p2(| passer => inpterm1, mem)
+            memory(100 | mem => )
+-}
 |]

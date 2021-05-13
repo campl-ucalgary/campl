@@ -30,6 +30,7 @@ import Control.Arrow
 import Data.Functor.Foldable (Base, cata, embed)
 import Data.Void
 import Data.Maybe
+import Data.Proxy
 
 import Data.List.NonEmpty (NonEmpty)
 import qualified Data.List.NonEmpty as NE
@@ -169,7 +170,7 @@ instance TypeP MplTypeChecked ~ tp => InstantiateArrType ([tp], [MplType MplType
     instantiateArrType ann (tpvars, [], to) = do
         updateInstantiated tpvars
         subs <- getInstantiatedSubs
-        -- TODO: this actualyl will not preserve the annotation information here...
+        -- TODO: this actually will not preserve the annotation information here...
         return $ fromJust $ instantiateTypeWithSubs subs to
         
     instantiateArrType ann (tpvars, froms, to) = do
@@ -381,6 +382,9 @@ instance PPrint TypeTag y where
     pprint proxy (TypeTag n) = pprint proxy n
 
 instance PPrint TypeIdentT y where
-    pprint proxy (TypeIdentT tag (TypeIdentTInfoTypeVar v)) = pprint proxy v  ++ "__" ++ pprint proxy tag
+    pprint proxy (TypeIdentT tag (TypeIdentTInfoTypeVar v)) = case v of
+        NamedType identt -> identt ^. name % coerced ++ "__" ++ pprint proxy tag
+        GenNamedType _ -> "T" ++ pprint proxy tag
+    -- pprint proxy (TypeIdentT tag (TypeIdentTInfoTypeVar v)) = pprint proxy v  ++ "__" ++ pprint proxy tag
     pprint proxy (TypeIdentT tag _) = "T" ++ pprint proxy tag
 

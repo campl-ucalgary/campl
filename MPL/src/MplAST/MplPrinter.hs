@@ -117,9 +117,11 @@ instance PPrint PrimitiveOperators x where
       where
         go PrimitiveAdd = "+"
         go PrimitiveSub = "-"
-        go _ = error "error in print -- not implemented yet"
+        go PrimitiveMul = "*"
+        go PrimitiveDiv = "/"
+        go n = error $ "error in print -- operator not implemented yet: " ++ show n
 
-{- | For converting to a bnfc ident (this heavily relies on the pprint instnces above)-}
+{- | For converting to a bnfc ident (this heavily relies on the pprint instances above)-}
 class ToBnfcIdent t x where
     toBnfcIdent :: PPrint a x => Proxy x -> a -> t
 

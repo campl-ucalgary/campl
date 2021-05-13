@@ -142,7 +142,7 @@ typeCheckStmt (MplStmt defns wheres) = do
                                                                           
             notscoped' = concatMap (`variableClosure` subs') $ map typeTToTypeIdentT notscoped
 
-        ~tagmap <- packageToTypeTagMap notscoped'
+        tagmap <- packageToTypeTagMap notscoped'
                 $ either mempty id (pkg :: Either [e] (Package MplTypeSub))
 
     tell terrs
