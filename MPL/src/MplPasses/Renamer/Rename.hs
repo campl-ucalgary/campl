@@ -438,8 +438,10 @@ renameCmd = f
     f (CFork cxt ch ((ch1, (p1, cxt1), cmds1), (ch2, (p2, cxt2), cmds2))) = do
         symtab <- guse envLcl
 
+        traceShowM $ cxt1
+
         -- get the current channels in scope.
-        let ~scopes = map fst $ channelsInScope symtab
+        -- let ~scopes = map fst $ channelsInScope symtab
 
         tell $ outOfScopeWith lookupCh symtab ch
         let chlkup = lookupCh ch symtab
@@ -451,8 +453,11 @@ renameCmd = f
         let chlkup' = fromJust chlkup
             ch' = fromJust $ tagIdentPToChIdentRWithSymEntry ch <$> chlkup
 
-            cxt1' = bool (cxt1 \\ scopes) cxt1 $ p1 == UserProvidedContext
-            cxt2' = bool (cxt2 \\ scopes) cxt2 $ p2 == UserProvidedContext
+            -- Uhh earlier i made a mistake.
+            cxt1' = bool (cxt1 \\ [ch]) cxt1 $ p1 == UserProvidedContext
+            cxt2' = bool (cxt2 \\ [ch]) cxt2 $ p2 == UserProvidedContext
+            -- cxt1' = cxt1 
+            -- cxt2' = cxt2
 
             cxt1'' = zipWith tagIdentPToChIdentRWithSymEntry cxt1' 
                     $ fromJust

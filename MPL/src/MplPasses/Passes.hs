@@ -90,7 +90,15 @@ runPassesTester str = do
         Left v -> putStrLn $ show $ vsep $ map pprintMplPassesErrors v
 
 huh = [r|
-
+{-
+proc v25 :: | => TopBot (*) TopBot, TopBot =
+    | => a,other -> do
+        fork a as
+            s -> do
+                close other 
+                halt s
+            t -> halt t
+-}
 {-
 data 
     Unit -> S =
@@ -103,14 +111,15 @@ data
         Wrapper :: A -> S
 -}
 
+{-
 fun testing :: Int -> Char=
     "asdf" -> "asdf"
     [] -> "asdf"
     ['a'] -> [1,2,3]
     () -> ()
+-}
 
 -- memory cell example
-{-
 protocol Mem(M|) => S =
     MemPut :: Put(M|S) => S
     MemGet :: Get(M|S) => S
@@ -142,7 +151,7 @@ proc p2 =
         hput MemCls on a
         halt a
 
-proc p2 :: | Passer(| Mem(A|)) => InpTerm(A|), Mem(A|) =
+-- proc p2 :: | Passer(| Mem(A|)) => InpTerm(A|), Mem(A|) =
 proc p2 =
     | passer => inp, mem -> do
         hcase passer of
@@ -156,12 +165,11 @@ proc p2 =
                 hput MemPut on mem
                 put x on mem
                 fork passer as
-                    mm with mem -> do
+                    mm -> do
                         mm |=| mem
-                    nmpp with inp -> do
+                    nmpp -> do
                         split nmpp into nm, pp
                         plug
                             p2( | pp => inp,z)
                             z,nm => -> z |=| neg nm
--}
 |]

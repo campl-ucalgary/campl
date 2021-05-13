@@ -694,7 +694,8 @@ packageExistentialElim pkg = do
             let subs' = deleteSubList v subs
             vsub <- mkValidSub v sub
             subs'' <- fmap (uncurry $ flip (:)) 
-                (coalesceNumNudge vsub subs') >>= linearize
+                -- (coalesceNumNudge vsub subs') >>= linearize
+                (coalesceNumNudge vsub subs') 
             let changed = v `elem` foldMap collectvars subs'
             return $ acc
                 & packageSubs .~ bool (vsub:) id changed subs''

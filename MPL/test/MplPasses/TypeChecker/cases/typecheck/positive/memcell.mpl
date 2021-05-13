@@ -24,5 +24,7 @@ proc memory :: A | Mem(A|) => =
             Cls -> do
                 halt ch
 
+{-
 proc p2 :: | Passer(Mem(A)) => InpTerm(A), Mem(A) =
     | passer, inp, mem -> do
+-}
