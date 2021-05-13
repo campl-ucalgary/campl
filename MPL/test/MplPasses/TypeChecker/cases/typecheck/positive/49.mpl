@@ -12,3 +12,4 @@ fun v3 :: (A,A,A) -> (A,A,A) =
     (a,b,c) -> (a,a,a)
     (a,b,c) -> (b,b,b)
     (a,b,c) -> (a,b,c)
+

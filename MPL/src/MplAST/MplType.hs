@@ -228,6 +228,17 @@ data InternalConcTypes =
     | InternalNeg
   deriving ( Eq, Ord, Read, Show, Generic, Data, Typeable )
 
+internalPrimitiveTypeKeywords :: [String]
+internalPrimitiveTypeKeywords =
+    [ "Get"
+    , "Put"
+    , "TopBot"
+    , "Neg"
+    , "Int"
+    , "Char"
+    , "Double"
+    ] 
+
 _InternalConcTypeParser :: Prism' String InternalConcTypes
 _InternalConcTypeParser = prism' embed match
   where

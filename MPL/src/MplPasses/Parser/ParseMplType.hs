@@ -21,6 +21,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Control.Arrow
 import Control.Applicative
 
+
 parseNoArgInternalType :: 
     ( ToNameOcc ident ) =>
     ident ->

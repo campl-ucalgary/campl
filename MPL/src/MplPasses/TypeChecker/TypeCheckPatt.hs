@@ -209,6 +209,30 @@ typeCheckPattern = para f
 
         return (res, eqns)
 
+    f (PIntF cxt v) = do 
+        ttype <- guse (envLcl % typeInfoEnvTypeTag)
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        let ann = _TypeAnnPatt # (PInt cxt v)
+            ttypep =  _TypeIdentT # (ttype, TypeIdentTInfoTypeAnn ann)
+            eqns = [ TypeEqnsEq (typePtoTypeVar ttypep , _TypeIntF % _Just # ann ) ]
+
+            res = _PInt # ((cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq), v)
+        return (res, eqns)
+
+    -- duplicated from 'PInt' case
+    f (PCharF cxt v) = do 
+        ttype <- guse (envLcl % typeInfoEnvTypeTag)
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        let ann = _TypeAnnPatt # (PChar cxt v)
+            ttypep =  _TypeIdentT # (ttype, TypeIdentTInfoTypeAnn ann)
+            eqns = [ TypeEqnsEq (typePtoTypeVar ttypep , _TypeCharF % _Just # ann ) ]
+
+            res = _PChar # ((cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq), v)
+        return (res, eqns)
+
+
     f (PNullF cxt) = do 
         ttype <- guse (envLcl % typeInfoEnvTypeTag)
         ttypemap <- guse (envLcl % typeInfoEnvMap)

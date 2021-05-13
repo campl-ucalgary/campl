@@ -101,8 +101,7 @@ $l ([\' \_]| ($d | $l)) *
 
 $l $i*
     { tok (\p s -> PT p (eitherResIdent TV s)) }
-\" ([$u # [\" \\ \n]] | (\\ (\" | \\ | \' | n | t | r | f)))* \"
-    { tok (\p s -> PT p (TL $ unescapeInitTail s)) }
+
 
 
 

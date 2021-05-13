@@ -57,11 +57,17 @@ parseBnfcPattern (B.TUPLE_PATTERN lbr p0 (p1:ps) rbr) = do
     return $ _PTuple # (toSpanLocation lbr rbr, (p0',p1', ps'))
   where
     f (B.TUPLE_LIST_PATTERN patt) = parseBnfcPattern patt
-parseBnfcPattern (B.TUPLE_PATTERN lbr p0 _  rbr) = 
-    error "Internal parsing error -- tuple list is empty error in bnfc grammar "
+parseBnfcPattern (B.TUPLE_PATTERN lbr p0 _  rbr) = error "Internal bnfc parsing error -- tuple list is empty"
 
-parseBnfcPattern (B.STR_PATTERN a) = error "String pattern not implementedyet -- Moreover, char patterns have not been implemented yet"
 -- TODO: we need char patterns!
+parseBnfcPattern (B.STR_PATTERN (B.PString (loc, str))) = 
+    return $ _PString # (toLocation loc, init $ tail str)
+
+parseBnfcPattern (B.CHAR_PATTERN v) = 
+    case pCharToLocationChar v of
+        Just n -> return $ _PChar # n
+        Nothing -> tell [_InvalidChar # toTermIdentP v] >> throwError ()
+
 parseBnfcPattern (B.INT_PATTERN v) = 
     case pIntegerToLocationInt v of
         Just n -> return $ _PInt # n

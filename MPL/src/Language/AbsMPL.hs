@@ -241,7 +241,8 @@ data Pattern
     | LIST_PATTERN LSquareBracket [Pattern] RSquareBracket
     | TUPLE_PATTERN LBracket Pattern [TupleListPattern] RBracket
     | VAR_PATTERN PIdent
-    | STR_PATTERN String
+    | STR_PATTERN PString
+    | CHAR_PATTERN PChar
     | INT_PATTERN PInteger
     | NULL_PATTERN NullPattern
     | BRACKETED_PATTERN LBracket Pattern RBracket

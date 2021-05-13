@@ -289,6 +289,7 @@ LIST_PATTERN                . Pattern1 ::=  LSquareBracket [Pattern] RSquareBrac
 TUPLE_PATTERN               . Pattern1 ::=  LBracket Pattern "," [TupleListPattern] RBracket ;
 VAR_PATTERN                 . Pattern1 ::=  PIdent ;
 STR_PATTERN                 . Pattern1 ::=  PString ;
+CHAR_PATTERN                . Pattern1 ::=  PChar ;
 INT_PATTERN                 . Pattern1 ::=  PInteger ;
 NULL_PATTERN                . Pattern1 ::=  NullPattern ;
 BRACKETED_PATTERN           . Pattern1 ::=  LBracket Pattern RBracket ;

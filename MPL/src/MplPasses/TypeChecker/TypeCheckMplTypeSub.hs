@@ -381,7 +381,6 @@ instance PPrint TypeTag y where
     pprint proxy (TypeTag n) = pprint proxy n
 
 instance PPrint TypeIdentT y where
-    pprint proxy (TypeIdentT tag (TypeIdentTInfoTypeVar v)) = 
-        pprint proxy v  ++ "__" ++ pprint proxy tag
+    pprint proxy (TypeIdentT tag (TypeIdentTInfoTypeVar v)) = pprint proxy v  ++ "__" ++ pprint proxy tag
     pprint proxy (TypeIdentT tag _) = "T" ++ pprint proxy tag
 

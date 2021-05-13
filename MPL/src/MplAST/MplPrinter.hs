@@ -238,10 +238,27 @@ instance ( PPrint (IdP x) t, PPrint (TypeP x) t) => MplTypeToBnfc (MplType x) t 
                 B.MPL_SEQ_ARROW_TYPE [] (NE.toList $ fmap f froms) (f to)
             TypeConcArrF cxt seqs froms tos -> 
                 B.MPL_CONC_ARROW_TYPE [] (map f seqs) (map f froms) (map f tos)
-            TypeTensorF cxt l r -> 
-                B.TENSOR_TYPE (f l) bnfcKeyword (f r)
+
+            TypeParF cxt l@(TypeBuiltIn (TypeTensorF _ _ _)) r@(TypeBuiltIn (TypeTensorF _ _ _)) -> 
+                B.PAR_TYPE 
+                    (B.MPL_BRACKETED_TYPE bnfcKeyword (f l) bnfcKeyword) 
+                        bnfcKeyword 
+                    (B.MPL_BRACKETED_TYPE bnfcKeyword (f r) bnfcKeyword) 
+            TypeParF cxt l r@(TypeBuiltIn (TypeTensorF _ _ _)) -> 
+                B.PAR_TYPE 
+                    (f l) 
+                        bnfcKeyword 
+                    (B.MPL_BRACKETED_TYPE bnfcKeyword (f r) bnfcKeyword) 
+            TypeParF cxt l@(TypeBuiltIn (TypeTensorF _ _ _)) r -> 
+                B.PAR_TYPE 
+                    (B.MPL_BRACKETED_TYPE bnfcKeyword (f l) bnfcKeyword) 
+                        bnfcKeyword 
+                    (f r) 
+
             TypeParF cxt l r -> 
                 B.PAR_TYPE (f l) bnfcKeyword (f r)
+            TypeTensorF cxt l r -> 
+                B.TENSOR_TYPE (f l) bnfcKeyword (f r)
 
             TypeGetF cxt seq conc ->
                 B.MPL_UIDENT_SEQ_CONC_ARGS_TYPE 
@@ -348,6 +365,9 @@ instance ( PPrint (IdP x) y ) => MplPattToBnfc (MplPattern x) y where
     mplPattToBnfc proxy = f
       where
         f (PVar _ id) = B.VAR_PATTERN $ toBnfcIdent proxy id
+        f (PChar _ id) = B.CHAR_PATTERN $ toBnfcIdent proxy id
+        f (PInt _ id) = B.INT_PATTERN $ toBnfcIdent proxy id
+
         f (PConstructor _ id args) = 
             B.CONSTRUCTOR_PATTERN_ARGS (toBnfcIdent proxy id) bnfcKeyword (map f args) bnfcKeyword 
         f (PRecord _ args) = 

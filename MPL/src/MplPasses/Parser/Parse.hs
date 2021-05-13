@@ -188,7 +188,13 @@ parseBnfcExpr (B.INFIXL5_EXPR a (B.Infixl5op (pos, op)) b) = do
         "+" -> return $ _EPOps #  ((), PrimitiveAdd, a',b') 
         "-" -> return $ _EPOps #  ((), PrimitiveSub, a',b') 
         _ -> error $ "not implemented: " ++ op
-parseBnfcExpr (B.INFIXL6_EXPR a op b) = error "not implemented instr"
+parseBnfcExpr (B.INFIXL6_EXPR a (B.Infixl6op (pos,op)) b) = do
+    ~[a', b']<- traverseTryEach parseBnfcExpr [a,b]
+    case op of
+        "*" -> return $ _EPOps #  ((), PrimitiveMul, a',b') 
+        "/" -> return $ _EPOps #  ((), PrimitiveDiv, a',b') 
+        _ -> error $ "not implemented: " ++ op
+
 parseBnfcExpr (B.INFIXR7_EXPR a op b) = error "not implemented instr"
 parseBnfcExpr (B.INFIXL8_EXPR a op b) = error "not implemented instr"
 
@@ -207,10 +213,14 @@ parseBnfcExpr (B.CHAR_EXPR v) =
         Just n -> return $ _EChar # n
         Nothing -> tell [_InvalidChar # toTermIdentP v] >> throwError ()
 
+parseBnfcExpr (B.LIST_EXPR lbr exprs rbr) = do
+    exprs' <- traverse parseBnfcExpr exprs
+    return $ _EList # (toLocation lbr, exprs')
+parseBnfcExpr (B.STRING_EXPR (B.PString (loc, str))) = 
+    return $ _EString # (toLocation loc, init $ tail str)
 
-parseBnfcExpr (B.LIST_EXPR lbr exprs rbr) = error "not implemented instr"
-parseBnfcExpr (B.STRING_EXPR v) = error "not implemented"
-parseBnfcExpr (B.UNIT_EXPR lbr rbr) = error "not implemented"
+parseBnfcExpr (B.UNIT_EXPR lbr rbr) = 
+    return $ _EUnit # toLocation lbr 
 
 parseBnfcExpr (B.FOLD_EXPR expr phrases) = do
     expr' <- parseBnfcExpr expr

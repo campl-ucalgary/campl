@@ -91,6 +91,7 @@ runPassesTester str = do
 
 huh = [r|
 
+{-
 data 
     Unit -> S =
         Unit ::  -> S
@@ -100,31 +101,67 @@ data
 data
     Wrapper(A) -> S =
         Wrapper :: A -> S
+-}
 
-fun testing =
-    'a':'b' -> ('a','b')
+fun testing :: Int -> Char=
+    "asdf" -> "asdf"
+    [] -> "asdf"
+    ['a'] -> [1,2,3]
+    () -> ()
 
-
+-- memory cell example
 {-
-protocol Mem(A|) => P =
-    Put :: Put(A|P) => P
-    Get :: Get(A|P) => P
-    Cls :: TopBot => P
+protocol Mem(M|) => S =
+    MemPut :: Put(M|S) => S
+    MemGet :: Get(M|S) => S
+    MemCls :: TopBot => S
 
-protocol Passer(|A) => P =
-    Pass :: A (+) (Neg(A) (*) P) => P
+protocol InpTerm(I|) => S =
+    InpPut :: Put(I|S) => S
+    InpGet :: Get(I|S) => S
+    InpCls :: TopBot => S
+
+protocol Passer(|P) => S =
+    Passer :: P (+) (Neg(P) (*) S) => S
 
 proc memory :: A | Mem(A|) => =
     x | ch => -> do
         hcase ch of
-            Put -> do
+            MemPut -> do
                 get y on ch
                 memory(y | ch => )
-            Get -> do
+            MemGet -> do
                 put x on ch
                 memory(x | ch => )
-            Cls -> do
+            MemCls -> do
                 halt ch
--}
+proc p2 =
+    b | => a -> do
+        hput MemPut on a
+        put b on a
+        hput MemCls on a
+        halt a
 
+proc p2 :: | Passer(| Mem(A|)) => InpTerm(A|), Mem(A|) =
+proc p2 =
+    | passer => inp, mem -> do
+        hcase passer of
+            Passer -> do
+                hput MemGet on mem
+                get y on mem
+                hput InpPut on inp
+                put y on inp
+                hput InpGet on inp
+                get x on inp
+                hput MemPut on mem
+                put x on mem
+                fork passer as
+                    mm with mem -> do
+                        mm |=| mem
+                    nmpp with inp -> do
+                        split nmpp into nm, pp
+                        plug
+                            p2( | pp => inp,z)
+                            z,nm => -> z |=| neg nm
+-}
 |]

@@ -437,8 +437,13 @@ renameCmd = f
 
     f (CFork cxt ch ((ch1, (p1, cxt1), cmds1), (ch2, (p2, cxt2), cmds2))) = do
         symtab <- guse envLcl
+
+        -- get the current channels in scope.
+        let ~scopes = map fst $ channelsInScope symtab
+
         tell $ outOfScopeWith lookupCh symtab ch
         let chlkup = lookupCh ch symtab
+
 
         envLcl %= deleteCh ch
 
@@ -446,12 +451,15 @@ renameCmd = f
         let chlkup' = fromJust chlkup
             ch' = fromJust $ tagIdentPToChIdentRWithSymEntry ch <$> chlkup
 
-            cxt1' = zipWith tagIdentPToChIdentRWithSymEntry cxt1 
+            cxt1' = bool (cxt1 \\ scopes) cxt1 $ p1 == UserProvidedContext
+            cxt2' = bool (cxt2 \\ scopes) cxt2 $ p2 == UserProvidedContext
+
+            cxt1'' = zipWith tagIdentPToChIdentRWithSymEntry cxt1' 
                     $ fromJust
-                    $ traverse (flip lookupCh symtab) cxt1
-            cxt2' = zipWith tagIdentPToChIdentRWithSymEntry cxt2 
+                    $ traverse (flip lookupCh symtab) cxt1'
+            cxt2'' = zipWith tagIdentPToChIdentRWithSymEntry cxt2' 
                     $ fromJust
-                    $ traverse (flip lookupCh symtab) cxt2
+                    $ traverse (flip lookupCh symtab) cxt2'
             -- TODO: Currently, if there is a user provided context and a variable out of 
             -- scope, this will simply just ignore it... change this so that it really checks
             -- it, by providing the information of whether it was user supplied so we know whether
@@ -459,13 +467,13 @@ renameCmd = f
 
         if p1 == UserProvidedContext
             then do 
-                tell $ outOfScopesWith lookupCh symtab cxt1 
-                tell $ overlappingDeclarations cxt1 
+                tell $ outOfScopesWith lookupCh symtab cxt1'
+                tell $ overlappingDeclarations cxt1'
             else return ()
         if p2 == UserProvidedContext
             then do
-                tell $ outOfScopesWith lookupCh symtab cxt2 
-                tell $ overlappingDeclarations cxt1 
+                tell $ outOfScopesWith lookupCh symtab cxt2'
+                tell $ overlappingDeclarations cxt2'
             else return ()
 
 
@@ -477,7 +485,7 @@ renameCmd = f
         cmds2' <- localEnvSt (over envLcl (((collectSymTab ch2')<>) . restrictChs cxt2)) $ renameCmds cmds2
 
 
-        return $ CFork cxt ch' ((ch1', cxt1', cmds1'), (ch2', cxt2', cmds2'))
+        return $ CFork cxt ch' ((ch1', cxt1'', cmds1'), (ch2', cxt2'', cmds2'))
 
     f (CId cxt (ch1, ch2)) = do
         symtab <- guse envLcl
@@ -519,7 +527,7 @@ renameCmd = f
         sup <- freshUniqueSupply
 
         let ~scopes = map fst $ channelsInScope symtab
-            ~plugged = if p == ComputedContext 
+        let ~plugged = if p == ComputedContext 
                 then cxt \\ scopes
                 else cxt
             ~plugged' = (`evalState` sup) $ traverse tagIdentP plugged
@@ -533,6 +541,7 @@ renameCmd = f
         g :: _ -> ((), ([IdentP], [IdentP]), NonEmpty (MplCmd MplCmdFreeVars)) ->
             _ ((), ([ChIdentR], [ChIdentR]), NonEmpty (MplCmd MplRenamed))
         g plugged ((), (ins, outs), cmds) = do
+            -- traceShowM plugged
             initsymtab <- guse envLcl
 
             -- check overlapping declarations...

@@ -52,7 +52,6 @@ import Language.LexMPL
   '{' { PT _ (TS _ 35) }
   '|' { PT _ (TS _ 36) }
   '}' { PT _ (TS _ 37) }
-  L_quoted { PT _ (TL $$) }
   L_PInteger { PT _ (T_PInteger _) }
   L_PDouble { PT _ (T_PDouble _) }
   L_PChar { PT _ (T_PChar _) }
@@ -88,9 +87,6 @@ import Language.LexMPL
   L_UPIdent { PT _ (T_UPIdent _) }
 
 %%
-
-String  :: { String }
-String   : L_quoted { $1 }
 
 PInteger :: { Language.AbsMPL.PInteger}
 PInteger  : L_PInteger { Language.AbsMPL.PInteger (mkPosToken $1) }
@@ -441,7 +437,8 @@ Pattern1 : UIdent LBracket ListPattern RBracket { Language.AbsMPL.CONSTRUCTOR_PA
          | LSquareBracket ListPattern RSquareBracket { Language.AbsMPL.LIST_PATTERN $1 $2 $3 }
          | LBracket Pattern ',' ListTupleListPattern RBracket { Language.AbsMPL.TUPLE_PATTERN $1 $2 $4 $5 }
          | PIdent { Language.AbsMPL.VAR_PATTERN $1 }
-         | String { Language.AbsMPL.STR_PATTERN $1 }
+         | PString { Language.AbsMPL.STR_PATTERN $1 }
+         | PChar { Language.AbsMPL.CHAR_PATTERN $1 }
          | PInteger { Language.AbsMPL.INT_PATTERN $1 }
          | NullPattern { Language.AbsMPL.NULL_PATTERN $1 }
          | LBracket Pattern RBracket { Language.AbsMPL.BRACKETED_PATTERN $1 $2 $3 }

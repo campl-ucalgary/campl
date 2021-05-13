@@ -81,3 +81,7 @@ renamePattern = cata f
         ~(t0':t1':ts') <- sequenceA $ t0:t1:ts
         return $ PTuple loc (t0',t1',ts')
 
+    f (PCharF loc c) = return $ PChar loc c
+
+    f (PIntF loc c) = return $ PInt loc c
+

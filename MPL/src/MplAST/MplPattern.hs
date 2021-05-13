@@ -90,7 +90,7 @@ data MplPattern x =
     | PUnit !(XPUnit x)
     | PTuple !(XPTuple x) (MplPattern x, MplPattern x, [MplPattern x])
     | PList !(XPList x) [MplPattern x]
-    | PString !(XPString x) [MplPattern x]
+    | PString !(XPString x) String
     | PListCons !(XPListCons x) (MplPattern x) (MplPattern x)
     | PChar !(XPChar x) Char
     | PInt !(XPInt x) Int

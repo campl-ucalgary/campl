@@ -1239,7 +1239,8 @@ typeCheckCmds (cmd :| []) = do
     (cmd', eqns) <- typeCheckCmd cmd
 
     openchs <- guses (envLcl % typeInfoSymTab % symTabCh) (toListOf (folded % symEntryInfo))
-    tell $ review _ExternalError 
+    tell 
+        $ review _ExternalError 
         $ bool [_AtLastCmdThereAreUnclosedChannels # (cmd, openchs)] [] 
         $ null openchs
 
@@ -1296,7 +1297,7 @@ typeCheckCmd cmd = case cmd of
             ttypespouts = annotateTypeTags (map (view symEntryType) ttypesouts) outs
             ttypespseqs = annotateTypeTags ttypeseqs seqs
 
-            eqns = TypeEqnsExist (ttypepargs <> ttypespseqs) $
+            eqns = TypeEqnsExist (ttypepargs <> ttypespseqs <> ttypespins <> ttypespouts) $
                     -- match the given types with the actual type of the process
                     [ TypeEqnsEq 
                         ( ttypeproc
@@ -1527,7 +1528,7 @@ typeCheckCmd cmd = case cmd of
                              . (cxt, ch,))
                     )
                 ( maybeToList 
-                    $ def ^? _CoprotocolDefn 
+                  $ def ^? _CoprotocolDefn 
                         % to ( review _HPutExpectedOutputPolarityChToHaveProtocolButGotCoprotocol 
                              . (cxt, ch,)))
 

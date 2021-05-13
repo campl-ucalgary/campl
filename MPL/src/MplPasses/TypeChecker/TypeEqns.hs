@@ -243,6 +243,12 @@ matchCont ::
     m [(TypeP x, MplType x)]
 matchCont ty0 ty1 k = f ty0 ty1
   where
+    -- need to simplify double negations first.
+    f (TypeBuiltIn (TypeNegF _ (TypeBuiltIn (TypeNegF _ a)))) b 
+        = f a b
+    f a (TypeBuiltIn (TypeNegF _ (TypeBuiltIn (TypeNegF _ b)))) 
+        = f a b
+
     f (TypeVar cxt0 a) n = fmap pure $ mkValidSub a n
     f n (TypeVar cxt1 b) = fmap pure $ mkValidSub b n
 
@@ -251,8 +257,6 @@ matchCont ty0 ty1 k = f ty0 ty1
             concat <$> traverse (uncurry f) (zip args brgs)
         | otherwise = k type0 type1
 
-    -- TypeSeqVarWithArgs !(XTypeSeqVarWithArgs x) (TypeP x) [MplType x]
-        
     f type0@(TypeConcWithArgs _ a (args0, args1)) type1@(TypeConcWithArgs _ b (brgs0, brgs1)) 
         | a == b && length args0 == length brgs0 && length args1 == length brgs1 =
             concat <$> traverse (uncurry f) (zip (args0 <> args1) (brgs0 <> brgs1))
@@ -262,7 +266,8 @@ matchCont ty0 ty1 k = f ty0 ty1
     -- TODO: Actually, I think there's a bug here... 
     -- We really should check if we are matching concurrent types with 
     -- concurrent type with no args (and vice versa) Although, I think this is handled
-    -- in the renaming stage.
+    -- in the renaming stage. BUT! This is probably caught in kind checking 
+    -- I'm guessing.
     f type0@(TypeWithNoArgs _ a) type1@(TypeWithNoArgs _ b) 
         | a == b = return mempty
         | otherwise = k type0 type1
@@ -288,6 +293,7 @@ matchCont ty0 ty1 k = f ty0 ty1
 
 
         (TypeNegF cxt0 a, TypeNegF cxt1 b) -> f a b
+
         (TypeTupleF _cxt0 (l0, l1, ls), TypeTupleF _cxt1 (r0, r1, rs)) 
             | length ls == length rs -> 
                 fmap concat $ mappend 
@@ -613,7 +619,9 @@ solveTypeEqns ::
     TypeEqns x -> 
     m (Package x)
 -- solveTypeEqns eqns = cata f eqns >>= traverseOf packageSubs linearize 
-solveTypeEqns eqns = cata f eqns >>= traverseOf packageSubs linearize  
+solveTypeEqns eqns = do
+    traceShowM eqns
+    cata f eqns >>= traverseOf packageSubs linearize
   where
     f :: Base (TypeEqns x) (m (Package x)) -> m (Package x)
     f (TypeEqnsEqF (a,b)) = do  
@@ -685,7 +693,8 @@ packageExistentialElim pkg = do
         Just sub -> do
             let subs' = deleteSubList v subs
             vsub <- mkValidSub v sub
-            subs'' <- fmap (uncurry $ flip (:)) (coalesceNumNudge vsub subs') >>= linearize
+            subs'' <- fmap (uncurry $ flip (:)) 
+                (coalesceNumNudge vsub subs') >>= linearize
             let changed = v `elem` foldMap collectvars subs'
             return $ acc
                 & packageSubs .~ bool (vsub:) id changed subs''
@@ -716,11 +725,11 @@ packageUniversalElim  ::
     [([TypeP x], TypeP x, MplType x)] ->
     Package x ->
     m (Package x)
-packageUniversalElim vs pkg = traverseOf packageSubs linearize pkg  >>= flip (foldrM f) vs
+packageUniversalElim vs pkg = traverseOf packageSubs linearize pkg >>= flip (foldrM f) vs
   where
     f :: ([TypeP x], TypeP x, MplType x) -> Package x -> m (Package x)
     f (foralls, v, vtp) acc = acc' ^. packageSubs % to (pure . fromJust . lookup v) >>= \tp -> do
-            let throwerr = throwError $ _TypeForallMatchFailure # (vtp, tp)
+            let throwerr = throwError $ _TypeForallMatchFailure # (vtp, tp) 
 
                 g :: [(TypeP x, MplType x)] -> m ()
                 g [] = return ()
@@ -730,12 +739,15 @@ packageUniversalElim vs pkg = traverseOf packageSubs linearize pkg  >>= flip (fo
                     | l `notElem` foralls && r' `notElem` foralls = g rst
                     | l `elem` foralls && r' `notElem` foralls = coalesce (r', TypeVar rcxt l) rst >>= g
                     | r' `elem` foralls && l `notElem` foralls = g ((r', (TypeVar rcxt l)):rst)
-                    | otherwise = throwerr -- throwError $ _TypeForallMatchFailure # (l, r)
+                    | otherwise = throwerr 
                 g ((l, r):rst)
-                    | l `elem` foralls = throwerr -- throwError $ _TypeForallMatchFailure # (l, r)
+                    | l `elem` foralls = throwerr 
                     | otherwise = g rst
 
-            match vtp tp >>= linearize >>= g 
+            (match vtp tp `catchError` const 
+                (throwError $ _TypeForallMatchFailure # (vtp, tp))) 
+                >>= linearize 
+                >>= g 
             return $ acc' & packageSubs %~ ((v,vtp):) . deleteSubList v
       where
         acc' = acc & packageSubs %~ alignSubs v

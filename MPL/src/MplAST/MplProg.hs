@@ -353,7 +353,7 @@ data MplExpr x =
 
     -- built in...
     | EList !(XEList x) [MplExpr x]
-    | EString !(XEString x) [MplExpr x]
+    | EString !(XEString x) String
     | EUnit !(XEUnit x) 
     | ETuple !(XETuple x) (MplExpr x, MplExpr x, [MplExpr x])
     | EBuiltInOp !(XEBuiltInOp x) BuiltInOperators (MplExpr x) (MplExpr x)
