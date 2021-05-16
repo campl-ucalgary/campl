@@ -32,6 +32,7 @@ dependencies:
     - unordered-containers
     - hashable
 
+    - transformers
     - mtl
 
     - prettyprinter

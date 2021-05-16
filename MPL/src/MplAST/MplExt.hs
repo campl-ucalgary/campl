@@ -22,6 +22,7 @@ data MplPass (c :: Ext)
 type MplParsed = MplPass 'Parsed
 type MplRenamed = MplPass 'Renamed
 type MplTypeChecked = MplPass 'TypeChecked
+type MplPatternCompiled = MplPass 'PatternCompiled
 
 data Ext =
     -- | After bnfc parsing
@@ -31,4 +32,6 @@ data Ext =
     | Renamed
     -- | Type checking
     | TypeChecked
+    -- | Compilation of pattern matching
+    | PatternCompiled
 

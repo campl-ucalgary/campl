@@ -95,6 +95,7 @@ type instance XEInt MplParsed = Location
 type instance XEChar MplParsed = Location
 type instance XEDouble MplParsed = Location
 type instance XECase MplParsed = ()
+type instance XECasePattern MplParsed = XMplPattern MplParsed
 type instance XEObjCall MplParsed = ()
 type instance XECall MplParsed = ()
 type instance XERecord MplParsed = Location

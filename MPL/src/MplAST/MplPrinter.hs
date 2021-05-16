@@ -747,6 +747,8 @@ type MplPrintConstraints x y =
     , MplTypesToBnfc (XTypePhraseFrom x ('SeqObjTag 'DataDefnTag)) y
     , MplTypeToBnfc (XTypePhraseTo x ('SeqObjTag 'DataDefnTag)) y
 
+    , MplPattToBnfc (XECasePattern x) y
+
     , PPrint (IdP x) y
 
     , XProcessDefn x ~ MplProcess x

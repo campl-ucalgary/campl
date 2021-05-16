@@ -14,6 +14,7 @@ module MplAST.MplCore (
     , module MplAST.MplParsed 
     , module MplAST.MplRenamed 
     , module MplAST.MplKind 
+    , module MplAST.MplPatternCompiled
     , typeLocationSpan
     ) where
 {- Module for rexporting things related to the AST..
@@ -32,6 +33,7 @@ import MplAST.MplProgUtil
 import MplAST.MplParsed 
 import MplAST.MplRenamed 
 import MplAST.MplKind 
+import MplAST.MplPatternCompiled
 
 import Control.Arrow
 import Optics

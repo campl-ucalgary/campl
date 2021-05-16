@@ -15,6 +15,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE RoleAnnotations #-}
 module MplAST.MplExpr where
 
 

@@ -40,6 +40,10 @@ data Location =
     -- Span (Int, Int) (Int, Int)
   deriving (Show, Eq)
 
+
+invalidLocation :: Location
+invalidLocation = Location (-1,-1)
+
 -- | Span for computing bounding boxes of a location.
 newtype Span = Span (Location, Location)
 

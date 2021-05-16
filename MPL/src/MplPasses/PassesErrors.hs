@@ -26,6 +26,8 @@ import MplPasses.TypeChecker.TypeCheckCallErrors
 import MplPasses.TypeChecker.TypeCheckErrorPkg 
 import MplPasses.TypeChecker.TypeCheckMplTypeSub
 
+import qualified MplPasses.PatternCompiler.PatternCompileErrors as PC
+
 import MplPasses.PassesErrorsPprint
 
 data MplPassesErrors =
@@ -33,6 +35,7 @@ data MplPassesErrors =
     | MplParseErrors P.ParseErrors
     | MplRenameErrors R.RenameErrors
     | MplTypeCheckErrors T.TypeCheckErrors
+    | MplPatternCompilationErrors PC.PatternCompileErrors 
   deriving Show
 
 $(makeClassyPrisms ''MplPassesErrors)
@@ -60,6 +63,9 @@ instance AsTypeCheckCallErrors MplPassesErrors where
 
 instance AsTypeUnificationError MplPassesErrors MplTypeSub where
     _TypeUnificationError = _MplTypeCheckErrors % _TypeUnificationError 
+
+instance PC.AsPatternCompileErrors MplPassesErrors where
+    _PatternCompileErrors  = _MplPatternCompilationErrors 
 
 
 pprintMplPassesErrors :: MplPassesErrors -> MplDoc

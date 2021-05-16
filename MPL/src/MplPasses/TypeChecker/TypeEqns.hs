@@ -633,7 +633,9 @@ solveTypeEqns eqns = cata f eqns >>= traverseOf packageSubs linearize
 {-
 solveTypeEqns eqns = do
     traceShowM eqns
-    cata f eqns >>= traverseOf packageSubs linearize
+    res <- cata f eqns >>= traverseOf packageSubs linearize
+    traceShowM res
+    return res
 -}
   where
     f :: Base (TypeEqns x) (m (Package x)) -> m (Package x)

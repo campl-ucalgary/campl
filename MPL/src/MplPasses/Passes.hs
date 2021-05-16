@@ -25,6 +25,7 @@ import MplPasses.TypeChecker.TypeCheckCallErrors
 import MplPasses.TypeChecker.TypeCheckErrorPkg 
 import MplPasses.TypeChecker.TypeCheckMplTypeSub
 
+import MplPasses.PatternCompiler.PatternCompile 
 
 import Data.Proxy
 
@@ -67,7 +68,8 @@ runPasses ::
     String -> 
     Either [MplPassesErrors] _
 runPasses MplPassesEnv{mplPassesEnvUniqueSupply = supply, mplPassesTopLevel = toplvl} = 
-    runTypeCheck' (toplvl, rs) 
+    runPatternCompile' (toplvl, rrs) 
+    <=< runTypeCheck' (toplvl, lrs) 
     -- TODO remove the trace in the future...
     <=< fmap tracePprint . runRename' (toplvl, ls)
     <=< runParse' 
@@ -75,6 +77,7 @@ runPasses MplPassesEnv{mplPassesEnvUniqueSupply = supply, mplPassesTopLevel = to
     -- in runRename' (TopLevel, ls, rsymtab) <=< runParse' <=< B.runBnfc
   where
     (ls, rs) = split supply
+    (lrs, rrs) = split rs
 
 tracePprint n = trace (pprint (Proxy :: Proxy MplRenamed) n) n
 
@@ -111,11 +114,52 @@ data
         Wrapper :: A -> S
 -}
 
+fun cheat0 =
+    -> cheat0()
+
+fun cheat1 =
+    -> cheat1()
+
+fun cheat2 =
+    -> cheat2()
+
+defn
+    {-
+    fun testing =
+        MyCons(a,b),MyNil -> a
+        MyCons(a,b),MyCons(c,d) -> a
+        MyNil, MyNil -> cheat()
+        MyNil, MyCons(c,d) -> c
+
+    fun testing =
+        MyCons(a,b),c -> 
+            MyCons(a, testing(b, c))
+        MyNil,c -> c
+    -}
+    fun demo = 
+        f, MyNil, ys -> cheat0()
+        f, xs, MyNil -> cheat1()
+        f, MyCons(x,xs), MyCons(y,ys) -> cheat2()
+
+    data
+        MyList(A) -> S =
+            MyCons :: A,S -> S
+            MyNil ::      -> S
+
+
+{-
+-- GET BACK TO FIXING THE DUPLCIATED EROR MESSAGE FOR THIS
+fun testing =
+    f,a -> f(a)
+-}
+
+{-
 fun testing :: Int -> Char=
     "asdf" -> "asdf"
     [] -> "asdf"
     ['a'] -> [1,2,3]
     () -> ()
+-}
 
 
 

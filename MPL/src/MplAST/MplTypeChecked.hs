@@ -136,13 +136,18 @@ type instance XProcessDefn MplTypeChecked  = MplProcess MplTypeChecked
 -- Expression instances
 type instance XMplExpr MplTypeChecked = MplExpr MplTypeChecked
 type instance XEPOps MplTypeChecked = MplSeqType MplTypeChecked
-type instance XEVar MplTypeChecked = 
-    (ExprCallDef , MplSeqType MplTypeChecked)
+type instance XEVar MplTypeChecked = MplSeqType MplTypeChecked
+    -- ^ here, we really could include how this variable was brought to be, but we don't
+    -- (XMplPattern MplTypeChecked, MplSeqType MplTypeChecked)
 type instance XEInt MplTypeChecked = (Location, MplSeqType MplTypeChecked)
 type instance XEChar MplTypeChecked = (Location, MplSeqType MplTypeChecked)
 type instance XEDouble MplTypeChecked = (Location, MplSeqType MplTypeChecked)
 type instance XECase MplTypeChecked = MplSeqType MplTypeChecked
-type instance XECall MplTypeChecked = MplSeqType MplTypeChecked
+type instance XECasePattern MplTypeChecked = XMplPattern MplTypeChecked 
+type instance XECall MplTypeChecked = 
+    -- ^ here, we really could include how this call was brought to be, but we don't
+    MplSeqType MplTypeChecked
+    -- (XFunctionDefn MplTypeChecked, MplSeqType MplTypeChecked)
 type instance XEObjCall MplTypeChecked = MplSeqType MplTypeChecked
 type instance XERecord MplTypeChecked = (Location, MplSeqType MplTypeChecked)
 type instance XERecordPhrase MplTypeChecked = MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag)

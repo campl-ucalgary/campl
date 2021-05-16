@@ -303,6 +303,7 @@ renameExpr = cata f
 
         return $ _EUnfold # (cxt, unfoldon', phrases')
 
+    {- translating some of the built in syntax to default constructors. -}
 
 -- Renaming commands...
 renameCmds ::

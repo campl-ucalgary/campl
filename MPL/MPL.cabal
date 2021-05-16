@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 600caf0ffb5e59a93f887244b85117643e05e52cad03e51bc333b19d9ce1b0d7
+-- hash: ffe2a5b3a367a6bece6aeef223f284817c9a0fd46e77dbaf716caa4fac86aa4a
 
 name:           MPL
 version:        0.1.0.0
@@ -46,6 +46,7 @@ library
       MplAST.MplKind
       MplAST.MplParsed
       MplAST.MplPattern
+      MplAST.MplPatternCompiled
       MplAST.MplPrinter
       MplAST.MplProg
       MplAST.MplProgUtil
@@ -64,6 +65,10 @@ library
       MplPasses.Passes
       MplPasses.PassesErrors
       MplPasses.PassesErrorsPprint
+      MplPasses.PatternCompiler.PatternCompile
+      MplPasses.PatternCompiler.PatternCompileErrors
+      MplPasses.PatternCompiler.PatternCompileMplExprSub
+      MplPasses.PatternCompiler.PatternCompileUtils
       MplPasses.Renamer.Rename
       MplPasses.Renamer.RenameCmdFreeVars
       MplPasses.Renamer.RenameErrors
@@ -110,6 +115,7 @@ library
     , prettyprinter
     , raw-strings-qq
     , recursion-schemes
+    , transformers
     , unordered-containers
   default-language: Haskell2010
 
@@ -136,6 +142,7 @@ executable mpl
     , prettyprinter
     , raw-strings-qq
     , recursion-schemes
+    , transformers
     , unordered-containers
   default-language: Haskell2010
 
@@ -171,5 +178,6 @@ test-suite MPL-test
     , prettyprinter
     , raw-strings-qq
     , recursion-schemes
+    , transformers
     , unordered-containers
   default-language: Haskell2010

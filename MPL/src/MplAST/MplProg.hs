@@ -284,6 +284,7 @@ type family XEInt x
 type family XEChar x
 type family XEDouble x
 type family XECase x
+type family XECasePattern x
 type family XEObjCall x
 type family XECall x
 type family XERecord x
@@ -314,6 +315,7 @@ type ForallMplExpr (c :: Type -> Constraint) x =
     , c (XEChar x)
     , c (XEDouble x)
     , c (XECase x)
+    , c (XECasePattern x)
     , c (XEObjCall x)
     , c (XECall x)
     , c (XERecord x)
@@ -345,7 +347,7 @@ data MplExpr x =
     | EInt !(XEInt x) Int
     | EChar !(XEChar x) Char
     | EDouble !(XEDouble x) Double
-    | ECase !(XECase x) (MplExpr x) (NonEmpty (XMplPattern x, MplExpr x))
+    | ECase !(XECase x) (MplExpr x) (NonEmpty (XECasePattern x, MplExpr x))
 
     | EObjCall !(XEObjCall x) (IdP x) [MplExpr x]
     | ECall !(XECall x) (IdP x) [MplExpr x]

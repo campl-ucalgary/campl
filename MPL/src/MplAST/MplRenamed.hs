@@ -132,6 +132,7 @@ type instance XEInt MplRenamed = Location
 type instance XEChar MplRenamed = Location
 type instance XEDouble MplRenamed = Location
 type instance XECase MplRenamed = ()
+type instance XECasePattern MplRenamed = XMplPattern MplRenamed 
 type instance XECall MplRenamed = ()
 type instance XEObjCall MplRenamed = ()
 type instance XERecord MplRenamed = Location

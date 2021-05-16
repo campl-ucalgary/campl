@@ -85,3 +85,103 @@ renamePattern = cata f
 
     f (PIntF loc c) = return $ PInt loc c
 
+    {- Here, we replace some of the code with user provided types data.
+     - Honestly, this is a bit of a cheap hack!  -}
+    f (PUnitF loc) = do
+        symtab <- guse envLcl
+        let ident = _IdentP # 
+                ( _NameOcc # 
+                    ( "Unit" ^. coerced
+                    , loc
+                    )
+                , _TermLevel # ()
+                )
+            ident' = fromJust $ lookupSymSeqPhrase ident symtab
+        tell $ outOfScopeWith lookupSymSeqPhrase symtab ident 
+
+        return $ _PConstructor # 
+            ( ()
+            , _IdentR # (ident, ident' ^. uniqueTag)
+            , []
+            )
+    f (PListF loc []) = do
+        symtab <- guse envLcl
+        let ident = _IdentP # 
+                ( _NameOcc # 
+                    ( "Nil" ^. coerced
+                    , loc
+                    )
+                , _TermLevel # ()
+                )
+            ident' = fromJust $ lookupSymSeqPhrase ident symtab
+        tell $ outOfScopeWith lookupSymSeqPhrase symtab ident 
+
+        return $ _PConstructor # 
+            ( ()
+            , _IdentR # (ident, ident' ^. uniqueTag)
+            , [] )
+
+    f (PListF loc args) = plist loc args
+    f (PStringF loc args) = plist loc $ map (pure . PChar loc) args
+    f (PListConsF loc a as) = do
+        symtab <- guse envLcl
+        a' <- a
+        as' <- as
+
+        let identcons = _IdentP # 
+                ( _NameOcc # 
+                    ( "Cons" ^. coerced
+                    , loc
+                    )
+                , _TermLevel # ()
+                )
+            identcons' = fromJust $ lookupSymSeqPhrase identcons symtab
+
+        tell $ outOfScopeWith lookupSymSeqPhrase symtab identcons
+        return $
+            _PConstructor # 
+            ( ()
+            , _IdentR # (identcons, identcons' ^. uniqueTag)
+            , [a',as'] )
+        
+
+    plist :: 
+        Location -> 
+        [_ (MplPattern MplRenamed)] -> 
+        _ (MplPattern MplRenamed)
+    plist loc args = do
+        args' <- sequenceA args 
+
+        symtab <- guse envLcl
+        let identcons = _IdentP # 
+                ( _NameOcc # 
+                    ( "Cons" ^. coerced
+                    , loc
+                    )
+                , _TermLevel # ()
+                )
+            identcons' = fromJust $ lookupSymSeqPhrase identcons symtab
+
+        let identnil = _IdentP # 
+                ( _NameOcc # 
+                    ( "Nil" ^. coerced
+                    , loc
+                    )
+                , _TermLevel # ()
+                )
+            identnil' = fromJust $ lookupSymSeqPhrase identnil symtab
+
+        tell $ outOfScopeWith lookupSymSeqPhrase symtab identcons
+        tell $ outOfScopeWith lookupSymSeqPhrase symtab identnil 
+
+        let rcons a acc = 
+                _PConstructor # 
+                ( ()
+                , _IdentR # (identcons, identcons' ^. uniqueTag)
+                , [a,acc] )
+        let rnil = _PConstructor # 
+                    ( ()
+                    , _IdentR # (identnil, identnil' ^. uniqueTag)
+                    , [] )
+
+        return $ foldr rcons rnil args'

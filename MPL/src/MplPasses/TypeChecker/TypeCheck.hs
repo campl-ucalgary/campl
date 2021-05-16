@@ -435,7 +435,16 @@ typeCheckExpr = para f
                 [ TypeEqnsEq (typePtoTypeVar ttypep , lkuptp') 
                 ] 
 
-        return (EVar (lkupdef, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) n, [eqn])
+            {-
+            res = case lkupdef of 
+                ExprCallPattern patt -> EVar (patt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) n
+                ExprCallFun fun -> ECall (fun, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq) n []
+            -}
+            res = case lkupdef of 
+                ExprCallPattern patt -> EVar (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) n
+                ExprCallFun fun -> ECall (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq) n []
+
+        return (res, [eqn])
 
     f (EBuiltInOpF _ _ _ _) = panicNotImplemented
 
@@ -1065,12 +1074,19 @@ typeCheckExpr = para f
                 ] 
                 <> concat argseqns
 
+            {-
+            res = case seqdef of 
+                ExprCallPattern patt -> EVar (patt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) ident
+                ExprCallFun fun -> ECall (fun, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq) ident args'
+            -}
+            res = case seqdef of 
+                ExprCallPattern patt -> EVar (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) ident
+                ExprCallFun fun -> ECall (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq) ident args'
+
         return 
-            ( _ECall # 
-              ( fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq
-              , ident
-              , args' ) 
+            ( res
             , [eqns] )
+
 
 
     f (ERecordF cxt phrases) = do
