@@ -94,6 +94,7 @@ type instance XEVar MplParsed = ()
 type instance XEInt MplParsed = Location
 type instance XEChar MplParsed = Location
 type instance XEDouble MplParsed = Location
+type instance XEBool MplParsed = Location
 type instance XECase MplParsed = ()
 type instance XECasePattern MplParsed = XMplPattern MplParsed
 type instance XEObjCall MplParsed = ()
@@ -116,10 +117,14 @@ type instance XEUnfold MplParsed = ()
 type instance XEUnfoldPhrase MplParsed = ()
 type instance XEUnfoldSubPhrase MplParsed = ()
 type instance XESwitch MplParsed = ()
+type instance XEIllegalInstr MplParsed = Void
 
 -- Pattern instances..
 type instance XMplPattern MplParsed = MplPattern MplParsed
 type instance XPConstructor MplParsed = ()
+type instance XPSimpleConstructor MplParsed = Void
+type instance XPSimpleConstructorArgs MplParsed = Void
+
 type instance XPRecord MplParsed = Location
 type instance XPRecordPhrase MplParsed = ()
 type instance XPVar MplParsed = ()
@@ -130,6 +135,7 @@ type instance XPUnit MplParsed = Location
 type instance XPTuple MplParsed = Location
 type instance XPString MplParsed = Location
 type instance XPInt MplParsed = Location
+type instance XPBool MplParsed = Location
 type instance XPChar MplParsed = Location
 type instance XPList MplParsed = Location
 type instance XPListCons MplParsed = Location
@@ -156,6 +162,7 @@ type instance XCPlugs MplParsed =
         -- we can never actually write this
 type instance XCCase MplParsed = KeyWordNameOcc
 type instance XCSwitch MplParsed = KeyWordNameOcc
+type instance XCIf MplParsed = KeyWordNameOcc
 type instance XCHCasePhrase MplParsed  = ()
 type instance XCForkPhrase MplParsed  = Maybe [(ChP MplParsed)] -- user can supply their own context
 type instance XCPlugPhrase MplParsed  = () -- user can supply their own context

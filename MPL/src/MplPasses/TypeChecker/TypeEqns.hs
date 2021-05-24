@@ -297,6 +297,7 @@ matchCont ty0 ty1 k = f ty0 ty1
         (TypeIntF _a, TypeIntF _b) -> return []
         (TypeDoubleF _a, TypeDoubleF _b) -> return []
         (TypeCharF _a, TypeCharF _b) -> return []
+        (TypeBoolF _a, TypeBoolF _b) -> return []
 
         (TypeTopBotF a, TypeTopBotF b) -> return []
         (TypeNegF cxt0 a, TypeNegF cxt1 b) -> f a b

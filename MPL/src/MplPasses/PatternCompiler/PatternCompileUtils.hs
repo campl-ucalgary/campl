@@ -35,34 +35,27 @@ type PatternCompileEnv = Env () ()
 type PatternCompile typechecked patterncompiled = 
     forall err m.
     ( MonadState PatternCompileEnv m 
-    , MonadError [err] m 
-    , AsPatternCompileErrors err )  => 
+    , MonadWriter [err] m 
+    , AsPatternCompileErrors err ) => 
     typechecked -> m patterncompiled
 
-freshExprVar :: 
-    ( HasUniqueSupply s
-    , MonadState s m ) =>
-    MplSeqType MplTypeChecked ->
-    m (MplExpr MplPatternCompiled)
-freshExprVar ty = do
-    uniq <- fmap uniqueFromSupply freshUniqueSupply
-    return $ _EVar # (ty, undefined)
 
 
 -- | Gets the type of a pattern
 getExprType ::
-    MplExpr MplTypeChecked -> 
+    MplExpr MplPatternCompiled -> 
     MplSeqType MplTypeChecked
 getExprType = \case 
     EPOps ann _op _l _r -> ann
     EVar ann _ -> ann
-    EInt ann _ -> snd ann
-    EChar ann _ -> snd ann
-    EDouble ann _ -> snd ann
+    EInt ann _ -> ann
+    EChar ann _ -> ann
+    EDouble ann _ -> ann
     ECase ann _ _ -> ann
     EObjCall ann _ _ -> ann
     ECall ann _ _ -> ann
-    ERecord ann _ -> snd ann
+    ERecord ann _ -> ann
+    {-
     EList ann _ -> snd ann
     EString ann _ -> snd ann
     EUnit ann -> snd ann
@@ -73,6 +66,7 @@ getExprType = \case
     EFold ann _ _ -> ann
     EUnfold ann _ _ -> ann
     ESwitch ann _ -> ann
+    -}
     -- XExpr !(XXExpr x)
     
 
@@ -111,11 +105,14 @@ getPattType = \case
     -}
 
 -- | Creates a fresh IdP 
-freshIdP :: 
+freshUIdP :: 
     ( MonadState s m
     , HasUniqueSupply s ) =>
-    m (IdP MplTypeChecked)
-freshIdP = do
+    m (IdP MplPatternCompiled)
+freshUIdP = do
     uniq <- fmap uniqueFromSupply freshUniqueSupply
     let ident = _IdentR # (_IdentP # (_NameOcc # (coerce "u", invalidLocation), TermLevel), coerce uniq)
     return ident
+
+pattCompiledIllegalInstr :: MplExpr MplPatternCompiled 
+pattCompiledIllegalInstr = _EIllegalInstr # ()

@@ -41,6 +41,9 @@ import Data.Typeable
 type family XMplPattern x
 
 type family XPConstructor x
+type family XPSimpleConstructor x
+type family XPSimpleConstructorArgs x
+
 type family XPRecord x
 type family XPRecordPhrase x
 type family XPVar x
@@ -50,6 +53,7 @@ type family XPUnit x
 type family XPTuple x
 type family XPString x
 type family XPInt x
+type family XPBool x
 type family XPChar x
 type family XPList x
 type family XPListCons x
@@ -59,6 +63,8 @@ type family XXPattern x
 
 type ForallMplPattern (c :: Type -> Constraint) x = 
      ( c (XPConstructor x)
+     , c (XPSimpleConstructor x)
+     , c (XPSimpleConstructorArgs x)
      , c (XPRecord x)
      , c (XPRecordPhrase x)
      , c (XPVar x)
@@ -67,6 +73,7 @@ type ForallMplPattern (c :: Type -> Constraint) x =
      , c (XPTuple x)
      , c (XPString x)
      , c (XPInt x)
+     , c (XPBool x)
      , c (XPChar x)
      , c (XPList x)
      , c (XPListCons x)
@@ -75,6 +82,7 @@ type ForallMplPattern (c :: Type -> Constraint) x =
 
 data MplPattern x =
     PConstructor !(XPConstructor x) (IdP x) [MplPattern x]
+    | PSimpleConstructor !(XPSimpleConstructor x) (IdP x) (XPSimpleConstructorArgs x)
     | PRecord !(XPRecord x) (NonEmpty (XPRecordPhrase x, IdP x, MplPattern x) )
     | PVar !(XPVar x) (IdP x)
     | PNull !(XPNull x) 
@@ -92,8 +100,10 @@ data MplPattern x =
     | PList !(XPList x) [MplPattern x]
     | PString !(XPString x) String
     | PListCons !(XPListCons x) (MplPattern x) (MplPattern x)
+
     | PChar !(XPChar x) Char
     | PInt !(XPInt x) Int
+    | PBool !(XPBool x) Bool
 
     | XPattern !(XXPattern x)
 

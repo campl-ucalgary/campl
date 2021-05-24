@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RecursiveDo #-}
@@ -25,6 +26,7 @@ import MplPasses.Renamer.RenameType
 import MplPasses.Renamer.RenamePatt 
 
 import Control.Monad.State
+import Control.Monad.Reader
 import Control.Monad.Writer
 
 import MplUtil.UniqueSupply
@@ -38,6 +40,7 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 
 import Data.Foldable
+import Data.Functor.Foldable
 
 import Debug.Trace
 
@@ -86,11 +89,15 @@ type instance XCPlugs MplCmdFreeVars = (KeyWordNameOcc, (ContextInfo, [IdP MplCm
     -- plug command, plug scoped bound variables.
 type instance XCCase MplCmdFreeVars = KeyWordNameOcc
 type instance XCSwitch MplCmdFreeVars = KeyWordNameOcc
+type instance XCIf MplCmdFreeVars = KeyWordNameOcc
 type instance XCHCasePhrase MplCmdFreeVars  = ()
 type instance XCForkPhrase MplCmdFreeVars  = (ContextInfo, [IdP MplCmdFreeVars])
 type instance XCPlugPhrase MplCmdFreeVars  = ()
 type instance XXCmd MplCmdFreeVars = Void 
 
+
+{- | This will essentially move the free variables bottom up, and store them in spots in the
+AST so that the context of a @plug@ or a @fork@ command can be computed -}
 cmdsBindFreeVars ::
     ( MonadState FreeVars m ) =>
     NonEmpty (MplCmd MplParsed) -> 
@@ -190,7 +197,7 @@ cmdBindFreeVars = f
         (free2, phr2') <- g initfreevars phr2
         (free3, phrs') <- unzip <$> traverse (g initfreevars) phrs
         equality .= initfreevars
-        equality %= ((free1 <> free2 <> concat free3)<>)
+        equality %= ((nub $ free1 <> free2 <> concat free3)<>)
         return $ CPlugs 
             (over _2 (fromMaybe (ComputedContext, cxt')) (fmap (UserProvidedContext,) <$> cxt)) 
             (phr1', phr2', phrs')
@@ -199,7 +206,8 @@ cmdBindFreeVars = f
             equality .= initfreevars
             cmds' <- cmdsBindFreeVars cmds
             vs <- guse equality
-            return ((\\outs) . (\\ins) . nub $ vs, (cxt, (ins,outs), cmds'))
+            -- return ((\\outs) . (\\ins) . nub $ vs, (cxt, (ins,outs), cmds'))
+            return (nub $ vs ++ ins ++ outs, (cxt, (ins,outs), cmds'))
 
         cxt' = nub $ concatMap (uncurry (<>) . view _2) (phr1:phr2:phrs)
 
@@ -211,8 +219,84 @@ cmdBindFreeVars = f
         g (patt, cmds) = do
             cmds' <- cmdsBindFreeVars cmds
             return (patt, cmds')
+
     f (CSwitch cxt switches) = do
         switches' <- traverse g switches
         return $ CSwitch cxt switches'
       where
         g (expr, cmds) = (expr,) <$> cmdsBindFreeVars cmds
+
+    f (CIf cxt condc thenc elsec) = do
+        thenc' <- cmdsBindFreeVars thenc
+        elsec' <- cmdsBindFreeVars elsec
+        return $ CIf cxt condc thenc' elsec'
+
+{- | This will correct the contxt AFTER computing the free variables. 
+See note above for why this is necessary..
+-}
+cmdsCorrectContext ::
+    -- | given context
+    [IdentP] ->
+    -- | cmds
+    NonEmpty (MplCmd MplCmdFreeVars) -> 
+    -- | resulting cmds after correcting the contexts
+    NonEmpty (MplCmd MplCmdFreeVars)
+-- cmdsCorrectContext context = fmap (cata go)
+cmdsCorrectContext context = NE.fromList . go context . NE.toList
+  where
+    go :: [IdentP] -> 
+        [MplCmd MplCmdFreeVars] -> 
+        [MplCmd MplCmdFreeVars]
+    go context (cmd:cmds) = case cmd of
+        -- CForkF cxt ch ((ch1, cxt1, cmds1), (ch2, cxt2, cmds2)) -> undefined
+        CFork cxt ch (lcmds, rcmds) -> CFork cxt ch (f lcmds, f rcmds) : go context cmds
+          where
+            f :: (IdentP, (ContextInfo, [IdentP]), NonEmpty (MplCmd MplCmdFreeVars)) -> 
+                (IdentP, (ContextInfo, [IdentP]), NonEmpty (MplCmd MplCmdFreeVars))
+            {-
+            f (ch', (ComputedContext, cxt'), cmds') = 
+                ( ch'
+                , (ComputedContext, cxt')
+                , cmdsCorrectContext cmds'
+                )
+            -}
+            f (ch', (ComputedContext, cxt'), cmds') = 
+                ( ch' 
+                , (ComputedContext, filter (`elem` context) cxt') 
+                , cmdsCorrectContext (ch':context) cmds')
+            f (ch', cxt', cmds') = ( ch' , cxt' , cmdsCorrectContext (ch':context) cmds')
+            -- _ cxt1
+        CPlugs cxt (phr1, phr2, phrs)
+            -> CPlugs cxt' (f phr1, f phr2, map f phrs) : go context cmds
+          where 
+            f :: ((), ([IdentP], [IdentP]), NonEmpty (MplCmd MplCmdFreeVars)) ->
+                    ((), ([IdentP], [IdentP]), NonEmpty (MplCmd MplCmdFreeVars)) 
+
+            f (ann, splt, cmds') = (ann, splt, cmdsCorrectContext (cxt' ^. _2 % _2 ++ context) cmds')
+ 
+            cxt' = over _2 g cxt
+              where
+                g :: (ContextInfo, [IdentP]) -> (ContextInfo, [IdentP])
+                g (ComputedContext, ids) = (ComputedContext, filter (`notElem` context ) ids)
+                g res = res
+
+        CRun ann id expr ins outs -> CRun ann id expr ins outs :  go context cmds
+        CClose ann ch -> CClose ann ch : go context cmds
+        CHalt ann ch -> CHalt ann ch : go context cmds
+        CGet ann pat ch -> CGet ann pat ch : go context cmds
+        CPut ann expr ch -> CPut ann expr ch : go context cmds
+        CHCase ann ch phrases -> CHCase ann ch (phrases & mapped % _3 %~ cmdsCorrectContext context) : go context cmds
+        CHPut ann idp chp -> CHPut ann idp chp : go context cmds
+        CSplit ann chp (lchp,rchp) -> CSplit ann chp (lchp,rchp) : go (lchp:rchp:context) cmds
+        CId ann (lch,rch) -> CId ann (lch,rch) : go context cmds
+        CIdNeg ann (lch, rch) -> CIdNeg ann (lch, rch) : go context cmds
+        CRace ann races -> CRace ann (races & mapped % _2 %~ cmdsCorrectContext context) : go context cmds
+        CCase ann expr cases -> CCase ann expr (cases & mapped % _2 %~ cmdsCorrectContext context) : go context cmds
+        CSwitch ann switches ->
+            CSwitch ann (switches & mapped % _2 %~ cmdsCorrectContext context) : go context cmds
+
+        CIf ann expr thenc elsec ->
+            CIf ann expr (cmdsCorrectContext context thenc) (cmdsCorrectContext context elsec) : go context cmds
+
+        
+    go _context [] = []

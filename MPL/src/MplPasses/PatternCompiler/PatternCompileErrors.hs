@@ -14,8 +14,11 @@ import MplAST.MplTypeChecked
 import MplAST.MplPatternCompiled
 
 
-data PatternCompileErrors =
-    NonExhaustivePattern IdentT
+data PatternCompileErrors 
+    = NonExhaustiveFunPatt IdentT 
+    | NonExhaustiveCasePatt  
+    | NonExhaustiveRecordPatt IdentT
+    | ExpectedVariablePatternButGot (MplPattern MplTypeChecked)
   deriving Show
 
 data IdentPattern 

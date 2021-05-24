@@ -283,6 +283,7 @@ type family XEVar x
 type family XEInt x
 type family XEChar x
 type family XEDouble x
+type family XEBool x
 type family XECase x
 type family XECasePattern x
 type family XEObjCall x
@@ -304,6 +305,7 @@ type family XEUnfoldSubPhrase x
 type family XEUnfold x
 type family XEUnfoldPhrase x
 type family XESwitch x
+type family XEIllegalInstr x
 
 type family XXExpr x
 
@@ -314,6 +316,7 @@ type ForallMplExpr (c :: Type -> Constraint) x =
     , c (XEInt x)
     , c (XEChar x)
     , c (XEDouble x)
+    , c (XEBool x)
     , c (XECase x)
     , c (XECasePattern x)
     , c (XEObjCall x)
@@ -337,6 +340,7 @@ type ForallMplExpr (c :: Type -> Constraint) x =
     , c (XEUnfold x)
     , c (XEUnfoldPhrase x)
     , c (XESwitch x)
+    , c (XEIllegalInstr x)
 
     , c (XXExpr x)
     )
@@ -347,6 +351,8 @@ data MplExpr x =
     | EInt !(XEInt x) Int
     | EChar !(XEChar x) Char
     | EDouble !(XEDouble x) Double
+    | EBool !(XEBool x) Bool
+
     | ECase !(XECase x) (MplExpr x) (NonEmpty (XECasePattern x, MplExpr x))
 
     | EObjCall !(XEObjCall x) (IdP x) [MplExpr x]
@@ -381,6 +387,8 @@ data MplExpr x =
             )
         )
     | ESwitch !(XESwitch x) (NonEmpty ((MplExpr x), (MplExpr x)))
+
+    | EIllegalInstr !(XEIllegalInstr x) 
 
     | XExpr !(XXExpr x)
 

@@ -84,6 +84,7 @@ renamePattern = cata f
     f (PCharF loc c) = return $ PChar loc c
 
     f (PIntF loc c) = return $ PInt loc c
+    f (PBoolF loc c) = return $ PBool loc c
 
     {- Here, we replace some of the code with user provided types data.
      - Honestly, this is a bit of a cheap hack!  -}

@@ -232,6 +232,17 @@ typeCheckPattern = para f
             res = _PChar # ((cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq), v)
         return (res, eqns)
 
+    f (PBoolF cxt v) = do 
+        ttype <- guse (envLcl % typeInfoEnvTypeTag)
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        let ann = _TypeAnnPatt # (PBool cxt v)
+            ttypep =  _TypeIdentT # (ttype, TypeIdentTInfoTypeAnn ann)
+            eqns = [ TypeEqnsEq (typePtoTypeVar ttypep , _TypeBoolF % _Just # ann ) ]
+
+            res = _PBool # ((cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq), v)
+        return (res, eqns)
+
 
     f (PNullF cxt) = do 
         ttype <- guse (envLcl % typeInfoEnvTypeTag)

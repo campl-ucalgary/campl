@@ -345,6 +345,7 @@ All other symbols are terminals.
   |  |  **|**  | ``race`` ``{`` //[RacePhrase]// ``}``
   |  |  **|**  | ``plug`` ``{`` //[PlugPhrase]// ``}``
   |  |  **|**  | //Case// //Expr// ``of`` ``{`` //[ProcessCasePhrase]// ``}``
+  |  |  **|**  | ``if`` //Expr// ``then`` //ProcessCommandsBlock// ``else`` //ProcessCommandsBlock//
   |  |  **|**  | ``switch`` ``{`` //[ProcessSwitchPhrase]// ``}``
   | //HCasePhrase// | -> | //UIdent// ``->`` //ProcessCommandsBlock//
   | //[HCasePhrase]// | -> | **eps**

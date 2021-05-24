@@ -329,6 +329,20 @@ primitiveKindCheck = para f
 
             return $ bool Nothing (_Just % _TypeDoubleF # Just cxt) noerr
 
+        -- duplciated code
+        TypeBoolF cxt -> do
+            ekd <- guse kindCheckExpectedPrimitiveKind 
+            let noerr = SeqKind () == ekd
+            -- checking if this should be a sequential kind
+            tell $ review _ExternalError $ bool
+                [_KindPrimtiveMismatchExpectedButGot # 
+                    ( ekd
+                    , SeqKind ()
+                    , _TypeBoolF # cxt)
+                ] [] $ noerr
+
+            return $ bool Nothing (_Just % _TypeBoolF # Just cxt) noerr
+
         TypeTupleF cxt (t0,t1,ts) -> do
             ekd <- guse kindCheckExpectedPrimitiveKind 
             

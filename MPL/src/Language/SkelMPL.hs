@@ -280,6 +280,7 @@ transProcessCommand x = case x of
   Language.AbsMPL.PROCESS_RACE racephrases -> failure x
   Language.AbsMPL.PROCESS_PLUG plugphrases -> failure x
   Language.AbsMPL.PROCESS_CASE case_ expr processcasephrases -> failure x
+  Language.AbsMPL.PROCESS_IF expr processcommandsblock1 processcommandsblock2 -> failure x
   Language.AbsMPL.PROCESS_SWITCH processswitchphrases -> failure x
 transHCasePhrase :: Language.AbsMPL.HCasePhrase -> Result
 transHCasePhrase x = case x of

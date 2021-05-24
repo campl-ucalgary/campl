@@ -499,6 +499,7 @@ ProcessCommand : PIdent LBracket ListExpr '|' ListPIdent '=>' ListPIdent RBracke
                | 'race' '{' ListRacePhrase '}' { Language.AbsMPL.PROCESS_RACE $3 }
                | 'plug' '{' ListPlugPhrase '}' { Language.AbsMPL.PROCESS_PLUG $3 }
                | Case Expr 'of' '{' ListProcessCasePhrase '}' { Language.AbsMPL.PROCESS_CASE $1 $2 $5 }
+               | 'if' Expr 'then' ProcessCommandsBlock 'else' ProcessCommandsBlock { Language.AbsMPL.PROCESS_IF $2 $4 $6 }
                | 'switch' '{' ListProcessSwitchPhrase '}' { Language.AbsMPL.PROCESS_SWITCH $3 }
 
 HCasePhrase :: { Language.AbsMPL.HCasePhrase }

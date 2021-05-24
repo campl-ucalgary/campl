@@ -88,5 +88,9 @@ pprintMplPassesErrors = vsep . go
         [ pretty "Error during type checking:"
         , indent' $ T.pprintTypeCheckErrors err
         ]
+    go (MplPatternCompilationErrors err) = 
+        [ pretty "Error during pattern compilation:"
+        , indent' $ pretty $ show err
+        ]
 
     indent' = indent 4

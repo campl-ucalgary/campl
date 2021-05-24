@@ -131,6 +131,8 @@ type instance XEVar MplRenamed = ()
 type instance XEInt MplRenamed = Location
 type instance XEChar MplRenamed = Location
 type instance XEDouble MplRenamed = Location
+type instance XEBool MplRenamed = Location
+
 type instance XECase MplRenamed = ()
 type instance XECasePattern MplRenamed = XMplPattern MplRenamed 
 type instance XECall MplRenamed = ()
@@ -153,10 +155,13 @@ type instance XEUnfold MplRenamed = ()
 type instance XEUnfoldSubPhrase MplRenamed = ()
 type instance XEUnfoldPhrase MplRenamed = ()
 type instance XESwitch MplRenamed = ()
+type instance XEIllegalInstr MplRenamed = Void
 
 -- Pattern instances..
 type instance XMplPattern MplRenamed = MplPattern MplRenamed
 type instance XPConstructor MplRenamed = ()
+type instance XPSimpleConstructor MplRenamed = Void
+type instance XPSimpleConstructorArgs MplRenamed = Void
 type instance XPRecord MplRenamed = Location
 type instance XPRecordPhrase MplRenamed = ()
 type instance XPVar MplRenamed = ()
@@ -167,6 +172,7 @@ type instance XPUnit MplRenamed = Location
 type instance XPTuple MplRenamed = Location
 type instance XPString MplRenamed = Location
 type instance XPInt MplRenamed = Location
+type instance XPBool MplRenamed = Location
 type instance XPChar MplRenamed = Location
 type instance XPList MplRenamed = Location
 type instance XPListCons MplRenamed = Location
@@ -192,6 +198,7 @@ type instance XCPlugs MplRenamed = (KeyWordNameOcc, [IdP MplRenamed])
                                                     -- because it changes based on the phrase
 type instance XCCase MplRenamed = KeyWordNameOcc
 type instance XCSwitch MplRenamed = KeyWordNameOcc
+type instance XCIf MplRenamed = KeyWordNameOcc
 type instance XCHCasePhrase MplRenamed  = ()
 type instance XCForkPhrase MplRenamed  = [ChP MplRenamed] 
 type instance XCPlugPhrase MplRenamed  = ()

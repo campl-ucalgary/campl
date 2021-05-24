@@ -69,7 +69,8 @@ runPasses ::
     Either [MplPassesErrors] _
 runPasses MplPassesEnv{mplPassesEnvUniqueSupply = supply, mplPassesTopLevel = toplvl} = 
     runPatternCompile' (toplvl, rrs) 
-    <=< runTypeCheck' (toplvl, lrs) 
+    <=< fmap tracePprint . runTypeCheck' (toplvl, lrs) 
+    -- <=< runTypeCheck' (toplvl, lrs) 
     -- TODO remove the trace in the future...
     <=< fmap tracePprint . runRename' (toplvl, ls)
     <=< runParse' 
@@ -114,14 +115,80 @@ data
         Wrapper :: A -> S
 -}
 
+{-
 fun cheat0 =
-    -> cheat0()
+    a -> cheat0(a)
 
 fun cheat1 =
-    -> cheat1()
+    a -> cheat1(a)
 
-fun cheat2 =
-    -> cheat2()
+fun cheat2 :: Bool -> Bool =
+    True -> True
+-}
+{-
+fun fkkk  =
+    a,b,c ->  switch 
+        a -> b
+        c -> b
+fun fkkk  =
+    a,b,c ->  switch 
+        a -> b
+        c -> b
+
+proc fkk = 
+    | a => b ->
+        switch
+            True -> do
+                close a
+                halt b
+            False -> do
+                close a
+                halt b
+
+proc fkk = 
+    | a => b ->
+        if True
+            then do
+                close a
+                halt b
+            else do
+                close a
+                halt b
+        
+-}
+
+{-
+defn 
+    fun poop =
+        (App := f), a -> f(a)
+
+    codata
+        S -> Fun(A,B) =
+            App :: A,S -> B
+-}
+
+{-
+defn 
+    fun poop =
+        MyNil, (P0 := a) -> a
+        MyCons(fk,fkkk), (P1 := a, P0 := b) -> b
+
+    codata
+        S -> MyTupleThing(A,B,C) =
+            P0 :: S -> A
+            P1 :: S -> B
+            P2 :: S -> C
+
+    data
+        MyList(A) -> S =
+            MyCons :: A,S -> S
+            MyNil ::      -> S
+-}
+
+data
+    MyUnit -> S =
+        MyUnit :: -> S
+
 
 defn
     {-
@@ -136,16 +203,35 @@ defn
             MyCons(a, testing(b, c))
         MyNil,c -> c
     -}
-    fun demo = 
-        f, MyNil, ys -> cheat0()
-        f, xs, MyNil -> cheat1()
-        f, MyCons(x,xs), MyCons(y,ys) -> cheat2()
 
+    {-
+    fun demo = 
+        ss,ts -> case ss of
+            MyCons(MyUnit, banan) -> ts
+    -}
+
+
+    {-
+    fun demo = 
+        f, MyNil, ys -> cheat0(ys)
+        f, xs, MyNil -> cheat1(xs)
+        f, MyCons(x,xs), MyCons(y,ys) -> cheat2(ys)
+    -}
+
+    {-
+    fun lol = 
+        a,_,_ -> case a of
+            MyNil -> a
+            a -> a
+    -}
+    fun lol = 
+        a -> case a of
+            MyNil -> a
+            MyCons(_,_) -> a
     data
         MyList(A) -> S =
             MyCons :: A,S -> S
             MyNil ::      -> S
-
 
 {-
 -- GET BACK TO FIXING THE DUPLCIATED EROR MESSAGE FOR THIS
@@ -161,10 +247,7 @@ fun testing :: Int -> Char=
     () -> ()
 -}
 
-
-
 {-
--- memory cell example
 protocol Mem(M|) => S =
     MemPut :: Put(M|S) => S
     MemGet :: Get(M|S) => S
@@ -203,8 +286,8 @@ proc p1 :: | => Passer(|Mem(A|)), InpTerm(A|) =
         hput MemPut on mm
         put x on mm
         fork nmpp as
-            nm with mm -> nm |=| neg mm
-            pp with inp -> p1(| => pp, inp)
+            nm -> nm |=| neg mm
+            pp -> p1(| => pp, inp)
 
 proc p2 :: | Passer(| Mem(A|)) => InpTerm(A|), Mem(A|) =
     | passer => inp, mem -> do
@@ -234,4 +317,5 @@ proc run :: | => InpTerm(Int |) , InpTerm(Int|) =
             p2(| passer => inpterm1, mem)
             memory(100 | mem => )
 -}
+
 |]

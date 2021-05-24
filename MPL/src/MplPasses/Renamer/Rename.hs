@@ -25,6 +25,7 @@ import MplPasses.Renamer.RenamePatt
 import MplPasses.Renamer.RenameCmdFreeVars 
 import MplPasses.Env
 
+import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer
 
@@ -157,7 +158,12 @@ renameProcBodyPhrase ((patts, ins, outs), cmds) = do
     ins' <- traverse (g Input) ins
     outs' <- traverse (g Output) outs
 
-    cmds' <- splitUniqueSupply $ renameCmds . ((`evalState`[])  . cmdsBindFreeVars) $ cmds
+    cmds' <- splitUniqueSupply 
+        $ renameCmds 
+        $ cmdsCorrectContext (ins ++ outs)
+        $ (`evalState`[])  
+        $ cmdsBindFreeVars
+        $ cmds
 
     envLcl .= symtab
 
@@ -195,8 +201,18 @@ renameExpr = cata f
     f (EIntF cxt n) = return $ _EInt # (cxt, n)
     f (EDoubleF cxt n) = return $ _EDouble # (cxt, n)
     f (ECharF cxt n) = return $ _EChar # (cxt, n)
+    f (EBoolF cxt n) = return $ _EBool # (cxt, n)
 
-    f (ETupleF cxt (t0, t1, ts)) = do -- return $ _EChar # (cxt, n)
+    f (EIfF cxt mcond mthenc melsec) = do
+        cond <- mcond
+        thenc <- mthenc
+        elsec <- melsec
+        return $ _EIf # (cxt, cond ,thenc, elsec)
+    f (ESwitchF cxt switches) = do
+        switches' <- sequenceOf (traversed % each) switches
+        return $ _ESwitch # (cxt, switches')
+
+    f (ETupleF cxt (t0, t1, ts)) = do 
         ~(t0':t1':ts') <- sequenceA $ t0:t1:ts
         return $ _ETuple # (cxt, (t0',t1',ts'))
 
@@ -439,7 +455,6 @@ renameCmd = f
     f (CFork cxt ch ((ch1, (p1, cxt1), cmds1), (ch2, (p2, cxt2), cmds2))) = do
         symtab <- guse envLcl
 
-        traceShowM $ cxt1
 
         -- get the current channels in scope.
         -- let ~scopes = map fst $ channelsInScope symtab
@@ -465,11 +480,12 @@ renameCmd = f
                     $ traverse (flip lookupCh symtab) cxt1'
             cxt2'' = zipWith tagIdentPToChIdentRWithSymEntry cxt2' 
                     $ fromJust
-                    $ traverse (flip lookupCh symtab) cxt2'
+                    $ traverse (flip lookupCh symtab) $ traceShowId cxt2'
             -- TODO: Currently, if there is a user provided context and a variable out of 
             -- scope, this will simply just ignore it... change this so that it really checks
             -- it, by providing the information of whether it was user supplied so we know whether
             -- to do out of scope checks.
+            -- I think I fixed this -- I cna't quite recall.. would probably need to study the code a bit
 
         if p1 == UserProvidedContext
             then do 
@@ -581,5 +597,13 @@ renameCmd = f
         return $ CCase cxt caseon' cases'
 
     f (CSwitch cxt switches) = do
-        switches' <- for switches $ \(expr, cmds) -> localEnvSt id $ (,) <$> renameExpr expr <*> renameCmds cmds
+        -- local isnt needed since we do not bind any variables in scope.
+        -- switches' <- for switches $ \(expr, cmds) -> localEnvSt id $ (,) <$> renameExpr expr <*> renameCmds cmds
+        switches' <- for switches $ \(expr, cmds) ->  (,) <$> renameExpr expr <*> renameCmds cmds
         return $ CSwitch cxt switches'
+
+    f (CIf cxt condc thenc elsec) = do
+        condc' <- renameExpr condc
+        thenc' <- renameCmds thenc
+        elsec' <- renameCmds elsec
+        return $ CIf cxt condc' thenc' elsec'

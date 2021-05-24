@@ -397,6 +397,7 @@ PROCESS_PLUG    . ProcessCommand ::= "plug" "{" [ PlugPhrase ] "}" ;
 -- PROCESS_PLUG_AS . ProcessCommand ::= "plug"  [PIdent] "as" "{" [ PlugPhrase ] "}" ;
 
 PROCESS_CASE   . ProcessCommand ::= Case Expr "of" "{" [ProcessCasePhrase] "}";
+PROCESS_IF     . ProcessCommand ::= "if" Expr "then" ProcessCommandsBlock "else" ProcessCommandsBlock;
 PROCESS_SWITCH . ProcessCommand ::= "switch" "{" [ProcessSwitchPhrase] "}";
 
 

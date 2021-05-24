@@ -10,18 +10,19 @@ module MplPasses.PassesErrorsPprint
     , pprintSpan 
     )
     where
-{- | Rexports for pretty printing using 'Data.Text.Prettyprint.Doc'. 
-Moreover, this includes some useful functions for converting parts of the 'MplAST' into the @MplDoc@ type.
--}
 
 import MplAST.MplCore
 import Data.Text.Prettyprint.Doc
 import Optics
 
+{- | Rexports for pretty printing using 'Data.Text.Prettyprint.Doc'. 
+Moreover, this includes some useful functions for converting parts of the 'MplAST' into the @MplDoc@ type.
+-}
+
 
 type MplDoc = Doc MplAnn
 
-{- | MplAnn. Thisis the annotation for @MplDoc@. Currently, we do not use this.  -}
+{- | MplAnn. This is the annotation for @MplDoc@. Currently, we do not use this.  -}
 data MplAnn = MplAnn
 
 {-| this will surround a @Doc ann@ with a backtick and a single quote (this is to copy BNFC's error messages) -}

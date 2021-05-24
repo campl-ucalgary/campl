@@ -41,6 +41,8 @@ import MplUtil.UniqueSupply
 
 {- Module for defining the AST after compilation of pattern matching -}
 
+data MplPatternCompiledCase
+
 type instance IdP MplPatternCompiled = IdP MplTypeChecked 
 type instance ChP MplPatternCompiled = ChP MplTypeChecked 
 type instance TypeP MplPatternCompiled = TypeP MplTypeChecked 
@@ -67,14 +69,51 @@ type instance XEVar MplPatternCompiled = XEVar MplTypeChecked
 
 type instance XEInt MplPatternCompiled = MplSeqType MplTypeChecked
 type instance XEChar MplPatternCompiled = MplSeqType MplTypeChecked
+type instance XEBool MplPatternCompiled = MplSeqType MplTypeChecked
 type instance XEDouble MplPatternCompiled = MplSeqType MplTypeChecked
 type instance XECase MplPatternCompiled = MplSeqType MplTypeChecked
-type instance XECasePattern MplPatternCompiled =  XECasePattern MplTypeChecked
+type instance XECasePattern MplPatternCompiled =  MplPattern MplPatternCompiledCase
+
+---------------------------
+-- Pattern in a case
+---------------------------
+type instance IdP MplPatternCompiledCase = IdP MplPatternCompiled 
+type instance ChP MplPatternCompiledCase = ChP MplPatternCompiled 
+type instance TypeP MplPatternCompiledCase = TypeP MplPatternCompiled 
+
+type instance XMplPattern MplPatternCompiledCase = Void
+type instance XPConstructor MplPatternCompiledCase = Void
+
+type instance XPSimpleConstructor MplPatternCompiledCase = 
+    XPConstructor MplTypeChecked
+type instance XPSimpleConstructorArgs MplPatternCompiledCase = 
+    [(IdP MplTypeChecked, MplSeqType MplTypeChecked)]
+    -- (Variable name, Type)
+
+type instance XPRecord MplPatternCompiledCase = Void
+type instance XPRecordPhrase MplPatternCompiledCase = Void
+
+type instance XPVar MplPatternCompiledCase = Void
+type instance XPNull MplPatternCompiledCase = Void
+type instance XXPattern MplPatternCompiledCase = Void
+
+-- built in..
+type instance XPUnit MplPatternCompiledCase = Void
+type instance XPTuple MplPatternCompiledCase = Void
+type instance XPString MplPatternCompiledCase = Void
+type instance XPInt MplPatternCompiledCase = Void
+type instance XPBool MplPatternCompiledCase = Void
+type instance XPChar MplPatternCompiledCase = Void
+type instance XPList MplPatternCompiledCase = Void
+type instance XPListCons MplPatternCompiledCase =Void
+
+---------------------------
+
 type instance XECall MplPatternCompiled = XECall MplTypeChecked
 
 type instance XEObjCall MplPatternCompiled = XEObjCall MplTypeChecked
 type instance XERecord MplPatternCompiled = MplSeqType MplPatternCompiled
-type instance XERecordPhrase MplPatternCompiled = MplTypePhrase MplPatternCompiled (SeqObjTag CodataDefnTag)
+type instance XERecordPhrase MplPatternCompiled = MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag)
 type instance XXExpr MplPatternCompiled = Void
 
 -- built in expression types
@@ -99,10 +138,14 @@ type instance XEUnfoldSubPhrase MplPatternCompiled =
     -- (MplTypePhrase MplPatternCompiled (SeqObjTag CodataDefnTag), MplSeqType MplPatternCompiled)
 -- type instance XESwitch MplPatternCompiled = MplSeqType MplPatternCompiled
 type instance XESwitch MplPatternCompiled = Void
+type instance XEIllegalInstr MplPatternCompiled = ()
 
 -- Pattern instances..
 type instance XMplPattern MplPatternCompiled = MplPattern MplPatternCompiled
 type instance XPConstructor MplPatternCompiled = Void
+type instance XPSimpleConstructor MplPatternCompiled = Void
+type instance XPSimpleConstructorArgs MplPatternCompiled = Void
+
 type instance XPRecord MplPatternCompiled = Void
 type instance XPRecordPhrase MplPatternCompiled = Void
 
@@ -115,19 +158,21 @@ type instance XPUnit MplPatternCompiled = Void
 type instance XPTuple MplPatternCompiled = Void
 type instance XPString MplPatternCompiled = Void
 type instance XPInt MplPatternCompiled = Void
+type instance XPBool MplPatternCompiled = Void
 type instance XPChar MplPatternCompiled = Void
 type instance XPList MplPatternCompiled = Void
 type instance XPListCons MplPatternCompiled =Void
 
 -- Process Command
 type instance XMplCmd MplPatternCompiled = MplCmd MplPatternCompiled
-type instance XCRun MplPatternCompiled = MplProcess MplPatternCompiled
+type instance XCRun MplPatternCompiled = XCRun MplTypeChecked
 type instance XCClose MplPatternCompiled = KeyWordNameOcc
 type instance XCHalt MplPatternCompiled = KeyWordNameOcc
 type instance XCGet MplPatternCompiled = KeyWordNameOcc
-type instance XCPut MplPatternCompiled = KeyWordNameOcc
-type instance XCHCase MplPatternCompiled = KeyWordNameOcc
-type instance XCHPut MplPatternCompiled = (KeyWordNameOcc, MplConcObjDefn MplPatternCompiled)
+type instance XCPut MplPatternCompiled = XCPut MplTypeChecked
+type instance XCHCase MplPatternCompiled = XCHCase MplTypeChecked
+
+type instance XCHPut MplPatternCompiled = XCHPut MplTypeChecked
 type instance XCSplit MplPatternCompiled = KeyWordNameOcc
 type instance XCFork MplPatternCompiled = KeyWordNameOcc
 type instance XCId MplPatternCompiled = KeyWordNameOcc
@@ -142,7 +187,7 @@ type instance XCPlugs MplPatternCompiled =
                                                     -- because it changes based on the phrase
 type instance XCCase MplPatternCompiled = KeyWordNameOcc
 type instance XCSwitch MplPatternCompiled = KeyWordNameOcc
-type instance XCHCasePhrase MplPatternCompiled  = MplConcObjDefn MplPatternCompiled
+type instance XCHCasePhrase MplPatternCompiled  = MplConcObjDefn MplTypeCheckedPhrase
 type instance XCForkPhrase MplPatternCompiled  = [ChP MplPatternCompiled] 
 type instance XCPlugPhrase MplPatternCompiled  = ()
 type instance XXCmd MplPatternCompiled = Void

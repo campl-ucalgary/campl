@@ -536,6 +536,21 @@ typeCheckExpr = para f
                     ) 
                 ]
         return ( EChar ( cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) n, eqns )
+    
+    -- duplicated code from the EIntF case
+    f (EBoolF cxt n) = do
+        ttype <- guse (envLcl % typeInfoEnvTypeTag)
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        let ann =  _EBool # (cxt, n) :: MplExpr MplRenamed
+            ttypep = annotateTypeTag ttype ann
+            eqns = 
+                [ TypeEqnsEq 
+                    ( typePtoTypeVar ttypep
+                    , _TypeBoolF % _Just % _TypeAnnExpr # ann 
+                    ) 
+                ]
+        return ( EBool ( cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) n, eqns )
 
     f (ETupleF cxt (t0,t1,ts)) = do
         ttype <- guse (envLcl % typeInfoEnvTypeTag)
@@ -580,7 +595,96 @@ typeCheckExpr = para f
     f (EStringF _ _) = panicNotImplemented
     f (EUnitF _ ) = panicNotImplemented
 
-    f (EIfF cxt mcond mifc melsec) = panicNotImplemented
+    f (EIfF cxt mcond mthenc melsec) = do
+        ttype <- guse (envLcl % typeInfoEnvTypeTag)
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        (ttypemcond, (mcond', mcondeqns)) <- withFreshTypeTag $ snd mcond
+        (ttypemthenc, (mthenc', mthenceqns)) <- withFreshTypeTag $ snd mthenc
+        (ttypemelsec, (melsec', melseceqns)) <- withFreshTypeTag $ snd melsec
+
+        let ifexpr = _EIf # (cxt, fst mcond, fst mthenc, fst melsec) :: MplExpr MplRenamed
+            ttypep = annotateTypeTag ttype ifexpr
+
+            ttypetmcond = annotateTypeTag ttypemcond $ fst mcond
+            ttypetmthenc = annotateTypeTag ttypemthenc $ fst mthenc
+            ttypetmelsec = annotateTypeTag ttypemelsec $ fst melsec
+
+            -- eqn = TypeEqnsExist (ttypept0:ttypept1:ttypepts) $ 
+            eqn = TypeEqnsExist [ttypetmcond, ttypetmthenc, ttypetmelsec] $ 
+                [ TypeEqnsEq 
+                    ( typePtoTypeVar ttypep
+                    , typePtoTypeVar ttypetmthenc
+                    )
+                , TypeEqnsEq 
+                    ( typePtoTypeVar ttypep
+                    , typePtoTypeVar ttypetmelsec 
+                    )
+                , TypeEqnsEq 
+                    ( typePtoTypeVar ttypetmcond
+                    , _TypeBoolF # Just (TypeAnnExpr $ fst mcond)
+                    )
+                ]
+                <> mcondeqns
+                <> mthenceqns
+                <> melseceqns 
+
+        return 
+            ( _EIf #
+                ( fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq
+                , mcond'
+                , mthenc'
+                , melsec'
+                )
+            , [eqn]
+            )
+    -- ESwitch
+    f (ESwitchF cxt switches) = do
+        ttype <- guse (envLcl % typeInfoEnvTypeTag)
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        ((ttypestbexprs, bexpreqns), (ttypetexprs, expreqns), switches') <- fmap 
+            (over _2 unzip . over _1 unzip . unzip3 . NE.toList) 
+            $ for switches $ \(mbexpr, mexpr) -> do
+                (ttypebexpr, (bexpr', bexpreqns)) <- withFreshTypeTag $ snd mbexpr
+                (ttypeexpr, (expr', expreqns)) <- withFreshTypeTag $ snd mexpr
+
+                let ttypetbexpr = annotateTypeTag ttypebexpr $ fst mbexpr
+                    ttypetexpr = annotateTypeTag ttypeexpr $ fst mexpr
+
+                return 
+                    -- ( (ttypetbexpr, (bexpr', bexpreqns)) , (ttypetexpr , (expr', expreqns)))
+                    -- ( (ttypetbexpr, (, bexpreqns)) , (ttypetexpr , (expr', expreqns)))
+                    ( (ttypetbexpr, bexpreqns)
+                    , (ttypetexpr, expreqns)
+                    , ( bexpr', expr')
+                    )
+        let switchexpr = _ESwitch # (cxt, switches & mapped %~ (fst***fst) ) :: MplExpr MplRenamed
+            ttypep = annotateTypeTag ttype switchexpr
+
+            eqn = TypeEqnsExist (ttypestbexprs ++ ttypetexprs) $ 
+                -- codomain should all be the same type / type of overal expression
+                map (TypeEqnsEq . (typePtoTypeVar ttypep,) . typePtoTypeVar) ttypetexprs
+                -- TODO: fix the annotation information here..
+                <> zipWith 
+                    (\ann ttypet -> TypeEqnsEq 
+                        ( typePtoTypeVar ttypet
+                        , _TypeBoolF # Just (TypeAnnExpr $ ann)
+                        )
+                    )
+                    (map (fst . fst) $ NE.toList switches)
+                    ttypestbexprs
+                <>  concat bexpreqns
+                <>  concat expreqns
+
+        return
+            ( _ESwitch #
+                ( fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq
+                , NE.fromList switches'
+                )
+            , [eqn]
+            )
+
     f (ELetF cxt lets (_, mexpr)) = do
         st <- guse equality
         sup <- freshUniqueSupply
@@ -964,8 +1068,6 @@ typeCheckExpr = para f
             , [eqns]
             )
 
-    f (ESwitchF _ _) = panicNotImplemented
-
     f (ECaseF cxt (caseon, mcaseon) cases) = do
         ttype <- guse (envLcl % typeInfoEnvTypeTag)
         ttypemap <- guse (envLcl % typeInfoEnvMap)
@@ -1080,7 +1182,9 @@ typeCheckExpr = para f
                 ExprCallFun fun -> ECall (fun, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq) ident args'
             -}
             res = case seqdef of 
-                ExprCallPattern patt -> EVar (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) ident
+                ExprCallPattern patt -> case args' of
+                    [] -> EVar (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) ident
+                    _ -> ECall (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq) ident args'
                 ExprCallFun fun -> ECall (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq) ident args'
 
         return 
@@ -1178,7 +1282,9 @@ typeCheckExpr = para f
             ( _ERecord # 
               ( (cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq)
               , NE.fromList phrases') 
-            , [eqns] )
+            , [eqns] 
+            )
+
 
 -------------------------
 -- Type checking process...
@@ -1941,8 +2047,40 @@ typeCheckCmd cmd = case cmd of
         envLcl % typeInfoSymTab % symTabCh .= mempty
 
         return (_CCase # (cxt, expr', cases'), [eqn])
-    CSwitch cxt switches -> panicNotImplemented
 
+    CSwitch cxt switches -> do
+        ((ttypeexprs, eqns), switches') <- fmap (unzip *** NE.fromList <<< unzip <<< NE.toList) 
+                $ forM switches 
+                $ \(bexpr, cmds) ->  do   
+                    (ttypeexpr, (bexpr', expreqn)) <- withFreshTypeTag $ typeCheckExpr bexpr
+                    (cmds', cmdseqns) <- localEnvSt id $ typeCheckCmds cmds
+                    return $ ((ttypeexpr, expreqn <> cmdseqns), (bexpr',cmds'))
+
+        envLcl % typeInfoSymTab % symTabCh .= mempty
+
+        let ttypepexprs = annotateTypeTags ttypeexprs (map fst $ NE.toList switches)
+            eqn = TypeEqnsExist ttypepexprs $
+                zipWith (\ann -> TypeEqnsEq . (,_TypeBoolF # Just (TypeAnnExpr $ ann)) . typePtoTypeVar) 
+                    (map fst $ NE.toList switches) ttypepexprs
+                <> concat eqns
+
+        return (CSwitch cxt switches', [eqn])
+
+    CIf cxt cond cthen celse -> do
+        (ttypeexpr, (expr', expreqn)) <- withFreshTypeTag $ typeCheckExpr cond
+
+        (cthen', ctheneqns) <- localEnvSt id $ typeCheckCmds cthen
+        (celse', celseeqns) <- localEnvSt id $ typeCheckCmds celse
+
+        let ttypepexpr = annotateTypeTag ttypeexpr cond
+            eqns = 
+                [ TypeEqnsEq (typePtoTypeVar ttypepexpr, _TypeBoolF # Just (TypeAnnExpr $ cond)) ]
+                <> ctheneqns
+                <> celseeqns
+
+        envLcl % typeInfoSymTab % symTabCh .= mempty
+
+        return ( CIf cxt expr' cthen' celse', eqns )
 
 -------------------------
 -- Kind checking

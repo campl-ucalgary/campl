@@ -69,7 +69,7 @@ type instance XTypeDoubleF MplTypeSub = Maybe TypeAnn
 type instance XTypeCharF MplTypeSub = Maybe TypeAnn
 type instance XTypeStringF MplTypeSub = Maybe NameOcc
 type instance XTypeUnitF MplTypeSub = Maybe NameOcc
-type instance XTypeBoolF MplTypeSub = Maybe NameOcc
+type instance XTypeBoolF MplTypeSub = Maybe TypeAnn
 type instance XTypeListF MplTypeSub = Maybe NameOcc
 type instance XTypeTupleF MplTypeSub = Maybe NameOcc
 
@@ -213,6 +213,7 @@ instantiateTypeWithSubs sublist = cata f
         TypeIntF cxt -> return $ _TypeIntF # Nothing
         TypeDoubleF cxt -> return $ _TypeDoubleF # Nothing
         TypeCharF cxt -> return $ _TypeCharF # Nothing
+        TypeBoolF cxt -> return $ _TypeBoolF # Nothing
 
 
         TypeTupleF cxt (t0,t1,ts) -> do

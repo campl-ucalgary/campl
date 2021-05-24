@@ -244,7 +244,7 @@ pprintTypeCheckErrors = go
                 <+> pretty "have the same polarity, but must have different polarity."
             ]
         {- IllegalRaceAgainstDifferentPolarities KeyWordNameOcc [ChP MplRenamed] [ChP MplRenamed] -}
-        -- | input polarities, output polarities
+        -- input polarities, output polarities
         -- We don't test this because this will result in a type error anyways, but
         -- Dr.Cockett mentioned we should? Ask him about this later....
         IllegalRaceAgainstDifferentPolarities _ _ _ -> error "Illegal race against different polarities"

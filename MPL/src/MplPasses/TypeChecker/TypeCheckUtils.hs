@@ -212,12 +212,12 @@ higherOrderCheck notscoped tp
             TypeIntF _cxt -> return $ Just $ TypeIntF Nothing
             TypeDoubleF _cxt -> return $ Just $ TypeDoubleF Nothing
             TypeCharF _cxt -> return $ Just $ TypeCharF Nothing
+            TypeBoolF _cxt -> return $ Just $ TypeBoolF Nothing
 
             {-
             TypeCharF _ -> undefined
             TypeStringF _ -> undefined
             TypeUnitF _ -> undefined
-            TypeBoolF _ -> undefined
             TypeListF _  _ ->  undefined
             TypeTupleF _  _ ->  undefined
             TypeConcArrF _ _ _ _ ->  undefined

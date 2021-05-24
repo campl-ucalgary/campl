@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 module MplPasses.Parser.Parse where
@@ -26,6 +27,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Control.Arrow
 
 import Data.Coerce
+import Text.Read
 
 {- Module for running the parser -}
 
@@ -58,6 +60,31 @@ parseBnfcStmt (B.MPL_DEFN_STMS defs) =
 parseBnfcStmt (B.MPL_STMT def) = 
     parseBnfcStmt (B.MPL_DEFN_STMS_WHERE [def] [])
 
+
+{- | reserved key words  -}
+parseReservedTypes :: [String]
+parseReservedTypes = 
+    [ "Bool"
+
+    , "Int"
+    , "Char"
+    , "Double"
+
+    , "Get"
+    , "Put"
+    , "TopBot"
+    , "Neg"
+    ]
+parseReservedConstructors :: [String]
+parseReservedConstructors = [ "True" , "False" ]
+
+{- | Checks if the  input is in the given list and gives an illegal definition of built in if it is not the case -}
+checkReserved :: BnfcParse (IdentP, [String]) ()
+checkReserved (identp, reserved)
+    | identp ^.  identPNameOcc % nameOccName % coerced `elem` reserved
+        = tell [_IllegalDefinitionOfBuiltIn # identp] >> return ()
+    | otherwise = return ()
+
 -- | Parses a definition
 parseBnfcDefn :: BnfcParse B.MplDefn (MplDefn MplParsed)
 parseBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.DATA_DEFN clauses)) =  
@@ -66,27 +93,40 @@ parseBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.DATA_DEFN clauses)) =
  where
     f (B.SEQ_TYPE_CLAUSE from to handles) = do
         ((name, args), st) <- parseTypeWithArgsSeqAndStateVar from to
+
+        checkReserved (name, parseReservedTypes)
+
         handles' <- traverseTryEach g handles
         return $ _MplTypeClause # (name, args, st, concat handles', ())
 
     g (B.SEQ_TYPE_PHRASE handles fromtypes totype) = do
+        let handles' = map toTermIdentP handles
+        traverse (checkReserved . (,parseReservedConstructors)) handles'
+
         fromtypes' <- traverseTryEach parseBnfcType fromtypes 
         totype' <- parseTypeVariable <=< parseBnfcType $ totype
         return $ map 
             ( review _MplTypePhrase 
             . (,fromtypes', totype',()) 
-            . toTermIdentP
-            ) handles
+            ) handles'
+
 parseBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.CODATA_DEFN clauses)) =  
     review (_SeqObjDefn % _CodataDefn) . UMplTypeClauseSpine . NE.fromList 
         <$> traverseTryEach f clauses
  where
     f (B.SEQ_TYPE_CLAUSE from to handles) = do
         ((name, args), st) <- parseStateVarAndTypeWithArgsSeq from to
+
+        checkReserved (name, parseReservedTypes)
+
         handles' <- traverseTryEach g handles
         return $ _MplTypeClause # (name, args, st, concat handles', ())
 
     g (B.SEQ_TYPE_PHRASE handles fromtypes totype) = do
+        let handles' = map toTermIdentP handles
+        traverse (checkReserved . (,parseReservedConstructors)) handles'
+
+
         fromtypes' <- traverseTryEach parseBnfcType (init fromtypes)
         fromtypesst' <- parseTypeVariable <=< parseBnfcType $ last fromtypes
         totype' <- parseBnfcType totype 
@@ -95,8 +135,7 @@ parseBnfcDefn (B.MPL_SEQUENTIAL_TYPE_DEFN (B.CODATA_DEFN clauses)) =
             else return $ map 
                     ( review _MplTypePhrase 
                     . (,(fromtypes', fromtypesst'), totype',()) 
-                    . toTermIdentP
-                    ) handles
+                    ) handles'
 
 parseBnfcDefn (B.MPL_CONCURRENT_TYPE_DEFN (B.PROTOCOL_DEFN clauses)) =  
     review (_ConcObjDefn % _ProtocolDefn) . UMplTypeClauseSpine . NE.fromList 
@@ -247,10 +286,10 @@ parseBnfcExpr (B.SWITCH_EXP switches) = do
         ~[a',b'] <- traverseTryEach parseBnfcExpr [a,b]
         return (a',b')
 parseBnfcExpr (B.DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR ident) =
-    return $ _EObjCall # ((), toTermIdentP ident, [] ) 
+    exprDestructorConstructorParse (toTermIdentP ident, [])
 parseBnfcExpr (B.DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR ident _ exprs _) = do
     exprs' <- traverseTryEach parseBnfcExpr exprs
-    return $ _EObjCall # ((), toTermIdentP ident, exprs') 
+    exprDestructorConstructorParse (toTermIdentP ident, exprs')
 
 parseBnfcExpr (B.TUPLE_EXPR lbr t0 (t1:ts) rbr) = do
     ~(t0':t1':ts') <- traverseTryEach f (B.TUPLE_EXPR_LIST t0 : t1 :ts)
@@ -378,7 +417,7 @@ parseBnfcCmd (B.PROCESS_NEG a cxt b) =
 parseBnfcCmd (B.PROCESS_RACE races) = do
     races' <- traverseTryEach f races
     return $ _CRace # 
-        (  buggedKeywordNameOcc "race"
+        ( buggedKeywordNameOcc "race"
         , NE.fromList races'
         )
   where
@@ -442,5 +481,31 @@ parseBnfcCmd (B.PROCESS_SWITCH pswitch) = do
         cmds' <- parseBnfcCmdBlock cmds
         return (expr', cmds')
 
+parseBnfcCmd (B.PROCESS_IF expr cthen celse) = do
+    expr' <- parseBnfcExpr expr
+    cthen' <- parseBnfcCmdBlock cthen
+    celse' <- parseBnfcCmdBlock celse
+    return $ _CIf # 
+        ( buggedKeywordNameOcc "if"
+        , expr'
+        , cthen'
+        , celse'
+        )
+
 buggedKeywordNameOcc :: String -> KeyWordNameOcc
-buggedKeywordNameOcc str = KeyWordNameOcc $ toNameOcc (trace "TODO: Fix location info.." $ (-1 :: Int ,-1 :: Int), str)
+buggedKeywordNameOcc str = KeyWordNameOcc 
+    $ toNameOcc (trace "TODO: Fix location info.." 
+    $ (-1 :: Int ,-1 :: Int), str)
+
+
+{- | checks if a constructor or destructor is overlapping -}
+exprDestructorConstructorParse :: BnfcParse (IdentP, [MplExpr MplParsed]) (MplExpr MplParsed)
+exprDestructorConstructorParse (identp, args) 
+    | Just bv <- readMaybe (identp ^. identPNameOcc % nameOccName % coerced) :: Maybe Bool =
+        if null args
+            then return $ _EBool # (identp ^. location, bv)
+            else tell [_InvalidBool # identp] >> throwError ()
+    | otherwise = return $ _EObjCall # ((), identp, args) 
+
+
+

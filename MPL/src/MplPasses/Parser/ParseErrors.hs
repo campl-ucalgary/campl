@@ -25,6 +25,10 @@ data ParseErrors
     | InvalidInt IdentP
     | InvalidDouble IdentP
     | InvalidChar IdentP
+    | InvalidBool IdentP
+
+    | IllegalDefinitionOfBuiltIn IdentP
+
     | ExpectedTypeVarButGot (MplType MplParsed)
     | ExpectedTypeSeqWithArgsButGot (MplType MplParsed)
     | ExpectedTypeConcWithArgsButGot (MplType MplParsed)
@@ -74,6 +78,16 @@ pprintParseErrors = go
             ]
         InvalidChar idp -> fold 
             [ pretty "Invalid char with"
+            , codeblock $ idp ^. identPNameOcc % nameOccName % (coerced :: Iso' Name String)
+            , pretty "at" <+> pprintIdentPLoc idp
+            ]
+        InvalidBool idp -> fold 
+            [ pretty "Invalid bool with"
+            , codeblock $ idp ^. identPNameOcc % nameOccName % (coerced :: Iso' Name String)
+            , pretty "at" <+> pprintIdentPLoc idp
+            ]
+        IllegalDefinitionOfBuiltIn idp -> fold 
+            [ pretty "Illegal definition of built in type (or constructor)"
             , codeblock $ idp ^. identPNameOcc % nameOccName % (coerced :: Iso' Name String)
             , pretty "at" <+> pprintIdentPLoc idp
             ]

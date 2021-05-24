@@ -119,6 +119,7 @@ instance PPrint PrimitiveOperators x where
         go PrimitiveSub = "-"
         go PrimitiveMul = "*"
         go PrimitiveDiv = "/"
+        go PrimitiveEq = "=="
         go n = error $ "error in print -- operator not implemented yet: " ++ show n
 
 {- | For converting to a bnfc ident (this heavily relies on the pprint instances above)-}
@@ -282,6 +283,7 @@ instance ( PPrint (IdP x) t, PPrint (TypeP x) t) => MplTypeToBnfc (MplType x) t 
             TypeIntF _cxt -> B.MPL_UIDENT_NO_ARGS_TYPE $ toBnfcIdent proxy "Int"
             TypeDoubleF _cxt -> B.MPL_UIDENT_NO_ARGS_TYPE $ toBnfcIdent proxy "Double"
             TypeCharF _cxt -> B.MPL_UIDENT_NO_ARGS_TYPE $ toBnfcIdent proxy "Char"
+            TypeBoolF _cxt -> B.MPL_UIDENT_NO_ARGS_TYPE $ toBnfcIdent proxy "Bool"
 
             TypeTupleF cxt (t0, t1, ts) -> 
                 B.MPL_TUPLE_TYPE 
@@ -363,7 +365,10 @@ instance MplTypesToBnfc IdentR x where
 class MplPattToBnfc t x where
     mplPattToBnfc ::  Proxy x -> t -> B.Pattern
 
-instance ( PPrint (IdP x) y ) => MplPattToBnfc (MplPattern x) y where
+instance 
+    ( PPrint (IdP x) y 
+    , MplSimpleConstructorArgsToBnfc (XPSimpleConstructorArgs x) y
+    ) => MplPattToBnfc (MplPattern x) y where
     mplPattToBnfc proxy = f
       where
         f (PVar _ id) = B.VAR_PATTERN $ toBnfcIdent proxy id
@@ -372,6 +377,13 @@ instance ( PPrint (IdP x) y ) => MplPattToBnfc (MplPattern x) y where
 
         f (PConstructor _ id args) = 
             B.CONSTRUCTOR_PATTERN_ARGS (toBnfcIdent proxy id) bnfcKeyword (map f args) bnfcKeyword 
+        f (PSimpleConstructor _ id args) =  
+            B.CONSTRUCTOR_PATTERN_ARGS (toBnfcIdent proxy id) 
+                bnfcKeyword 
+                    (mplSimpleConstructorArgsToBnfc proxy args )
+                bnfcKeyword 
+            -- B.CONSTRUCTOR_PATTERN_ARGS (toBnfcIdent proxy id) bnfcKeyword (map f args) bnfcKeyword
+
         f (PRecord _ args) = 
             B.RECORD_PATTERN bnfcKeyword (NE.toList $ fmap g args) bnfcKeyword
           where
@@ -380,6 +392,23 @@ instance ( PPrint (IdP x) y ) => MplPattToBnfc (MplPattern x) y where
 
         f (PTuple _ (t0,t1,ts)) = 
             B.TUPLE_PATTERN bnfcKeyword (f t0) (map (B.TUPLE_LIST_PATTERN . f) $ t1:ts) bnfcKeyword
+
+        f (PBool _ id) = 
+            B.CONSTRUCTOR_PATTERN_ARGS (toBnfcIdent proxy $ show id) bnfcKeyword [] bnfcKeyword 
+
+{- | Convert a pattern from a simple consturctor args to a bnfc -}
+class MplSimpleConstructorArgsToBnfc t x where
+    mplSimpleConstructorArgsToBnfc ::  Proxy x -> t -> [B.Pattern]
+
+instance MplSimpleConstructorArgsToBnfc Void x where
+    mplSimpleConstructorArgsToBnfc proxy _ = [] 
+
+-- little bit of awkardness that this is essentially hard coded for the pattern compilation case to print it
+instance 
+    ( PPrint x y ) => MplSimpleConstructorArgsToBnfc [(x, z)] y where
+    mplSimpleConstructorArgsToBnfc proxy args = 
+        map (B.VAR_PATTERN . toBnfcIdent proxy . fst) args
+
 
 {- | Convert a phrase to a bnfc -}
 class MplPhraseToBnfc x t res y | t -> res where
@@ -544,11 +573,30 @@ instance
         f (EPOps _ op exp0 exp1) = case op of
             PrimitiveAdd ->  B.INFIXL5_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
             PrimitiveSub ->  B.INFIXL5_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
+            PrimitiveEq ->  B.INFIXL5_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
             _ ->  error "primitive op not implemented yet"
         f (EVar _ id) = B.VAR_EXPR $ toBnfcIdent proxy id 
         f (EInt _ id) = B.INT_EXPR $ toBnfcIdent proxy id 
         f (EChar _ id) = B.CHAR_EXPR $ toBnfcIdent proxy id
         f (EDouble _ id) = B.DOUBLE_EXPR $ toBnfcIdent proxy id 
+        f (EBool _ id) = B.DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR  
+            (toBnfcIdent proxy $ show id) 
+            bnfcKeyword 
+                [] 
+            bnfcKeyword 
+
+        f (EIf _ cond thenc elsec) = 
+            B.IF_EXPR
+                (f cond)
+                (f thenc)
+                (f elsec)
+
+        f (ESwitch _ switches) = 
+            B.SWITCH_EXP 
+                $ map g 
+                $ NE.toList switches
+          where
+            g (l,r) = B.SWITCH_EXPR_PHRASE (f l) (f r)
 
         f (ETuple _ (t0,t1,ts)) = 
             B.TUPLE_EXPR 
@@ -589,6 +637,8 @@ instance
                 B.FOLD_EXPR_PHRASE 
                     (toBnfcIdent proxy ident) bnfcKeyword 
                     (map (mplPattToBnfc proxy) patts) (f expr)
+
+        f (EIllegalInstr _) = B.VAR_EXPR $ toBnfcIdent proxy "ILLEGAL_INSTR"
 
         {-
         EVar !(XEVar x) (IdP x)
@@ -681,6 +731,11 @@ instance
                 (mplExprToBnfc proxy expr) 
                 (mplCmdsToBnfc proxy cmds)
 
+        f (CIf cxt expr cthen celse) = 
+            B.PROCESS_IF 
+                (mplExprToBnfc proxy expr)
+                (mplCmdsToBnfc proxy cthen)
+                (mplCmdsToBnfc proxy celse)
 
 -- we can configure a fork phrase to have a context..
 class MplToForkPhrase t y where
@@ -754,6 +809,7 @@ type MplPrintConstraints x y =
     , XProcessDefn x ~ MplProcess x
     , XFunctionDefn x ~ MplFunction x
 
+
     , MplCmdToBnfc (XMplCmd x) y
     , PPrint (ChP x) y
     , UserProvidedTypeToBnfc (XProcType x) y
@@ -821,7 +877,11 @@ mplDefnToBnfc proxy (ProcessDefn (MplProcess id tp body)) = B.MPL_PROCESS_DEFN $
 instance MplPrintConstraints x y => PPrint (MplProg x) y where
     pprint = mplPprint
 
-instance (PPrint (IdP x) y, MplPattToBnfc (XMplPattern x) y) => PPrint (MplPattern x) y where
+instance 
+    ( PPrint (IdP x) y
+    , MplPattToBnfc (XMplPattern x) y
+    , MplSimpleConstructorArgsToBnfc (XPSimpleConstructorArgs x) y
+    ) => PPrint (MplPattern x) y where
     pprint proxy = B.printTree . mplPattToBnfc proxy
 
 instance 

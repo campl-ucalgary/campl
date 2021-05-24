@@ -62,6 +62,7 @@ type family XCPlug x
 type family XCPlugs x
 type family XCCase x
 type family XCSwitch x
+type family XCIf x
 
 type family XXCmd x
 
@@ -70,8 +71,8 @@ type family XXCmd x
 -- dependency to write a type class to get the context 
 -- out of the extension for printing the context
 type family XCHCasePhrase x 
-type family XCForkPhrase x = res
-type family XCPlugPhrase x = res
+type family XCForkPhrase x 
+type family XCPlugPhrase x 
 
 -- aliases for some of the phrases
 type CPlugPhrase x = (XCPlugPhrase x, ([ChP x], [ChP x]), NonEmpty (MplCmd x))
@@ -101,6 +102,7 @@ type ForallProcessCommand (c :: Type -> Constraint) x =
     , c (XCPlugs x)
     , c (XCCase x)
     , c (XCSwitch x)
+    , c (XCIf x)
 
     , c (XXCmd x)
 
@@ -177,6 +179,7 @@ data MplCmd x =
         , _cCases :: [(pattern, ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident)] }
         -}
     | CSwitch !(XCSwitch x) (NonEmpty (XMplExpr x, NonEmpty (MplCmd x)))
+    | CIf !(XCIf x) (XMplExpr x) (NonEmpty (MplCmd x)) (NonEmpty (MplCmd x))
         -- { _cSwitches :: NonEmpty (Expr pattern letdef typedef seqcalleddef ident, ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident) }
 
 deriving instance ( ForallProcessCommand Show x ) => Show (MplCmd x)
@@ -214,9 +217,6 @@ pattern UCPlugs abcs <- CPlugs () ( (\(((), a), ((), b), cs) -> (a,b, map snd cs
 
 pattern UCCase expr phrases = CCase () expr phrases
 pattern UCSwitch phrases = CSwitch () phrases
-    
-    
 
-
--- $(makeBaseFunctor ''MplCmd)
+$(makeBaseFunctor ''MplCmd)
     

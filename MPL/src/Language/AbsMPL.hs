@@ -291,6 +291,7 @@ data ProcessCommand
     | PROCESS_RACE [RacePhrase]
     | PROCESS_PLUG [PlugPhrase]
     | PROCESS_CASE Case Expr [ProcessCasePhrase]
+    | PROCESS_IF Expr ProcessCommandsBlock ProcessCommandsBlock
     | PROCESS_SWITCH [ProcessSwitchPhrase]
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
