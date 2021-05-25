@@ -52,9 +52,8 @@ data MplStmt x = MplStmt {
     , _stmtWhereBindings :: [MplStmt x] 
 }
 
-type MplSeqType x = ([TypeP x], [XMplType x], XMplType x) 
-type MplConcType x = ([TypeP x], [XMplType x], [XMplType x], [XMplType x]) 
-type MplChType x = ([TypeP x], XMplType x) 
+-- type MplConcType x = ([TypeP x], [XMplType x], [XMplType x], [XMplType x]) 
+-- type MplChType x = ([TypeP x], XMplType x) 
 
 
 deriving instance ( ForallDefn Show x ) => Show (MplStmt x)

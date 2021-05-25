@@ -167,6 +167,27 @@ lookupSymConc n = do
     tell $ review _InternalError $ maybe [_CannotCallTerm # n] mempty res
     return $ fromJust res 
 
+{- | This is used when searching for the final sequential type AFTER type checking has 
+been completed of an expression. Something to note:
+    - The types it look up will ONLY include the codomain type i.e.,
+        given @a,b,c -> d@, this will just return @d@ since we may assume
+        that everything is fully applied in this language.
+
+-}
+lookupInferredSeqTypeExpr :: 
+    TypeTag ->
+    Map TypeTag SymTypeEntry ->
+    Maybe (XMplType MplTypeChecked)
+lookupInferredSeqTypeExpr ttype =  preview (at ttype % _Just % _SymTypeSeq % _3)
+
+{- | Similar to the above, but for channels.
+-}
+lookupInferredTypeCh :: 
+    TypeTag ->
+    Map TypeTag SymTypeEntry ->
+    Maybe (XMplType MplTypeChecked)
+lookupInferredTypeCh ttypech =  preview (at ttypech % _Just % _SymTypeCh % _2)
+
 
 class CollectSeqSymObj (t :: SeqObjDefnTag) where
     collectSeqSymObj :: MplTypeClauseSpine MplTypeChecked (SeqObjTag t) -> [(UniqueTag, SymEntry SymSeqType SymExprInfo)]

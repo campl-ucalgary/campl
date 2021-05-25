@@ -104,7 +104,7 @@ typeCheckPattern = para f
         return ( _PConstructor # 
                 ( (seqdef 
                     -- CHANGED FROM STABLE EQN
-                , fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq )
+                , fromJust $ lookupInferredSeqTypeExpr ttype ttypemap )
                 , n
                 , patts'
                 ), [eqns]
@@ -188,7 +188,7 @@ typeCheckPattern = para f
 
         return 
             ( _PRecord # 
-              ( ( cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq)
+              ( ( cxt, fromJust $ lookupInferredSeqTypeExpr ttype ttypemap)
               , phrases')
             , [eqn] )
 
@@ -200,7 +200,7 @@ typeCheckPattern = para f
             ttypep =  _TypeIdentT # (ttype, TypeIdentTInfoTypeAnn ann)
             eqns = [ TypeEqnsEq (typePtoTypeVar ttypep , typePtoTypeVar ttypep) ]
 
-            res = _PVar # (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq, v)
+            res = _PVar # (fromJust $ lookupInferredSeqTypeExpr ttype ttypemap, v)
 
         envLcl % typeInfoSymTab % symTabExpr % at (v ^. uniqueTag) ?= 
             _SymEntry # 
@@ -217,7 +217,7 @@ typeCheckPattern = para f
             ttypep =  _TypeIdentT # (ttype, TypeIdentTInfoTypeAnn ann)
             eqns = [ TypeEqnsEq (typePtoTypeVar ttypep , _TypeIntF % _Just # ann ) ]
 
-            res = _PInt # ((cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq), v)
+            res = _PInt # ((cxt, fromJust $ lookupInferredSeqTypeExpr ttype ttypemap), v)
         return (res, eqns)
 
     -- duplicated from 'PInt' case
@@ -229,7 +229,7 @@ typeCheckPattern = para f
             ttypep =  _TypeIdentT # (ttype, TypeIdentTInfoTypeAnn ann)
             eqns = [ TypeEqnsEq (typePtoTypeVar ttypep , _TypeCharF % _Just # ann ) ]
 
-            res = _PChar # ((cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq), v)
+            res = _PChar # ((cxt, fromJust $ lookupInferredSeqTypeExpr ttype ttypemap), v)
         return (res, eqns)
 
     f (PBoolF cxt v) = do 
@@ -240,7 +240,7 @@ typeCheckPattern = para f
             ttypep =  _TypeIdentT # (ttype, TypeIdentTInfoTypeAnn ann)
             eqns = [ TypeEqnsEq (typePtoTypeVar ttypep , _TypeBoolF % _Just # ann ) ]
 
-            res = _PBool # ((cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq), v)
+            res = _PBool # ((cxt, fromJust $ lookupInferredSeqTypeExpr ttype ttypemap), v)
         return (res, eqns)
 
 
@@ -254,7 +254,7 @@ typeCheckPattern = para f
             eqns = [ TypeEqnsEq (typePtoTypeVar ttypep , typePtoTypeVar ttypep) ]
 
         return 
-            ( PNull (cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq)
+            ( PNull (cxt, fromJust $ lookupInferredSeqTypeExpr ttype ttypemap)
             , eqns
             )
 
@@ -290,7 +290,7 @@ typeCheckPattern = para f
                 <> t1eqns
                 <> concat tseqns
             res = PTuple 
-                    (cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq)
+                    (cxt, fromJust $ lookupInferredSeqTypeExpr ttype ttypemap)
                     ( t0pat
                     , t1pat
                     , tspat

@@ -297,7 +297,11 @@ patternCompileExhaustiveCheck = and . fmap go . transpose . NE.toList
     go patts@(a:as) = or 
         [ has (folded % _PVar) patts
         , has (folded % _PNull) patts
-        , has (folded % _PRecord) patts
+
+        -- each of the vertical lines of matches on records must be exhaustive as well.
+        , and 
+            [ has (folded % _PRecord) patts
+            ]
 
         -- we can actually exhaust all the bool types 
         -- (unlike Chars and Ints.. we just assume it is impossible to exhaust them completely)
@@ -317,7 +321,7 @@ patternCompileExhaustiveCheck = and . fmap go . transpose . NE.toList
       where
         mcts :: Maybe 
             [ 
-                ( (MplTypePhrase MplTypeChecked ('SeqObjTag 'DataDefnTag) , MplSeqType MplTypeChecked)
+                ( (MplTypePhrase MplTypeChecked ('SeqObjTag 'DataDefnTag) , XMplType MplTypeChecked)
                 , IdentT
                 , [MplPattern (MplPass 'TypeChecked)])
             ] 
@@ -328,7 +332,7 @@ patternCompileExhaustiveCheck = and . fmap go . transpose . NE.toList
         groupedcts ::
             [ 
                 NonEmpty
-                ( (MplTypePhrase MplTypeChecked ('SeqObjTag 'DataDefnTag) , MplSeqType MplTypeChecked)
+                ( (MplTypePhrase MplTypeChecked ('SeqObjTag 'DataDefnTag) , XMplType MplTypeChecked)
                 , IdentT
                 , [MplPattern (MplPass 'TypeChecked)]
                 )
@@ -369,7 +373,7 @@ patternCompileSeqPatPhrases pattphrases =
         return $ (patts, pattexpr)  
   where
     -- the type of the codomain 
-    restp :: MplSeqType MplTypeChecked
+    restp :: XMplType MplTypeChecked
     restp = getExprType $ snd $ NE.head pattphrases
 
     go :: 
@@ -394,7 +398,10 @@ patternCompileSeqPatPhrases pattphrases =
                 , charrule
                 ]
                 -}
-                [ varrule ]
+                [ varrule
+                , ctersrule
+                , dstersrule
+                ]
           where
             varrule :: _ (Maybe (MplExpr MplPatternCompiled))
             -- varrule = sequenceA $ traverse ( undefined +++ preview (_1 %_PVar % _2)) pattheads <&> g
@@ -427,20 +434,30 @@ patternCompileSeqPatPhrases pattphrases =
                 h _ pattsexpr = pattsexpr 
 
             ctersrule :: _ (Maybe (MplExpr MplPatternCompiled))
-            ctersrule = sequenceA $ traverse (preview (_1 % _PConstructor)) pattheads <&> f
+            ctersrule = sequenceA $ match pattheads <&> f
               where
+                match :: 
+                    NonEmpty (MplPattern MplTypeChecked, MplExpr MplPatternCompiled) -> 
+                    Maybe 
+                        ( NonEmpty 
+                            ( (MplTypePhrase MplTypeChecked ('SeqObjTag 'DataDefnTag), MplType MplTypeChecked)
+                            , IdentT
+                            , [MplPattern (MplPass 'TypeChecked)])
+                        )
+                match =  traverse (preview (_1 % _PConstructor))
+
                 f :: NonEmpty 
-                    ( (MplTypePhrase MplTypeChecked ('SeqObjTag 'DataDefnTag), MplSeqType MplTypeChecked)
+                    ( (MplTypePhrase MplTypeChecked ('SeqObjTag 'DataDefnTag), XMplType MplTypeChecked)
                     , IdentT
                     , [MplPattern (MplPass 'TypeChecked)]) -> _ (MplExpr MplPatternCompiled)
                 f cters = fmap (ECase restp (getExprFromSubstitutable u) . NE.fromList) 
                     $ for (tpclause ^. typeClausePhrases) $ \phrase -> do
-                        usandtps <- traverse (sequenceOf _1 . second ([],[],) . (freshUIdP,)) 
+                        usandtps <- traverse (sequenceOf _1 . (freshUIdP,)) 
                             $ phrase ^. typePhraseFrom
                         -- let patt' = PSimpleConstructor (phrase, snd nu) (phrase ^. typePhraseName) $ usandtps
                         let patt' = PSimpleConstructor 
                                 ( phrase
-                                , error "TODO: still need to get the tpe for the simple consturctor"
+                                , getDataPhraseTypeResult phrase
                                 ) 
                                 (phrase ^. typePhraseName) 
                                 $ usandtps
@@ -459,8 +476,11 @@ patternCompileSeqPatPhrases pattphrases =
                         g :: 
                             Map _ _ -> 
                             ( 
-                                ( (MplTypePhrase MplTypeChecked ('SeqObjTag 'DataDefnTag), ([TypeT], [MplType MplTypeChecked]
-                                , MplType MplTypeChecked)), IdentT, [MplPattern (MplPass 'TypeChecked)]
+                                ( ( MplTypePhrase MplTypeChecked ('SeqObjTag 'DataDefnTag)
+                                  , MplType MplTypeChecked
+                                  )
+                                , IdentT
+                                , [MplPattern (MplPass 'TypeChecked)]
                                 )
                             , ([MplPattern MplTypeChecked], MplExpr MplPatternCompiled)) -> 
                             Map _ _
@@ -468,60 +488,44 @@ patternCompileSeqPatPhrases pattphrases =
                             let patttail' = patttail & _1 %~ (cterpatts<>)
                             in acc & at identt %~ Just . maybe ( patttail' :| [] ) (NE.cons patttail')
 
-            {-
+            {- There's some somewhat complicated interactions going on here.. 
+             - Since we did not choose to group based on destructors, we know that when 
+             - we actually do get to a destructor case, this should:
+             -          - be of length exactly 1 (otherwise we would go to the catch all case 
+             -              of mixed patterns and partition based on the groups)
+             -}
             dstersrule :: _ (Maybe (MplExpr MplPatternCompiled))
-            dstersrule = sequenceA $ traverse (sequenceOf _1 . over _1 (preview _PRecord)) pattheads <&> f
+            dstersrule = sequenceA $ match patts <&> f
               where
-                f :: NonEmpty
-                    ( 
-                        ( (Location, MplSeqType MplTypeChecked)
-                        , NonEmpty
-                            ( MplTypePhrase MplTypeChecked ('SeqObjTag 'CodataDefnTag)
-                            , IdentT
-                            , MplPattern (MplPass 'TypeChecked)
-                            )
-                        )
-                    , MplExpr MplPatternCompiled
-                    ) -> _ (MplExpr MplPatternCompiled)
-                f headrecords = go us (NE.toList $ NE.zipWith (flip (set _2)) patttails (fmap g headrecords)) mexpr
-                g :: 
-                    (
-                        (
-                            ( Location
-                            , MplSeqType MplTypeChecked
-                            )
-                        , NonEmpty
-                            ( MplTypePhrase MplTypeChecked ('SeqObjTag 'CodataDefnTag)
-                            , IdentT
-                            , MplPattern (MplPass 'TypeChecked)
-                            )
-                        )
-                    , MplExpr MplPatternCompiled
-                    ) -> 
-                    MplExpr MplPatternCompiled
-                g ( ((_loc, _clausetp), pattphrases), expr) = foldr h expr pattphrases
-                  where
-                    h :: 
-                        ( MplTypePhrase MplTypeChecked ('SeqObjTag 'CodataDefnTag)
-                        , IdentT
-                        , MplPattern (MplPass 'TypeChecked)
-                        ) -> 
-                        MplExpr MplPatternCompiled -> 
-                        (MplExpr MplPatternCompiled)
-                    h (phrase, phrasedtr, (PVar _ vident)) expr = 
-                        substituteCallIdentByRecord 
-                            (vident, ((phrase, phrasedtr), u))
-                            expr
-                        
-                    h (_phrase, _phrasedtr, (PNull _ )) expr = expr
-                    h _ _ = error "Internal error compiling a record pattern -- got an illegal non variable pattern."
+                match [(fstpatt:remainingpatts, resexpr)] = (,(remainingpatts, resexpr)) <$> fstpatt ^? _PRecord
+                match _ = Nothing
 
+                f :: 
+                    ( ( (Location, XMplType MplTypeChecked)
+                      , NonEmpty
+                            ( MplTypePhrase MplTypeChecked ('SeqObjTag 'CodataDefnTag)
+                            , IdentT
+                            , MplPattern (MplPass 'TypeChecked)
+                            )
+                      )
+                    , ([MplPattern MplTypeChecked], MplExpr MplPatternCompiled)
+                    ) -> 
+                    _ (MplExpr MplPatternCompiled)
+                f (((_loc, _clausetp), recordphrases), (remainingpatts, resexpr)) = 
+                    go 
+                        ( NE.toList pattsubs ++ us)
+                        [ ( NE.toList pattphrases ++ remainingpatts, resexpr) ]
+                        mexpr
+                  where
+                    pattsubs = recordphrases & mapped %~ RecordSub u . (view _1 &&& view _2)
+                    pattphrases = recordphrases & mapped %~ view _3
+            {-
             -- TODO: Put this in.. need to add a special projection operator in the AST as well.
             tuplerule :: _ (Maybe (MplExpr MplPatternCompiled))
             tuplerule = sequenceA $ traverse (preview (_1 % _PTuple)) pattheads <&> f
               where
                 f :: NonEmpty 
-                    ( (Location, MplSeqType MplTypeChecked)
+                    ( (Location, XMplType MplTypeChecked)
                     , 
                         ( MplPattern (MplPass 'TypeChecked)
                         , MplPattern (MplPass 'TypeChecked)
@@ -537,7 +541,7 @@ patternCompileSeqPatPhrases pattphrases =
             intrule :: _ (Maybe (MplExpr MplPatternCompiled))
             intrule = sequenceA $ traverse (preview (_1 % _PInt)) pattheads <&> f
               where
-                f :: NonEmpty ((Location, MplSeqType MplTypeChecked), Int) -> _ (MplExpr MplPatternCompiled)
+                f :: NonEmpty ((Location, XMplType MplTypeChecked), Int) -> _ (MplExpr MplPatternCompiled)
                 f ints = foldrM g mexpr  
                     $ NE.groupBy1 ((==) `on` view (_1 % _2)) 
                     $ NE.zip ints patttails
@@ -567,7 +571,7 @@ patternCompileSeqPatPhrases pattphrases =
             charrule :: _ (Maybe (MplExpr MplPatternCompiled))
             charrule = sequenceA $ traverse (preview (_1 % _PChar)) pattheads <&> f
               where
-                f :: NonEmpty ((Location, MplSeqType MplTypeChecked), Char) -> _ (MplExpr MplPatternCompiled)
+                f :: NonEmpty ((Location, XMplType MplTypeChecked), Char) -> _ (MplExpr MplPatternCompiled)
                 f ints = foldrM g mexpr  
                     $ NE.groupBy1 ((==) `on` view (_1 % _2)) 
                     $ NE.zip ints patttails
@@ -597,7 +601,7 @@ patternCompileSeqPatPhrases pattphrases =
             boolrule :: _ (Maybe (MplExpr MplPatternCompiled))
             boolrule = sequenceA $ traverse (preview (_1 % _PBool)) pattheads <&> f
               where
-                f :: NonEmpty ((Location, MplSeqType MplTypeChecked), Bool) -> _ (MplExpr MplPatternCompiled)
+                f :: NonEmpty ((Location, XMplType MplTypeChecked), Bool) -> _ (MplExpr MplPatternCompiled)
                 f ints = foldrM g mexpr  
                     $ NE.groupBy1 ((==) `on` view (_1 % _2)) 
                     $ NE.zip ints patttails
@@ -626,7 +630,7 @@ patternCompileSeqPatPhrases pattphrases =
                 
         _ -> foldrM (go (u:us)) mexpr $ fmap NE.toList groupedpatts 
       where
-        ty :: MplSeqType MplTypeChecked
+        ty :: XMplType MplTypeChecked
         ty = getPattType $ fst $ NE.head pattheads
 
         -- Note: this is quite confusing that both 'pattheads' and 'pattails' both include the same expression.. honestly this was kind of a bad decision in the beginning and makes the code a bit more confusing than it should be.
@@ -659,8 +663,8 @@ patternCompileSeqPatPhrases pattphrases =
                 , p' (has _PChar)
                 , p' (has _PBool)
 
-                , p' (has _PRecord)
-                , p' (has _PTuple)
+                -- , p' (has _PRecord)
+                -- , p' (has _PTuple)
                 ]
 
             

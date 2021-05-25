@@ -157,7 +157,6 @@ proc fkk =
         
 -}
 
-{-
 defn 
     fun poop =
         (App := f), a -> f(a)
@@ -165,7 +164,6 @@ defn
     codata
         S -> Fun(A,B) =
             App :: A,S -> B
--}
 
 {-
 defn 
@@ -232,6 +230,11 @@ defn
     fun tupletest =
         MyNil,  (P0 := a, P1 := b) ->  a
         MyCons(_,_), (P0 := MyNil, P1 := b) ->  b
+
+
+    fun tupletest2 =
+        (P0 := MyCons(a,_), P1 := b) ->  a
+        (P0 := MyNil, P1 := b) ->  b
 
     codata 
         S -> Tuple(A,B) =

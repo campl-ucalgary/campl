@@ -1,5 +1,6 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ConstraintKinds #-}
@@ -44,7 +45,7 @@ type PatternCompile typechecked patterncompiled =
 -- | Gets the type of a pattern
 getExprType ::
     MplExpr MplPatternCompiled -> 
-    MplSeqType MplTypeChecked
+    XMplType MplTypeChecked
 getExprType = \case 
     EPOps ann _op _l _r -> ann
     EVar ann _ -> ann
@@ -69,24 +70,30 @@ getExprType = \case
     -}
     -- XExpr !(XXExpr x)
 
--- | get type from codata phrase
-getCodataPhraseType :: 
+-- | get type from a codata phrase when fully applied to its arguments
+getCodataPhraseTypeResult :: 
     MplTypePhrase MplTypeChecked ('SeqObjTag 'CodataDefnTag) -> 
-    ([TypeT], [MplType MplTypeChecked], MplType MplTypeChecked)
-getCodataPhraseType phrase = undefined
+    (MplType MplTypeChecked)
+getCodataPhraseTypeResult phrase = phrase ^. typePhraseTo
 
--- | get type from data phrase
-getDataPhraseType :: 
-    MplTypePhrase MplTypeChecked ('SeqObjTag 'CodataDefnTag) -> 
-    ([TypeT], [MplType MplTypeChecked], MplType MplTypeChecked)
-getDataPhraseType phrase = error "todo implement this"
+-- | get type from a data phrase when fully applied to its arguments
+getDataPhraseTypeResult :: 
+    MplTypePhrase MplTypeChecked ('SeqObjTag 'DataDefnTag) -> 
+    (MplType MplTypeChecked)
+getDataPhraseTypeResult phrase = 
+    TypeSeqWithArgs 
+        (phrase ^. typePhraseExt % to DataDefn ) 
+        (phrase ^. typePhraseName) 
+        -- TODO
+        [error "okay I need to give the type preservation some more thought TODO"]
+
 
     
 
 -- | Gets the type of a pattern
 getPattType ::
     MplPattern MplTypeChecked -> 
-    MplSeqType MplTypeChecked
+    XMplType MplTypeChecked
 getPattType = \case
     PConstructor ann _ _ -> snd ann
     PRecord ann _ -> snd ann

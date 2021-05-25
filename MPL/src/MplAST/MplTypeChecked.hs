@@ -74,7 +74,7 @@ $(makePrisms ''TypeT)
 
 data ChIdentT = ChIdentT {
     _chIdentTChIdentR :: ChIdentR
-    , _chIdentTType :: MplChType MplTypeChecked 
+    , _chIdentTType :: XMplType MplTypeChecked
 }  
 
 deriving instance Show (XMplType MplTypeChecked) => Show ChIdentT
@@ -133,74 +133,74 @@ type instance XProcessDefn MplTypeChecked  = MplProcess MplTypeChecked
 
 -- Expression instances
 type instance XMplExpr MplTypeChecked = MplExpr MplTypeChecked
-type instance XEPOps MplTypeChecked = MplSeqType MplTypeChecked
+type instance XEPOps MplTypeChecked = XMplType MplTypeChecked
 {- | here (in the Var), we really could include how this variable was brought to be, but we don't
-    (XMplPattern MplTypeChecked, MplSeqType MplTypeChecked)
+    (XMplPattern MplTypeChecked, XMplType MplTypeChecked)
 -}
-type instance XEVar MplTypeChecked = MplSeqType MplTypeChecked
-type instance XEInt MplTypeChecked = (Location, MplSeqType MplTypeChecked)
-type instance XEChar MplTypeChecked = (Location, MplSeqType MplTypeChecked)
-type instance XEDouble MplTypeChecked = (Location, MplSeqType MplTypeChecked)
-type instance XEBool MplTypeChecked = (Location, MplSeqType MplTypeChecked)
-type instance XECase MplTypeChecked = MplSeqType MplTypeChecked
+type instance XEVar MplTypeChecked = XMplType MplTypeChecked
+type instance XEInt MplTypeChecked = (Location, XMplType MplTypeChecked)
+type instance XEChar MplTypeChecked = (Location, XMplType MplTypeChecked)
+type instance XEDouble MplTypeChecked = (Location, XMplType MplTypeChecked)
+type instance XEBool MplTypeChecked = (Location, XMplType MplTypeChecked)
+type instance XECase MplTypeChecked = XMplType MplTypeChecked
 type instance XECasePattern MplTypeChecked = XMplPattern MplTypeChecked 
 
 {- | Here (in the Call), we really could include how this call was brought to be, but we don't
-    (XFunctionDefn MplTypeChecked, MplSeqType MplTypeChecked) -}
+    (XFunctionDefn MplTypeChecked, XMplType MplTypeChecked) -}
 type instance XECall MplTypeChecked = 
-    MplSeqType MplTypeChecked
+    XMplType MplTypeChecked
 
-type instance XEObjCall MplTypeChecked = MplSeqType MplTypeChecked
-type instance XERecord MplTypeChecked = (Location, MplSeqType MplTypeChecked)
+type instance XEObjCall MplTypeChecked = XMplType MplTypeChecked
+type instance XERecord MplTypeChecked = (Location, XMplType MplTypeChecked)
 type instance XERecordPhrase MplTypeChecked = MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag)
 type instance XXExpr MplTypeChecked = Void
 
 -- built in expression types
-type instance XEList MplTypeChecked = (Location, MplSeqType MplTypeChecked)
-type instance XEString MplTypeChecked = (Location, MplSeqType MplTypeChecked)
-type instance XEUnit MplTypeChecked = (Location, MplSeqType MplTypeChecked)
-type instance XETuple MplTypeChecked = (Location, MplSeqType MplTypeChecked)
-type instance XEBuiltInOp MplTypeChecked = (Location, MplSeqType MplTypeChecked)
+type instance XEList MplTypeChecked = (Location, XMplType MplTypeChecked)
+type instance XEString MplTypeChecked = (Location, XMplType MplTypeChecked)
+type instance XEUnit MplTypeChecked = (Location, XMplType MplTypeChecked)
+type instance XETuple MplTypeChecked = (Location, XMplType MplTypeChecked)
+type instance XEBuiltInOp MplTypeChecked = (Location, XMplType MplTypeChecked)
 -- built in expression control
-type instance XEIf MplTypeChecked = MplSeqType MplTypeChecked
+type instance XEIf MplTypeChecked = XMplType MplTypeChecked
 type instance XELet MplTypeChecked = ()
-type instance XEFold MplTypeChecked = MplSeqType MplTypeChecked
+type instance XEFold MplTypeChecked = XMplType MplTypeChecked
 type instance XEFoldPhrase MplTypeChecked = 
-    -- (MplTypePhrase MplTypeChecked (SeqObjTag DataDefnTag), MplSeqType MplTypeChecked)
+    -- (MplTypePhrase MplTypeChecked (SeqObjTag DataDefnTag), XMplType MplTypeChecked)
     MplTypePhrase MplTypeChecked (SeqObjTag DataDefnTag)
-type instance XEUnfold MplTypeChecked = MplSeqType MplTypeChecked
+type instance XEUnfold MplTypeChecked = XMplType MplTypeChecked
 type instance XEUnfoldPhrase MplTypeChecked = 
     ()
 type instance XEUnfoldSubPhrase MplTypeChecked = 
     MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag)
-    -- (MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag), MplSeqType MplTypeChecked)
-type instance XESwitch MplTypeChecked = MplSeqType MplTypeChecked
+    -- (MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag), XMplType MplTypeChecked)
+type instance XESwitch MplTypeChecked = XMplType MplTypeChecked
 type instance XEIllegalInstr MplTypeChecked = Void
 
 -- Pattern instances..
 type instance XMplPattern MplTypeChecked = MplPattern MplTypeChecked
 type instance XPConstructor MplTypeChecked = 
-    (MplTypePhrase MplTypeChecked (SeqObjTag DataDefnTag), MplSeqType MplTypeChecked)
+    (MplTypePhrase MplTypeChecked (SeqObjTag DataDefnTag), XMplType MplTypeChecked)
 type instance XPSimpleConstructor MplTypeChecked = Void
 type instance XPSimpleConstructorArgs MplTypeChecked = Void
 
 type instance XPRecord MplTypeChecked = 
-    (Location, MplSeqType MplTypeChecked)
+    (Location, XMplType MplTypeChecked)
 type instance XPRecordPhrase MplTypeChecked = 
-    -- (MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag), MplSeqType MplTypeChecked)
+    -- (MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag), XMplType MplTypeChecked)
     MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag)
-type instance XPVar MplTypeChecked = MplSeqType MplTypeChecked
-type instance XPNull MplTypeChecked = (Location, MplSeqType MplTypeChecked)
+type instance XPVar MplTypeChecked = XMplType MplTypeChecked
+type instance XPNull MplTypeChecked = (Location, XMplType MplTypeChecked)
 type instance XXPattern MplTypeChecked = Void
 -- built in..
-type instance XPUnit MplTypeChecked = (Location, MplSeqType MplTypeChecked)
-type instance XPTuple MplTypeChecked = (Location, MplSeqType MplTypeChecked)
-type instance XPString MplTypeChecked = (Location, MplSeqType MplTypeChecked)
-type instance XPInt MplTypeChecked = (Location, MplSeqType MplTypeChecked)
-type instance XPBool MplTypeChecked = (Location, MplSeqType MplTypeChecked)
-type instance XPChar MplTypeChecked = (Location, MplSeqType MplTypeChecked)
-type instance XPList MplTypeChecked = (Location, MplSeqType MplTypeChecked)
-type instance XPListCons MplTypeChecked = (Location, MplSeqType MplTypeChecked)
+type instance XPUnit MplTypeChecked = (Location, XMplType MplTypeChecked)
+type instance XPTuple MplTypeChecked = (Location, XMplType MplTypeChecked)
+type instance XPString MplTypeChecked = (Location, XMplType MplTypeChecked)
+type instance XPInt MplTypeChecked = (Location, XMplType MplTypeChecked)
+type instance XPBool MplTypeChecked = (Location, XMplType MplTypeChecked)
+type instance XPChar MplTypeChecked = (Location, XMplType MplTypeChecked)
+type instance XPList MplTypeChecked = (Location, XMplType MplTypeChecked)
+type instance XPListCons MplTypeChecked = (Location, XMplType MplTypeChecked)
 
 -- Process Command
 type instance XMplCmd MplTypeChecked = MplCmd MplTypeChecked
@@ -219,7 +219,7 @@ type instance XCRace MplTypeChecked = KeyWordNameOcc
 type instance XCPlug MplTypeChecked = Void
 type instance XCPlugs MplTypeChecked = 
     ( KeyWordNameOcc
-    , [(IdP MplTypeChecked, ([TypeP MplTypeChecked], XMplType MplTypeChecked))])
+    , [(IdP MplTypeChecked, XMplType MplTypeChecked)])
                                                     -- these are the new plugged channels.
                                                     -- Note that these do not have a polarity 
                                                     -- because it changes based on the phrase

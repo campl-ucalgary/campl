@@ -441,8 +441,8 @@ typeCheckExpr = para f
                 ExprCallFun fun -> ECall (fun, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq) n []
             -}
             res = case lkupdef of 
-                ExprCallPattern patt -> EVar (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) n
-                ExprCallFun fun -> ECall (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq) n []
+                ExprCallPattern patt -> EVar (fromJust $ lookupInferredSeqTypeExpr ttype ttypemap ) n
+                ExprCallFun fun -> ECall (fromJust $ lookupInferredSeqTypeExpr ttype ttypemap) n []
 
         return (res, [eqn])
 
@@ -471,7 +471,7 @@ typeCheckExpr = para f
                         <> leqns
                         <> reqns
                 return $ 
-                    ( EPOps ( fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) op l' r'
+                    ( EPOps ( fromJust $ lookupInferredSeqTypeExpr ttype ttypemap ) op l' r'
                     , [eqn]
                     ) 
             -- duplicated code from @addsubmul@
@@ -486,7 +486,7 @@ typeCheckExpr = para f
                         <> leqns
                         <> reqns
                 return $ 
-                    ( EPOps ( fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) op l' r'
+                    ( EPOps ( fromJust $ lookupInferredSeqTypeExpr ttype ttypemap ) op l' r'
                     , [eqn]
                     ) 
 
@@ -510,7 +510,7 @@ typeCheckExpr = para f
             ttypep = annotateTypeTag ttype ann
             eqns = [ TypeEqnsEq (typePtoTypeVar ttypep, _TypeIntF % _Just % _TypeAnnExpr # ann ) ]
 
-        return ( EInt ( cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) n, eqns )
+        return ( EInt ( cxt, fromJust $ lookupInferredSeqTypeExpr ttype ttypemap ) n, eqns )
 
     -- duplicated code from EIntF case
     f (EDoubleF cxt n) = do
@@ -520,7 +520,7 @@ typeCheckExpr = para f
         let ann =  _EDouble # (cxt, n) :: MplExpr MplRenamed
             ttypep = annotateTypeTag ttype ann
             eqns = [ TypeEqnsEq (typePtoTypeVar ttypep, _TypeDoubleF % _Just % _TypeAnnExpr # ann ) ]
-        return ( EDouble ( cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) n, eqns )
+        return ( EDouble ( cxt, fromJust $ lookupInferredSeqTypeExpr ttype ttypemap ) n, eqns )
 
     -- duplicated code from the EIntF case
     f (ECharF cxt n) = do
@@ -535,7 +535,7 @@ typeCheckExpr = para f
                     , _TypeCharF % _Just % _TypeAnnExpr # ann 
                     ) 
                 ]
-        return ( EChar ( cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) n, eqns )
+        return ( EChar ( cxt, fromJust $ lookupInferredSeqTypeExpr ttype ttypemap ) n, eqns )
     
     -- duplicated code from the EIntF case
     f (EBoolF cxt n) = do
@@ -550,7 +550,7 @@ typeCheckExpr = para f
                     , _TypeBoolF % _Just % _TypeAnnExpr # ann 
                     ) 
                 ]
-        return ( EBool ( cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) n, eqns )
+        return ( EBool ( cxt, fromJust $ lookupInferredSeqTypeExpr ttype ttypemap ) n, eqns )
 
     f (ETupleF cxt (t0,t1,ts)) = do
         ttype <- guse (envLcl % typeInfoEnvTypeTag)
@@ -585,7 +585,7 @@ typeCheckExpr = para f
 
         return 
             ( _ETuple # 
-                ( (cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq )
+                ( (cxt, fromJust $ lookupInferredSeqTypeExpr ttype ttypemap)
                 , (t0',t1',ts')
                 )
             , [eqn]
@@ -631,7 +631,7 @@ typeCheckExpr = para f
 
         return 
             ( _EIf #
-                ( fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq
+                ( fromJust $ lookupInferredSeqTypeExpr ttype ttypemap
                 , mcond'
                 , mthenc'
                 , melsec'
@@ -679,7 +679,7 @@ typeCheckExpr = para f
 
         return
             ( _ESwitch #
-                ( fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq
+                ( fromJust $ lookupInferredSeqTypeExpr ttype ttypemap
                 , NE.fromList switches'
                 )
             , [eqn]
@@ -846,7 +846,7 @@ typeCheckExpr = para f
         let eqns = TypeEqnsExist (ttypepfoldon : instt) $ phraseeqns <> foldoneqns
         return 
             ( _EFold # 
-                ( fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq
+                ( fromJust $ lookupInferredSeqTypeExpr ttype ttypemap
                 , foldon'
                 , phrases'
                 )
@@ -1061,7 +1061,7 @@ typeCheckExpr = para f
 
         return 
             ( _EUnfold # 
-                ( fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq
+                ( fromJust $ lookupInferredSeqTypeExpr ttype ttypemap
                 , unfoldonexpr'
                 , phrases' 
                 )
@@ -1099,7 +1099,7 @@ typeCheckExpr = para f
 
         return 
             ( _ECase # 
-             ( fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq
+             ( fromJust $ lookupInferredSeqTypeExpr ttype ttypemap
              , caseon'
              , pattsexprs' )
             , [eqns])
@@ -1141,7 +1141,7 @@ typeCheckExpr = para f
 
         return 
             ( _EObjCall # 
-              ( fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq
+              ( fromJust $ lookupInferredSeqTypeExpr ttype ttypemap
               , ident
               , args' ) 
             , [eqns] )
@@ -1178,14 +1178,14 @@ typeCheckExpr = para f
 
             {-
             res = case seqdef of 
-                ExprCallPattern patt -> EVar (patt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) ident
-                ExprCallFun fun -> ECall (fun, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq) ident args'
+                ExprCallPattern patt -> EVar (patt, fromJust $ lookupInferredSeqTypeExpr ttype ttypemap ) ident
+                ExprCallFun fun -> ECall (fun, fromJust $ lookupInferredSeqTypeExpr ttype ttypemap) ident args'
             -}
             res = case seqdef of 
                 ExprCallPattern patt -> case args' of
-                    [] -> EVar (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq ) ident
-                    _ -> ECall (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq) ident args'
-                ExprCallFun fun -> ECall (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq) ident args'
+                    [] -> EVar (fromJust $ lookupInferredSeqTypeExpr ttype ttypemap ) ident
+                    _ -> ECall (fromJust $ lookupInferredSeqTypeExpr ttype ttypemap) ident args'
+                ExprCallFun fun -> ECall (fromJust $ lookupInferredSeqTypeExpr ttype ttypemap) ident args'
 
         return 
             ( res
@@ -1280,7 +1280,7 @@ typeCheckExpr = para f
 
         return $ 
             ( _ERecord # 
-              ( (cxt, fromJust $ ttypemap ^? at ttype % _Just % _SymTypeSeq)
+              ( ( cxt, fromJust $ lookupInferredSeqTypeExpr ttype ttypemap)
               , NE.fromList phrases') 
             , [eqns] 
             )
@@ -1332,13 +1332,13 @@ typeCheckProcessBody procbdy@((patts, ins, outs), cmds) = do
         ins' = zipWith 
                 (\stref -> 
                     review _ChIdentT 
-                    . (,fromJust $ ttypemap ^? at stref % _Just % _SymTypeCh) 
+                    . (,fromJust $ lookupInferredSeqTypeExpr stref ttypemap) 
                     )
                 ttypeins ins 
         outs' = zipWith 
                 (\stref -> 
                     review _ChIdentT 
-                    . (,fromJust $ ttypemap ^? at stref % _Just % _SymTypeCh) 
+                    . (,fromJust $ lookupInferredSeqTypeExpr stref ttypemap) 
                     )
                 ttypeouts
                 outs 
@@ -1443,10 +1443,10 @@ typeCheckCmd cmd = case cmd of
                     -- accumlate old equations
                     <> concat seqseqns
 
-            ins' = zipWith (\chr tag -> _ChIdentT # (chr, fromJust $ ttypemap ^? at tag % _Just % _SymTypeCh)) 
+            ins' = zipWith (\chr tag -> _ChIdentT # (chr, fromJust $ lookupInferredSeqTypeExpr tag ttypemap)) 
                     ins (map (view symEntryType) ttypesins)
 
-            outs' = zipWith (\chr tag -> _ChIdentT # (chr, fromJust $ ttypemap ^? at tag % _Just % _SymTypeCh))
+            outs' = zipWith (\chr tag -> _ChIdentT # (chr, fromJust $ lookupInferredSeqTypeExpr tag ttypemap))
                     outs (map (view symEntryType) ttypesouts) 
 
         return (_CRun # (procc, ident, seqs', ins', outs'), [eqns] )
@@ -1458,7 +1458,7 @@ typeCheckCmd cmd = case cmd of
 
         envLcl % typeInfoSymTab % symTabCh % at (ch ^. uniqueTag) .= Nothing
 
-        let ch' = _ChIdentT # (ch, fromJust $ ttypemap ^? at ttypech % _Just % _SymTypeCh )
+        let ch' = _ChIdentT # (ch, fromJust $ lookupInferredSeqTypeExpr ttypech ttypemap )
 
             ttypepch = annotateTypeTag ttypech ch
             eqns = 
@@ -1478,7 +1478,7 @@ typeCheckCmd cmd = case cmd of
 
         envLcl % typeInfoSymTab % symTabCh % at (ch ^. uniqueTag) .= Nothing
 
-        let ch' = _ChIdentT # (ch, fromJust $ ttypemap ^? at ttypech % _Just % _SymTypeCh )
+        let ch' = _ChIdentT # (ch, fromJust $ lookupInferredSeqTypeExpr ttypech ttypemap )
 
             ttypepch = annotateTypeTag ttypech ch
             eqns = 
@@ -1499,7 +1499,7 @@ typeCheckCmd cmd = case cmd of
         (ttypepatt, (patt', patteqns)) <- withFreshTypeTag $ typeCheckPattern patt
 
 
-        let ch' = _ChIdentT # (ch, fromJust $ ttypemap ^? at ttypech % _Just % _SymTypeCh)
+        let ch' = _ChIdentT # (ch, fromJust $ lookupInferredSeqTypeExpr ttypech ttypemap)
             ttypepch = annotateTypeTag ttypech ch
             ttypepch' = annotateTypeTag ttypech' ch
 
@@ -1533,7 +1533,7 @@ typeCheckCmd cmd = case cmd of
         (ttypeexpr, (expr', expreqns)) <- withFreshTypeTag $ typeCheckExpr expr
 
 
-        let ch' = _ChIdentT # (ch, fromJust $ ttypemap ^? at ttypech % _Just % _SymTypeCh)
+        let ch' = _ChIdentT # (ch, fromJust $ lookupInferredSeqTypeExpr ttypech ttypemap)
             ttypepch = annotateTypeTag ttypech ch
             ttypepch' = annotateTypeTag ttypech' ch
 
@@ -1626,7 +1626,7 @@ typeCheckCmd cmd = case cmd of
                 return ((def, ident, cmds') , [eqns])
 
         let eqn = TypeEqnsExist ttypeinst $ fold caseseqns
-            ch' = _ChIdentT # (ch, fromJust $ ttypemap ^? at ttypech % _Just % _SymTypeCh)
+            ch' = _ChIdentT # (ch, fromJust $ lookupInferredSeqTypeExpr ttypech ttypemap)
 
         envLcl % typeInfoSymTab % symTabCh .= mempty
 
@@ -1677,7 +1677,7 @@ typeCheckCmd cmd = case cmd of
                         , ttypepunwrapped
                         )
                     ]
-            ch' = _ChIdentT # (ch, fromJust $ ttypemap ^? at ttypech % _Just % _SymTypeCh)
+            ch' = _ChIdentT # (ch, fromJust $ lookupInferredSeqTypeExpr ttypech ttypemap)
         
         return (_CHPut # ((cxt, def), ident, ch'), [eqn])
 
@@ -1690,9 +1690,9 @@ typeCheckCmd cmd = case cmd of
 
         envLcl % typeInfoSymTab % symTabCh % at (ch ^. uniqueTag) .= Nothing
 
-        let ch' = _ChIdentT # (ch, fromJust $ ttypemap ^? at ttypech % _Just % _SymTypeCh )
-            ch0' = _ChIdentT # (ch0, fromJust $ ttypemap ^? at ttypech0 % _Just % _SymTypeCh )
-            ch1' = _ChIdentT # (ch1, fromJust $ ttypemap ^? at ttypech1 % _Just % _SymTypeCh )
+        let ch' = _ChIdentT # (ch, fromJust $ lookupInferredSeqTypeExpr ttypech ttypemap )
+            ch0' = _ChIdentT # (ch0, fromJust $ lookupInferredSeqTypeExpr ttypech0 ttypemap )
+            ch1' = _ChIdentT # (ch1, fromJust $ lookupInferredSeqTypeExpr ttypech1 ttypemap )
 
             ttypepch0 = annotateTypeTag ttypech0 ch0
             ttypepch1 = annotateTypeTag ttypech1 ch1
@@ -1761,21 +1761,21 @@ typeCheckCmd cmd = case cmd of
             ) $ typeCheckCmds cmds1 
 
 
-        let ch' = _ChIdentT # (ch, fromJust $ ttypemap ^? at ttypech % _Just % _SymTypeCh )
-            ch0' = _ChIdentT # (ch0, fromJust $ ttypemap ^? at ttypech0 % _Just % _SymTypeCh )
-            ch1' = _ChIdentT # (ch1, fromJust $ ttypemap ^? at ttypech1 % _Just % _SymTypeCh )
+        let ch' = _ChIdentT # (ch, fromJust $ lookupInferredTypeCh ttypech ttypemap )
+            ch0' = _ChIdentT # (ch0, fromJust $ lookupInferredTypeCh ttypech0 ttypemap )
+            ch1' = _ChIdentT # (ch1, fromJust $ lookupInferredTypeCh ttypech1 ttypemap )
 
             ttypepch0 = annotateTypeTag ttypech0 ch0
             ttypepch1 = annotateTypeTag ttypech1 ch1
 
             cxt0' = zipWith 
                     (\stable ch -> 
-                        _ChIdentT # (ch, fromJust $ ttypemap ^? at stable % _Just % _SymTypeCh )) 
+                        _ChIdentT # (ch, fromJust $ lookupInferredTypeCh stable ttypemap )) 
                     (map (view symEntryType) ttypecxt0) 
                     cxt0
             cxt1' = zipWith 
                     (\stable ch -> 
-                        _ChIdentT # (ch, fromJust $ ttypemap ^? at stable % _Just % _SymTypeCh ))
+                        _ChIdentT # (ch, fromJust $ lookupInferredTypeCh stable ttypemap ))
                         (map (view symEntryType) ttypecxt1) 
                         cxt1
 
@@ -1828,8 +1828,8 @@ typeCheckCmd cmd = case cmd of
             [_IllegalIdGotChannelsOfTheSamePolarityButIdNeedsDifferentPolarity # (cxt, ch0, ch1) ] 
             $ ch0 ^. polarity == ch1 ^. polarity
 
-        let ch0' = _ChIdentT # (ch0, fromJust $ ttypemap ^? at ttypech0 % _Just % _SymTypeCh )
-            ch1' = _ChIdentT # (ch1, fromJust $ ttypemap ^? at ttypech1 % _Just % _SymTypeCh )
+        let ch0' = _ChIdentT # (ch0, fromJust $ lookupInferredTypeCh ttypech0 ttypemap )
+            ch1' = _ChIdentT # (ch1, fromJust $ lookupInferredTypeCh ttypech1 ttypemap)
 
             eqns = 
                 [ TypeEqnsEq (typePtoTypeVar ttypepch0, typePtoTypeVar ttypepch1)
@@ -1853,8 +1853,8 @@ typeCheckCmd cmd = case cmd of
             [ _IllegalIdNegGotChannelsOfDifferentPolarityButIdNegNeedsTheSamePolarity # (cxt, ch0, ch1) ] 
             $ ch0 ^. polarity /= ch1 ^. polarity
 
-        let ch0' = _ChIdentT # (ch0, fromJust $ ttypemap ^? at ttypech0 % _Just % _SymTypeCh )
-            ch1' = _ChIdentT # (ch1, fromJust $ ttypemap ^? at ttypech1 % _Just % _SymTypeCh )
+        let ch0' = _ChIdentT # (ch0, fromJust $ lookupInferredTypeCh ttypech0 ttypemap )
+            ch1' = _ChIdentT # (ch1, fromJust $ lookupInferredTypeCh ttypech1 ttypemap )
 
             eqns = 
                 [ TypeEqnsEq 
@@ -1887,7 +1887,7 @@ typeCheckCmd cmd = case cmd of
 
         (cmds', cmdseqns) <- localEnvSt id $ typeCheckCmds cmds
 
-        let ch' = _ChIdentT # (ch, fromJust $ ttypemap ^? at ttypech % _Just % _SymTypeCh )
+        let ch' = _ChIdentT # (ch, fromJust $ lookupInferredTypeCh ttypech ttypemap )
             raceeqn = TypeEqnsExist ttypepdummies $ 
                 [ geteqn  ]
                 <> cmdseqns
@@ -1905,7 +1905,7 @@ typeCheckCmd cmd = case cmd of
 
                 oldch <- equality <<.= ttypepch
 
-                let ch' = _ChIdentT # (ch, fromJust $ ttypemap ^? at ttypech % _Just % _SymTypeCh )
+                let ch' = _ChIdentT # (ch, fromJust $ lookupInferredTypeCh ttypech ttypemap )
                     raceeqn = TypeEqnsExist ttypepdummies $ 
                         [ geteqn 
                         , TypeEqnsEq (typePtoTypeVar oldch, typePtoTypeVar ttypepch) ]
@@ -1986,15 +1986,12 @@ typeCheckCmd cmd = case cmd of
                 let eqns = cmdseqns
                     ins' = map (\ch -> _ChIdentT # 
                             ( ch
-                            , fromJust $ ttypemap ^? at (fromJust $ stablerefs ^. at (ch ^. uniqueTag)) 
-                                % _Just 
-                                % _SymTypeCh 
+                            , fromJust $ 
+                                lookupInferredTypeCh (fromJust $ stablerefs ^. at (ch ^. uniqueTag)) ttypemap 
                             )) ins
                     outs' = map (\ch -> _ChIdentT # 
                             ( ch
-                            , fromJust $ ttypemap ^? at (fromJust $ stablerefs ^. at (ch ^. uniqueTag)) 
-                                % _Just 
-                                % _SymTypeCh 
+                            , fromJust $ lookupInferredTypeCh (fromJust $ stablerefs ^. at (ch ^. uniqueTag)) ttypemap
                             )) outs
 
                 return ((cxt, (ins', outs'), cmds'), eqns)
@@ -2017,10 +2014,7 @@ typeCheckCmd cmd = case cmd of
             eqn = TypeEqnsExist exists $ pluggedeqns <> fold acceqns
             plugs' = map (\ch -> 
                     ( ch
-                    , fromJust $ 
-                        ttypemap ^? at (fromJust $ stablerefs ^. at (ch ^. uniqueTag)) 
-                        % _Just 
-                        % _SymTypeCh
+                    , fromJust $ lookupInferredTypeCh (fromJust $ stablerefs ^. at (ch ^. uniqueTag)) ttypemap
                     )
                 ) plugs
 

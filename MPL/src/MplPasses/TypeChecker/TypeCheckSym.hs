@@ -47,11 +47,26 @@ type SymZooms m0 m1 n =
     , Zoom m1 m0 (MplSeqObjDefn MplTypeCheckedPhrase) (Maybe (SymEntry SymSeqType SymExprInfo))
     ) 
 
-data SymTypeEntry = 
-    SymTypeConc ([TypeP MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked], [MplType MplTypeChecked])
-    | SymTypeSeq ([TypeP MplTypeChecked], [MplType MplTypeChecked], MplType MplTypeChecked)
+data SymTypeEntry 
+    -- | this is used exclusively for concurrent arrows
+    = SymTypeConc 
+        ( [TypeP MplTypeChecked]
+        , [MplType MplTypeChecked]
+        , [MplType MplTypeChecked]
+        , [MplType MplTypeChecked]
+        )
+    -- | somewhat deceptive that this is used for everything BUT the concurrent arrows.
+    -- This includes channels which are concurrent
+    -- TODO probably would be a bit better to seperate this out a bit, 
+    -- but it actually doesn't really matter at all...
+    | SymTypeSeq 
+        ( [TypeP MplTypeChecked]
+        , [MplType MplTypeChecked]
+        , MplType MplTypeChecked
+        )
 
-_SymTypeCh :: Prism' SymTypeEntry ([TypeP MplTypeChecked], MplType MplTypeChecked)
+_SymTypeCh :: Prism' SymTypeEntry 
+    ([TypeP MplTypeChecked], MplType MplTypeChecked)
 _SymTypeCh = prism' cts prj
   where
     cts (vs, tp) = SymTypeSeq (vs, [], tp)
