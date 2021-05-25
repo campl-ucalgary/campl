@@ -109,9 +109,7 @@ instance HasNamespace ChIdentT where
 data ExprCallDef = 
     ExprCallPattern (MplPattern MplTypeChecked)
     | ExprCallFun (MplFunction MplTypeChecked)
-  deriving Show
-
-
+  deriving Show 
 
 
 type instance IdP MplTypeChecked = IdentT
@@ -251,7 +249,8 @@ type instance XTypePhraseFrom MplTypeChecked (ConcObjTag CoprotocolDefnTag) =
     XMplType MplTypeChecked
 
 -- Function / process type
-type instance XFunType MplTypeChecked  = ([TypeP MplTypeChecked], [XMplType MplTypeChecked], XMplType MplTypeChecked)
+type instance XFunType MplTypeChecked  = 
+    ([TypeP MplTypeChecked], [XMplType MplTypeChecked], XMplType MplTypeChecked)
 type instance XProcType MplTypeChecked = 
     ([TypeP MplTypeChecked], [XMplType MplTypeChecked], [XMplType MplTypeChecked], [XMplType MplTypeChecked])
 

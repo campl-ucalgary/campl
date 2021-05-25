@@ -17,6 +17,8 @@ import MplAST.MplPatternCompiled
 data PatternCompileErrors 
     = NonExhaustiveFunPatt IdentT 
     | NonExhaustiveCasePatt  
+    | NonExhaustiveSwitch  
+
     | NonExhaustiveRecordPatt IdentT
     | ExpectedVariablePatternButGot (MplPattern MplTypeChecked)
   deriving Show

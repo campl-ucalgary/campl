@@ -1,5 +1,6 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RoleAnnotations #-}
@@ -30,10 +31,63 @@ import Control.Monad.Except
 import Data.Functor.Foldable
 import Data.Coerce
 import Unsafe.Coerce
+import MplPasses.PatternCompiler.PatternCompileUtils
 
 import Data.Tuple
 
 import Data.Void
+
+data Substitutable
+     -- | substitution for a variable.
+     = VarSub (IdentT, MplSeqType MplTypeChecked)
+     -- | substitution for a a record. The datum is as follows.
+     --     - @u@ in the pattern matching algorithm
+     --     - type phrase of the destructor / name of the pattern destructor
+     | RecordSub 
+        (IdentT, MplSeqType MplTypeChecked) 
+        ( MplTypePhrase MplTypeChecked ('SeqObjTag 'CodataDefnTag)
+        , IdentT
+        )
+     -- | substitution for a tuple. The data is as follows.
+     --     - @u@ in the pattern matching algorithm
+     --     - Projection number e.g. \pi_0, \pi_1, ..
+     | TupleSub 
+        (IdentT, MplSeqType MplTypeChecked) 
+        Int
+$(makePrisms ''Substitutable)
+
+-- | gets the expresion out of a 'Substitutable'.
+getExprFromSubstitutable ::
+    Substitutable -> 
+    MplExpr MplPatternCompiled
+getExprFromSubstitutable = \case 
+    VarSub val -> _EVar # swap val
+    RecordSub u (phrase, des) ->
+        EObjCall (getCodataPhraseType phrase) des $ [uexpr]
+      where
+        uexpr = getExprFromSubstitutable $ VarSub u
+        
+    _ -> error "no getting from record yet (not put in)"
+
+    {-
+        go :: MplExprF (MplPatternCompiled) (MplExpr MplPatternCompiled) -> MplExpr MplPatternCompiled
+        go = \case
+            EVarF ann ident | ident == sub ^. _1 -> 
+                EObjCall ann des $ [uexpr]
+            ECallF ann ident args | ident == sub ^. _1 -> 
+                EObjCall ann des $ args ++ [uexpr]
+        -}
+    TupleSub  _ _ -> error "no getting from tuple yet (not put in)"
+
+
+
+-- | @substituteExpr (s, t)@ replaces all occurances of @s@ by @t@; the substitution
+-- is given by the 'Substitutable'
+substituteExpr :: 
+    (IdP MplPatternCompiled, Substitutable) ->
+    MplExpr MplPatternCompiled ->
+    MplExpr MplPatternCompiled
+substituteExpr (s, VarSub t) = substituteVarIdentByExpr (s, _EVar # swap t)
 
 
 -- | Substitutes an id in place of another id in an expression. This is used in the compilation

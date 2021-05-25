@@ -68,6 +68,19 @@ getExprType = \case
     ESwitch ann _ -> ann
     -}
     -- XExpr !(XXExpr x)
+
+-- | get type from codata phrase
+getCodataPhraseType :: 
+    MplTypePhrase MplTypeChecked ('SeqObjTag 'CodataDefnTag) -> 
+    ([TypeT], [MplType MplTypeChecked], MplType MplTypeChecked)
+getCodataPhraseType phrase = undefined
+
+-- | get type from data phrase
+getDataPhraseType :: 
+    MplTypePhrase MplTypeChecked ('SeqObjTag 'CodataDefnTag) -> 
+    ([TypeT], [MplType MplTypeChecked], MplType MplTypeChecked)
+getDataPhraseType phrase = error "todo implement this"
+
     
 
 -- | Gets the type of a pattern
@@ -113,6 +126,3 @@ freshUIdP = do
     uniq <- fmap uniqueFromSupply freshUniqueSupply
     let ident = _IdentR # (_IdentP # (_NameOcc # (coerce "u", invalidLocation), TermLevel), coerce uniq)
     return ident
-
-pattCompiledIllegalInstr :: MplExpr MplPatternCompiled 
-pattCompiledIllegalInstr = _EIllegalInstr # ()

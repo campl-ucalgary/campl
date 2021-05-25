@@ -165,10 +165,17 @@ patternCompileExpr = cata go
         EBuiltInOpF ann op l r -> EBuiltInOp (snd ann) op <$> l <*> r
         EIfF ann iff thenf elsef -> EIf ann <$> iff <*> thenf <*> elsef
 
-        ESwitchF ann switches -> do
-            undefined
-            -- TODO. add this in..
-
+        ESwitchF ann switches -> 
+            sequenceOf (traversed % each) switches 
+                >>= patternCompileExhaustiveESwitchCheck 
+                >>= return . foldr f (EIllegalInstr ())
+          where
+            f :: 
+                (MplExpr MplPatternCompiled, MplExpr MplPatternCompiled) -> 
+                MplExpr MplPatternCompiled -> 
+                MplExpr MplPatternCompiled
+            f (bexpr, thenc) acceq = EIf (getExprType thenc) bexpr thenc acceq
+            
         ELetF ann lets expr -> ELet ann <$> (traverse patternCompileStmt lets) <*> expr
 
         {-
@@ -198,7 +205,6 @@ patternCompileProcessDefn (MplProcess procName procTp procDefn) = do
     undefined
 
 
--- patternCompileCmds :: NonEmpty (MplCmd MplTypeChecked)
 patternCompileCmds :: 
     PatternCompile 
         (NonEmpty (MplCmd MplTypeChecked)) 
@@ -255,6 +261,22 @@ patternCompileCmds = fmap NE.fromList . go . NE.toList
   | CSwitch !(XCSwitch x)
             (NonEmpty (XMplExpr x, NonEmpty (MplCmd x)))
 -}
+
+{- | Tests if a switch statement is exhaustive.
+This will 'tell' an error if the pattern is non exhaustive, and return only the switches up to (and including)
+the True.
+-}
+patternCompileExhaustiveESwitchCheck ::
+    PatternCompile 
+        (NonEmpty (MplExpr MplPatternCompiled, MplExpr MplPatternCompiled)) 
+        (NonEmpty (MplExpr MplPatternCompiled, MplExpr MplPatternCompiled))
+patternCompileExhaustiveESwitchCheck switches = 
+     case trueandpast of
+        [] -> tell [_NonExhaustiveSwitch # ()] >> return switches
+        trueres:_ -> return $ NE.fromList $ notrue <> [trueres]
+  where
+    (notrue, trueandpast) = NE.break (fromMaybe False . preview (_1 % _EBool % _2)) switches
+    
 
 
 {- | Tests if a pattern match is exhaustive i.e., tests if something like
@@ -342,7 +364,7 @@ patternCompileSeqPatPhrases pattphrases =
         let usandtp = zipWith (curry (second getPattType)) us (fst . NE.head $ pattphrases) 
             (patts :: [MplPattern MplPatternCompiled]) = fmap (review _PVar . swap) usandtp
 
-        pattexpr <- go usandtp (NE.toList pattphrases) pattCompiledIllegalInstr 
+        pattexpr <- go (map VarSub usandtp) (NE.toList pattphrases) (EIllegalInstr ()) 
 
         return $ (patts, pattexpr)  
   where
@@ -351,7 +373,7 @@ patternCompileSeqPatPhrases pattphrases =
     restp = getExprType $ snd $ NE.head pattphrases
 
     go :: 
-        [(IdentT, MplSeqType MplTypeChecked)]  -> 
+        [Substitutable]  -> 
         [([MplPattern MplTypeChecked], MplExpr MplPatternCompiled)] -> 
         MplExpr MplPatternCompiled -> 
         _ (MplExpr MplPatternCompiled)
@@ -362,6 +384,7 @@ patternCompileSeqPatPhrases pattphrases =
         -- the case when all patts are of the same type
         _ :| [] -> fmap (fromJust . asum) 
             $ sequenceA 
+                {-
                 [ varrule
                 , ctersrule
                 , dstersrule
@@ -370,6 +393,8 @@ patternCompileSeqPatPhrases pattphrases =
                 , boolrule
                 , charrule
                 ]
+                -}
+                [ varrule ]
           where
             varrule :: _ (Maybe (MplExpr MplPatternCompiled))
             -- varrule = sequenceA $ traverse ( undefined +++ preview (_1 %_PVar % _2)) pattheads <&> g
@@ -398,7 +423,7 @@ patternCompileSeqPatPhrases pattphrases =
                 h :: Either () IdentT -> 
                     ([MplPattern MplTypeChecked], MplExpr MplPatternCompiled) -> 
                     ([MplPattern MplTypeChecked], MplExpr MplPatternCompiled)
-                h (Right v) pattsexpr = pattsexpr & _2 %~ substituteVarIdentByIdent (v,fst u)
+                h (Right v) pattsexpr = pattsexpr & _2 %~ substituteExpr (v,u)
                 h _ pattsexpr = pattsexpr 
 
             ctersrule :: _ (Maybe (MplExpr MplPatternCompiled))
@@ -408,13 +433,20 @@ patternCompileSeqPatPhrases pattphrases =
                     ( (MplTypePhrase MplTypeChecked ('SeqObjTag 'DataDefnTag), MplSeqType MplTypeChecked)
                     , IdentT
                     , [MplPattern (MplPass 'TypeChecked)]) -> _ (MplExpr MplPatternCompiled)
-                f cters = fmap (ECase restp (_EVar # swap u) . NE.fromList) 
+                f cters = fmap (ECase restp (getExprFromSubstitutable u) . NE.fromList) 
                     $ for (tpclause ^. typeClausePhrases) $ \phrase -> do
                         usandtps <- traverse (sequenceOf _1 . second ([],[],) . (freshUIdP,)) 
                             $ phrase ^. typePhraseFrom
-                        let patt' = PSimpleConstructor (phrase, snd u) (phrase ^. typePhraseName) $ usandtps
+                        -- let patt' = PSimpleConstructor (phrase, snd nu) (phrase ^. typePhraseName) $ usandtps
+                        let patt' = PSimpleConstructor 
+                                ( phrase
+                                , error "TODO: still need to get the tpe for the simple consturctor"
+                                ) 
+                                (phrase ^. typePhraseName) 
+                                $ usandtps
                         case ctersmap ^. at (phrase ^. typePhraseName) of
-                            Just cternpatts -> (patt',) <$> go (usandtps ++ us) (NE.toList cternpatts) mexpr
+                            Just cternpatts -> (patt',) <$> 
+                                go (map VarSub usandtps ++ us) (NE.toList cternpatts) mexpr
                             Nothing -> pure $ (patt',) mexpr
                     
                   where
@@ -436,6 +468,7 @@ patternCompileSeqPatPhrases pattphrases =
                             let patttail' = patttail & _1 %~ (cterpatts<>)
                             in acc & at identt %~ Just . maybe ( patttail' :| [] ) (NE.cons patttail')
 
+            {-
             dstersrule :: _ (Maybe (MplExpr MplPatternCompiled))
             dstersrule = sequenceA $ traverse (sequenceOf _1 . over _1 (preview _PRecord)) pattheads <&> f
               where
@@ -589,6 +622,7 @@ patternCompileSeqPatPhrases pattphrases =
                                 )
                     thenc <- go us (NE.toList $ ints & mapped %~ view _2) mexpr
                     return $ EIf (getExprType thenc) ccond thenc accexpr 
+            -}
                 
         _ -> foldrM (go (u:us)) mexpr $ fmap NE.toList groupedpatts 
       where

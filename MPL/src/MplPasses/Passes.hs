@@ -228,6 +228,15 @@ defn
         a -> case a of
             MyNil -> a
             MyCons(_,_) -> a
+
+    fun tupletest =
+        MyNil,  (P0 := a, P1 := b) ->  a
+        MyCons(_,_), (P0 := MyNil, P1 := b) ->  b
+
+    codata 
+        S -> Tuple(A,B) =
+            P0 :: S -> A
+            P1 :: S -> B
     data
         MyList(A) -> S =
             MyCons :: A,S -> S
