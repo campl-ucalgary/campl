@@ -145,6 +145,7 @@ type instance XEList MplRenamed = Location
 type instance XEString MplRenamed = Location
 type instance XEUnit MplRenamed = Location
 type instance XETuple MplRenamed = Location
+type instance XEProj MplRenamed = Void
 type instance XEBuiltInOp MplRenamed = Location
 -- built in expression control
 type instance XEIf MplRenamed = ()
@@ -197,11 +198,14 @@ type instance XCPlugs MplRenamed = (KeyWordNameOcc, [IdP MplRenamed])
                                                     -- Note that these do not have a polarity 
                                                     -- because it changes based on the phrase
 type instance XCCase MplRenamed = KeyWordNameOcc
+type instance XCCasePattern MplRenamed = XMplPattern MplRenamed
+
 type instance XCSwitch MplRenamed = KeyWordNameOcc
 type instance XCIf MplRenamed = KeyWordNameOcc
 type instance XCHCasePhrase MplRenamed  = ()
 type instance XCForkPhrase MplRenamed  = [ChP MplRenamed] 
 type instance XCPlugPhrase MplRenamed  = ()
+type instance XCIllegalInstr MplRenamed  = Void
 type instance XXCmd MplRenamed = Void
 
 -- Type clause 

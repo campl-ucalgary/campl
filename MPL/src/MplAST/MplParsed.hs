@@ -107,6 +107,7 @@ type instance XEList MplParsed = Location
 type instance XEString MplParsed = Location
 type instance XEUnit MplParsed = Location
 type instance XETuple MplParsed = Location
+type instance XEProj MplParsed = Void
 type instance XEBuiltInOp MplParsed = Location
 -- built in expression control
 type instance XEIf MplParsed = ()
@@ -161,11 +162,13 @@ type instance XCPlugs MplParsed =
         -- being bound. Note: due to a limitation of bnfc
         -- we can never actually write this
 type instance XCCase MplParsed = KeyWordNameOcc
+type instance XCCasePattern MplParsed = XMplPattern MplParsed
 type instance XCSwitch MplParsed = KeyWordNameOcc
 type instance XCIf MplParsed = KeyWordNameOcc
 type instance XCHCasePhrase MplParsed  = ()
 type instance XCForkPhrase MplParsed  = Maybe [(ChP MplParsed)] -- user can supply their own context
 type instance XCPlugPhrase MplParsed  = () -- user can supply their own context
+type instance XCIllegalInstr MplParsed  = Void
 type instance XXCmd MplParsed = Void
 
 -- Type clause

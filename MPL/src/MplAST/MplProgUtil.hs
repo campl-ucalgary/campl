@@ -52,7 +52,6 @@ class MplProgUtil x where
     mplStmtTopLevelIdents :: MplStmt x -> NonEmpty (IdP x)
     mplDefnIdents :: MplDefn x -> NonEmpty (IdP x)
 
-
 instance MplProgUtil MplParsed where
     mplStmtTopLevelIdents (MplStmt defs _) = 
         NE.fromList $ fold $ fmap (NE.toList . mplDefnIdents) defs
@@ -91,3 +90,51 @@ mplTypeCollectTypeP = cata f
     f (TypeBuiltInF n) = fold n
 
     f (XTypeF _) = mempty
+
+{-
+class SubstituteVarIdentByExpr t where
+    substituteVarIdentByExpr ::
+        (IdP MplPatternCompiled, MplExpr MplPatternCompiled) ->
+        t ->
+        t 
+
+instance SubstituteVarIdentByExpr (MplExpr MplPatternCompiled) where
+    substituteVarIdentByExpr sub = cata go
+      where
+        go :: MplExprF (MplPass 'PatternCompiled) (MplExpr MplPatternCompiled) -> MplExpr MplPatternCompiled
+        go = \case
+            EVarF ann ident | ident == sub ^. _1 -> sub ^. _2
+
+            -- duplicated code for the let case
+            ELetF ann lets expr -> ELet ann (fmap f lets) expr
+              where
+                f :: MplStmt MplPatternCompiled -> MplStmt MplPatternCompiled 
+                f stmt = stmt 
+                    & stmtWhereBindings % mapped %~ f
+                    & stmtDefns % mapped %~ g
+
+                g :: MplDefn MplPatternCompiled -> MplDefn MplPatternCompiled
+                g obj@(ObjectDefn _) = obj
+                g (FunctionDefn fun) = FunctionDefn $ fun
+                    & funDefn % mapped % _2 %~ substituteVarIdentByExpr sub
+                g (ProcessDefn proc) = error "pattern matching compilation for processes is not in yet"
+            res -> embed res
+
+instance SubstituteVarIdentByExpr (NonEmpty (MplCmd MplPatternCompiled)) where
+    substituteVarIdentByExpr sub = fmap (substituteVarIdentByExpr sub)
+
+instance SubstituteVarIdentByExpr (MplCmd MplPatternCompiled) where
+    substituteVarIdentByExpr sub = cata go
+      where
+        go :: MplCmdF (MplPass 'PatternCompiled) (MplCmd MplPatternCompiled) -> MplCmd MplPatternCompiled
+        go = \case
+            CRunF ann idp seqs ins outs -> 
+                CRun ann idp (map (substituteVarIdentByExpr sub) seqs) ins outs
+            CPutF ann expr chp -> 
+                CPut ann (substituteVarIdentByExpr sub expr) chp
+            CCaseF ann expr cmds -> undefined
+                CCase ann (substituteVarIdentByExpr sub expr) cmds
+            CIfF ann expr thenc elsec -> 
+                CIf ann (substituteVarIdentByExpr sub expr) thenc elsec
+            n -> embed n
+-}

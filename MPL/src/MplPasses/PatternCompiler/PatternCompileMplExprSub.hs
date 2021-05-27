@@ -1,4 +1,5 @@
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE LambdaCase #-}
@@ -23,6 +24,8 @@ import MplPasses.Env
 
 import MplUtil.UniqueSupply
 
+import Control.Arrow
+
 import Control.Monad.State
 import Control.Monad.Writer
 import Control.Monad.Reader
@@ -33,6 +36,9 @@ import Data.Functor.Foldable
 import Data.Coerce
 import Unsafe.Coerce
 import MplPasses.PatternCompiler.PatternCompileUtils
+
+import Data.List.NonEmpty (NonEmpty (..))
+import qualified Data.List.NonEmpty as NE
 
 import Data.Tuple
 
@@ -53,10 +59,10 @@ data Substitutable
         )
      -- | substitution for a tuple. The data is as follows.
      --     - @u@ in the pattern matching algorithm
-     --     - Projection number e.g. \pi_0, \pi_1, ..
+     --     - Type of the resulting projected element / projection number e.g. \pi_0, \pi_1, ..
      | TupleSub 
-        (IdentT, XMplType MplTypeChecked) 
-        Int
+        Substitutable
+        (XMplType MplTypeChecked, Int)
 $(makePrisms ''Substitutable)
 
 -- | gets the expresion out of a 'Substitutable'.
@@ -70,20 +76,28 @@ getExprFromSubstitutable = \case
         -- won't have the specializaiotn e.g. Type should be @MyType(Int)@ but this will say it is @MyType(A)@
         EObjCall (getCodataPhraseTypeResult phrase) des $ [getExprFromSubstitutable u]
 
-    TupleSub  _ _ -> error "no getting from tuple yet (not put in)"
+    TupleSub  u (ty, proj) -> EProj ty proj (getExprFromSubstitutable u)
 
-
-
--- | @substituteExpr (s, t)@ replaces all occurances of @s@ by @t@; the substitution
+-- | @substitute (s, t)@ replaces all occurances of @s@ by @t@; the substitution
 -- is given by the 'Substitutable'
+substitute  ::
+    MapPatternCompiledExpr t =>
+    (IdP MplPatternCompiled, Substitutable) ->
+    t ->
+    t
+substitute (s, VarSub t) = substituteVarIdentByExpr (s, _EVar # swap t)
+substitute (s, RecordSub u t) = substituteCallIdentByRecord (s, (u,t))
+substitute (s, TupleSub u t) = substituteVarIdentByTuple (s, (u,t))
+
 substituteExpr :: 
     (IdP MplPatternCompiled, Substitutable) ->
     MplExpr MplPatternCompiled ->
     MplExpr MplPatternCompiled
-substituteExpr (s, VarSub t) = substituteVarIdentByExpr (s, _EVar # swap t)
-substituteExpr (s, RecordSub u t) = substituteCallIdentByRecord (s, (u,t))
+substituteExpr = substitute
 
+-- | Substitutes a record for a destructor
 substituteCallIdentByRecord ::
+    MapPatternCompiledExpr t =>
     ( IdentT
     , 
         ( Substitutable
@@ -91,112 +105,94 @@ substituteCallIdentByRecord ::
         , (MplTypePhrase MplTypeChecked ('SeqObjTag 'CodataDefnTag), IdentT)
             -- destructor information
         )
-    ) -> 
-    MplExpr MplPatternCompiled -> 
-    MplExpr MplPatternCompiled
-substituteCallIdentByRecord sub@(s, (u, (_phrase, des))) = cata go
-  where 
+    ) 
+    -> t 
+    -> t
+substituteCallIdentByRecord sub@(s, (u, (_phrase, des))) = mapPatternCompiledExpr k
+  where
     uexpr = getExprFromSubstitutable u
-    go :: MplExprF (MplPatternCompiled) (MplExpr MplPatternCompiled) -> MplExpr MplPatternCompiled
-    go = \case
-        EVarF ann ident | ident == s -> 
-            EObjCall ann des $ [uexpr]
-        ECallF ann ident args | ident == s -> 
-            EObjCall ann des $ args ++ [uexpr]
+    k = \case
+            EVar ann ident | ident == s -> 
+                EObjCall ann des $ [uexpr]
+            ECall ann ident args | ident == s -> 
+                EObjCall ann des $ args ++ [uexpr]
+            n -> n
 
-        ELetF ann lets expr -> ELet ann (fmap f lets) expr
-          where
-            f :: MplStmt MplPatternCompiled -> MplStmt MplPatternCompiled 
-            f stmt = stmt 
-                & stmtWhereBindings % mapped %~ f
-                & stmtDefns % mapped %~ g
-
-            g :: MplDefn MplPatternCompiled -> MplDefn MplPatternCompiled
-            g obj@(ObjectDefn _) = obj
-            g (FunctionDefn fun) = FunctionDefn $ fun
-                & funDefn % mapped % _2 %~ substituteCallIdentByRecord sub
-            g (ProcessDefn proc) = error "pattern matching compilation for processes is not in yet"
-            {-
-            g (ProcessDefn proc) = ProcessDefn $ proc
-                & funDefn % mapped % _2 %~ substituteVarIdent sub
-            -}
-
-        n -> embed n
-
-
--- | This is specifically just used to substitute the record patterns out for the compilation of 
--- pattern matching algorithm
-{-
-substituteCallIdentByRecord :: 
-    -- | (variable to replace,(type phrase of the destructor, name of the pattern destructor), @u@ in the pattern matching algorithm). 
-    (IdP MplPatternCompiled, 
-        ( 
-            ( MplTypePhrase MplTypeChecked ('SeqObjTag 'CodataDefnTag)
-                -- type phrase of the destructor
-            , IdentT
-                -- name of the pattern destructor
-            )
-        , (IdentT, XMplType MplTypeChecked)
-            -- the @u@ in the pattern matching algorithm
-        )
-    ) ->
-    MplExpr MplPatternCompiled ->
-    MplExpr MplPatternCompiled
-substituteCallIdentByRecord sub@(_, ((_phrase, des), _)) = cata go 
-  where
-    uexpr :: MplExpr MplPatternCompiled
-    uexpr = _EVar # (sub ^. _2 % _2 % to swap)
-
-    go :: MplExprF (MplPatternCompiled) (MplExpr MplPatternCompiled) -> MplExpr MplPatternCompiled
-    go = \case
-        EVarF ann ident | ident == sub ^. _1 -> 
-            EObjCall ann des $ [uexpr]
-        ECallF ann ident args | ident == sub ^. _1 -> 
-            EObjCall ann des $ args ++ [uexpr]
-
-        ELetF ann lets expr -> ELet ann (fmap f lets) expr
-          where
-            f :: MplStmt MplPatternCompiled -> MplStmt MplPatternCompiled 
-            f stmt = stmt 
-                & stmtWhereBindings % mapped %~ f
-                & stmtDefns % mapped %~ g
-
-            g :: MplDefn MplPatternCompiled -> MplDefn MplPatternCompiled
-            g obj@(ObjectDefn _) = obj
-            g (FunctionDefn fun) = FunctionDefn $ fun
-                & funDefn % mapped % _2 %~ substituteCallIdentByRecord sub
-            g (ProcessDefn proc) = error "pattern matching compilation for processes is not in yet"
-            {-
-            g (ProcessDefn proc) = ProcessDefn $ proc
-                & funDefn % mapped % _2 %~ substituteVarIdent sub
-            -}
-
-        n -> embed n
--}
-
--- | Substitutes a 'EVar' by an expression. This is mainly used for translating
--- a case expression (not a pattern match) to simple constructors
+-- | Substitutes a 'EVar' by an expression.
 substituteVarIdentByExpr ::
+    MapPatternCompiledExpr t =>
     (IdP MplPatternCompiled, MplExpr MplPatternCompiled) ->
-    MplExpr MplPatternCompiled ->
-    MplExpr MplPatternCompiled 
-substituteVarIdentByExpr sub = cata go
+    t ->
+    t 
+substituteVarIdentByExpr sub = mapPatternCompiledExpr k
   where
-    go :: MplExprF (MplPass 'PatternCompiled) (MplExpr MplPatternCompiled) -> MplExpr MplPatternCompiled
-    go = \case
-        EVarF ann ident | ident == sub ^. _1 -> sub ^. _2
+    k = \case
+            EVar ann ident | ident == sub ^. _1 -> sub ^. _2
+            n -> n
 
-        -- duplicated code for the let case
-        ELetF ann lets expr -> ELet ann (fmap f lets) expr
+-- | substitutes tuples
+substituteVarIdentByTuple :: 
+    MapPatternCompiledExpr t =>
+    (IdP MplPatternCompiled, (Substitutable, (XMplType MplTypeChecked, Int))) ->
+    t ->
+    t 
+substituteVarIdentByTuple sub@(s, t) = mapPatternCompiledExpr k
+  where
+    k = \case
+        EVar ann ident | ident == sub ^. _1 -> 
+            getExprFromSubstitutable (uncurry TupleSub t)
+        n -> n
+
+-- | substitute channel names (rename this module to just substitutions)
+substituteCh :: 
+    -- | @(s,t)@ means substitute all occurences of @s@ by @t@
+    (ChP MplPatternCompiled, ChP MplPatternCompiled) -> 
+    MplCmd MplPatternCompiled -> 
+    MplCmd MplPatternCompiled 
+substituteCh sub@(s,t) = cata go 
+  where
+    subMap ch 
+        | ch == s = t
+        | otherwise = ch
+
+    go = \case 
+        CRunF ann idp seqs ins outs ->
+            CRun ann idp seqs (map subMap ins) (map subMap outs) 
+        CCloseF ann ch -> CClose ann $ subMap ch
+        CHaltF ann ch -> CHalt ann $ subMap ch
+        CGetF ann patt ch -> CGet ann patt $ subMap ch
+        CPutF ann expr ch -> CPut ann expr $ subMap ch
+        CHCaseF ann ch cmds ->
+            CHCase ann (subMap ch) cmds'
           where
-            f :: MplStmt MplPatternCompiled -> MplStmt MplPatternCompiled 
-            f stmt = stmt 
-                & stmtWhereBindings % mapped %~ f
-                & stmtDefns % mapped %~ g
+            cmds' = cmds & mapped % _3 % mapped %~ substituteCh sub
+        CHPutF ann idp ch ->
+            CHPut ann idp (subMap ch)
+        CSplitF ann ch (lch, rch) -> 
+            CSplit ann (subMap ch) (subMap lch, subMap rch) 
+        CForkF ann ch (lphrase, rphrase) ->
+            CFork ann (subMap ch) (f lphrase, f rphrase)
+          where
+            f (ch, chs, cmds) = 
+                ( subMap ch
+                , map subMap chs
+                , fmap (substituteCh sub) cmds
+                )
+        CIdF ann (lch, rch) ->
+            CId ann (subMap lch, subMap rch)
+        CIdNegF ann (lch, rch) ->
+            CIdNeg ann (subMap lch, subMap rch) 
+        CRaceF ann cmds ->
+            CRace ann $ fmap (subMap *** fmap (substituteCh sub)) cmds
+        -- CPlug !(XCPlug x) (CPlugPhrase x, CPlugPhrase x)
+        CPlugsF ann (phrase0, phrase1, phrases) ->
+            CPlugs ann (f phrase0, f phrase1, map f phrases)
+          where
+            f (ann', (lch, rch), cmds) = 
+                (ann', (map subMap lch, map subMap rch), fmap (substituteCh sub) cmds)
+        CCaseF ann expr cmds -> 
+            CCase ann expr $ fmap (second $ fmap $ substituteCh sub) cmds
 
-            g :: MplDefn MplPatternCompiled -> MplDefn MplPatternCompiled
-            g obj@(ObjectDefn _) = obj
-            g (FunctionDefn fun) = FunctionDefn $ fun
-                & funDefn % mapped % _2 %~ substituteVarIdentByExpr sub
-            g (ProcessDefn proc) = error "pattern matching compilation for processes is not in yet"
-        res -> embed res
+        CIfF ann expr thenc elsec -> 
+            CIf ann expr (fmap (substituteCh sub) thenc) (fmap (substituteCh sub) elsec)
+

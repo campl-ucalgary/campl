@@ -93,6 +93,21 @@ runPassesTester str = do
         Right v -> putStrLn $ pprint (Proxy :: Proxy MplRenamed) v
         Left v -> putStrLn $ show $ vsep $ map pprintMplPassesErrors v
 
+freshhuh = [r|
+data
+MyList(A) -> S =
+    MyCons :: A,S -> S
+    MyNil ::      -> S
+
+proc dpg =
+    MyCons(MyCons(_, _), rst) | ch0 => ch1 ->do
+        close ch0
+        halt ch1
+    MyNil | ch2 => ch3 ->do
+        close ch3
+        halt ch2
+|]
+
 huh = [r|
 {-
 proc v25 :: | => TopBot (*) TopBot, TopBot =
@@ -236,6 +251,10 @@ defn
         (P0 := MyCons(a,_), P1 := b) ->  a
         (P0 := MyNil, P1 := b) ->  b
 
+    fun tupletest2 =
+        (a,b) ->  MyNil
+        (MyNil, b) ->  MyNil
+
     codata 
         S -> Tuple(A,B) =
             P0 :: S -> A
@@ -244,6 +263,17 @@ defn
         MyList(A) -> S =
             MyCons :: A,S -> S
             MyNil ::      -> S
+
+data 
+    Identity(A) -> S =
+        Identity :: A -> S
+
+proc fuk = 
+    | ch => -> do
+        get MyCons(a,_) on ch
+        put a on ch
+        halt ch
+    
 
 {-
 -- GET BACK TO FIXING THE DUPLCIATED EROR MESSAGE FOR THIS

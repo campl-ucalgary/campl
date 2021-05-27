@@ -294,6 +294,7 @@ type family XEList x
 type family XEString x
 type family XEUnit x
 type family XETuple x
+type family XEProj x
 type family XEBuiltInOp x
 
 type family XEIf x
@@ -328,6 +329,7 @@ type ForallMplExpr (c :: Type -> Constraint) x =
     , c (XEString x)
     , c (XEUnit x)
     , c (XETuple x)
+    , c (XEProj x)
     , c (XEBuiltInOp x)
 
     -- extra structures
@@ -363,6 +365,9 @@ data MplExpr x =
     | EString !(XEString x) String
     | EUnit !(XEUnit x) 
     | ETuple !(XETuple x) (MplExpr x, MplExpr x, [MplExpr x])
+    -- | projection for a built in tuple. the nth projection, on the given expression
+    | EProj !(XEProj x) Int (MplExpr x)
+
     | EBuiltInOp !(XEBuiltInOp x) BuiltInOperators (MplExpr x) (MplExpr x)
 
 

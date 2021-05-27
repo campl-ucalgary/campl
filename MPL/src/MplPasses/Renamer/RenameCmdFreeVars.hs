@@ -88,6 +88,7 @@ type instance XCPlug MplCmdFreeVars = Void
 type instance XCPlugs MplCmdFreeVars = (KeyWordNameOcc, (ContextInfo, [IdP MplCmdFreeVars]))
     -- plug command, plug scoped bound variables.
 type instance XCCase MplCmdFreeVars = KeyWordNameOcc
+type instance XCCasePattern MplCmdFreeVars = XMplPattern MplCmdFreeVars
 type instance XCSwitch MplCmdFreeVars = KeyWordNameOcc
 type instance XCIf MplCmdFreeVars = KeyWordNameOcc
 type instance XCHCasePhrase MplCmdFreeVars  = ()

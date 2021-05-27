@@ -13,20 +13,22 @@ import MplAST.MplRenamed
 import MplAST.MplTypeChecked
 import MplAST.MplPatternCompiled
 
-
 data PatternCompileErrors 
     = NonExhaustiveFunPatt IdentT 
-    | NonExhaustiveCasePatt  
+    | NonExhaustiveProcPatt IdentT 
+
+    | NonExhaustiveECasePatt  
     | NonExhaustiveSwitch  
 
     | NonExhaustiveRecordPatt IdentT
-    | ExpectedVariablePatternButGot (MplPattern MplTypeChecked)
+
+    | NonExhaustiveGet KeyWordNameOcc
+    | NonExhaustiveCCasePatt  
+
+    | NonExhaustiveCSwitch 
+
   deriving Show
 
-data IdentPattern 
-    = MorphismIdent IdentT
-    | KeywordIdent NameOcc
-  deriving Show 
 
 
 $(makeClassyPrisms ''PatternCompileErrors)

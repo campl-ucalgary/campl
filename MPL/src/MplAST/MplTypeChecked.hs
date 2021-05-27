@@ -160,6 +160,7 @@ type instance XEList MplTypeChecked = (Location, XMplType MplTypeChecked)
 type instance XEString MplTypeChecked = (Location, XMplType MplTypeChecked)
 type instance XEUnit MplTypeChecked = (Location, XMplType MplTypeChecked)
 type instance XETuple MplTypeChecked = (Location, XMplType MplTypeChecked)
+type instance XEProj MplTypeChecked = Void
 type instance XEBuiltInOp MplTypeChecked = (Location, XMplType MplTypeChecked)
 -- built in expression control
 type instance XEIf MplTypeChecked = XMplType MplTypeChecked
@@ -224,11 +225,13 @@ type instance XCPlugs MplTypeChecked =
                                                     -- Note that these do not have a polarity 
                                                     -- because it changes based on the phrase
 type instance XCCase MplTypeChecked = KeyWordNameOcc
+type instance XCCasePattern MplTypeChecked = XMplPattern MplTypeChecked
 type instance XCSwitch MplTypeChecked = KeyWordNameOcc
 type instance XCIf MplTypeChecked = KeyWordNameOcc
 type instance XCHCasePhrase MplTypeChecked  = MplConcObjDefn MplTypeCheckedPhrase
 type instance XCForkPhrase MplTypeChecked  = [ChP MplTypeChecked] 
 type instance XCPlugPhrase MplTypeChecked  = ()
+type instance XCIllegalInstr MplTypeChecked  = Void
 type instance XXCmd MplTypeChecked = Void
 
 type instance XTypeClauseSpineExt MplTypeChecked t = ()

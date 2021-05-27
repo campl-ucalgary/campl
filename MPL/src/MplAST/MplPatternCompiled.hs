@@ -121,6 +121,7 @@ type instance XEList MplPatternCompiled = (XMplType MplTypeChecked)
 type instance XEString MplPatternCompiled = (XMplType MplTypeChecked)
 type instance XEUnit MplPatternCompiled = (XMplType MplTypeChecked)
 type instance XETuple MplPatternCompiled = (XMplType MplTypeChecked)
+type instance XEProj MplPatternCompiled = (XMplType MplTypeChecked)
 type instance XEBuiltInOp MplPatternCompiled = (XMplType MplTypeChecked)
 
 -- built in expression control
@@ -185,11 +186,16 @@ type instance XCPlugs MplPatternCompiled =
                                                     -- these are the new plugged channels.
                                                     -- Note that these do not have a polarity 
                                                     -- because it changes based on the phrase
-type instance XCCase MplPatternCompiled = KeyWordNameOcc
-type instance XCSwitch MplPatternCompiled = KeyWordNameOcc
+type instance XCCase MplPatternCompiled = ()
+type instance XCCasePattern MplPatternCompiled = XCCasePattern MplPatternCompiledCase 
+type instance XCCasePattern MplPatternCompiledCase = MplPattern MplPatternCompiledCase
+
+type instance XCSwitch MplPatternCompiled = Void
+type instance XCIf MplPatternCompiled = ()
 type instance XCHCasePhrase MplPatternCompiled  = MplConcObjDefn MplTypeCheckedPhrase
 type instance XCForkPhrase MplPatternCompiled  = [ChP MplPatternCompiled] 
 type instance XCPlugPhrase MplPatternCompiled  = ()
+type instance XCIllegalInstr MplPatternCompiled  = ()
 type instance XXCmd MplPatternCompiled = Void
 
 type instance XTypeClauseSpineExt MplPatternCompiled t = ()

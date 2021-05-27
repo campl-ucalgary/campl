@@ -31,6 +31,7 @@ import Control.Monad.State
 import Control.Arrow
 import Control.Applicative.Lift
 import Data.Functor.Compose
+import Data.Kind
 import Data.Maybe
 import Data.List
 import Data.Monoid
@@ -79,7 +80,7 @@ runPatternCompile (MplProg prog) = go
         ~(v, lg) <- runWriterT $ traverse patternCompileStmt prog
         if null lg
             then return $ Right $ MplProg v
-            else return $ Left lg
+            else return $ Left $ lg
 {-
 runPatternCompile (MplProg prog) = fmap runErrors $ getCompose go
   where
@@ -139,15 +140,15 @@ patternCompileExpr = cata go
             cases' <- sequenceOf (traversed % _2) cases
             let caseslst' = fmap (over _1 pure) cases'
                 exhstchk = patternCompileExhaustiveCheck $ fmap fst caseslst'
-            tell $ bool [_NonExhaustiveCasePatt # ()] [] exhstchk
+            tell $ bool [_NonExhaustiveECasePatt # ()] [] exhstchk
 
             ~([PVar _ u], nbdy) <- patternCompileSeqPatPhrases $ caseslst'
             return $ substituteVarIdentByExpr (u, expr') nbdy
 
         EObjCallF ann ident exprs -> EObjCall ann ident <$> sequenceA exprs
+        -- TODO: we need to check if creating records is exhaustive..
         ERecordF ann phrases -> do
             phrases' <- for phrases $ \(phrase, identt, (patts, mexpr)) -> do
-                -- let exhstchk = null patts || patternCompileExhaustiveCheck (patts :| [])
                 let exhstchk = patternCompileExhaustiveCheck (patts :| [])
                 tell $ bool [ _NonExhaustiveRecordPatt # identt] [] exhstchk
                 expr <- mexpr
@@ -178,10 +179,9 @@ patternCompileExpr = cata go
             
         ELetF ann lets expr -> ELet ann <$> (traverse patternCompileStmt lets) <*> expr
 
-        {-
+        {- We gave up on folds and unfolds
         EFoldF ann foldon phrases -> EFold ann foldon phrases
         EUnfoldF ann expr phrases -> EUnfold ann expr phrases
-        ESwitchF ann res -> ESwitch ann res
         XExprF ann -> XExpr ann
         -}
 
@@ -201,9 +201,26 @@ patternCompileFunDefn (MplFunction funName funTp funDefn) = do
 patternCompileProcessDefn ::
     PatternCompile (XProcessDefn MplTypeChecked) (XProcessDefn MplPatternCompiled)
 patternCompileProcessDefn (MplProcess procName procTp procDefn) = do
-    ncmds <- traverseOf (traversed % _2) patternCompileCmds procDefn
-    undefined
+    cmds@(cmd :| rstcmds) <- traverseOf (traversed % _2) patternCompileCmds procDefn 
+        :: _ (NonEmpty (([MplPattern MplTypeChecked], [ChIdentT], [ChIdentT]), NonEmpty (MplCmd MplPatternCompiled)))
+    -- we need to rescope all the channels to use the same variable names...
+    let cmds0ins = view (_1 % _2)  cmd
+        cmds0outs = view (_1 % _3) cmd
+        rescope ((patts, ins, outs), cmdblk) =  
+            let subTo chs chs' blk = foldr (\sub -> fmap (substituteCh sub)) blk (zip chs chs')
+            in subTo outs cmds0outs $ subTo ins cmds0ins cmdblk
+        rstcmds' = fmap rescope rstcmds
 
+        cmds' = view _2 cmd :| rstcmds'
+
+        patts = fmap (view (_1 % _1)) procDefn
+
+
+    tell $ bool [ _NonExhaustiveProcPatt # procName] [] $ patternCompileExhaustiveCheck patts
+
+    (npatts, ncmds) <- patternCompileConcPatPhrases $ NE.zip patts cmds'
+
+    return $ MplProcess procName procTp $ ((npatts, cmds0ins, cmds0outs), ncmds) :| []
 
 patternCompileCmds :: 
     PatternCompile 
@@ -219,7 +236,23 @@ patternCompileCmds = fmap NE.fromList . go . NE.toList
             (CRun ann idp seqs' ins outs:) <$> go cmds
         CClose ann chp -> (CClose ann chp:) <$> go cmds
         CHalt ann chp -> (CHalt ann chp:) <$> go cmds
-        CGet ann patt chp -> error "do @get@ later" 
+        CGet ann patt chp -> do
+            let exhstchk = patternCompileExhaustiveCheck ([patt] :| [])
+            tell $ bool [ _NonExhaustiveGet # ann ] [] exhstchk 
+            u <- freshUIdP
+            let utp = getPattType patt
+                uexpr = _EVar # (utp, u) :: MplExpr MplPatternCompiled
+                upatt = _PVar # (utp, u) :: MplPattern MplPatternCompiled
+
+            cmds'' <- go cmds >>= \cmds' -> for cmds' $ \cmd -> do
+                let k expr = do
+                        ~([PVar _ u'], expr') <- patternCompileSeqPatPhrases (([patt], expr) :| [])
+                        return $ substituteVarIdentByExpr (u', uexpr) expr'
+                traversePatternCompiledExpr k cmd
+
+            return $ CGet ann upatt chp : cmds''
+
+
         CPut ann expr chp -> do
             expr' <- patternCompileExpr expr
             (CPut ann expr' chp:) <$> go cmds
@@ -227,6 +260,7 @@ patternCompileCmds = fmap NE.fromList . go . NE.toList
             phrases' <- traverseOf (traversed % _3) patternCompileCmds phrases
             -- TODO: should do some exhaustiveness checking? 
             (CHCase ann chp phrases':) <$> go cmds
+
         CHPut ann idp chp -> 
             (CHPut ann idp chp:) <$> go cmds
 
@@ -239,26 +273,50 @@ patternCompileCmds = fmap NE.fromList . go . NE.toList
             
         CId ann chs -> (CId ann chs:) <$> go cmds
         CIdNeg ann chs -> (CIdNeg ann chs:) <$> go cmds
+
         CRace ann races -> do
             races' <- traverseOf (traversed % _2 ) patternCompileCmds races
-            (CRace ann races':) <$> go cmds
+            -- (CRace ann races':) <$> go cmds
+            return $ [CRace ann races']
+            -- @go cmds@ should be empy here
 
         -- CPlug !(XCPlug x) (CPlugPhrase x, CPlugPhrase x)
-
         CPlugs ann (phrase0, phrase1, phrases) -> do
-            ~(phrase0':phrase1':phrases') <- traverseOf (traversed % _3) patternCompileCmds $ phrase0:phrase1:phrases
+            ~(phrase0':phrase1':phrases') <- 
+                traverseOf (traversed % _3) patternCompileCmds 
+                $ phrase0:phrase1:phrases
             -- _ :: ((), ([ChIdentT], [ChIdentT]), NonEmpty (MplCmd MplTypeChecked))
-            (CPlugs ann (phrase0', phrase1', phrases'):) <$>  go cmds
-        CCase ann expr pattscmds -> do
-            pattscmds' <- traverseOf (traversed % _2) patternCompileCmds pattscmds
+            return $ [CPlugs ann (phrase0', phrase1', phrases')]
+            -- return $ (CPlugs ann (phrase0', phrase1', phrases'):) <$>  go cmds
+            -- @go cmds@ should always be empty here
 
-            undefined
+        CCase ann expr pattscmds -> do
+            expr' <- patternCompileExpr expr
+            pattscmds' <- fmap (over (mapped % _1) pure) $ traverseOf (traversed % _2) patternCompileCmds pattscmds
+            ~([PVar _ u], ncmds) <- patternCompileConcPatPhrases pattscmds'
+            let ncmds' = fmap (substituteVarIdentByExpr (u, expr')) ncmds
+
+            tell $ bool [ _NonExhaustiveCCasePatt  # () ] [] $ 
+                patternCompileExhaustiveCheck $ fmap (view _1) pattscmds'
+
+            -- (NE.toList ncmds' <>) <$> go cmds
+            return $ NE.toList ncmds' 
+            -- @go cmds@ should always be empty list here
+
+        CSwitch ann switches -> do
+            traverseOf (traversed % _2) patternCompileCmds switches
+                >>= traverseOf (traversed % _1) patternCompileExpr
+                >>= patternCompileExhaustiveCSwitchCheck 
+                >>= return . NE.toList . foldr f (pure $ CIllegalInstr ())
+            -- @go cmds@ should always be empty list here
+          where
+            f (bexpr, thenc) acceq = pure $ CIf () bexpr thenc acceq
 
 {-
-  | CCase !(XCCase x)
+  CCase !(XCCase x)
           (XMplExpr x)
           (NonEmpty (XMplPattern x, NonEmpty (MplCmd x)))
-  | CSwitch !(XCSwitch x)
+  CSwitch !(XCSwitch x)
             (NonEmpty (XMplExpr x, NonEmpty (MplCmd x)))
 -}
 
@@ -273,6 +331,18 @@ patternCompileExhaustiveESwitchCheck ::
 patternCompileExhaustiveESwitchCheck switches = 
      case trueandpast of
         [] -> tell [_NonExhaustiveSwitch # ()] >> return switches
+        trueres:_ -> return $ NE.fromList $ notrue <> [trueres]
+  where
+    (notrue, trueandpast) = NE.break (fromMaybe False . preview (_1 % _EBool % _2)) switches
+
+{- essentially duplciated code -}
+patternCompileExhaustiveCSwitchCheck ::
+    PatternCompile 
+        (NonEmpty (MplExpr MplPatternCompiled, NonEmpty (MplCmd MplPatternCompiled))) 
+        (NonEmpty (MplExpr MplPatternCompiled, NonEmpty (MplCmd MplPatternCompiled)))
+patternCompileExhaustiveCSwitchCheck switches = 
+     case trueandpast of
+        [] -> tell [_NonExhaustiveCSwitch # ()] >> return switches
         trueres:_ -> return $ NE.fromList $ notrue <> [trueres]
   where
     (notrue, trueandpast) = NE.break (fromMaybe False . preview (_1 % _EBool % _2)) switches
@@ -299,15 +369,31 @@ patternCompileExhaustiveCheck = and . fmap go . transpose . NE.toList
         , has (folded % _PNull) patts
 
         -- each of the vertical lines of matches on records must be exhaustive as well.
+        -- okay actually there is a bug here it is as follows:
+        --      - If you have 
+        --              (P0 := Cons(a,b)) -> ...
+        --              (P1 := MyNil) -> ...
+        --        it will think this is exhaustive, so we need to update it so it checks if the patterns
+        --          are exhaustive individually by the destructors.
+        --          TODO
+        --      - THIS HAS BEEN FIXED
         , and 
-            [ has (folded % _PRecord) patts
+            [ isJust mdts
+            , getAll $ foldMap (All . patternCompileExhaustiveCheck . NE.fromList . transpose . pure) dtspatts'
+            ]
+
+        -- tuple 
+        , and 
+            [ isJust mtuple
+            , patternCompileExhaustiveCheck $ NE.fromList tuple
             ]
 
         -- we can actually exhaust all the bool types 
         -- (unlike Chars and Ints.. we just assume it is impossible to exhaust them completely)
         , and 
-            [ getAll $ foldMapOf (folded % _PBool % _2) All patts
-            , getAll $ foldMapOf (folded % _PBool % _2) (All . not) patts
+            [ isJust $ traverse  (preview _PBool) patts
+            , andOf (folded % _PBool % _2) patts
+            , andOf (folded % _PBool % _2 % to not) patts
             ]
             
         -- each constructor is present in this vertical line of patterns, and each of the patterns
@@ -319,6 +405,7 @@ patternCompileExhaustiveCheck = and . fmap go . transpose . NE.toList
             ]
         ]
       where
+        -- constructor
         mcts :: Maybe 
             [ 
                 ( (MplTypePhrase MplTypeChecked ('SeqObjTag 'DataDefnTag) , XMplType MplTypeChecked)
@@ -326,9 +413,8 @@ patternCompileExhaustiveCheck = and . fmap go . transpose . NE.toList
                 , [MplPattern (MplPass 'TypeChecked)])
             ] 
         mcts = traverse (preview _PConstructor) patts
-
         cts = fromJust mcts
-
+        
         groupedcts ::
             [ 
                 NonEmpty
@@ -338,9 +424,46 @@ patternCompileExhaustiveCheck = and . fmap go . transpose . NE.toList
                 )
             ]
         groupedcts = NE.groupBy ((==) `on` view _2) $ sortBy (compare `on` view _2) cts
-
         tpclause = head cts ^. _1 % _1 % typePhraseExt :: MplTypeClause MplTypeChecked ('SeqObjTag 'DataDefnTag)
         allphrases = tpclause ^. typeClausePhrases
+
+        -- destructors
+        mdts :: Maybe
+            [ 
+                ( (Location, XMplType MplTypeChecked)
+                , NonEmpty
+                    ( MplTypePhrase MplTypeChecked ('SeqObjTag 'CodataDefnTag)
+                    , IdentT
+                    , MplPattern (MplPass 'TypeChecked)
+                    )
+                )
+            ]
+        mdts = traverse (preview _PRecord) patts
+        dts = fromJust mdts
+
+        {- Note: 
+         -      - this will get the destructor name, and the patterns
+         -      - then, it will put all the patterns for each destructor in a list
+         -}
+        dtspatts = dts 
+            & mapped %~ view _2
+            & mapped %~ NE.toList 
+            & mapped % mapped %~ (view _2 &&& view _3)
+        dtspatts' = Map.elems
+            $ flip execState Map.empty
+            $ forOf (traversed % traversed) dtspatts 
+            $ \(dts, patt) -> modify (Map.alter (Just . maybe [patt] (patt:)) dts)
+
+        -- tuple
+        mtuple :: Maybe
+               [((Location, XMplType MplTypeChecked),
+                 (MplPattern (MplPass 'TypeChecked),
+                  MplPattern (MplPass 'TypeChecked),
+                  [MplPattern (MplPass 'TypeChecked)]))]
+        mtuple = traverse (preview _PTuple) patts
+        tuple = fromJust (traverse (preview _PTuple) patts)
+            & mapped %~ view _2
+            & mapped %~ \(a,b,c) -> a:b:c
 
 
 {- | Pattern compiles a pattern phrase i.e., this will pattern compile something like
@@ -351,12 +474,13 @@ patternCompileExhaustiveCheck = and . fmap go . transpose . NE.toList
 @
 to replace the patterns with variables and translate them into cases in the final expression.
 
-TODO: still need tuples
 -}
-patternCompileSeqPatPhrases  ::
-    PatternCompile 
-        (NonEmpty ([MplPattern MplTypeChecked], MplExpr MplPatternCompiled)) 
-        ([MplPattern MplPatternCompiled], MplExpr MplPatternCompiled)
+patternCompileSeqPatPhrases ::
+    forall s m .
+    ( MonadState s m
+    , HasUniqueSupply s ) =>
+    (NonEmpty ([MplPattern MplTypeChecked], MplExpr MplPatternCompiled)) -> 
+    m ([MplPattern MplPatternCompiled], MplExpr MplPatternCompiled)
 patternCompileSeqPatPhrases pattphrases = 
     -- assert that all the patterns have the same length
     assert ((length $ NE.group $ fmap (length . fst) pattphrases) == 1) $ do
@@ -388,7 +512,6 @@ patternCompileSeqPatPhrases pattphrases =
         -- the case when all patts are of the same type
         _ :| [] -> fmap (fromJust . asum) 
             $ sequenceA 
-                {-
                 [ varrule
                 , ctersrule
                 , dstersrule
@@ -397,24 +520,18 @@ patternCompileSeqPatPhrases pattphrases =
                 , boolrule
                 , charrule
                 ]
-                -}
-                [ varrule
-                , ctersrule
-                , dstersrule
-                ]
           where
             varrule :: _ (Maybe (MplExpr MplPatternCompiled))
-            -- varrule = sequenceA $ traverse ( undefined +++ preview (_1 %_PVar % _2)) pattheads <&> g
-            varrule = sequenceA $ traverse (f . fst) pattheads <&> g
+            varrule = sequenceA $ traverse (match . fst) pattheads <&> f
               where
-                f :: MplPattern MplTypeChecked -> Maybe (Either () IdentT)
-                f patt
+                match :: MplPattern MplTypeChecked -> Maybe (Either () IdentT)
+                match patt
                     | Just identt <- patt ^? _PVar % _2 = _Just % _Right # identt
                     | Just _ <- patt ^? _PNull = _Just % _Left # ()
                     | otherwise = Nothing
 
-                g :: NonEmpty (Either () IdentT) -> _ (MplExpr MplPatternCompiled)
-                g vars = go 
+                f :: NonEmpty (Either () IdentT) -> m (MplExpr MplPatternCompiled)
+                f vars = go 
                     us 
                     (NE.toList $ NE.zipWith 
                         h
@@ -444,7 +561,7 @@ patternCompileSeqPatPhrases pattphrases =
                             , IdentT
                             , [MplPattern (MplPass 'TypeChecked)])
                         )
-                match =  traverse (preview (_1 % _PConstructor))
+                match = traverse (preview (_1 % _PConstructor))
 
                 f :: NonEmpty 
                     ( (MplTypePhrase MplTypeChecked ('SeqObjTag 'DataDefnTag), XMplType MplTypeChecked)
@@ -488,7 +605,7 @@ patternCompileSeqPatPhrases pattphrases =
                             let patttail' = patttail & _1 %~ (cterpatts<>)
                             in acc & at identt %~ Just . maybe ( patttail' :| [] ) (NE.cons patttail')
 
-            {- There's some somewhat complicated interactions going on here.. 
+            {- There's some somewhat complicated interactions going on here (this simlarly occurs with the tuple).. 
              - Since we did not choose to group based on destructors, we know that when 
              - we actually do get to a destructor case, this should:
              -          - be of length exactly 1 (otherwise we would go to the catch all case 
@@ -497,6 +614,11 @@ patternCompileSeqPatPhrases pattphrases =
             dstersrule :: _ (Maybe (MplExpr MplPatternCompiled))
             dstersrule = sequenceA $ match patts <&> f
               where
+                match :: 
+                    [([MplPattern MplTypeChecked], MplExpr MplPatternCompiled)] -> 
+                    Maybe (((Location, MplType MplTypeChecked), NonEmpty
+                      (MplTypePhrase MplTypeChecked ('SeqObjTag 'CodataDefnTag), IdentT,
+                       MplPattern (MplPass 'TypeChecked))), ([MplPattern MplTypeChecked], MplExpr MplPatternCompiled))
                 match [(fstpatt:remainingpatts, resexpr)] = (,(remainingpatts, resexpr)) <$> fstpatt ^? _PRecord
                 match _ = Nothing
 
@@ -519,21 +641,34 @@ patternCompileSeqPatPhrases pattphrases =
                   where
                     pattsubs = recordphrases & mapped %~ RecordSub u . (view _1 &&& view _2)
                     pattphrases = recordphrases & mapped %~ view _3
-            {-
-            -- TODO: Put this in.. need to add a special projection operator in the AST as well.
+
             tuplerule :: _ (Maybe (MplExpr MplPatternCompiled))
-            tuplerule = sequenceA $ traverse (preview (_1 % _PTuple)) pattheads <&> f
+            tuplerule = sequenceA $ match patts <&> f
               where
-                f :: NonEmpty 
-                    ( (Location, XMplType MplTypeChecked)
-                    , 
-                        ( MplPattern (MplPass 'TypeChecked)
-                        , MplPattern (MplPass 'TypeChecked)
-                        , [MplPattern (MplPass 'TypeChecked)]
+                match [(fstpatt:remainingpatts, resexpr)] = (,(remainingpatts, resexpr)) <$> fstpatt ^? _PTuple
+                match _ = Nothing
+
+                f :: 
+                    ( 
+                        ( (Location, XMplType MplTypeChecked)
+                        , 
+                            ( MplPattern (MplPass 'TypeChecked)
+                            , MplPattern (MplPass 'TypeChecked)
+                            , [MplPattern (MplPass 'TypeChecked)]
+                            )
                         )
-                    ) -> 
-                    _ (MplExpr MplPatternCompiled)
-                f = error "tuples not implemented yet"
+                    , ([MplPattern MplTypeChecked], MplExpr MplPatternCompiled)
+                    ) -> _ (MplExpr MplPatternCompiled)
+                f (((_loc, TypeBuiltIn (TypeTupleF _ (ty0, ty1, tys)))
+                    , (patt0, patt1, patts))
+                    , (remainingpatts, remexpr)) = 
+                        go (tuplesubs ++ us) [(tuplespatts ++ remainingpatts, remexpr)] mexpr
+                  where
+                    tuplesubs = zipWith (curry (TupleSub u)) (ty0:ty1:tys) [0..]
+                    tuplespatts = patt0 : patt1 : patts
+
+                -- TOOD change this to an exception later
+                f _ = error "Error in compilation of pattern matching -- tuple is not a tuple type"
 
             {- constant rules. TODO: in the future, since the strucutre is the same for all three of these,
              - modify the AST so that it is just ONE constructor for ALL built in types like this. 
@@ -546,28 +681,25 @@ patternCompileSeqPatPhrases pattphrases =
                     $ NE.groupBy1 ((==) `on` view (_1 % _2)) 
                     $ NE.zip ints patttails
 
-                g :: NonEmpty
-                    (
-                        ( ( Location , ([TypeT], [MplType MplTypeChecked], MplType MplTypeChecked))
-                        , Int
-                        )
+                g :: NonEmpty 
+                    ( ((Location, MplType MplTypeChecked), Int)
                     , ([MplPattern MplTypeChecked], MplExpr MplPatternCompiled)
                     ) -> 
                     MplExpr MplPatternCompiled -> 
                     _ (MplExpr MplPatternCompiled)
                 g ints accexpr = do 
-                    let hints = NE.head ints -- head ints
+                    let hints = NE.head ints 
                         ccond = 
                             _EPOps #
-                                ( ([], [], _TypeBoolF # Nothing)
+                                ( _TypeBoolF # Nothing
                                 , PrimitiveEq
-                                , _EVar # swap u
+                                , getExprFromSubstitutable u
                                 , _EInt # (hints ^. _1 % _1 % _2, hints ^. _1 % _2)
                                 )
                     thenc <- go us (NE.toList $ ints & mapped %~ view _2) mexpr
                     return $ EIf (getExprType thenc) ccond thenc accexpr 
 
-            -- duplicated code with the int case essentially
+            {- duplicted code from intrule for bool and char-}
             charrule :: _ (Maybe (MplExpr MplPatternCompiled))
             charrule = sequenceA $ traverse (preview (_1 % _PChar)) pattheads <&> f
               where
@@ -576,11 +708,8 @@ patternCompileSeqPatPhrases pattphrases =
                     $ NE.groupBy1 ((==) `on` view (_1 % _2)) 
                     $ NE.zip ints patttails
 
-                g :: NonEmpty
-                    (
-                        ( ( Location , ([TypeT], [MplType MplTypeChecked], MplType MplTypeChecked))
-                        , Char
-                        )
+                g :: NonEmpty 
+                    ( ((Location, MplType MplTypeChecked), Char)
                     , ([MplPattern MplTypeChecked], MplExpr MplPatternCompiled)
                     ) -> 
                     MplExpr MplPatternCompiled -> 
@@ -589,15 +718,14 @@ patternCompileSeqPatPhrases pattphrases =
                     let hints = NE.head ints -- head ints
                         ccond = 
                             _EPOps #
-                                ( ([], [], _TypeBoolF # Nothing)
+                                ( _TypeCharF # Nothing
                                 , PrimitiveEq
-                                , _EVar # swap u
+                                , getExprFromSubstitutable u
                                 , _EChar # (hints ^. _1 % _1 % _2, hints ^. _1 % _2)
                                 )
                     thenc <- go us (NE.toList $ ints & mapped %~ view _2) mexpr
                     return $ EIf (getExprType thenc) ccond thenc accexpr 
 
-            -- duplicated code with the int case essentially
             boolrule :: _ (Maybe (MplExpr MplPatternCompiled))
             boolrule = sequenceA $ traverse (preview (_1 % _PBool)) pattheads <&> f
               where
@@ -606,11 +734,8 @@ patternCompileSeqPatPhrases pattphrases =
                     $ NE.groupBy1 ((==) `on` view (_1 % _2)) 
                     $ NE.zip ints patttails
 
-                g :: NonEmpty
-                    (
-                        ( ( Location , ([TypeT], [MplType MplTypeChecked], MplType MplTypeChecked))
-                        , Bool
-                        )
+                g :: NonEmpty 
+                    ( ((Location, MplType MplTypeChecked), Bool)
                     , ([MplPattern MplTypeChecked], MplExpr MplPatternCompiled)
                     ) -> 
                     MplExpr MplPatternCompiled -> 
@@ -619,14 +744,13 @@ patternCompileSeqPatPhrases pattphrases =
                     let hints = NE.head ints -- head ints
                         ccond = 
                             _EPOps #
-                                ( ([], [], _TypeBoolF # Nothing)
+                                ( _TypeBoolF # Nothing
                                 , PrimitiveEq
-                                , _EVar # swap u
+                                , getExprFromSubstitutable u
                                 , _EBool # (hints ^. _1 % _1 % _2, hints ^. _1 % _2)
                                 )
                     thenc <- go us (NE.toList $ ints & mapped %~ view _2) mexpr
                     return $ EIf (getExprType thenc) ccond thenc accexpr 
-            -}
                 
         _ -> foldrM (go (u:us)) mexpr $ fmap NE.toList groupedpatts 
       where
@@ -667,5 +791,316 @@ patternCompileSeqPatPhrases pattphrases =
                 -- , p' (has _PTuple)
                 ]
 
-            
+
+
+{- Essentially the same duplciated code from above.. this is a bit unfortunate from the way the AST is structured-}
+patternCompileConcPatPhrases ::
+    forall s m .
+    ( MonadState s m
+    , HasUniqueSupply s ) =>
+    (NonEmpty ([MplPattern MplTypeChecked], NonEmpty (MplCmd MplPatternCompiled))) -> 
+    m ([MplPattern MplPatternCompiled], NonEmpty (MplCmd MplPatternCompiled))
+patternCompileConcPatPhrases pattphrases = 
+    -- assert that all the patterns have the same length
+    assert ((length $ NE.group $ fmap (length . fst) pattphrases) == 1) $ do
+        -- get the number of patterns
+        let numpats = length $ fst $ NE.head pattphrases 
+        -- then, we want to replace all the patterns with these unique pattern variables
+        us <- replicateM numpats freshUIdP 
+        -- indeed, we maintain the type information
+        let usandtp = zipWith (curry (second getPattType)) us (fst . NE.head $ pattphrases) 
+            (patts :: [MplPattern MplPatternCompiled]) = fmap (review _PVar . swap) usandtp
+
+        pattexpr <- go (map VarSub usandtp) (NE.toList pattphrases) (CIllegalInstr () :| []) 
+
+        return $ (patts, pattexpr)  
+  where
+    -- the type of the codomain 
+    go :: 
+        [Substitutable]  -> 
+        [([MplPattern MplTypeChecked], NonEmpty (MplCmd MplPatternCompiled))] -> 
+        NonEmpty (MplCmd MplPatternCompiled) -> 
+        _ (NonEmpty (MplCmd MplPatternCompiled))
+    go [] patts mexpr 
+        | null patts = pure $ mexpr
+        | otherwise = pure $ snd $ head patts 
+    go (u:us) patts mexpr = case groupedpatts of
+        -- the case when all patts are of the same type
+        _ :| [] -> fmap (fromJust . asum) 
+            $ sequenceA 
+                [ varrule
+                , ctersrule
+                , dstersrule
+                , tuplerule
+                , intrule
+                , boolrule
+                , charrule
+                ]
+          where
+            varrule :: _ (Maybe (NonEmpty (MplCmd MplPatternCompiled)))
+            varrule = sequenceA $ traverse (match . fst) pattheads <&> f
+              where
+                match :: MplPattern MplTypeChecked -> Maybe (Either () IdentT)
+                match patt
+                    | Just identt <- patt ^? _PVar % _2 = _Just % _Right # identt
+                    | Just _ <- patt ^? _PNull = _Just % _Left # ()
+                    | otherwise = Nothing
+
+                f :: NonEmpty (Either () IdentT) -> m (NonEmpty (MplCmd MplPatternCompiled))
+                f vars = go 
+                    us 
+                    (NE.toList $ NE.zipWith 
+                        h
+                        vars 
+                        patttails
+                        ) 
+                    mexpr
+
+                {- Either is
+                 -      Left: a null pattern @_@
+                 -      Right: a var pattern @u@
+                 -}
+                h :: Either () IdentT -> 
+                    ([MplPattern MplTypeChecked], NonEmpty (MplCmd MplPatternCompiled)) -> 
+                    ([MplPattern MplTypeChecked], NonEmpty (MplCmd MplPatternCompiled))
+                h (Right v) pattsexpr = pattsexpr & _2 % mapped %~ substitute (v,u)
+                h _ pattsexpr = pattsexpr 
+
+            ctersrule :: _ (Maybe (NonEmpty (MplCmd MplPatternCompiled)))
+            ctersrule = sequenceA $ match pattheads <&> f
+              where
+                match :: 
+                    NonEmpty (MplPattern MplTypeChecked, NonEmpty (MplCmd MplPatternCompiled)) -> 
+                    Maybe 
+                        ( NonEmpty 
+                            ( (MplTypePhrase MplTypeChecked ('SeqObjTag 'DataDefnTag), MplType MplTypeChecked)
+                            , IdentT
+                            , [MplPattern (MplPass 'TypeChecked)])
+                        )
+                match = traverse (preview (_1 % _PConstructor))
+
+                f :: NonEmpty 
+                    ( (MplTypePhrase MplTypeChecked ('SeqObjTag 'DataDefnTag), XMplType MplTypeChecked)
+                    , IdentT
+                    , [MplPattern (MplPass 'TypeChecked)]) -> _ (NonEmpty (MplCmd MplPatternCompiled))
+                f cters = fmap (pure . CCase () (getExprFromSubstitutable u) . NE.fromList) 
+                    $ for (tpclause ^. typeClausePhrases) $ \phrase -> do
+                        usandtps <- traverse (sequenceOf _1 . (freshUIdP,)) 
+                            $ phrase ^. typePhraseFrom
+                        -- let patt' = PSimpleConstructor (phrase, snd nu) (phrase ^. typePhraseName) $ usandtps
+                        let patt' = PSimpleConstructor 
+                                ( phrase
+                                , getDataPhraseTypeResult phrase
+                                ) 
+                                (phrase ^. typePhraseName) 
+                                $ usandtps
+                        case ctersmap ^. at (phrase ^. typePhraseName) of
+                            Just cternpatts -> (patt',) <$> 
+                                go (map VarSub usandtps ++ us) (NE.toList cternpatts) mexpr
+                            Nothing -> pure $ (patt',) mexpr
+                    
+                  where
+                    tpclause = NE.head cters ^. _1 % _1 % typePhraseExt :: MplTypeClause MplTypeChecked ('SeqObjTag 'DataDefnTag)
+                    ctersmap 
+                        = foldl' g Map.empty 
+                        $ NE.reverse  -- need to reverse for the order of the map
+                        $ NE.zip cters patttails
+                      where
+                        g :: 
+                            Map _ _ -> 
+                            ( 
+                                ( ( MplTypePhrase MplTypeChecked ('SeqObjTag 'DataDefnTag)
+                                  , MplType MplTypeChecked
+                                  )
+                                , IdentT
+                                , [MplPattern (MplPass 'TypeChecked)]
+                                )
+                            , ([MplPattern MplTypeChecked], NonEmpty (MplCmd MplPatternCompiled))) -> 
+                            Map _ _
+                        g acc ((phrase, identt, cterpatts), patttail) = 
+                            let patttail' = patttail & _1 %~ (cterpatts<>)
+                            in acc & at identt %~ Just . maybe ( patttail' :| [] ) (NE.cons patttail')
+
+            {- There's some somewhat complicated interactions going on here (this simlarly occurs with the tuple).. 
+             - Since we did not choose to group based on destructors, we know that when 
+             - we actually do get to a destructor case, this should:
+             -          - be of length exactly 1 (otherwise we would go to the catch all case 
+             -              of mixed patterns and partition based on the groups)
+             -}
+            dstersrule :: _ (Maybe (NonEmpty (MplCmd MplPatternCompiled)))
+            dstersrule = sequenceA $ match patts <&> f
+              where
+                match :: 
+                    [([MplPattern MplTypeChecked], NonEmpty (MplCmd MplPatternCompiled))] -> 
+                    Maybe (((Location, MplType MplTypeChecked), NonEmpty
+                      (MplTypePhrase MplTypeChecked ('SeqObjTag 'CodataDefnTag), IdentT,
+                       MplPattern (MplPass 'TypeChecked))), ([MplPattern MplTypeChecked], NonEmpty (MplCmd MplPatternCompiled)))
+                match [(fstpatt:remainingpatts, resexpr)] = (,(remainingpatts, resexpr)) <$> fstpatt ^? _PRecord
+                match _ = Nothing
+
+                f :: 
+                    ( ( (Location, XMplType MplTypeChecked)
+                      , NonEmpty
+                            ( MplTypePhrase MplTypeChecked ('SeqObjTag 'CodataDefnTag)
+                            , IdentT
+                            , MplPattern (MplPass 'TypeChecked)
+                            )
+                      )
+                    , ([MplPattern MplTypeChecked], NonEmpty (MplCmd MplPatternCompiled))
+                    ) -> 
+                    _ (NonEmpty (MplCmd MplPatternCompiled))
+                f (((_loc, _clausetp), recordphrases), (remainingpatts, resexpr)) = 
+                    go 
+                        ( NE.toList pattsubs ++ us)
+                        [ ( NE.toList pattphrases ++ remainingpatts, resexpr) ]
+                        mexpr
+                  where
+                    pattsubs = recordphrases & mapped %~ RecordSub u . (view _1 &&& view _2)
+                    pattphrases = recordphrases & mapped %~ view _3
+
+            tuplerule :: _ (Maybe (NonEmpty (MplCmd MplPatternCompiled)))
+            tuplerule = sequenceA $ match patts <&> f
+              where
+                match [(fstpatt:remainingpatts, resexpr)] = (,(remainingpatts, resexpr)) <$> fstpatt ^? _PTuple
+                match _ = Nothing
+
+                f :: 
+                    ( 
+                        ( (Location, XMplType MplTypeChecked)
+                        , 
+                            ( MplPattern (MplPass 'TypeChecked)
+                            , MplPattern (MplPass 'TypeChecked)
+                            , [MplPattern (MplPass 'TypeChecked)]
+                            )
+                        )
+                    , ([MplPattern MplTypeChecked], NonEmpty (MplCmd MplPatternCompiled))
+                    ) -> _ (NonEmpty (MplCmd MplPatternCompiled))
+                f (((_loc, TypeBuiltIn (TypeTupleF _ (ty0, ty1, tys)))
+                    , (patt0, patt1, patts))
+                    , (remainingpatts, remexpr)) = 
+                        go (tuplesubs ++ us) [(tuplespatts ++ remainingpatts, remexpr)] mexpr
+                  where
+                    tuplesubs = zipWith (curry (TupleSub u)) (ty0:ty1:tys) [0..]
+                    tuplespatts = patt0 : patt1 : patts
+
+                -- TOOD change this to an exception later
+                f _ = error "Error in compilation of pattern matching -- tuple is not a tuple type"
+
+            {- constant rules. TODO: in the future, since the strucutre is the same for all three of these,
+             - modify the AST so that it is just ONE constructor for ALL built in types like this. 
+             -}
+            intrule :: _ (Maybe (NonEmpty (MplCmd MplPatternCompiled)))
+            intrule = sequenceA $ traverse (preview (_1 % _PInt)) pattheads <&> f
+              where
+                f :: NonEmpty ((Location, XMplType MplTypeChecked), Int) -> _ (NonEmpty (MplCmd MplPatternCompiled))
+                f ints = foldrM g mexpr  
+                    $ NE.groupBy1 ((==) `on` view (_1 % _2)) 
+                    $ NE.zip ints patttails
+
+                g :: NonEmpty 
+                    ( ((Location, MplType MplTypeChecked), Int)
+                    , ([MplPattern MplTypeChecked], NonEmpty (MplCmd MplPatternCompiled))
+                    ) -> 
+                    NonEmpty (MplCmd MplPatternCompiled) -> 
+                    _ (NonEmpty (MplCmd MplPatternCompiled))
+                g ints accexpr = do 
+                    let hints = NE.head ints 
+                        ccond = 
+                            _EPOps #
+                                ( _TypeBoolF # Nothing
+                                , PrimitiveEq
+                                , getExprFromSubstitutable u
+                                , _EInt # (hints ^. _1 % _1 % _2, hints ^. _1 % _2)
+                                )
+                    thenc <- go us (NE.toList $ ints & mapped %~ view _2) mexpr
+                    return $ pure $ CIf () ccond thenc accexpr 
+
+            {- duplicted code from intrule for bool and char-}
+            charrule :: _ (Maybe (NonEmpty (MplCmd MplPatternCompiled)))
+            charrule = sequenceA $ traverse (preview (_1 % _PChar)) pattheads <&> f
+              where
+                f :: NonEmpty ((Location, XMplType MplTypeChecked), Char) -> _ (NonEmpty (MplCmd MplPatternCompiled))
+                f ints = foldrM g mexpr  
+                    $ NE.groupBy1 ((==) `on` view (_1 % _2)) 
+                    $ NE.zip ints patttails
+
+                g :: NonEmpty 
+                    ( ((Location, MplType MplTypeChecked), Char)
+                    , ([MplPattern MplTypeChecked], NonEmpty (MplCmd MplPatternCompiled))
+                    ) -> 
+                    NonEmpty (MplCmd MplPatternCompiled) -> 
+                    _ (NonEmpty (MplCmd MplPatternCompiled))
+                g ints accexpr = do 
+                    let hints = NE.head ints -- head ints
+                        ccond = 
+                            _EPOps #
+                                ( _TypeCharF # Nothing
+                                , PrimitiveEq
+                                , getExprFromSubstitutable u
+                                , _EChar # (hints ^. _1 % _1 % _2, hints ^. _1 % _2)
+                                )
+                    thenc <- go us (NE.toList $ ints & mapped %~ view _2) mexpr
+                    return $ pure $ CIf () ccond thenc accexpr 
+
+            boolrule :: _ (Maybe (NonEmpty (MplCmd MplPatternCompiled)))
+            boolrule = sequenceA $ traverse (preview (_1 % _PBool)) pattheads <&> f
+              where
+                f :: NonEmpty ((Location, XMplType MplTypeChecked), Bool) -> _ (NonEmpty (MplCmd MplPatternCompiled))
+                f ints = foldrM g mexpr  
+                    $ NE.groupBy1 ((==) `on` view (_1 % _2)) 
+                    $ NE.zip ints patttails
+
+                g :: NonEmpty 
+                    ( ((Location, MplType MplTypeChecked), Bool)
+                    , ([MplPattern MplTypeChecked], NonEmpty (MplCmd MplPatternCompiled))
+                    ) -> 
+                    NonEmpty (MplCmd MplPatternCompiled) -> 
+                    _ (NonEmpty (MplCmd MplPatternCompiled))
+                g ints accexpr = do 
+                    let hints = NE.head ints -- head ints
+                        ccond = 
+                            _EPOps #
+                                ( _TypeBoolF # Nothing
+                                , PrimitiveEq
+                                , getExprFromSubstitutable u
+                                , _EBool # (hints ^. _1 % _1 % _2, hints ^. _1 % _2)
+                                )
+                    thenc <- go us (NE.toList $ ints & mapped %~ view _2) mexpr
+                    return $ pure $ CIf () ccond thenc accexpr 
+                
+        _ -> foldrM (go (u:us)) mexpr $ fmap NE.toList groupedpatts 
+      where
+        -- Note: this is quite confusing that both 'pattheads' and 'pattails' both include the same expression.. honestly this was kind of a bad decision in the beginning and makes the code a bit more confusing than it should be.
+        pattheads :: NonEmpty (MplPattern MplTypeChecked, NonEmpty (MplCmd MplPatternCompiled))
+        patttails :: NonEmpty ([MplPattern MplTypeChecked], NonEmpty (MplCmd MplPatternCompiled))
+        (pattheads, patttails) = NE.unzip 
+            $ fmap (\(~(p:ps), expr) -> ((p, expr), (ps, expr))) 
+            $ NE.fromList patts
+
+        {-
+         - groups the patterns based on their "type" i.e., put them in groups of if they are
+         -      - variables
+         -      - constructors
+         -      - records
+         -      - tuples
+         -}
+        groupedpatts :: NonEmpty (NonEmpty ([MplPattern MplTypeChecked], NonEmpty (MplCmd MplPatternCompiled)))
+        groupedpatts =  NE.groupBy1 p $ NE.fromList patts
+          where
+            p :: 
+                ([MplPattern MplTypeChecked], NonEmpty (MplCmd MplPatternCompiled)) -> 
+                ([MplPattern MplTypeChecked], NonEmpty (MplCmd MplPatternCompiled)) -> 
+                Bool
+            p a b =  let p' predicate = ((&&) `on`  predicate . head . fst) a b in or 
+                [ p' (has _PVar) || p' (has _PNull)
+                , p' (has _PConstructor)
+
+                -- built in primitive types
+                , p' (has _PInt)
+                , p' (has _PChar)
+                , p' (has _PBool)
+
+                -- , p' (has _PRecord)
+                -- , p' (has _PTuple)
+                ]
 

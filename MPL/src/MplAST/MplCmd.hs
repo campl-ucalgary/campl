@@ -61,8 +61,10 @@ type family XCRace x
 type family XCPlug x
 type family XCPlugs x
 type family XCCase x
+type family XCCasePattern x
 type family XCSwitch x
 type family XCIf x
+type family XCIllegalInstr x
 
 type family XXCmd x
 
@@ -101,6 +103,7 @@ type ForallProcessCommand (c :: Type -> Constraint) x =
     , c (XCPlug x)
     , c (XCPlugs x)
     , c (XCCase x)
+    , c (XCCasePattern x)
     , c (XCSwitch x)
     , c (XCIf x)
 
@@ -109,6 +112,7 @@ type ForallProcessCommand (c :: Type -> Constraint) x =
     , c (XCHCasePhrase x)
     , c (XCForkPhrase x)
     , c (XCPlugPhrase x)
+    , c (XCIllegalInstr x)
     )
 type CForkPhrase x = 
     (ChP x, XCForkPhrase x, NonEmpty (MplCmd x))
@@ -173,13 +177,14 @@ data MplCmd x =
     | CCase 
         !(XCCase x) 
         (XMplExpr x) 
-        (NonEmpty (XMplPattern x, NonEmpty (MplCmd x)))
+        (NonEmpty (XCCasePattern x, NonEmpty (MplCmd x)))
         {-
         { _cCase :: Expr pattern letdef typedef seqcalleddef ident
         , _cCases :: [(pattern, ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident)] }
         -}
     | CSwitch !(XCSwitch x) (NonEmpty (XMplExpr x, NonEmpty (MplCmd x)))
     | CIf !(XCIf x) (XMplExpr x) (NonEmpty (MplCmd x)) (NonEmpty (MplCmd x))
+    | CIllegalInstr (XCIllegalInstr x)
         -- { _cSwitches :: NonEmpty (Expr pattern letdef typedef seqcalleddef ident, ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident) }
 
 deriving instance ( ForallProcessCommand Show x ) => Show (MplCmd x)

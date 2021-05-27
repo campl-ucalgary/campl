@@ -368,6 +368,7 @@ class MplPattToBnfc t x where
 instance 
     ( PPrint (IdP x) y 
     , MplSimpleConstructorArgsToBnfc (XPSimpleConstructorArgs x) y
+    , MplPattToBnfc (XCCasePattern x) y
     ) => MplPattToBnfc (MplPattern x) y where
     mplPattToBnfc proxy = f
       where
@@ -691,6 +692,7 @@ instance
     , PPrint (IdP x) y
     , PPrint (ChP x) y
     , MplExprToBnfc (XMplExpr x) y
+    , MplPattToBnfc (XCCasePattern x) y
     , MplPattToBnfc (XMplPattern x) y) => MplCmdToBnfc (MplCmd x) y where
     mplCmdToBnfc proxy = f
       where
@@ -736,6 +738,9 @@ instance
                 (mplExprToBnfc proxy expr)
                 (mplCmdsToBnfc proxy cthen)
                 (mplCmdsToBnfc proxy celse)
+        -- TODO: add something in
+        f (CIllegalInstr _) = 
+            B.PROCESS_RUN (toBnfcIdent proxy "ILLEGALINSTR") bnfcKeyword [] [] [] bnfcKeyword 
 
 -- we can configure a fork phrase to have a context..
 class MplToForkPhrase t y where
@@ -880,6 +885,7 @@ instance MplPrintConstraints x y => PPrint (MplProg x) y where
 instance 
     ( PPrint (IdP x) y
     , MplPattToBnfc (XMplPattern x) y
+    , MplPattToBnfc (XCCasePattern x) y
     , MplSimpleConstructorArgsToBnfc (XPSimpleConstructorArgs x) y
     ) => PPrint (MplPattern x) y where
     pprint proxy = B.printTree . mplPattToBnfc proxy
@@ -891,6 +897,7 @@ instance
     , PPrint (ChP x) y
     , MplExprToBnfc (XMplExpr x) y
     , MplPattToBnfc (XMplPattern x) y
+    , MplPattToBnfc (XCCasePattern x) y
     ) => PPrint (MplCmd x) y where
     pprint proxy = B.printTree . mplCmdToBnfc proxy
 
