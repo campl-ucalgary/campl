@@ -231,38 +231,38 @@ type instance XTypeVar MplPatternCompiled =
     Maybe (XMplKind MplPatternCompiled)
 type instance XTypeWithNoArgs MplPatternCompiled = 
     MplObjectDefn MplPatternCompiled
-type instance XXType MplPatternCompiled = Void
-type instance XTypeIntF MplPatternCompiled = Maybe NameOcc
-type instance XTypeCharF MplPatternCompiled = Maybe NameOcc
-type instance XTypeDoubleF MplPatternCompiled = Maybe NameOcc
-type instance XTypeStringF MplPatternCompiled = Maybe NameOcc
-type instance XTypeUnitF MplPatternCompiled = Maybe NameOcc
-type instance XTypeBoolF MplPatternCompiled = Maybe NameOcc
-type instance XTypeListF MplPatternCompiled = Maybe NameOcc
-type instance XTypeTupleF MplPatternCompiled = Maybe NameOcc
+type instance XXType MplPatternCompiled = XXType MplTypeChecked
+type instance XTypeIntF MplPatternCompiled = XTypeIntF MplTypeChecked
+type instance XTypeCharF MplPatternCompiled = XTypeCharF MplTypeChecked
+type instance XTypeDoubleF MplPatternCompiled = XTypeDoubleF MplTypeChecked
+type instance XTypeStringF MplPatternCompiled = XTypeStringF MplTypeChecked
+type instance XTypeUnitF MplPatternCompiled = XTypeUnitF MplTypeChecked
+type instance XTypeBoolF MplPatternCompiled = XTypeBoolF MplTypeChecked
+type instance XTypeListF MplPatternCompiled = XTypeListF MplTypeChecked
+type instance XTypeTupleF MplPatternCompiled = XTypeTupleF MplTypeChecked
 
-type instance XTypeGet MplPatternCompiled = Maybe NameOcc
-type instance XTypePut MplPatternCompiled = Maybe NameOcc
-type instance XTypeTensor MplPatternCompiled = Maybe NameOcc
-type instance XTypePar MplPatternCompiled = Maybe NameOcc
-type instance XTypeTopBot MplPatternCompiled = Maybe NameOcc
-type instance XTypeNeg MplPatternCompiled = Maybe NameOcc
-type instance XTypeSeqArrF MplPatternCompiled = ()
-type instance XTypeConcArrF MplPatternCompiled = ()
+type instance XTypeGet MplPatternCompiled = XTypeGet MplTypeChecked
+type instance XTypePut MplPatternCompiled = XTypePut MplTypeChecked
+type instance XTypeTensor MplPatternCompiled = XTypeTensor MplTypeChecked
+type instance XTypePar MplPatternCompiled = XTypePar MplTypeChecked
+type instance XTypeTopBot MplPatternCompiled = XTypeTopBot MplTypeChecked
+type instance XTypeNeg MplPatternCompiled = XTypeNeg MplTypeChecked
+type instance XTypeSeqArrF MplPatternCompiled = XTypeSeqArrF MplTypeChecked
+type instance XTypeConcArrF MplPatternCompiled = XTypeConcArrF MplTypeChecked
 
-type instance XXMplBuiltInTypesF MplPatternCompiled = Void
+type instance XXMplBuiltInTypesF MplPatternCompiled = XXMplBuiltInTypesF MplTypeChecked
 
 -- Kind info..
 -------------------------
 type instance XMplKind MplPatternCompiled = MplPrimitiveKind MplPatternCompiled
-type instance XSeqKind MplPatternCompiled = ()
-type instance XConcKind MplPatternCompiled = ()
-type instance XArrKind MplPatternCompiled = Void
-type instance XSeqArgKind MplPatternCompiled = Void
-type instance XConcArgKind MplPatternCompiled = Void
-type instance XKindVar MplPatternCompiled = Void
+type instance XSeqKind MplPatternCompiled = XSeqKind MplTypeChecked
+type instance XConcKind MplPatternCompiled = XConcKind MplTypeChecked
+type instance XArrKind MplPatternCompiled = XArrKind MplTypeChecked
+type instance XSeqArgKind MplPatternCompiled = XSeqArgKind MplTypeChecked
+type instance XConcArgKind MplPatternCompiled = XConcArgKind MplTypeChecked
+type instance XKindVar MplPatternCompiled = XKindVar MplTypeChecked
 
-type instance KindP MplPatternCompiled = Void
+type instance KindP MplPatternCompiled = KindP MplTypeChecked
 
-type instance XXKind MplPatternCompiled = Void
+type instance XXKind MplPatternCompiled = XXKind MplTypeChecked
 

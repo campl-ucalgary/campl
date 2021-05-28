@@ -184,7 +184,7 @@ data MplCmd x =
         -}
     | CSwitch !(XCSwitch x) (NonEmpty (XMplExpr x, NonEmpty (MplCmd x)))
     | CIf !(XCIf x) (XMplExpr x) (NonEmpty (MplCmd x)) (NonEmpty (MplCmd x))
-    | CIllegalInstr (XCIllegalInstr x)
+    | CIllegalInstr !(XCIllegalInstr x)
         -- { _cSwitches :: NonEmpty (Expr pattern letdef typedef seqcalleddef ident, ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident) }
 
 deriving instance ( ForallProcessCommand Show x ) => Show (MplCmd x)

@@ -94,6 +94,7 @@ type instance XCIf MplCmdFreeVars = KeyWordNameOcc
 type instance XCHCasePhrase MplCmdFreeVars  = ()
 type instance XCForkPhrase MplCmdFreeVars  = (ContextInfo, [IdP MplCmdFreeVars])
 type instance XCPlugPhrase MplCmdFreeVars  = ()
+type instance XCIllegalInstr MplCmdFreeVars  = Void
 type instance XXCmd MplCmdFreeVars = Void 
 
 

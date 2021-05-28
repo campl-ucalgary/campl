@@ -1,4 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeFamilies #-} 
@@ -40,7 +43,10 @@ import Data.Data
 import Data.Kind
 
 import Data.Foldable
-import Data.Functor.Foldable (Base, cata)
+import Data.Functor.Identity
+import Data.Functor.Foldable (Base, cata, embed)
+import Control.Monad
+import Data.Foldable
 import Data.Function
 
 {- Module for generalized utility functions over the AST
@@ -48,6 +54,7 @@ import Data.Function
  -
  -}
 
+-- | TODO move this out into the renamer..
 class MplProgUtil x where
     mplStmtTopLevelIdents :: MplStmt x -> NonEmpty (IdP x)
     mplDefnIdents :: MplDefn x -> NonEmpty (IdP x)
@@ -91,50 +98,97 @@ mplTypeCollectTypeP = cata f
 
     f (XTypeF _) = mempty
 
-{-
-class SubstituteVarIdentByExpr t where
-    substituteVarIdentByExpr ::
-        (IdP MplPatternCompiled, MplExpr MplPatternCompiled) ->
-        t ->
-        t 
 
-instance SubstituteVarIdentByExpr (MplExpr MplPatternCompiled) where
-    substituteVarIdentByExpr sub = cata go
+{- | Type class for traversing through all elements of an mpl expression -}
+class TraverseMplExpr t x where
+    traverseMplExpr :: 
+        ( Monad m 
+        , XFunctionDefn x ~  MplFunction x
+        , XProcessDefn x ~  MplProcess x 
+        , XMplExpr x ~ MplExpr x
+        , XMplCmd x ~ MplCmd x
+        ) => 
+        (MplExpr x -> m (MplExpr x)) -> 
+        t x -> 
+        m (t x)
+
+instance TraverseMplExpr MplExpr x where
+    traverseMplExpr ::
+        forall m.
+        ( Monad m 
+        , XFunctionDefn x ~ MplFunction x
+        , XProcessDefn x ~ MplProcess x 
+        , XMplExpr x ~ MplExpr x
+        , XMplCmd x ~ MplCmd x
+        ) => 
+        (MplExpr x -> m (MplExpr x)) -> 
+        MplExpr x -> 
+        m (MplExpr x)
+    traverseMplExpr k = cata go
       where
-        go :: MplExprF (MplPass 'PatternCompiled) (MplExpr MplPatternCompiled) -> MplExpr MplPatternCompiled
+        go :: Monad m => MplExprF x (m (MplExpr x)) -> m (MplExpr x)
         go = \case
-            EVarF ann ident | ident == sub ^. _1 -> sub ^. _2
-
-            -- duplicated code for the let case
-            ELetF ann lets expr -> ELet ann (fmap f lets) expr
+            ELetF ann lets expr -> do
+                lets' <- traverse f lets
+                expr' <- expr
+                k (ELet ann lets' expr')
               where
-                f :: MplStmt MplPatternCompiled -> MplStmt MplPatternCompiled 
-                f stmt = stmt 
-                    & stmtWhereBindings % mapped %~ f
-                    & stmtDefns % mapped %~ g
+                f :: Monad m => MplStmt x -> m (MplStmt x)
+                f stmt = traverseOf (stmtWhereBindings % traversed) f stmt
+                        >>= traverseOf (stmtDefns % traversed) g
 
-                g :: MplDefn MplPatternCompiled -> MplDefn MplPatternCompiled
-                g obj@(ObjectDefn _) = obj
-                g (FunctionDefn fun) = FunctionDefn $ fun
-                    & funDefn % mapped % _2 %~ substituteVarIdentByExpr sub
-                g (ProcessDefn proc) = error "pattern matching compilation for processes is not in yet"
-            res -> embed res
+                g :: Monad m => MplDefn x -> m (MplDefn x)
+                g obj@(ObjectDefn _) = return obj
+                g (FunctionDefn fun) = FunctionDefn <$> traverseOf (funDefn % traversed % _2) (traverseMplExpr k) fun
+                g (ProcessDefn proc) = ProcessDefn <$> traverseOf (procDefn % traversed % _2 % traversed) (traverseMplExpr k) proc
+            res -> join $ (k . embed) <$> sequenceA res
 
-instance SubstituteVarIdentByExpr (NonEmpty (MplCmd MplPatternCompiled)) where
-    substituteVarIdentByExpr sub = fmap (substituteVarIdentByExpr sub)
 
-instance SubstituteVarIdentByExpr (MplCmd MplPatternCompiled) where
-    substituteVarIdentByExpr sub = cata go
+instance TraverseMplExpr MplCmd x where
+    traverseMplExpr ::
+        forall m.
+        ( Monad m 
+        , XFunctionDefn x ~ MplFunction x
+        , XProcessDefn x ~ MplProcess x 
+        , XMplExpr x ~ MplExpr x
+        , XMplCmd x ~ MplCmd x
+        ) => 
+        (MplExpr x -> m (MplExpr x)) -> 
+        MplCmd x -> 
+        m (MplCmd x)
+    traverseMplExpr k = cata go
       where
-        go :: MplCmdF (MplPass 'PatternCompiled) (MplCmd MplPatternCompiled) -> MplCmd MplPatternCompiled
         go = \case
-            CRunF ann idp seqs ins outs -> 
-                CRun ann idp (map (substituteVarIdentByExpr sub) seqs) ins outs
-            CPutF ann expr chp -> 
-                CPut ann (substituteVarIdentByExpr sub expr) chp
-            CCaseF ann expr cmds -> undefined
-                CCase ann (substituteVarIdentByExpr sub expr) cmds
-            CIfF ann expr thenc elsec -> 
-                CIf ann (substituteVarIdentByExpr sub expr) thenc elsec
-            n -> embed n
--}
+            CRunF ann idp seqs ins outs -> do
+                seqs' <- traverse (traverseMplExpr k) seqs 
+                return $ CRun ann idp seqs' ins outs
+            CPutF ann expr chp -> do
+                expr' <- traverseMplExpr k expr
+                return $ CPut ann expr' chp
+            CCaseF ann expr cmds -> do
+                expr' <- traverseMplExpr k expr
+                cmds' <- sequenceOf (traversed % _2 % traversed) cmds
+                return $ CCase ann expr' cmds'
+            CIfF ann expr thenc elsec -> do
+                expr' <- traverseMplExpr k expr
+                thenc' <- sequenceA thenc
+                elsec' <- sequenceA elsec
+                return $ CIf ann expr' thenc' elsec'
+            CSwitchF ann switches -> do
+                traverseOf (traversed % _1) (traverseMplExpr k) switches 
+                    >>= sequenceOf (traversed % _2 % traversed) 
+                    >>= return . CSwitch ann 
+            n -> embed <$> sequenceA n
+
+class MapMplExpr t x where
+    mapMplExpr ::
+        ( XFunctionDefn x ~  MplFunction x
+        , XProcessDefn x ~  MplProcess x 
+        , XMplExpr x ~ MplExpr x
+        , XMplCmd x ~ MplCmd x ) =>
+        (MplExpr x -> MplExpr x) ->
+        t x ->
+        t x 
+
+instance TraverseMplExpr t x => MapMplExpr t x where
+    mapMplExpr f = runIdentity . traverseMplExpr (Identity . f)

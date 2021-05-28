@@ -19,6 +19,7 @@ import MplAST.MplParsed
 import MplAST.MplRenamed
 import MplAST.MplTypeChecked
 import MplAST.MplPatternCompiled
+import MplAST.MplProgUtil
 
 import MplPasses.Env
 
@@ -81,10 +82,10 @@ getExprFromSubstitutable = \case
 -- | @substitute (s, t)@ replaces all occurances of @s@ by @t@; the substitution
 -- is given by the 'Substitutable'
 substitute  ::
-    MapPatternCompiledExpr t =>
+    MapMplExpr t MplPatternCompiled =>
     (IdP MplPatternCompiled, Substitutable) ->
-    t ->
-    t
+    t MplPatternCompiled ->
+    t MplPatternCompiled
 substitute (s, VarSub t) = substituteVarIdentByExpr (s, _EVar # swap t)
 substitute (s, RecordSub u t) = substituteCallIdentByRecord (s, (u,t))
 substitute (s, TupleSub u t) = substituteVarIdentByTuple (s, (u,t))
@@ -97,7 +98,7 @@ substituteExpr = substitute
 
 -- | Substitutes a record for a destructor
 substituteCallIdentByRecord ::
-    MapPatternCompiledExpr t =>
+    MapMplExpr t MplPatternCompiled =>
     ( IdentT
     , 
         ( Substitutable
@@ -106,9 +107,9 @@ substituteCallIdentByRecord ::
             -- destructor information
         )
     ) 
-    -> t 
-    -> t
-substituteCallIdentByRecord sub@(s, (u, (_phrase, des))) = mapPatternCompiledExpr k
+    -> t MplPatternCompiled
+    -> t MplPatternCompiled
+substituteCallIdentByRecord sub@(s, (u, (_phrase, des))) = mapMplExpr k
   where
     uexpr = getExprFromSubstitutable u
     k = \case
@@ -120,11 +121,11 @@ substituteCallIdentByRecord sub@(s, (u, (_phrase, des))) = mapPatternCompiledExp
 
 -- | Substitutes a 'EVar' by an expression.
 substituteVarIdentByExpr ::
-    MapPatternCompiledExpr t =>
+    MapMplExpr t MplPatternCompiled =>
     (IdP MplPatternCompiled, MplExpr MplPatternCompiled) ->
-    t ->
-    t 
-substituteVarIdentByExpr sub = mapPatternCompiledExpr k
+    t MplPatternCompiled ->
+    t MplPatternCompiled
+substituteVarIdentByExpr sub = mapMplExpr k
   where
     k = \case
             EVar ann ident | ident == sub ^. _1 -> sub ^. _2
@@ -132,11 +133,11 @@ substituteVarIdentByExpr sub = mapPatternCompiledExpr k
 
 -- | substitutes tuples
 substituteVarIdentByTuple :: 
-    MapPatternCompiledExpr t =>
+    MapMplExpr t MplPatternCompiled =>
     (IdP MplPatternCompiled, (Substitutable, (XMplType MplTypeChecked, Int))) ->
-    t ->
-    t 
-substituteVarIdentByTuple sub@(s, t) = mapPatternCompiledExpr k
+    t MplPatternCompiled ->
+    t MplPatternCompiled
+substituteVarIdentByTuple sub@(s, t) = mapMplExpr k
   where
     k = \case
         EVar ann ident | ident == sub ^. _1 -> 

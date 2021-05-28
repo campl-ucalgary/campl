@@ -23,6 +23,7 @@ type MplParsed = MplPass 'Parsed
 type MplRenamed = MplPass 'Renamed
 type MplTypeChecked = MplPass 'TypeChecked
 type MplPatternCompiled = MplPass 'PatternCompiled
+type MplLambdaLifted = MplPass 'LambdaLifted
 
 data Ext =
     -- | After bnfc parsing
@@ -34,4 +35,6 @@ data Ext =
     | TypeChecked
     -- | Compilation of pattern matching
     | PatternCompiled
+    -- | after lambda lifting
+    | LambdaLifted
 

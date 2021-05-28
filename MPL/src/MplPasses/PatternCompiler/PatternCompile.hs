@@ -20,6 +20,7 @@ import MplAST.MplParsed
 import MplAST.MplRenamed
 import MplAST.MplTypeChecked
 import MplAST.MplPatternCompiled
+import MplAST.MplProgUtil
 
 import MplPasses.Env
 
@@ -35,6 +36,7 @@ import Data.Kind
 import Data.Maybe
 import Data.List
 import Data.Monoid
+
 
 import MplPasses.PatternCompiler.PatternCompileErrors
 import MplPasses.PatternCompiler.PatternCompileUtils
@@ -134,6 +136,7 @@ patternCompileExpr = cata go
         EIntF ann n -> pure $ EInt (snd ann) n
         ECharF ann v -> pure $ EChar (snd ann) v
         EDoubleF ann v -> pure $ EDouble (snd ann) v
+        EBoolF ann v -> pure $ EBool (snd ann) v
         -- ECaseF ann expr cases -> ECase ann <$> expr <*> traverse sequenceA cases
         ECaseF ann expr cases -> do
             expr' <- expr
@@ -248,7 +251,7 @@ patternCompileCmds = fmap NE.fromList . go . NE.toList
                 let k expr = do
                         ~([PVar _ u'], expr') <- patternCompileSeqPatPhrases (([patt], expr) :| [])
                         return $ substituteVarIdentByExpr (u', uexpr) expr'
-                traversePatternCompiledExpr k cmd
+                traverseMplExpr k cmd
 
             return $ CGet ann upatt chp : cmds''
 
@@ -311,6 +314,10 @@ patternCompileCmds = fmap NE.fromList . go . NE.toList
             -- @go cmds@ should always be empty list here
           where
             f (bexpr, thenc) acceq = pure $ CIf () bexpr thenc acceq
+
+        CIf ann cond cthen celse -> 
+            fmap pure $ CIf () <$> patternCompileExpr cond <*> patternCompileCmds cthen <*> patternCompileCmds celse
+            -- @go cmds@ should always be empty list here
 
 {-
   CCase !(XCCase x)
