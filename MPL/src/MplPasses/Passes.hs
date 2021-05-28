@@ -26,6 +26,7 @@ import MplPasses.TypeChecker.TypeCheckErrorPkg
 import MplPasses.TypeChecker.TypeCheckMplTypeSub
 
 import MplPasses.PatternCompiler.PatternCompile 
+import MplPasses.LambdaLifter.LambdaLift
 
 import Data.Proxy
 
@@ -68,7 +69,8 @@ runPasses ::
     String -> 
     Either [MplPassesErrors] _
 runPasses MplPassesEnv{mplPassesEnvUniqueSupply = supply, mplPassesTopLevel = toplvl} = 
-    runPatternCompile' (toplvl, rrs) 
+    return . runLambdaLiftProg
+    <=< runPatternCompile' (toplvl, rrs) 
     <=< fmap tracePprint . runTypeCheck' (toplvl, lrs) 
     -- <=< runTypeCheck' (toplvl, lrs) 
     -- TODO remove the trace in the future...
@@ -79,8 +81,6 @@ runPasses MplPassesEnv{mplPassesEnvUniqueSupply = supply, mplPassesTopLevel = to
   where
     (ls, rs) = split supply
     (lrs, rrs) = split rs
-
-tracePprint n = trace (pprint (Proxy :: Proxy MplRenamed) n) n
 
 {-
 runPassesTester ::
@@ -95,12 +95,26 @@ runPassesTester str = do
 
 freshhuh = [r|
 data
-MyList(A) -> S =
-    MyCons :: A,S -> S
-    MyNil ::      -> S
+    MyList(A) -> S =
+        MyCons :: A,S -> S
+        MyNil ::      -> S
+
+fun fk =
+    a,b -> 
+        let defn
+                fun myotherfun0 = 
+                    -> myotherfun1(b)
+                fun myotherfun1 = 
+                    _ -> a
+                fun myotherfun2 = 
+                    -> myotherfun0
+        in myotherfun0
 
 proc dpg =
     MyCons(MyCons(_, _), rst) | ch0 => ch1 ->do
+        close ch0
+        halt ch1
+    MyCons(_, rst) | ch0 => ch1 ->do
         close ch0
         halt ch1
     MyNil | ch2 => ch3 ->do

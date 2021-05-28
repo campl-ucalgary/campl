@@ -107,7 +107,7 @@ type instance XESwitch MplLambdaLifted = Void
 type instance XEIllegalInstr MplLambdaLifted = ()
 
 -- Pattern instances..
-type instance XMplPattern MplLambdaLifted = MplPattern MplLambdaLifted
+type instance XMplPattern MplLambdaLifted = MplPattern MplPatternCompiled
 type instance XPConstructor MplLambdaLifted = Void
 type instance XPSimpleConstructor MplLambdaLifted = Void
 type instance XPSimpleConstructorArgs MplLambdaLifted = Void

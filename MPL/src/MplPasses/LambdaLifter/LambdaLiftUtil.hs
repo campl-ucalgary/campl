@@ -1,4 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE Rank2Types #-}
 module MplPasses.LambdaLifter.LambdaLiftUtil where
 
 import Optics
@@ -9,6 +11,8 @@ import MplAST.MplRenamed
 import MplAST.MplTypeChecked
 import MplAST.MplPatternCompiled
 import MplAST.MplLambdaLifted
+
+import Control.Monad.Writer
 
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -38,6 +42,12 @@ data LambdaLiftEnv = LambdaLiftEnv
 
 $(makeClassy ''LambdaLiftEnv)
 
+type LambdaLift a b =
+    forall m0 m r.
+    ( MonadWriter [MplDefn MplLambdaLifted] m
+    , Magnify m0 m (Map IdentT (MplAST.MplCore.MplType MplTypeChecked)) r
+    , HasLambdaLiftEnv r ) =>
+    a -> m b
 
 getPattVarIdent :: 
     MplPattern MplPatternCompiled ->

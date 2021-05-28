@@ -26,6 +26,7 @@ import Data.Functor.Foldable hiding  (fold)
 import Control.Arrow
 
 import Data.Foldable
+import Data.Traversable
 import Optics
 
 import Data.Maybe
@@ -42,18 +43,22 @@ import qualified Data.Set as Set
 import Data.Map (Map)
 import qualified Data.Map as Map
 
+import Control.Exception
+import Debug.Trace
 
 import Unsafe.Coerce
 
-lambdaLiftProg ::
+runLambdaLiftProg ::
     MplProg MplPatternCompiled ->
     [MplDefn MplLambdaLifted]
-lambdaLiftProg = undefined
+runLambdaLiftProg (MplProg prog) = concatMap runlambdaLiftStmt prog
 
-lambdaLiftStmt ::
+runlambdaLiftStmt ::
     MplStmt MplPatternCompiled ->
     [MplDefn MplLambdaLifted]
-lambdaLiftStmt = undefined
+runlambdaLiftStmt stmt = 
+    foldMapOf (stmtDefns % folded) runLambdaLiftDefn stmt
+    <> foldMapOf (stmtWhereBindings % folded) runlambdaLiftStmt stmt 
 
 runLambdaLiftDefn ::
     MplDefn MplPatternCompiled -> 
@@ -68,7 +73,7 @@ runLambdaLiftDefn defn = case defn of
       where
         funexpr = fun ^. funDefn % to NE.head % _2
 
-        callgraph = callGraphFixedPoint $ callGraphLetsGather funexpr <> callGraphFunDefn fun
+        callgraph =  callGraphFixedPoint $ callGraphLetsGather funexpr <> callGraphFunDefn fun
         tpmap = mkVarsTpMap funexpr
 
     ProcessDefn proc -> 
@@ -82,22 +87,163 @@ runLambdaLiftDefn defn = case defn of
         callgraph =  callGraphFixedPoint $ foldMap callGraphLetsGather proccmds
         tpmap = foldMap mkVarsTpMap proccmds
 
-
-lambdaLiftDefn :: 
-    ( HasLambdaLiftEnv r
-    , MonadReader r m 
-    , MonadWriter [MplDefn MplLambdaLifted] m
-    ) => 
-    MplDefn MplPatternCompiled -> 
-    m (MplDefn MplLambdaLifted)
+lambdaLiftDefn ::
+    LambdaLift 
+        (MplDefn MplPatternCompiled)
+        (MplDefn MplLambdaLifted)
 lambdaLiftDefn defn  = case defn of
     ObjectDefn _ -> pure $ unsafeCoerce defn
-    FunctionDefn (MplFunction funname funtp ((patts, defn) :| _)) -> do
-        ~(Just (bound, free, calls)) <- gview (lambdaLiftCallGraph % at funname)
-        undefined
+    {- Hopefully this is quite straightforward. It is as follows:
+        - we compute the extra free variables that need to be added to the function arguments
+        - Then, we get all the types of those free variables
+        - Then, we lambda lift the function body
+        - Then, we put together the function again WITH the updated type of the arguments AND the variable patterns.
+     -}
+    -- we assert that the body should be null from compilation of pattern matching
+    FunctionDefn (MplFunction funname funtp ((patts, expr) :| bdy)) -> assert (null bdy) $ do
+        ~(Just (bound, free, calls)) <- gview (lambdaLiftCallGraph % at funname) 
 
-    ProcessDefn proc -> undefined
+        let nfrees = Set.toList $ free `Set.difference` bound
+        nfreestps <- magnify lambdaLiftTpMap $ for nfrees $ \nvar -> 
+            fmap fromJust $ gview (at nvar)
+            
+        expr' <- lambdaLiftExpr expr
 
+        return $ FunctionDefn $ MplFunction 
+            funname 
+            (funtp & _2 %~ (++nfreestps))
+            ((patts ++ zipWith (curry (review _PVar)) nfreestps nfrees, expr') :| [])
+
+    -- we assert that the body should be null from compilation of pattern matching
+    -- Technically, we do NOT need to lift these, so we don't. 
+    -- ProcessDefn (MplProcess procname proctp (((patts, ins, outs), cmds) :| bdy )) -> assert (null bdy) $ do
+    ProcessDefn (MplProcess procname proctp ((args, cmds) :| bdy )) -> assert (null bdy) $ do
+        cmds' <- traverse lambdaLiftCmd cmds 
+
+        return $ ProcessDefn $ MplProcess 
+            procname 
+            proctp 
+            ((args, cmds') :| [] )
+
+lambdaLiftExpr :: 
+    LambdaLift
+        (MplExpr MplPatternCompiled)
+        (MplExpr MplLambdaLifted)
+lambdaLiftExpr = cata go 
+  where
+    go :: MplExprF MplPatternCompiled (_ (MplExpr MplLambdaLifted)) -> _ (MplExpr MplLambdaLifted)
+    go = \case
+        EPOpsF ann opty l r -> EPOps ann opty <$> l <*> r
+        EVarF ann idp -> pure $ EVar ann idp
+        EIntF ann v -> pure $ EInt ann v
+        ECharF ann v -> pure $ EChar ann v
+        EDoubleF ann v -> pure $ EDouble ann v
+        EBoolF ann v -> pure $ EBool ann v
+        ECaseF ann expr cases -> do
+            expr' <- expr
+            cases' <- sequenceOf (traversed % _2) cases
+            return $ ECase ann expr' cases'
+        EObjCallF ann idp exprs -> do
+            exprs' <- sequenceA exprs
+            return $ EObjCall ann idp exprs'
+        ECallF ann idp exprs -> do
+            exprs' <- sequenceA exprs
+
+            -- get the extra free variables needed. this is duplciated code from above
+            ~(Just (bound, free, calls)) <- gview (lambdaLiftCallGraph % at idp) 
+            let nfrees = Set.toList $ free `Set.difference` bound
+            nfreestps <- magnify lambdaLiftTpMap $ for nfrees $ \nvar -> fmap fromJust $ gview (at nvar)
+
+            return $ ECall ann idp $ exprs' <> zipWith (curry (review _EVar)) nfreestps nfrees
+
+        ERecordF ann records -> do
+            records' <- sequenceOf (traversed % _3 % _2) records
+            return $ ERecord ann records'
+        EListF ann exprs -> EList ann <$> sequenceA exprs
+        EStringF ann str -> pure $ EString ann str
+        EUnitF ann -> pure $ EUnit ann
+        ETupleF ann (t0,t1,ts) -> do
+            ~(t0':t1':ts') <- sequenceA $ t0:t1:ts
+            return $ ETuple ann (t0',t1',ts')
+        EProjF ann proj expr -> EProj ann proj <$> expr 
+        EBuiltInOpF ann optp l r -> EBuiltInOp ann optp <$> l <*> r
+        EIfF ann cond thenc elsec -> EIf ann <$> cond <*> thenc <*> elsec
+        ELetF ann stmts expr -> do
+            traverse_ f stmts
+            expr
+          where
+            f :: MplStmt MplPatternCompiled -> _ ()
+            f stmt = do
+                traverse_ f $ stmt ^. stmtWhereBindings
+                {- Why is this filter here? 
+                 - It's because if there is a concurrent definition here, there is no possible way to call it anyways, 
+                 - so there's no need to lambda lift it (since let bindings
+                 - only occur in an expression, and expressions may only call
+                 - other sequential things)
+                -}
+                traverse_ (tell . pure <=< lambdaLiftDefn) $ NE.filter (hasn't _ProcessDefn) $ stmt ^. stmtDefns
+        -- ESwitch !(XESwitch x) (NonEmpty (MplExpr x, MplExpr x))
+        EIllegalInstrF ann -> pure $ EIllegalInstr ann
+        -- XExpr !(XXExpr x)
+        {-
+  | EFold !(XEFold x)
+          (MplExpr x)
+          (NonEmpty (XEFoldPhrase x, IdP x, [XMplPattern x], MplExpr x))
+  | EUnfold !(XEUnfold x)
+            (MplExpr x)
+            (NonEmpty
+               (XEUnfoldPhrase x, XMplPattern x,
+                NonEmpty (XEUnfoldSubPhrase x, IdP x, [XMplPattern x], MplExpr x)))
+        -}
+
+
+lambdaLiftCmd :: 
+    LambdaLift
+        (MplCmd MplPatternCompiled)
+        (MplCmd MplLambdaLifted)
+lambdaLiftCmd = cata go 
+  where
+    go :: MplCmdF MplPatternCompiled (_ (MplCmd MplLambdaLifted)) -> _ (MplCmd MplLambdaLifted)
+    go = \case 
+        CRunF ann idp seqs ins outs -> do
+            seqs' <- traverse lambdaLiftExpr seqs
+            return $ CRun ann idp seqs' ins outs 
+        CCloseF ann chp -> pure $ CClose ann chp
+        CHaltF ann chp -> pure $ CHalt ann chp
+        CGetF ann patt chp -> pure $ CGet ann patt chp
+        CPutF ann expr chp -> do
+            expr' <- lambdaLiftExpr expr
+            return $ CPut ann expr' chp
+        CHCaseF ann chp cases -> CHCase ann chp <$> sequenceOf (traversed % _3 % traversed) cases
+        CHPutF ann idp chp -> pure $ CHPut ann idp chp
+        CSplitF ann chp splits -> pure $ CSplit ann chp splits
+        CForkF ann chp forks -> CFork ann chp <$> sequenceOf (each % _3 % traversed) forks 
+        CIdF ann eq -> pure $ CId ann eq
+        CIdNegF ann eq -> pure $ CIdNeg ann eq
+        CRaceF ann races -> CRace ann <$> sequenceOf (traversed % _2 % traversed) races
+        CPlugsF ann phrases ->
+            sequenceOf (_1 % _3 % traversed) phrases 
+                >>= sequenceOf (_2 % _3 % traversed)
+                >>= sequenceOf (_3 % traversed % _3 % traversed)
+                >>= return . CPlugs ann 
+        CCaseF ann expr cases -> do
+            expr' <- lambdaLiftExpr expr
+            cases' <- sequenceOf (traversed % _2 % traversed) cases
+            return $ CCase ann expr' cases'
+            
+        CIfF ann cond thenc elsec -> 
+            CIf ann 
+                <$> lambdaLiftExpr cond
+                <*> sequenceA thenc 
+                <*> sequenceA elsec 
+
+        CIllegalInstrF ann -> pure $ CIllegalInstr ann
+    {-
+  | CPlugF !(XCPlug x)
+           ((XCPlugPhrase x, ([ChP x], [ChP x]), NonEmpty r),
+            (XCPlugPhrase x, ([ChP x], [ChP x]), NonEmpty r))
+  | CSwitchF !(XCSwitch x) (NonEmpty (XMplExpr x, NonEmpty r))
+-}
 
 -- | computes the fixed point for the call graph
 callGraphFixedPoint :: 
@@ -124,14 +270,15 @@ callGraphFixedPoint = until (uncurry (==) <<< go &&& id) go
 Note: this does NOT recurse.
  -}
 callGraphFunDefn :: XFunctionDefn MplPatternCompiled -> CallGraph
-callGraphFunDefn (MplFunction funName funTp ((patts, expr) :| [])) = 
-    Map.singleton funName (args, vars, args `Set.difference` vars) 
+-- we assert that the body should be null from compilation of pattern matching
+callGraphFunDefn (MplFunction funName funTp ((patts, expr) :| bdy)) = assert (null bdy) $ 
+    Map.singleton funName (args,  vars `Set.difference` args, calls) 
   where
     args = Set.fromList $ fmap getPattVarIdent patts 
     vars = collectVarsExpr expr
     calls = collectCallsExpr expr
-callGraphFunDefn _ = error "incorrect pattern compilation"
 
+{- This will collect the call graph of every let binding -}
 callGraphLetsGather :: 
     TraverseMplExpr t MplPatternCompiled => 
     t MplPatternCompiled  -> 
@@ -144,10 +291,12 @@ callGraphLetsGather = execWriter . traverseMplExpr go
     -- without relying on 'Data.Functor.Foldable'
     go :: MplExpr MplPatternCompiled -> Writer CallGraph (MplExpr MplPatternCompiled)
     go = \case 
-        ELet ann stmts expr -> 
+        ELet ann stmts expr ->  do
+            traverse_ f stmts
             return $ ELet ann stmts expr
           where
-            f stmt = concatMap f (stmt ^. stmtWhereBindings) <> NE.toList (fmap g (stmt ^. stmtDefns))
+            f stmt = traverse_ f (stmt ^. stmtWhereBindings) 
+                >> traverse_ g (stmt ^. stmtDefns)
 
             g res = case res of
                 FunctionDefn fun -> do

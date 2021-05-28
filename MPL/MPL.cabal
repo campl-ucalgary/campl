@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 69dd583ac684f2509d8f5f15eef48de9c475c42597cc1aed867d7c2f4523ea09
+-- hash: fa60fe23400f950b0818d89fa07081953e6e07a9722b006976ae8efe6bcd5cea
 
 name:           MPL
 version:        0.1.0.0
@@ -58,6 +58,7 @@ library
       MPLMain
       MplPasses.Env
       MplPasses.LambdaLifter.LambdaLift
+      MplPasses.LambdaLifter.LambdaLiftUtil
       MplPasses.Parser.BnfcParse
       MplPasses.Parser.Parse
       MplPasses.Parser.ParseErrors

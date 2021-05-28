@@ -59,10 +59,15 @@ import Data.Kind
 import Data.Void
 import Data.Proxy
 
+import Debug.Trace
+
 {- Module for a pretty printer of the AST (useful for debugging)
  - Note this just translates back to the BNFC representation and uses
  - BNFC to print the AST.
  -}
+
+tracePprint :: PPrint a MplRenamed => a -> a
+tracePprint n = trace (pprint (Proxy :: Proxy MplRenamed) n) n
 
 class PPrint a x where
     pprint :: Proxy x -> a -> String
@@ -777,6 +782,9 @@ mplCmdsToBnfc proxy cmds = B.PROCESS_COMMANDS_DO_BLOCK $ NE.toList $ fmap (mplCm
 instance PPrint ChIdentT x where
     pprint proxy n = n ^. chIdentTChIdentR % to (pprint proxy)
 
+instance PPrint B.MplProg x where
+    pprint _ = B.printTree 
+
 instance PPrint B.MplType x where
     pprint _ = B.printTree 
 
@@ -881,6 +889,9 @@ mplDefnToBnfc proxy (ProcessDefn (MplProcess id tp body)) = B.MPL_PROCESS_DEFN $
 
 instance MplPrintConstraints x y => PPrint (MplProg x) y where
     pprint = mplPprint
+
+instance MplPrintConstraints x y => PPrint [MplDefn x] y where
+    pprint proxy = pprint proxy . B.MPL_PROG . map (B.MPL_STMT . mplDefnToBnfc proxy)
 
 instance 
     ( PPrint (IdP x) y
