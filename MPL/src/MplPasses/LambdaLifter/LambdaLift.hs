@@ -226,7 +226,6 @@ lambdaLiftCmd = cata go
                 >>= sequenceOf (_2 % _3 % traversed)
                 >>= sequenceOf (_3 % traversed % _3 % traversed)
                 >>= return . CPlugs ann 
-                -- >>= return . CPlugs ann 
         CCaseF ann expr cases -> do
             expr' <- lambdaLiftExpr expr
             cases' <- sequenceOf (traversed % _2 % traversed) cases

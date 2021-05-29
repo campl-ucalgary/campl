@@ -67,15 +67,21 @@ mplPassesEnv = do
 runPasses :: 
     MplPassesEnv -> 
     String -> 
-    Either [MplPassesErrors] _
+    Either [MplPassesErrors] [MplDefn MplLambdaLifted]
 runPasses MplPassesEnv{mplPassesEnvUniqueSupply = supply, mplPassesTopLevel = toplvl} = 
     return . runLambdaLiftProg
+
+    -- <=< fmap tracePprint . runPatternCompile' (toplvl, rrs) 
     <=< runPatternCompile' (toplvl, rrs) 
-    <=< fmap tracePprint . runTypeCheck' (toplvl, lrs) 
-    -- <=< runTypeCheck' (toplvl, lrs) 
-    -- TODO remove the trace in the future...
-    <=< fmap tracePprint . runRename' (toplvl, ls)
+
+    -- <=< fmap tracePprint . runTypeCheck' (toplvl, lrs) 
+    <=< runTypeCheck' (toplvl, lrs) 
+
+    -- <=< fmap tracePprint . runRename' (toplvl, ls)
+    <=< runRename' (toplvl, ls)
+
     <=< runParse' 
+
     <=< B.runBnfc
     -- in runRename' (TopLevel, ls, rsymtab) <=< runParse' <=< B.runBnfc
   where
@@ -111,13 +117,13 @@ fun fk =
         in myotherfun0
 
 proc dpg =
-    MyCons(MyCons(_, _), rst) | ch0 => ch1 ->do
+    MyCons(MyCons(_, _), rst) | ch0 => ch1 -> do
         close ch0
         halt ch1
-    MyCons(_, rst) | ch0 => ch1 ->do
+    MyCons(_, rst) | ch0 => ch1 -> do
         close ch0
         halt ch1
-    MyNil | ch2 => ch3 ->do
+    MyNil | ch2 => ch3 -> do
         close ch3
         halt ch2
 
