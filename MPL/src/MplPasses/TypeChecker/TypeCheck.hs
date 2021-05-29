@@ -128,7 +128,11 @@ typeCheckStmt (MplStmt defns wheres) = do
             $ typeCheckDefns 
             $ NE.toList defns
         let terrs = collectPkgErrors errpkg
-            erroccured = hasn't _Empty terrs
+            erroccured = hasn't _Empty 
+                $ filter (hasn't _CannotCallTypeCts)
+
+                $ filter (hasn't _CannotCallCh) 
+                $ filter (hasn't _CannotCallTerm) terrs
 
             foralls = foldMap (view _1) eqns
             exists = foldMap (view _2) eqns
@@ -240,7 +244,6 @@ typeCheckDefn (FunctionDefn fun@(MplFunction name (Just tp) defn)) = do
         arrenv <- freshInstantiateArrEnv
         let (inst, insttp) = runInstantiateArrType
                 (instantiateArrType (_Just % _TypeAnnFun # fun) tp) arrenv
-        -- return ((inst, insttp), SymFun tp)
         return ([(inst, ttypep, insttp)], _SymExplicit # tp)
     
     rec let funsymentry = _SymEntry # (symtp, _SymSeqCall % _ExprCallFun # fun')
@@ -275,9 +278,8 @@ typeCheckDefn (ProcessDefn procc@(MplProcess name Nothing defn)) = do
         let procc' = MplProcess name (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeConc) defn'
             ttypep = annotateTypeTag ttype procc
             ttypephrases' = annotateTypeTags (NE.toList ttypephrases) $ NE.toList defn
-            eqns = -- TypeEqnsExist ttypephrases' $
+            eqns = 
                 [ TypeEqnsEq (typePtoTypeVar ttypep, proctype') ]
-                -- <> map (TypeEqnsEq . (ttype',)) (annotateTypeTags (NE.toList ttypephrases) $ ttypephrases' )
                 <> map (TypeEqnsEq . (typePtoTypeVar ttypep,) . typePtoTypeVar) ttypephrases'
                 <> sconcat acceqns
 
@@ -324,47 +326,6 @@ typeCheckDefn (ProcessDefn procc@(MplProcess name (Just tp) defn)) = do
                 <> sconcat acceqns
 
     return $ (ProcessDefn procc', (proctype', ttypep : ttypephrases', eqns)) 
-
-
-    -- return $ (ProcessDefn procc', (foralls, ttypep : ttypephrases', eqns)) 
-    {-
-    ((foralls, proctype'), symtp) <- case proctype of    
-        Just tp -> do
-            ~tp <- fmap fromJust $ kindCheckProcessType tp
-            arrenv <- freshInstantiateArrEnv
-            let (inst, insttp) = runInstantiateArrType     
-                    (instantiateArrType (_Just % _TypeAnnProc # procc) tp)
-                    arrenv 
-            return ((inst, insttp), _SymExplicit # tp)
-        Nothing -> do
-            tag <- freshTypeTag
-            let tp = typePtoTypeVar $ annotateTypeTag tag procc
-            return $ (([], tp), _SymImplicit # tp)
-
-    ttype <- guse (envLcl % typeInfoEnvTypeTag)
-    ttypemap <- guse (envLcl % typeInfoEnvMap)
-
-    envLcl % typeInfoSymTab % symTabCh .= mempty
-    
-    rec let procsymentry = _SymEntry # (symtp, _SymRunInfo # procc')
-        envLcl % typeInfoSymTab % symTabConc % at (name ^. uniqueTag) ?= procsymentry
-
-        (ttypephrases, (defn', acceqns)) <- second NE.unzip . NE.unzip <$> 
-            traverse (withFreshTypeTag . typeCheckProcessBody) defn
-
-        let procc' = MplProcess name (fromJust $ ttypemap ^? at ttype % _Just % _SymTypeConc) defn'
-            ttypep = annotateTypeTag ttype procc
-            ttypephrases' = annotateTypeTags (NE.toList ttypephrases) $ NE.toList defn
-            eqns = -- TypeEqnsExist ttypephrases' $
-                [ TypeEqnsEq (typePtoTypeVar ttypep, proctype') ]
-                -- <> map (TypeEqnsEq . (ttype',)) (annotateTypeTags (NE.toList ttypephrases) $ ttypephrases' )
-                <> map (TypeEqnsEq . (typePtoTypeVar ttypep,) . typePtoTypeVar) ttypephrases'
-                <> sconcat acceqns
-
-    -- TODO
-    return $ (ProcessDefn procc', ([], ttypep : ttypephrases', eqns)) 
-    -- return $ (ProcessDefn procc', (foralls, ttypep : ttypephrases', eqns)) 
-    -}
 
 -------------------------
 -- Type checking expressions

@@ -108,6 +108,8 @@ data TypeCheckSemanticErrors =
     | ExpectedAtMostTwoOccurencesOfAChannelInAPlugPhraseButGot [ChIdentR]
     | ExpectedVariablesToBeOfOppositePolarityInAPlugPhraseButGot [ChIdentR] 
     | ExpectedVariablesToBeInADifferentPlugPhraseButGotIn [ChIdentR] ([ChIdentR], [ChIdentR])
+    | ExpectedProcessesTo
+    -- [ChIdentR] ([ChIdentR], [ChIdentR])
 
     | IllegalCycleInPlugPhrase [([ChIdentR], [ChIdentR])]
     | UnreachablePhrasesInPlugPhrase [([ChIdentR], [ChIdentR])] [([ChIdentR], [ChIdentR])]
@@ -195,6 +197,7 @@ cutConditions plugged plugphrases =
         let common = ins `intersect` outs
         in bool [_ExpectedVariablesToBeInADifferentPlugPhraseButGotIn # (common, phrase)]
             [] $ null common
+
 
 type FocusedPhraseMap = 
     ( Map UniqueTag (ChIdentR, [([ChIdentR], [ChIdentR])])

@@ -31,6 +31,7 @@ import Control.Monad.Writer
 
 import MplUtil.UniqueSupply
 
+import Control.Arrow
 import Data.Maybe
 import Data.Functor.Foldable (Base, cata)
 import Data.List
@@ -211,7 +212,13 @@ cmdBindFreeVars = f
             -- return ((\\outs) . (\\ins) . nub $ vs, (cxt, (ins,outs), cmds'))
             return (nub $ vs ++ ins ++ outs, (cxt, (ins,outs), cmds'))
 
-        cxt' = nub $ concatMap (uncurry (<>) . view _2) (phr1:phr2:phrs)
+        -- we need to do this filter since we are only interested
+        cxt' = nub 
+            $ filter (uncurry (&&) <<< (`elem` allinputs) &&& (`elem` alloutputs))
+            $ concatMap (uncurry (<>) . view _2) (phr1:phr2:phrs)
+
+        allinputs =  foldOf (folded % _2 % _1) $ phr1:phr2:phrs
+        alloutputs =  foldOf (folded % _2 % _2) $ phr1:phr2:phrs
 
 
     f (CCase cxt expr cases) = do   

@@ -120,6 +120,20 @@ proc dpg =
     MyNil | ch2 => ch3 ->do
         close ch3
         halt ch2
+
+proc run  =
+    | => -> do
+        plug
+            => a -> do
+                halt a
+            a,l => b,k -> do
+                close b
+                halt a
+            b,k => c,l -> do
+                close b
+                halt c
+            c => -> do
+                halt c
 |]
 
 huh = [r|

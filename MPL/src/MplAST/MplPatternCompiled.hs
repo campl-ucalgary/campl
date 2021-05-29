@@ -182,7 +182,7 @@ type instance XCRace MplPatternCompiled = KeyWordNameOcc
 type instance XCPlug MplPatternCompiled = Void
 type instance XCPlugs MplPatternCompiled = 
     ( KeyWordNameOcc
-    , [(IdP MplPatternCompiled, (XMplType MplPatternCompiled))])
+    , [(IdP MplPatternCompiled, XMplType MplPatternCompiled)])
                                                     -- these are the new plugged channels.
                                                     -- Note that these do not have a polarity 
                                                     -- because it changes based on the phrase

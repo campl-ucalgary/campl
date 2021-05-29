@@ -90,7 +90,7 @@ pprintMplPassesErrors = vsep . go
         ]
     go (MplPatternCompilationErrors err) = 
         [ pretty "Error during pattern compilation:"
-        , indent' $ pretty $ show err
+        , indent' $ PC.pprintPatternCompileErrors err
         ]
 
     indent' = indent 4

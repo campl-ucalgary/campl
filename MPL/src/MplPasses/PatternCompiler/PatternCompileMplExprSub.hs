@@ -196,4 +196,5 @@ substituteCh sub@(s,t) = cata go
 
         CIfF ann expr thenc elsec -> 
             CIf ann expr (fmap (substituteCh sub) thenc) (fmap (substituteCh sub) elsec)
+        CIllegalInstrF ann -> CIllegalInstr ann
 
