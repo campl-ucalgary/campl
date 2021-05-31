@@ -97,7 +97,8 @@ spec = do
             % _UnreachablePhrasesInPlugPhrase
             )
             )
-        [ nu0
+        {- some legacy misunderstandings here, this test case is actualyl bad -}
+        [ -- nu0
         ]
 
 
@@ -165,7 +166,7 @@ proc nc0 =
 
 nc1 = [r|
 proc nc1 =
-    |  => -> do
+    |  b => g -> do
         plug
             a,b => c -> do
                 close a

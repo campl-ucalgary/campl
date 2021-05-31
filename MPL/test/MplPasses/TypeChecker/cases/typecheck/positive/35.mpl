@@ -1,5 +1,5 @@
 proc v35 =
-    |  => -> do
+    | a => -> do
         plug
             b,c => d,e,f -> do
                 close b 

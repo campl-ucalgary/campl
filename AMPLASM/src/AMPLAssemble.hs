@@ -123,7 +123,9 @@ amplCodeToInstr servicegeneratorstate amplcode =
             (maininstrs, _) <- compileRunner coms 
                             (CompileEnv { symbolTable = symboltable }) 
                             (CompileState { localVarStack = [] 
-                                          , channelTranslations = map (fst *** (Input,)) inchs ++ map (fst *** (Output,)) outchs
+                                          , channelTranslations = 
+                                            map (fst *** (Input,)) inchs 
+                                            ++ map (fst *** (Output,)) outchs
                                           } )
             return ( (nonservicechs, servicechs) , (maininstrs, maintranslations) )
         Nothing -> Left (("", (-1,-1)),[AsmNoMainFunction])

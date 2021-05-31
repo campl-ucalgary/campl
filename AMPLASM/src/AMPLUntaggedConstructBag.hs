@@ -22,7 +22,7 @@ import qualified Data.Stream as Stream
 
 {-
     This includes untagged construct bags..
-    Translate to this, if we are translationg from a different representation
+    Translate to this, if we are translating from a different representation
     since the progream should be semantically valid. 
 
     This defines a translation to the bnfc printer, which will be parsed

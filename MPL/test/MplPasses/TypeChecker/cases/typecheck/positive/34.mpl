@@ -1,5 +1,5 @@
 proc v34 =
-    |  => -> do
+    | a => -> do
         plug
             f => -> do
                 halt f
