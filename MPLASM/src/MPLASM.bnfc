@@ -1,0 +1,205 @@
+{- 
+    BNFC Grammar for AMPL...  To generate files for this project, run `bnfc --haskell -pLanguage AMPLGrammar.bnfc`
+    Then, to make it compile, remove the conflicting main file `TestAMPLGrammar.hs`
+-}
+
+comment "--" ;
+comment "/*" "*/" ;
+
+entrypoints AMPLCODE  ;
+
+layout "=" , ":", "as" , "of"  ;
+
+position token Store       {"store"} ;
+position token Load        {"load"} ;
+position token Ret         {"ret"} ;
+position token Call        {"call"} ;
+position token CInt    {"cInt"} ;
+position token CChar   {"cChar"} ;
+position token CString {"cString"} ;
+position token ToStr    {"toStr"} ;
+position token ToInt    {"toInt"}  ;  
+position token And      {"And"}  ;
+position token Or       {"or"}  ;
+position token Append   {"appendL"} ;
+position token Unstring {"unstring"} ;
+position token LeqI     {"leq"} ;
+position token EqI      {"eqi"} ;
+
+position token LeqC     {"leqc"} ;
+position token EqC      {"eqc"} ;
+
+position token Leqs     {"leqs"} ;
+position token Eqs      {"eqs"} ;
+position token ConcatS  {"concatS"} ;
+position token Add      {"add"} ;
+position token Subtract {"subtract"} ;
+position token Mul      {"mul"} ;
+position token Quot     {"quot"} ;
+position token Rem      {"rem"} ;
+-- position token Cons     {"cons"} ;
+position token Case     {"case"} ;
+position token If       {"if"} ;
+position token Rec      {"rec"} ;
+position token Get      {"get"} ;
+position token Put      {"put"} ;
+position token Hput     {"hput"} ;
+position token Hcase    {"hcase"} ;
+position token Split    {"split"} ;
+position token Fork     {"fork"} ;
+position token Plug     {"plug"} ;
+position token Run      {"run"} ;
+position token Race     {"race"} ;
+position token Close    {"close"};
+position token Halt     {"halt"};
+position token Ch_Id    {"|=|"};
+position token Main_run {"%run"};
+position token BTrue    {"true"};
+position token BFalse   {"false"};
+
+position token Character '\'' ((char - ["'\\"]) | ('\\' ["'\\nt"])) '\''  ;
+
+-- added # as an internal token for 
+position token UIdent (upper (letter | digit | '_')*) | ('#' upper (letter | digit | '_')*) ;
+position token PIdent letter (letter | digit | '_' | '\'')* | ('#' upper (letter | digit | '_')*) ;
+
+--position token CString  '"' ((char - ["\"\\"]) | ('\\' ["\"\\nt"]))* '"' ;
+position token PInteger (["-"] digit | digit) digit* ;
+position token IIdent '"' char* {".ampl"} '"';
+
+Main                   .AMPLCODE            ::= [AmplConstructs] Main  ; --modified
+IMPORT_CONSTRUCT       .AmplConstructs     ::= Import ; 
+PROTOCOL_CONSTRUCT     .AmplConstructs     ::= Protocols ;
+COPROTOCOL_CONSTRUCT   .AmplConstructs     ::= Coprotocols ; 
+CONSTRUCTOR_CONSTRUCT  .AmplConstructs     ::= Constructors ;
+DESTRUCTOR_CONSTRUCT   .AmplConstructs     ::= Destructors ; 
+PROCESSES_CONSTRUCT    .AmplConstructs     ::= Processes ; 
+FUNCTIONS_CONSTRUCT    .AmplConstructs     ::= Functions ;
+
+separator  AmplConstructs "" ;
+
+---------------------------------------------------------------------------------------------
+ -- An AMPL code file consists of a series of specifcations which can be omitted followed by the code at which one starts.
+-- The specifications are:
+--      Handles (protocols): these are handle names associated with a type.  
+--        They are hput on output polarity channels and hcased on input polarity channels
+--      Cohandles (coprotocols):  these are handle names associated with a type.
+--        They are hput on input polarity channels and hcased on output polarity channels
+--      Constructors (and number of arguments)
+--      Destructors (and number of arguments)
+--      Process definitions
+--      Function definitions
+
+---------------------------------------------------------------------------------------------
+
+
+PROTOCOL_COPROTOCOL_SPEC   .ProtocolCoprotocolSpec ::= UIdent "=" "{" [Handle] "}" ;
+HANDLE_NAME   .Handle ::= UIdent ;
+separator ProtocolCoprotocolSpec ";" ;
+separator nonempty Handle ";";
+
+
+IMPORT      . Import   ::= "%include"  IIdent ; --newly added
+
+CONSTRUCTORS. Constructors ::= "%constructors" ":" "{" [StructorSpec] "}" ;
+
+DESTRUCTORS . Destructors ::= "%destructors" ":" "{" [StructorSpec] "}"  ;
+
+STRUCT_SPEC  . StructorSpec ::= UIdent "=" "{" [Struct] "}" ;
+STRUCT       . Struct ::= UIdent PInteger ;
+
+separator StructorSpec ";" ;
+separator nonempty Struct ";";
+
+PROTOCOLS    . Protocols ::= "%protocols"  ":" "{" [ProtocolCoprotocolSpec] "}" ;
+
+COPROTOCOLS  . Coprotocols ::= "%coprotocols" ":" "{" [ProtocolCoprotocolSpec] "}" ;
+
+PROCESSES    . Processes  ::= "%processes" ":" "{" [ProcessesSpec] "}" ;
+separator ProcessesSpec ";" ;
+
+PROCESS_SPEC. ProcessesSpec ::= PIdent "(" [PIdent] "|" [PIdent] "=>" [PIdent] ")" "=" Coms ;
+
+separator PIdent "," ; 
+
+FUNCTIONS  .Functions ::= "%functions" ":" "{" [FunctionsSpec] "}" ;
+separator FunctionsSpec ";" ;
+
+FUNCTION_SPEC  . FunctionsSpec ::= PIdent "(" [PIdent] ")" "=" Coms    ;
+
+ 
+MAIN  .Main    ::= Main_run MainChannels ":" Coms ;
+NO_MAIN .Main ::= ;
+
+MAIN_CHANNELS .MainChannels ::= "("  "|" [PIdent] "=>" [PIdent] ")";
+
+Prog    . Coms  ::= "{" [Com] "}"; 
+separator Com ";"  ;
+
+AC_ASSIGN  .Com   ::= PIdent ":=" Com ;  
+-- AC_STORE   .Com   ::= Store PIdent;
+AC_LOAD    .Com   ::= Load PIdent ;
+AC_RET     .Com   ::= Ret ;
+AC_CALL_FUN.Com   ::= Call PIdent "(" [PIdent] ")" ;
+AC_INT     .Com   ::= CInt PInteger ;
+AC_CHAR    .Com   ::= CChar Character ;
+AC_STRING  .Com   ::= CString String ;
+AC_TOSTR   .Com   ::= ToStr ;
+AC_TOINT   .Com   ::= ToInt ;
+AC_AND     .Com   ::= And ;
+AC_OR      .Com   ::= Or ;
+AC_APPEND  .Com   ::= Append ; 
+AC_TRUE    .Com   ::= BTrue ; 
+AC_FALSE    .Com  ::= BFalse ; 
+AC_UNSTRING.Com   ::= Unstring ;
+AC_LEQ     .Com   ::= LeqI ;
+AC_EQI     .Com   ::= EqI  ;
+AC_LEQC    .Com   ::= LeqC ;
+AC_EQC     .Com   ::= EqC ;
+AC_LEQS    .Com   ::= Leqs ;
+AC_EQS     .Com   ::= Eqs ;
+AC_CONCAT  .Com   ::= ConcatS Integer ;
+AC_ADD     .Com   ::= Add ;
+AC_SUB     .Com   ::= Subtract ;
+AC_MUL     .Com   ::= Mul ;
+AC_DIVQ    .Com   ::= Quot ;
+AC_DIVR    .Com   ::= Rem ; 
+-- AC_CONS    .Com   ::= Cons "(" PInteger "," PInteger ")" ;
+AC_CONSTRUCTOR      .Com   ::= UIdent "." UIdent ;
+AC_CONSTRUCTOR_ARGS .Com   ::= UIdent "." UIdent "(" [PIdent] ")" ;
+AC_CASE    .Com   ::= Case PIdent "of"  "{" [LabelledComs] "}"  ;
+
+AC_LABELLED_COMS_NO_ARGS . LabelledComs ::= UIdent "." UIdent ":" Coms ;
+AC_LABELLED_COMS         . LabelledComs ::= UIdent "." UIdent "(" [PIdent] ")" ":" Coms ;
+
+AC_IF      .Com   ::= If PIdent "then" Coms "else" Coms  ;
+separator Coms ",";
+separator LabelledComs ";";
+
+AC_RECORD  .Com ::= Rec "of"  "{" [LabelledComs] "}"  ;
+AC_DEST    .Com ::= UIdent "." UIdent PIdent ;
+AC_DEST_ARGS  .Com ::= UIdent "." UIdent "(" [PIdent] ")" PIdent ;
+
+
+AC_PROD    .Com ::= "(" [PIdent] ")" ;
+AC_PRODELEM.Com ::= "#" PInteger "(" PIdent ")" ;
+AC_EMSG    .Com ::= String ; 
+
+
+AC_GET    .Com ::= Get PIdent "on" PIdent ; 
+AC_PUT    .Com ::= Put PIdent "on" PIdent ; 
+AC_HPUT   .Com ::= Hput UIdent "." UIdent "on" PIdent   ;
+AC_HCASE  .Com ::= Hcase PIdent "of"  "{" [LabelledComs] "}"  ; 
+AC_SPLIT  .Com ::= Split PIdent "into" PIdent PIdent    ;
+AC_FORK   .Com ::= Fork PIdent "as" "{" PIdent "with" [PIdent] ":" Coms ";" PIdent "with" [PIdent] ":" Coms "}" ;
+AC_PLUG   .Com ::= Plug [PIdent]  "as" "{" "with" "[" [PIdent] "]" ":" Coms ";" "with" "[" [PIdent] "]" ":" Coms "}" ;
+AC_RUN    .Com ::= Run PIdent "(" [PIdent] "|" [PIdent] "=>" [PIdent] ")" ;
+AC_ID     .Com ::= PIdent Ch_Id PIdent ;
+
+AC_RACE    .Com ::= Race "{" [RACE_PHRASE] "}" ;
+AC_RACE_PHRASE   .RACE_PHRASE  ::= PIdent "->" Coms ;
+separator RACE_PHRASE ";" ;
+
+AC_CLOSE  .Com ::= Close PIdent ;
+AC_HALT   .Com ::= Halt PIdent ;
+
