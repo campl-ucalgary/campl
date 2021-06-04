@@ -44,6 +44,8 @@ c I n t
     { tok (\p s -> PT p (eitherResIdent T_CInt s)) }
 c C h a r
     { tok (\p s -> PT p (eitherResIdent T_CChar s)) }
+c B o o l
+    { tok (\p s -> PT p (eitherResIdent T_CBool s)) }
 c S t r i n g
     { tok (\p s -> PT p (eitherResIdent T_CString s)) }
 t o S t r
@@ -114,10 +116,8 @@ h a l t
     { tok (\p s -> PT p (eitherResIdent T_Ch_Id s)) }
 \% r u n
     { tok (\p s -> PT p (eitherResIdent T_Main_run s)) }
-t r u e
-    { tok (\p s -> PT p (eitherResIdent T_BTrue s)) }
-f a l s e
-    { tok (\p s -> PT p (eitherResIdent T_BFalse s)) }
+T r u e | F a l s e
+    { tok (\p s -> PT p (eitherResIdent T_BBool s)) }
 \' ([$u # [\' \\]] | \\ [\' \\ n t]) \'
     { tok (\p s -> PT p (eitherResIdent T_Character s)) }
 $c (\_ | ($d | $l)) * | \# $c (\_ | ($d | $l)) *
@@ -156,6 +156,7 @@ data Tok =
  | T_Call !String
  | T_CInt !String
  | T_CChar !String
+ | T_CBool !String
  | T_CString !String
  | T_ToStr !String
  | T_ToInt !String
@@ -191,8 +192,7 @@ data Tok =
  | T_Halt !String
  | T_Ch_Id !String
  | T_Main_run !String
- | T_BTrue !String
- | T_BFalse !String
+ | T_BBool !String
  | T_Character !String
  | T_UIdent !String
  | T_PIdent !String
@@ -241,6 +241,7 @@ tokenText t = case t of
   PT _ (T_Call s) -> s
   PT _ (T_CInt s) -> s
   PT _ (T_CChar s) -> s
+  PT _ (T_CBool s) -> s
   PT _ (T_CString s) -> s
   PT _ (T_ToStr s) -> s
   PT _ (T_ToInt s) -> s
@@ -276,8 +277,7 @@ tokenText t = case t of
   PT _ (T_Halt s) -> s
   PT _ (T_Ch_Id s) -> s
   PT _ (T_Main_run s) -> s
-  PT _ (T_BTrue s) -> s
-  PT _ (T_BFalse s) -> s
+  PT _ (T_BBool s) -> s
   PT _ (T_Character s) -> s
   PT _ (T_UIdent s) -> s
   PT _ (T_PIdent s) -> s

@@ -53,6 +53,7 @@ import MplAsmLanguage.LexMPLASM
   L_Call { PT _ (T_Call _) }
   L_CInt { PT _ (T_CInt _) }
   L_CChar { PT _ (T_CChar _) }
+  L_CBool { PT _ (T_CBool _) }
   L_CString { PT _ (T_CString _) }
   L_ToStr { PT _ (T_ToStr _) }
   L_ToInt { PT _ (T_ToInt _) }
@@ -88,8 +89,7 @@ import MplAsmLanguage.LexMPLASM
   L_Halt { PT _ (T_Halt _) }
   L_Ch_Id { PT _ (T_Ch_Id _) }
   L_Main_run { PT _ (T_Main_run _) }
-  L_BTrue { PT _ (T_BTrue _) }
-  L_BFalse { PT _ (T_BFalse _) }
+  L_BBool { PT _ (T_BBool _) }
   L_Character { PT _ (T_Character _) }
   L_UIdent { PT _ (T_UIdent _) }
   L_PIdent { PT _ (T_PIdent _) }
@@ -121,6 +121,9 @@ CInt  : L_CInt { MplAsmLanguage.AbsMPLASM.CInt (mkPosToken $1) }
 
 CChar :: { MplAsmLanguage.AbsMPLASM.CChar}
 CChar  : L_CChar { MplAsmLanguage.AbsMPLASM.CChar (mkPosToken $1) }
+
+CBool :: { MplAsmLanguage.AbsMPLASM.CBool}
+CBool  : L_CBool { MplAsmLanguage.AbsMPLASM.CBool (mkPosToken $1) }
 
 CString :: { MplAsmLanguage.AbsMPLASM.CString}
 CString  : L_CString { MplAsmLanguage.AbsMPLASM.CString (mkPosToken $1) }
@@ -227,11 +230,8 @@ Ch_Id  : L_Ch_Id { MplAsmLanguage.AbsMPLASM.Ch_Id (mkPosToken $1) }
 Main_run :: { MplAsmLanguage.AbsMPLASM.Main_run}
 Main_run  : L_Main_run { MplAsmLanguage.AbsMPLASM.Main_run (mkPosToken $1) }
 
-BTrue :: { MplAsmLanguage.AbsMPLASM.BTrue}
-BTrue  : L_BTrue { MplAsmLanguage.AbsMPLASM.BTrue (mkPosToken $1) }
-
-BFalse :: { MplAsmLanguage.AbsMPLASM.BFalse}
-BFalse  : L_BFalse { MplAsmLanguage.AbsMPLASM.BFalse (mkPosToken $1) }
+BBool :: { MplAsmLanguage.AbsMPLASM.BBool}
+BBool  : L_BBool { MplAsmLanguage.AbsMPLASM.BBool (mkPosToken $1) }
 
 Character :: { MplAsmLanguage.AbsMPLASM.Character}
 Character  : L_Character { MplAsmLanguage.AbsMPLASM.Character (mkPosToken $1) }
@@ -249,7 +249,7 @@ IIdent :: { MplAsmLanguage.AbsMPLASM.IIdent}
 IIdent  : L_IIdent { MplAsmLanguage.AbsMPLASM.IIdent (mkPosToken $1) }
 
 AMPLCODE :: { MplAsmLanguage.AbsMPLASM.AMPLCODE }
-AMPLCODE : ListAmplConstructs Main { MplAsmLanguage.AbsMPLASM.Main $1 $2 }
+AMPLCODE : ListAmplConstructs Main { MplAsmLanguage.AbsMPLASM.AMPLCODE $1 $2 }
 
 AmplConstructs :: { MplAsmLanguage.AbsMPLASM.AmplConstructs }
 AmplConstructs : Import { MplAsmLanguage.AbsMPLASM.IMPORT_CONSTRUCT $1 }
@@ -364,8 +364,7 @@ Com : PIdent ':=' Com { MplAsmLanguage.AbsMPLASM.AC_ASSIGN $1 $3 }
     | And { MplAsmLanguage.AbsMPLASM.AC_AND $1 }
     | Or { MplAsmLanguage.AbsMPLASM.AC_OR $1 }
     | Append { MplAsmLanguage.AbsMPLASM.AC_APPEND $1 }
-    | BTrue { MplAsmLanguage.AbsMPLASM.AC_TRUE $1 }
-    | BFalse { MplAsmLanguage.AbsMPLASM.AC_FALSE $1 }
+    | CBool BBool { MplAsmLanguage.AbsMPLASM.AC_BOOL $1 $2 }
     | Unstring { MplAsmLanguage.AbsMPLASM.AC_UNSTRING $1 }
     | LeqI { MplAsmLanguage.AbsMPLASM.AC_LEQ $1 }
     | EqI { MplAsmLanguage.AbsMPLASM.AC_EQI $1 }

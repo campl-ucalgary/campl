@@ -3,12 +3,93 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE StandaloneKindSignatures #-}
 module MplAsmAST.MplAsmCommand where
 
 import Optics
+import Data.Kind
 import Data.Functor.Foldable.TH
 
 type family IdP x
+
+type family XCAssign x
+type family XCLoad x
+type family XCRet x
+type family XCCall x
+type family XCInt x
+type family XCChar x
+type family XCBool x
+type family XCEqInt x
+
+type family XCLeqInt x
+type family XCEqChar x
+type family XCLeqChar x
+
+type family XCAdd x
+type family XCSub x
+type family XCMul x
+type family XCConstructor x
+type family XCDestructor x
+
+type family XCCase x
+type family XCRecord x
+type family XCIf x
+
+type family XCTuple x
+type family XCProj x
+
+type family XCGet x
+type family XCPut x
+type family XCHPut x
+type family XCHCase x
+type family XCSplit x
+type family XCFork x
+type family XCPlug x
+type family XCRun x
+type family XCId x
+type family XCRace x
+type family XCClose x
+type family XCHalt x
+
+type ForallMplAsmCom :: (Type -> Constraint) -> Type -> Constraint
+type ForallMplAsmCom c x =
+    ( c (IdP x)
+    , c (XCAssign x)
+    , c (XCLoad x)
+    , c (XCRet x)
+    , c (XCCall x)
+    , c (XCInt x)
+    , c (XCChar x)
+    , c (XCBool x)
+    , c (XCEqInt x)
+    , c (XCLeqInt x)
+    , c (XCEqChar x)
+    , c (XCLeqChar x)
+    , c (XCAdd x)
+    , c (XCSub x)
+    , c (XCMul x)
+    , c (XCConstructor x)
+    , c (XCDestructor x)
+    , c (XCCase x)
+    , c (XCRecord x)
+    , c (XCIf x)
+    , c (XCTuple x)
+    , c (XCProj x)
+    , c (XCGet x)
+    , c (XCPut x)
+    , c (XCHPut x)
+    , c (XCHCase x)
+    , c (XCSplit x)
+    , c (XCFork x)
+    , c (XCPlug x)
+    , c (XCRun x)
+    , c (XCId x)
+    , c (XCRace x)
+    , c (XCClose x)
+    , c (XCHalt x)
+    )
+
 
 -- | TheType . TheConstructor 
 data TypeAndSpec x = TypeAndSpec 
@@ -19,48 +100,51 @@ data TypeAndSpec x = TypeAndSpec
 $(makeLenses ''TypeAndSpec)
 
 data MplAsmCom x
-    = CAssign (IdP x) (MplAsmCom x)
-    | CLoad (IdP x)
-    | CRet
-    | CCall (IdP x) [IdP x]
-    | CInt Int
-    | CChar Char
+    = CAssign (XCAssign x) (IdP x) (MplAsmCom x)
+    | CLoad (XCLoad x) (IdP x)
+    | CRet (XCRet x)
+    | CCall (XCCall x) (IdP x) [IdP x]
+    | CInt (XCInt x) Int
+    | CChar (XCChar x) Char
+    | CBool (XCBool x) Bool
 
     -- and, or other bool operators
 
-    | CEqInt
-    | CLeqInt
-    | CEqChar
-    | CLeqChar
+    | CEqInt (XCEqInt x)
+    | CLeqInt (XCLeqInt x)
+    | CEqChar (XCEqChar x)
+    | CLeqChar (XCLeqChar x)
 
-    | CAdd
-    | CSub
-    | CMul
+    | CAdd (XCAdd x)
+    | CSub (XCSub x)
+    | CMul (XCMul x)
     -- | data type, handle, arguments
-    | CConstructor (TypeAndSpec x) [IdP x]
+    | CConstructor (XCConstructor x) (TypeAndSpec x) [IdP x]
     -- | data type, handle, arguments, expression to destruct
-    | CDestructor (TypeAndSpec x) [IdP x] (IdP x)
+    | CDestructor (XCDestructor x) (TypeAndSpec x) [IdP x] (IdP x)
 
-    | CCase (IdP x) [LabelledMplSeqComs x]
-    | CRecord [LabelledMplSeqComs x]
-    | CIf (IdP x) (MplAsmComs x) (MplAsmComs x)
+    | CCase (XCCase x) (IdP x) [LabelledMplSeqComs x]
+    | CRecord (XCRecord x) [LabelledMplSeqComs x]
+    | CIf (XCIf x) (IdP x) (MplAsmComs x) (MplAsmComs x)
 
-    | CTuple [IdP x]
-    | CProj Word (IdP x)
+    | CTuple (XCTuple x) [IdP x]
+    | CProj (XCProj x) Word (IdP x)
 
 
     -- | Concurrent command. @get a on channel@
-    | CGet (IdP x) (IdP x)
+    | CGet (XCGet x) (IdP x) (IdP x)
     -- | Concurrent command. @put a on channel@
-    | CPut (IdP x) (IdP x)
-    | CHPut (TypeAndSpec x) (IdP x)
-    | CHCase (IdP x) [LabelledMplConcComs x]
-    | CSplit (IdP x) (IdP x, IdP x)
-    | CFork (IdP x) (ForkPhrase x, ForkPhrase x)
-    | CPlug [IdP x] (PlugPhrase x, PlugPhrase x)
-    | CRun (IdP x) ([IdP x], [IdP x], [IdP x])
-    | CId (IdP x, IdP x)
-    | CRace [RacePhrase x]
+    | CPut (XCPut x) (IdP x) (IdP x)
+    | CHPut (XCHPut x) (TypeAndSpec x) (IdP x)
+    | CHCase (XCHCase x) (IdP x) [LabelledMplConcComs x]
+    | CSplit (XCSplit x) (IdP x) (IdP x, IdP x)
+    | CFork (XCFork x) (IdP x) (ForkPhrase x, ForkPhrase x)
+    | CPlug (XCPlug x) [IdP x] (PlugPhrase x, PlugPhrase x)
+    | CRun (XCRun x) (IdP x) ([IdP x], [IdP x], [IdP x])
+    | CId (XCId x) (IdP x, IdP x)
+    | CRace (XCRace x) [RacePhrase x]
+    | CClose (XCRace x) (IdP x)
+    | CHalt (XCRace x) (IdP x)
 
 type MplAsmComs x = [MplAsmCom x]
 type LabelledMplSeqComs x = (TypeAndSpec x, [IdP x], MplAsmComs x) 

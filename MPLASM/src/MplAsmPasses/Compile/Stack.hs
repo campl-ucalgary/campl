@@ -20,8 +20,7 @@ data MplAsmCompileSt x = MplAsmCompileSt
     { _varStack :: [IdP x]
     , _channelTranslations :: Map (IdP x) (Polarity, LocalChanID)
 
-    , _uniqLocalChanId :: LocalChanID
-    , _uniqFunId :: FunID
+    , _uniqCounters :: MplAsmCompileStUniqs
 
     , _symTabFuns :: Map (IdP x) (FunID, Word)
         -- ^ function name --> (function id,number of args)
@@ -38,7 +37,15 @@ data MplAsmCompileSt x = MplAsmCompileSt
         -- ^ coprotocol name --> hcaseix
     }
 
+data MplAsmCompileStUniqs = MplAsmCompileStUniqs 
+    { _uniqLocalChanId :: LocalChanID
+    , _uniqGlobalChanId :: GlobalChanID
+    , _uniqFunId :: FunID
+    }
+
+
 $(makeLenses ''MplAsmCompileSt )
+$(makeLenses ''MplAsmCompileStUniqs)
 
 localMplAsmCompileSt ::
     ( MonadState (MplAsmCompileSt x) m ) =>
@@ -48,10 +55,7 @@ localMplAsmCompileSt ma = do
     oldst <- guse equality
     a <- ma
     nst <- guse equality
-    equality .= 
-        ( set uniqLocalChanId (nst ^. uniqLocalChanId) 
-        . set uniqFunId (nst ^. uniqFunId) 
-        ) oldst
+    equality .= set uniqCounters (nst ^. uniqCounters) oldst
     return a
 
 initMplAsmCompileSt :: MplAsmCompileSt x
@@ -59,8 +63,11 @@ initMplAsmCompileSt = MplAsmCompileSt
     { _varStack = []
     , _channelTranslations = Map.empty
 
-    , _uniqLocalChanId = coerce (0 :: ChannelIdRep)
-    , _uniqFunId = coerce (0 :: Word)
+    , _uniqCounters = MplAsmCompileStUniqs 
+        { _uniqLocalChanId = coerce (0 :: ChannelIdRep)
+        , _uniqGlobalChanId = coerce (0 :: ChannelIdRep)
+        , _uniqFunId = coerce (0 :: Word)
+        }
 
     , _symTabFuns = Map.empty
     , _symTabProcs = Map.empty

@@ -50,9 +50,9 @@ mplAsmProgToBnfc ::
     ( PPrint (IdP x) ) => 
     MplAsmProg x -> 
     B.AMPLCODE
-mplAsmProgToBnfc prog = B.Main
-    (map mplAsmStmtToBnfc (mplAsmStmts prog))
-    $ case mplAsmMain prog of
+mplAsmProgToBnfc prog = B.AMPLCODE
+    (map mplAsmStmtToBnfc (view mplAsmStmts prog))
+    $ case view mplAsmMain prog of
         Just (mainname, (seqs, ins, outs), coms) -> 
             B.MAIN 
                 bnfcKeyword 
@@ -127,90 +127,90 @@ mplAsmComToBnfcCom ::
 mplAsmComToBnfcCom = cata go
   where
     go = \case
-        CAssignF idp com -> 
+        CAssignF _ idp com -> 
             B.AC_ASSIGN (toBnfcIdent idp) com
-        CLoadF idp -> 
+        CLoadF _ idp -> 
             B.AC_LOAD bnfcKeyword (toBnfcIdent idp)
-        CRetF -> B.AC_RET bnfcKeyword
-        CCallF idp args ->
+        CRetF _ -> B.AC_RET bnfcKeyword
+        CCallF _ idp args ->
             B.AC_CALL_FUN bnfcKeyword
                 (toBnfcIdent idp)
                 (map toBnfcIdent args)
-        CIntF n ->  
+        CIntF _ n ->  
             B.AC_INT 
                 bnfcKeyword
                 (toBnfcIdent n)
-        CCharF c -> 
+        CCharF _ c -> 
             B.AC_CHAR
                 bnfcKeyword
                 (toBnfcIdent c)
-        CEqIntF -> 
+        CEqIntF _ -> 
             B.AC_EQI bnfcKeyword
-        CEqCharF -> 
+        CEqCharF _ -> 
             B.AC_EQC bnfcKeyword
 
-        CAddF -> B.AC_ADD bnfcKeyword
-        CSubF -> B.AC_SUB bnfcKeyword
-        CMulF -> B.AC_MUL bnfcKeyword
-        CConstructorF (TypeAndSpec  a b) args ->
+        CAddF _ -> B.AC_ADD bnfcKeyword
+        CSubF _ -> B.AC_SUB bnfcKeyword
+        CMulF _ -> B.AC_MUL bnfcKeyword
+        CConstructorF _ (TypeAndSpec  a b) args ->
             B.AC_CONSTRUCTOR_ARGS 
                 (toBnfcIdent a) 
                 (toBnfcIdent b) 
                 (map toBnfcIdent args)
 
-        CDestructorF (TypeAndSpec a b) args destruct -> 
+        CDestructorF _ (TypeAndSpec a b) args destruct -> 
             B.AC_DEST_ARGS 
                 (toBnfcIdent a) 
                 (toBnfcIdent b)
                 (map toBnfcIdent args)
                 (toBnfcIdent destruct)
             
-        CCaseF caseon casephrases ->
+        CCaseF _ caseon casephrases ->
             B.AC_CASE bnfcKeyword
                 (toBnfcIdent caseon)
                 (map toLabelledSeqComs casephrases)
-        CRecordF records -> 
+        CRecordF _ records -> 
             B.AC_RECORD 
                 bnfcKeyword
                 (map toLabelledSeqComs records)
 
-        CIfF idp thenc elsec ->
+        CIfF _ idp thenc elsec ->
             B.AC_IF 
                 bnfcKeyword 
                 (toBnfcIdent idp) 
                 (B.Prog thenc) 
                 (B.Prog elsec)
 
-        CTupleF args -> 
+        CTupleF _ args -> 
             B.AC_PROD (map toBnfcIdent args)
-        CProjF projnum tuple ->
+        CProjF _ projnum tuple ->
             B.AC_PRODELEM 
                 (toBnfcIdent $ (fromIntegral projnum :: Int)) 
                 (toBnfcIdent tuple)
-        CGetF v ch -> B.AC_GET 
+        CGetF _ v ch -> B.AC_GET 
             bnfcKeyword (toBnfcIdent v) (toBnfcIdent ch)
 
-        CPutF v ch -> B.AC_PUT
+        CPutF _ v ch -> B.AC_PUT
             bnfcKeyword (toBnfcIdent v) (toBnfcIdent ch)
 
-        CHPutF (TypeAndSpec a b) ch ->
+        CHPutF _ (TypeAndSpec a b) ch ->
             B.AC_HPUT bnfcKeyword 
                 (toBnfcIdent a)
                 (toBnfcIdent b)
                 (toBnfcIdent ch)
-        CHCaseF ch labels ->
+        CHCaseF _ ch labels ->
             B.AC_HCASE 
                 bnfcKeyword 
                 (toBnfcIdent ch)
                 (map toLabelledConcComs labels)
 
-        CSplitF ch (ch0, ch1) ->
+        CSplitF _ ch (ch0, ch1) ->
             B.AC_SPLIT 
                 bnfcKeyword 
                     (toBnfcIdent ch)
                     (toBnfcIdent ch0)
                     (toBnfcIdent ch1)
-        CForkF ch ((ch0, ch0withs, cmds0), (ch1, ch1withs, cmds1)) ->
+        CForkF _ ch ((ch0, ch0withs, cmds0), (ch1, ch1withs, cmds1)) ->
             B.AC_FORK bnfcKeyword 
                 (toBnfcIdent ch)
                 (toBnfcIdent ch0) 
@@ -219,7 +219,7 @@ mplAsmComToBnfcCom = cata go
                 (toBnfcIdent ch1) 
                     (map toBnfcIdent ch1withs) 
                     (B.Prog cmds1)
-        CPlugF plugs ((withs0, cmds0), (withs1, cmds1)) ->
+        CPlugF _ plugs ((withs0, cmds0), (withs1, cmds1)) ->
             B.AC_PLUG 
                 bnfcKeyword
                 (map toBnfcIdent plugs)
@@ -228,7 +228,7 @@ mplAsmComToBnfcCom = cata go
                 (map toBnfcIdent withs1)
                     (B.Prog cmds1)
 
-        CRunF runner (seqs, ins, outs) -> 
+        CRunF _ runner (seqs, ins, outs) -> 
             B.AC_RUN 
                 bnfcKeyword
                 (toBnfcIdent runner)
@@ -236,10 +236,10 @@ mplAsmComToBnfcCom = cata go
                 (map toBnfcIdent ins)
                 (map toBnfcIdent outs)
 
-        CIdF (l, r) ->
+        CIdF _ (l, r) ->
             B.AC_ID (toBnfcIdent l) bnfcKeyword (toBnfcIdent r)
 
-        CRaceF phrases -> 
+        CRaceF _ phrases -> 
             B.AC_RACE 
                 bnfcKeyword 
                 (map f phrases)

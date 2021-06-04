@@ -16,6 +16,7 @@ position token Ret         {"ret"} ;
 position token Call        {"call"} ;
 position token CInt    {"cInt"} ;
 position token CChar   {"cChar"} ;
+position token CBool   {"cBool"} ;
 position token CString {"cString"} ;
 position token ToStr    {"toStr"} ;
 position token ToInt    {"toInt"}  ;  
@@ -54,8 +55,7 @@ position token Close    {"close"};
 position token Halt     {"halt"};
 position token Ch_Id    {"|=|"};
 position token Main_run {"%run"};
-position token BTrue    {"true"};
-position token BFalse   {"false"};
+position token BBool    {"True"} | {"False"};
 
 position token Character '\'' ((char - ["'\\"]) | ('\\' ["'\\nt"])) '\''  ;
 
@@ -67,7 +67,7 @@ position token PIdent letter (letter | digit | '_' | '\'')* | ('#' upper (letter
 position token PInteger (["-"] digit | digit) digit* ;
 position token IIdent '"' char* {".ampl"} '"';
 
-Main                   .AMPLCODE            ::= [AmplConstructs] Main  ; --modified
+AMPLCODE               .AMPLCODE            ::= [AmplConstructs] Main  ; --modified
 IMPORT_CONSTRUCT       .AmplConstructs     ::= Import ; 
 PROTOCOL_CONSTRUCT     .AmplConstructs     ::= Protocols ;
 COPROTOCOL_CONSTRUCT   .AmplConstructs     ::= Coprotocols ; 
@@ -149,8 +149,7 @@ AC_TOINT   .Com   ::= ToInt ;
 AC_AND     .Com   ::= And ;
 AC_OR      .Com   ::= Or ;
 AC_APPEND  .Com   ::= Append ; 
-AC_TRUE    .Com   ::= BTrue ; 
-AC_FALSE    .Com  ::= BFalse ; 
+AC_BOOL    .Com   ::= CBool BBool ; 
 AC_UNSTRING.Com   ::= Unstring ;
 AC_LEQ     .Com   ::= LeqI ;
 AC_EQI     .Com   ::= EqI  ;

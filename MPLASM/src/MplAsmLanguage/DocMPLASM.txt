@@ -87,6 +87,9 @@ CInt literals are recognized by the regular expression
 CChar literals are recognized by the regular expression
 `````{"cChar"}`````
 
+CBool literals are recognized by the regular expression
+`````{"cBool"}`````
+
 CString literals are recognized by the regular expression
 `````{"cString"}`````
 
@@ -192,11 +195,8 @@ Ch_Id literals are recognized by the regular expression
 Main_run literals are recognized by the regular expression
 `````{"%run"}`````
 
-BTrue literals are recognized by the regular expression
-`````{"true"}`````
-
-BFalse literals are recognized by the regular expression
-`````{"false"}`````
+BBool literals are recognized by the regular expression
+`````{"True"} | {"False"}`````
 
 Character literals are recognized by the regular expression
 `````''' (char - ["'\"] | '\' ["'\nt"]) '''`````
@@ -299,8 +299,7 @@ All other symbols are terminals.
   |  |  **|**  | //And//
   |  |  **|**  | //Or//
   |  |  **|**  | //Append//
-  |  |  **|**  | //BTrue//
-  |  |  **|**  | //BFalse//
+  |  |  **|**  | //CBool// //BBool//
   |  |  **|**  | //Unstring//
   |  |  **|**  | //LeqI//
   |  |  **|**  | //EqI//

@@ -1,6 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 module MplAsmPasses.Compile.CompileErrors where
 
+import AMPL
+import AMPLTypes
+
 import Optics
 import MplAsmAST.MplAsmCore
 
@@ -30,5 +33,10 @@ data CompileError x
 
     | RunPolarityMismatch (TypeAndSpec x) Word Word
 
+    -- Expected identifier to have polarity
+    | UnknownService (IdP x)
+
+    | NoMainFunction 
 
 $(makeClassyPrisms ''CompileError)
+

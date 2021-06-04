@@ -28,6 +28,9 @@ transCInt x = case x of
 transCChar :: MplAsmLanguage.AbsMPLASM.CChar -> Result
 transCChar x = case x of
   MplAsmLanguage.AbsMPLASM.CChar string -> failure x
+transCBool :: MplAsmLanguage.AbsMPLASM.CBool -> Result
+transCBool x = case x of
+  MplAsmLanguage.AbsMPLASM.CBool string -> failure x
 transCString :: MplAsmLanguage.AbsMPLASM.CString -> Result
 transCString x = case x of
   MplAsmLanguage.AbsMPLASM.CString string -> failure x
@@ -133,12 +136,9 @@ transCh_Id x = case x of
 transMain_run :: MplAsmLanguage.AbsMPLASM.Main_run -> Result
 transMain_run x = case x of
   MplAsmLanguage.AbsMPLASM.Main_run string -> failure x
-transBTrue :: MplAsmLanguage.AbsMPLASM.BTrue -> Result
-transBTrue x = case x of
-  MplAsmLanguage.AbsMPLASM.BTrue string -> failure x
-transBFalse :: MplAsmLanguage.AbsMPLASM.BFalse -> Result
-transBFalse x = case x of
-  MplAsmLanguage.AbsMPLASM.BFalse string -> failure x
+transBBool :: MplAsmLanguage.AbsMPLASM.BBool -> Result
+transBBool x = case x of
+  MplAsmLanguage.AbsMPLASM.BBool string -> failure x
 transCharacter :: MplAsmLanguage.AbsMPLASM.Character -> Result
 transCharacter x = case x of
   MplAsmLanguage.AbsMPLASM.Character string -> failure x
@@ -156,7 +156,7 @@ transIIdent x = case x of
   MplAsmLanguage.AbsMPLASM.IIdent string -> failure x
 transAMPLCODE :: MplAsmLanguage.AbsMPLASM.AMPLCODE -> Result
 transAMPLCODE x = case x of
-  MplAsmLanguage.AbsMPLASM.Main amplconstructss main -> failure x
+  MplAsmLanguage.AbsMPLASM.AMPLCODE amplconstructss main -> failure x
 transAmplConstructs :: MplAsmLanguage.AbsMPLASM.AmplConstructs -> Result
 transAmplConstructs x = case x of
   MplAsmLanguage.AbsMPLASM.IMPORT_CONSTRUCT import_ -> failure x
@@ -229,8 +229,7 @@ transCom x = case x of
   MplAsmLanguage.AbsMPLASM.AC_AND and -> failure x
   MplAsmLanguage.AbsMPLASM.AC_OR or -> failure x
   MplAsmLanguage.AbsMPLASM.AC_APPEND append -> failure x
-  MplAsmLanguage.AbsMPLASM.AC_TRUE btrue -> failure x
-  MplAsmLanguage.AbsMPLASM.AC_FALSE bfalse -> failure x
+  MplAsmLanguage.AbsMPLASM.AC_BOOL cbool bbool -> failure x
   MplAsmLanguage.AbsMPLASM.AC_UNSTRING unstring -> failure x
   MplAsmLanguage.AbsMPLASM.AC_LEQ leqi -> failure x
   MplAsmLanguage.AbsMPLASM.AC_EQI eqi -> failure x

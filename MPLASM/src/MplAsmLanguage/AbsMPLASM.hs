@@ -24,6 +24,9 @@ newtype CInt = CInt ((Int, Int), String)
 newtype CChar = CChar ((Int, Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
+newtype CBool = CBool ((Int, Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
 newtype CString = CString ((Int, Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
@@ -129,10 +132,7 @@ newtype Ch_Id = Ch_Id ((Int, Int), String)
 newtype Main_run = Main_run ((Int, Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-newtype BTrue = BTrue ((Int, Int), String)
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
-newtype BFalse = BFalse ((Int, Int), String)
+newtype BBool = BBool ((Int, Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype Character = Character ((Int, Int), String)
@@ -150,7 +150,7 @@ newtype PInteger = PInteger ((Int, Int), String)
 newtype IIdent = IIdent ((Int, Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data AMPLCODE = Main [AmplConstructs] Main
+data AMPLCODE = AMPLCODE [AmplConstructs] Main
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data AmplConstructs
@@ -226,8 +226,7 @@ data Com
     | AC_AND And
     | AC_OR Or
     | AC_APPEND Append
-    | AC_TRUE BTrue
-    | AC_FALSE BFalse
+    | AC_BOOL CBool BBool
     | AC_UNSTRING Unstring
     | AC_LEQ LeqI
     | AC_EQI EqI

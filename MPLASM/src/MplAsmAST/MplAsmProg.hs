@@ -18,8 +18,8 @@ data TypeAndSeqSpecs x = TypeAndSeqSpecs
     }
 
 data MplAsmProg x = MplAsmProg 
-    { mplAsmStmts :: [MplAsmStmt x]
-    , mplAsmMain :: Maybe (IdP x, ([IdP x], [IdP x], [IdP x]), MplAsmComs x)
+    { _mplAsmStmts :: [MplAsmStmt x]
+    , _mplAsmMain :: Maybe (IdP x, ([IdP x], [IdP x], [IdP x]), MplAsmComs x)
     }
 
 data MplAsmStmt x
@@ -34,4 +34,6 @@ data MplAsmStmt x
 
 $(makeLenses ''TypeAndConcSpecs)
 $(makeLenses ''TypeAndSeqSpecs)
+$(makeLenses ''MplAsmProg)
+$(makePrisms ''MplAsmProg)
 

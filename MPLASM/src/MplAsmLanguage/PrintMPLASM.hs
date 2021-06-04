@@ -115,6 +115,9 @@ instance Print MplAsmLanguage.AbsMPLASM.CInt where
 instance Print MplAsmLanguage.AbsMPLASM.CChar where
   prt _ (MplAsmLanguage.AbsMPLASM.CChar (_,i)) = doc $ showString $ i
 
+instance Print MplAsmLanguage.AbsMPLASM.CBool where
+  prt _ (MplAsmLanguage.AbsMPLASM.CBool (_,i)) = doc $ showString $ i
+
 instance Print MplAsmLanguage.AbsMPLASM.CString where
   prt _ (MplAsmLanguage.AbsMPLASM.CString (_,i)) = doc $ showString $ i
 
@@ -220,11 +223,8 @@ instance Print MplAsmLanguage.AbsMPLASM.Ch_Id where
 instance Print MplAsmLanguage.AbsMPLASM.Main_run where
   prt _ (MplAsmLanguage.AbsMPLASM.Main_run (_,i)) = doc $ showString $ i
 
-instance Print MplAsmLanguage.AbsMPLASM.BTrue where
-  prt _ (MplAsmLanguage.AbsMPLASM.BTrue (_,i)) = doc $ showString $ i
-
-instance Print MplAsmLanguage.AbsMPLASM.BFalse where
-  prt _ (MplAsmLanguage.AbsMPLASM.BFalse (_,i)) = doc $ showString $ i
+instance Print MplAsmLanguage.AbsMPLASM.BBool where
+  prt _ (MplAsmLanguage.AbsMPLASM.BBool (_,i)) = doc $ showString $ i
 
 instance Print MplAsmLanguage.AbsMPLASM.Character where
   prt _ (MplAsmLanguage.AbsMPLASM.Character (_,i)) = doc $ showString $ i
@@ -246,7 +246,7 @@ instance Print MplAsmLanguage.AbsMPLASM.IIdent where
 
 instance Print MplAsmLanguage.AbsMPLASM.AMPLCODE where
   prt i e = case e of
-    MplAsmLanguage.AbsMPLASM.Main amplconstructss main -> prPrec i 0 (concatD [prt 0 amplconstructss, prt 0 main])
+    MplAsmLanguage.AbsMPLASM.AMPLCODE amplconstructss main -> prPrec i 0 (concatD [prt 0 amplconstructss, prt 0 main])
 
 instance Print MplAsmLanguage.AbsMPLASM.AmplConstructs where
   prt i e = case e of
@@ -385,8 +385,7 @@ instance Print MplAsmLanguage.AbsMPLASM.Com where
     MplAsmLanguage.AbsMPLASM.AC_AND and -> prPrec i 0 (concatD [prt 0 and])
     MplAsmLanguage.AbsMPLASM.AC_OR or -> prPrec i 0 (concatD [prt 0 or])
     MplAsmLanguage.AbsMPLASM.AC_APPEND append -> prPrec i 0 (concatD [prt 0 append])
-    MplAsmLanguage.AbsMPLASM.AC_TRUE btrue -> prPrec i 0 (concatD [prt 0 btrue])
-    MplAsmLanguage.AbsMPLASM.AC_FALSE bfalse -> prPrec i 0 (concatD [prt 0 bfalse])
+    MplAsmLanguage.AbsMPLASM.AC_BOOL cbool bbool -> prPrec i 0 (concatD [prt 0 cbool, prt 0 bbool])
     MplAsmLanguage.AbsMPLASM.AC_UNSTRING unstring -> prPrec i 0 (concatD [prt 0 unstring])
     MplAsmLanguage.AbsMPLASM.AC_LEQ leqi -> prPrec i 0 (concatD [prt 0 leqi])
     MplAsmLanguage.AbsMPLASM.AC_EQI eqi -> prPrec i 0 (concatD [prt 0 eqi])
