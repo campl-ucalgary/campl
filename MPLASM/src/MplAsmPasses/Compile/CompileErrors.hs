@@ -34,7 +34,8 @@ data CompileError x
     | RunPolarityMismatch (TypeAndSpec x) Word Word
 
     -- Expected identifier to have polarity
-    | UnknownService (IdP x)
+    | UnknownInputService (IdP x)
+    | UnknownOutputService (IdP x)
 
     | NoMainFunction 
 

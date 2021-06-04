@@ -24,12 +24,47 @@ mplAsmParse ::
 mplAsmParse str = bnfcParse str >>= go
   where
     -- go :: B.AMPLCODE -> Either [_] [MplAsmStmt MplAsmParsed]
-    go (B.AMPLCODE constrs mainf) = case runWriter $ (,) <$> mplAsmParseStmts <*> mplAsmParseMain mainf of
+    go (B.AMPLCODE constrs mainf) = case runWriter $ (,) <$> mplAsmParseStmts constrs <*> mplAsmParseMain mainf of
         (a, []) -> Right $ _MplAsmProg # a
 
         (_, errs) -> Left errs
 
-mplAsmParseStmts = undefined
+mplAsmParseStmts :: 
+    ( MonadWriter [err] m
+    , AsParseError err ) =>
+    [B.AmplConstructs] -> 
+    m [MplAsmStmt MplAsmParsed]
+mplAsmParseStmts constrs = traverse go constrs
+  where
+    go = \case 
+        B.IMPORT_CONSTRUCT _ -> error "no importing implemented yet TODO"
+
+        B.PROTOCOL_CONSTRUCT (B.PROTOCOLS procs) -> fmap Protocols $ traverse f procs
+        B.COPROTOCOL_CONSTRUCT (B.COPROTOCOLS procs) -> fmap Coprotocols $ traverse f procs
+        B.CONSTRUCTOR_CONSTRUCT (B.CONSTRUCTORS structorspec) -> fmap Constructors $ traverse g structorspec
+        B.DESTRUCTOR_CONSTRUCT (B.DESTRUCTORS structorspec) -> fmap Destructors $ traverse g structorspec
+
+        B.PROCESSES_CONSTRUCT (B.PROCESSES procs) -> fmap Processes $ traverse k procs
+          where
+            -- k :: B.ProcessesSpec -> m (IdP x, ([IdP x], [IdP x], [IdP x]), MplAsmComs x)
+            k (B.PROCESS_SPEC pname seqs ins outs coms) = do
+                coms' <- mplAsmParseComs coms
+                return (toIdent pname, (map toIdent seqs, map toIdent ins, map toIdent outs), coms')
+        B.FUNCTIONS_CONSTRUCT (B.FUNCTIONS funs) -> fmap Functions $ traverse k funs
+          where
+            -- k :: B.FunctionsSpec -> m (Ident, [Ident], MplAsmComs MplAsmParsed)
+            k (B.FUNCTION_SPEC fname args coms) = do
+                coms' <- mplAsmParseComs coms
+                return (toIdent fname, map toIdent args, coms')
+
+    -- f :: B.ProtocolCoprotocolSpec -> m (TypeAndConcSpecs x)
+    f (B.PROTOCOL_COPROTOCOL_SPEC tp handles) = return $ TypeAndConcSpecs (toIdent tp) (map (\(B.HANDLE_NAME h) -> toIdent h) handles)
+
+    -- g :: B.StructorSpec -> m (TypeAndSeqSpecs x)
+    g (B.STRUCT_SPEC tp structs) = return $ TypeAndSeqSpecs (toIdent tp) (map (\(B.STRUCT spec numargs) -> (toIdent spec, fromIntegral $ pIntToInt numargs)) structs)
+
+
+
 
 mplAsmParseMain ::
     ( MonadWriter [err] m

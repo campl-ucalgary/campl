@@ -1,9 +1,11 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE MultiWayIf #-}
 module MplAsmPasses.Compile.Compile where
 
 import AMPL
 import AMPLTypes
+import AMPLServices
 
 import MplAsmAST.MplAsmCore
 import MplAsmPasses.Compile.CompileErrors
@@ -32,6 +34,8 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set  as Set
 
+import Control.Exception
+
 mplAsmProgToInitMachState ::
     ( Ord (IdP x) 
     , AsCompileError err x 
@@ -45,11 +49,11 @@ mplAsmProgToInitMachState prog = case runWriter res of
   where
     res = flip evalStateT initMplAsmCompileSt $ do
         {- compilation of statements is straightforward -}
-        funs <- traverse mplAsmCompileStmt (prog ^. mplAsmStmts)
+        funs <- fmap concat $ traverse mplAsmCompileStmt (prog ^. mplAsmStmts)
 
         {- compilation of the main function is a bit more complicated.  
          - We have some weirdness. Recall that:
-                 - @console@ is of input polarity
+                 - @console@ and @cconsole@ are of input polarity, and these are int and char terminals on std
                  - all other are of output polarity.
          - Here are the steps:
                 - reset the local channel id counter (as normal when compiling proceses)
@@ -60,8 +64,8 @@ mplAsmProgToInitMachState prog = case runWriter res of
                 - compile the commands
                 - resolve the channels according to the above "weirdness"
          -}
-        ~(Just res) <- case (prog ^.  mplAsmMain) of
-            Just (mainident, (seqs, ins, outs), coms) -> do
+        ~(Just (services, mainf)) <- case prog ^. mplAsmMain of
+            Just (mainident, (seqs, ins, outs), coms) -> assert (null seqs) $ do
                 let overlapping = group $ sort $ seqs ++ ins ++ outs
                 tell $ bool [_OverlappingDeclarations # overlapping] [] $ length overlapping == 1
 
@@ -83,24 +87,78 @@ mplAsmProgToInitMachState prog = case runWriter res of
                 channelTranslations .= Map.fromList (zip ins (map (Input,) insids) ++ zip outs (map (Output,) outsids))
 
                 -- compile the instructions
-                instrs <- mplAsmComsToInstr coms
+                maininstrs <- mplAsmComsToInstr coms
 
-                -- resolve according to above "weirdness" 
+                {-
+                 - resolve according to above "weirdness" 
+                 - We want to output something of type: 
+                    - ([Translation], [(GlobalChanID, (ServiceDataType, ServiceType))])
+                 - where we have the necessary translation from local channels to global channels,
+                 - and all the service channels
+                 -}
+                intransandservices <- for (zip ins insids) $ \(ch, chid) -> do
+                    let chstr = ch ^. identStr 
+                    if | chstr == "console" -> do
+                            gch <- freshGlobalChanId
+                            return $ ([(Input, (chid, gch))], [(gch, (IntService, StdService))])
+                       | chstr == "cconsole" -> do
+                            gch <- freshGlobalChanId
+                            return $ ([(Input, (chid, gch))], [(gch, (CharService, StdService))])
+                       | otherwise -> tell [_UnknownInputService # ch] >> return mempty
+                -- TODO: This is really bad; we need to rethink how the machine 
+                -- handles services in the future.. probably do some WAI / warp webserver
+                -- is the best way to do this
+                outtransandservices <- for (zip outs outsids) $ \(ch, chid) -> do
+                    let chstr = ch ^. identStr 
+                        nkey = show (coerce chid :: Int)
+                    if | "int" `isPrefixOf` chstr -> do
+                            gch <- freshGlobalChanId
+                            return $ 
+                                ( [(Output, (chid, gch))]
+                                , [
+                                    ( gch
+                                    , ( IntService
+                                      , TerminalNetworkedService
+                                        (concat 
+                                            [ "xterm -e 'amplc -hn 127.0.0.1 -p 5000 -k "
+                                            , nkey  
+                                            ,"  ; read'"
+                                            ])
+                                        (Key nkey)
+                                      )
+                                    )
+                                   ]
+                                )
+                       | "char" `isPrefixOf` chstr -> do
+                            gch <- freshGlobalChanId
+                            return $ 
+                                ( [(Output, (chid, gch))]
+                                , [
+                                    ( gch
+                                    , ( CharService
+                                      , TerminalNetworkedService
+                                        (concat 
+                                            [ "xterm -e 'amplc -hn 127.0.0.1 -p 5000 -k "
+                                            , nkey  
+                                            ,"  ; read'"
+                                            ])
+                                        (Key nkey)
+                                      )
+                                    )
+                                   ]
+                                )
 
-                -- ([Translation], [(GlobalChanID, (ServiceDataType, ServiceType))])
+                       | otherwise -> tell [_UnknownOutputService # ch] >> return mempty
 
-                return $ (funid, instrs)
-
-
-                undefined
+                return $ Just (intransandservices  <> outtransandservices, (funid, maininstrs))
             Nothing -> tell [_NoMainFunction # ()] >> return Nothing
 
-        return undefined
-        -- :: Maybe (IdP x, ([IdP x], [IdP x], [IdP x]), MplAsmComs x)
-        -- ([Translation], [GlobalChanID], [(GlobalChanID, (ServiceDataType, ServiceType))])
+        return $ InitAMPLMachState 
+                { initAmplMachStateServices = foldOf (folded % _2) services
+                , initAmplMachMainFun = (snd mainf, foldOf (folded % _1) services )
+                , initAmplMachFuns = mainf:funs 
+                }
 
-    
-    -- Maybe (IdP x, ([IdP x], [IdP x], [IdP x]), MplAsmComs x) 
 
 {- | Converts a statment into function ids to instructions. Note that this will
 appropriately modify the monadic context.  -}

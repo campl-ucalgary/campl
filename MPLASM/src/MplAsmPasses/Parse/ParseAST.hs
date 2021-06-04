@@ -16,6 +16,11 @@ type instance IdP MplAsmParsed  = Ident
 newtype Ident = Ident { _identStr :: String }
   deriving (Show, Eq, Ord)
 
+data LocatedIdent = LocatedIdent 
+    { locatedIdentIdent :: Ident 
+    , locatedIdentLoc :: RowCol
+    }
+
 type RowCol = (Int, Int)
 
 toIdent :: forall t. Coercible t (RowCol, String) => t -> Ident
