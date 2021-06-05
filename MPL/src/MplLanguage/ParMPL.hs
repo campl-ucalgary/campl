@@ -1,12 +1,12 @@
 {-# OPTIONS_GHC -w #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns -fno-warn-overlapping-patterns #-}
-module Language.ParMPL
+module MplLanguage.ParMPL
   ( happyError
   , myLexer
   , pMplProg
   ) where
-import qualified Language.AbsMPL
-import Language.LexMPL
+import qualified MplLanguage.AbsMPL
+import MplLanguage.LexMPL
 import qualified Data.Array as Happy_Data_Array
 import qualified Data.Bits as Bits
 import Control.Applicative(Applicative(..))
@@ -17,110 +17,110 @@ import Control.Monad (ap)
 data HappyAbsSyn 
 	= HappyTerminal (Token)
 	| HappyErrorToken Prelude.Int
-	| HappyAbsSyn4 (Language.AbsMPL.PInteger)
-	| HappyAbsSyn5 (Language.AbsMPL.PDouble)
-	| HappyAbsSyn6 (Language.AbsMPL.PChar)
-	| HappyAbsSyn7 (Language.AbsMPL.PString)
-	| HappyAbsSyn8 (Language.AbsMPL.Par)
-	| HappyAbsSyn9 (Language.AbsMPL.Tensor)
-	| HappyAbsSyn10 (Language.AbsMPL.LBracket)
-	| HappyAbsSyn11 (Language.AbsMPL.RBracket)
-	| HappyAbsSyn12 (Language.AbsMPL.LSquareBracket)
-	| HappyAbsSyn13 (Language.AbsMPL.RSquareBracket)
-	| HappyAbsSyn14 (Language.AbsMPL.NullPattern)
-	| HappyAbsSyn15 (Language.AbsMPL.Colon)
-	| HappyAbsSyn16 (Language.AbsMPL.Infixl1op)
-	| HappyAbsSyn17 (Language.AbsMPL.Infixl2op)
-	| HappyAbsSyn18 (Language.AbsMPL.Infixl3op)
-	| HappyAbsSyn19 (Language.AbsMPL.Infixl4op)
-	| HappyAbsSyn20 (Language.AbsMPL.Infixl5op)
-	| HappyAbsSyn21 (Language.AbsMPL.Infixl6op)
-	| HappyAbsSyn22 (Language.AbsMPL.Infixr7op)
-	| HappyAbsSyn23 (Language.AbsMPL.Infixl8op)
-	| HappyAbsSyn24 (Language.AbsMPL.Close)
-	| HappyAbsSyn25 (Language.AbsMPL.Halt)
-	| HappyAbsSyn26 (Language.AbsMPL.Get)
-	| HappyAbsSyn27 (Language.AbsMPL.Put)
-	| HappyAbsSyn28 (Language.AbsMPL.HCase)
-	| HappyAbsSyn29 (Language.AbsMPL.HPut)
-	| HappyAbsSyn30 (Language.AbsMPL.Split)
-	| HappyAbsSyn31 (Language.AbsMPL.Fork)
-	| HappyAbsSyn32 (Language.AbsMPL.ChId)
-	| HappyAbsSyn33 (Language.AbsMPL.Case)
-	| HappyAbsSyn34 (Language.AbsMPL.UIdent)
-	| HappyAbsSyn35 (Language.AbsMPL.PIdent)
-	| HappyAbsSyn36 (Language.AbsMPL.UPIdent)
-	| HappyAbsSyn37 ([Language.AbsMPL.PIdent])
-	| HappyAbsSyn38 (Language.AbsMPL.MplProg)
-	| HappyAbsSyn39 (Language.AbsMPL.MplStmt)
-	| HappyAbsSyn40 ([Language.AbsMPL.MplDefn])
-	| HappyAbsSyn41 ([Language.AbsMPL.MplStmt])
-	| HappyAbsSyn42 (Language.AbsMPL.MplWhere)
-	| HappyAbsSyn43 ([Language.AbsMPL.MplWhere])
-	| HappyAbsSyn44 (Language.AbsMPL.MplDefn)
-	| HappyAbsSyn45 (Language.AbsMPL.MplType)
-	| HappyAbsSyn49 (Language.AbsMPL.TupleListType)
-	| HappyAbsSyn50 (Language.AbsMPL.ForallVarList)
-	| HappyAbsSyn51 ([Language.AbsMPL.ForallVarList])
-	| HappyAbsSyn52 ([Language.AbsMPL.TupleListType])
-	| HappyAbsSyn53 ([Language.AbsMPL.MplType])
-	| HappyAbsSyn54 (Language.AbsMPL.SequentialTypeDefn)
-	| HappyAbsSyn55 (Language.AbsMPL.SeqTypeClauseDefn)
-	| HappyAbsSyn56 (Language.AbsMPL.SeqTypePhraseDefn)
-	| HappyAbsSyn57 ([Language.AbsMPL.SeqTypeClauseDefn])
-	| HappyAbsSyn58 ([Language.AbsMPL.SeqTypePhraseDefn])
-	| HappyAbsSyn59 (Language.AbsMPL.ConcurrentTypeDefn)
-	| HappyAbsSyn60 (Language.AbsMPL.ConcurrentTypeClauseDefn)
-	| HappyAbsSyn61 (Language.AbsMPL.ConcurrentTypePhraseDefn)
-	| HappyAbsSyn62 ([Language.AbsMPL.ConcurrentTypeClauseDefn])
-	| HappyAbsSyn63 ([Language.AbsMPL.ConcurrentTypePhraseDefn])
-	| HappyAbsSyn64 (Language.AbsMPL.TypeHandleName)
-	| HappyAbsSyn65 ([Language.AbsMPL.TypeHandleName])
-	| HappyAbsSyn66 (Language.AbsMPL.Expr)
-	| HappyAbsSyn77 (Language.AbsMPL.UnfoldExprPhrase)
-	| HappyAbsSyn78 ([Language.AbsMPL.UnfoldExprPhrase])
-	| HappyAbsSyn79 (Language.AbsMPL.FoldExprPhrase)
-	| HappyAbsSyn80 ([Language.AbsMPL.FoldExprPhrase])
-	| HappyAbsSyn81 (Language.AbsMPL.LetExprPhrase)
-	| HappyAbsSyn82 ([Language.AbsMPL.LetExprPhrase])
-	| HappyAbsSyn83 (Language.AbsMPL.TupleExprList)
-	| HappyAbsSyn84 ([Language.AbsMPL.TupleExprList])
-	| HappyAbsSyn85 (Language.AbsMPL.RecordExprPhrase)
-	| HappyAbsSyn86 ([Language.AbsMPL.RecordExprPhrase])
-	| HappyAbsSyn87 (Language.AbsMPL.SwitchExprPhrase)
-	| HappyAbsSyn88 ([Language.AbsMPL.SwitchExprPhrase])
-	| HappyAbsSyn89 ([Language.AbsMPL.Expr])
-	| HappyAbsSyn90 (Language.AbsMPL.PattExprPhrase)
-	| HappyAbsSyn91 (Language.AbsMPL.Pattern)
-	| HappyAbsSyn92 ([Language.AbsMPL.Pattern])
-	| HappyAbsSyn95 (Language.AbsMPL.TupleListPattern)
-	| HappyAbsSyn96 ([Language.AbsMPL.TupleListPattern])
-	| HappyAbsSyn97 (Language.AbsMPL.DestructorPatternPhrase)
-	| HappyAbsSyn98 ([Language.AbsMPL.DestructorPatternPhrase])
-	| HappyAbsSyn99 (Language.AbsMPL.FunctionDefn)
-	| HappyAbsSyn100 ([Language.AbsMPL.PattExprPhrase])
-	| HappyAbsSyn101 (Language.AbsMPL.ProcessDefn)
-	| HappyAbsSyn102 (Language.AbsMPL.ProcessPhrase)
-	| HappyAbsSyn103 ([Language.AbsMPL.ProcessPhrase])
-	| HappyAbsSyn104 (Language.AbsMPL.ProcessCommandsBlock)
-	| HappyAbsSyn105 ([Language.AbsMPL.ProcessCommand])
-	| HappyAbsSyn106 (Language.AbsMPL.ProcessCommand)
-	| HappyAbsSyn107 (Language.AbsMPL.HCasePhrase)
-	| HappyAbsSyn108 ([Language.AbsMPL.HCasePhrase])
-	| HappyAbsSyn109 (Language.AbsMPL.SplitChannel)
-	| HappyAbsSyn110 ([Language.AbsMPL.SplitChannel])
-	| HappyAbsSyn111 (Language.AbsMPL.ForkPhrase)
-	| HappyAbsSyn112 ([Language.AbsMPL.ForkPhrase])
-	| HappyAbsSyn113 (Language.AbsMPL.ForkChannel)
-	| HappyAbsSyn114 ([Language.AbsMPL.ForkChannel])
-	| HappyAbsSyn115 (Language.AbsMPL.RacePhrase)
-	| HappyAbsSyn116 ([Language.AbsMPL.RacePhrase])
-	| HappyAbsSyn117 (Language.AbsMPL.PlugPhrase)
-	| HappyAbsSyn118 ([Language.AbsMPL.PlugPhrase])
-	| HappyAbsSyn119 (Language.AbsMPL.ProcessCasePhrase)
-	| HappyAbsSyn120 ([Language.AbsMPL.ProcessCasePhrase])
-	| HappyAbsSyn121 (Language.AbsMPL.ProcessSwitchPhrase)
-	| HappyAbsSyn122 ([Language.AbsMPL.ProcessSwitchPhrase])
+	| HappyAbsSyn4 (MplLanguage.AbsMPL.PInteger)
+	| HappyAbsSyn5 (MplLanguage.AbsMPL.PDouble)
+	| HappyAbsSyn6 (MplLanguage.AbsMPL.PChar)
+	| HappyAbsSyn7 (MplLanguage.AbsMPL.PString)
+	| HappyAbsSyn8 (MplLanguage.AbsMPL.Par)
+	| HappyAbsSyn9 (MplLanguage.AbsMPL.Tensor)
+	| HappyAbsSyn10 (MplLanguage.AbsMPL.LBracket)
+	| HappyAbsSyn11 (MplLanguage.AbsMPL.RBracket)
+	| HappyAbsSyn12 (MplLanguage.AbsMPL.LSquareBracket)
+	| HappyAbsSyn13 (MplLanguage.AbsMPL.RSquareBracket)
+	| HappyAbsSyn14 (MplLanguage.AbsMPL.NullPattern)
+	| HappyAbsSyn15 (MplLanguage.AbsMPL.Colon)
+	| HappyAbsSyn16 (MplLanguage.AbsMPL.Infixl1op)
+	| HappyAbsSyn17 (MplLanguage.AbsMPL.Infixl2op)
+	| HappyAbsSyn18 (MplLanguage.AbsMPL.Infixl3op)
+	| HappyAbsSyn19 (MplLanguage.AbsMPL.Infixl4op)
+	| HappyAbsSyn20 (MplLanguage.AbsMPL.Infixl5op)
+	| HappyAbsSyn21 (MplLanguage.AbsMPL.Infixl6op)
+	| HappyAbsSyn22 (MplLanguage.AbsMPL.Infixr7op)
+	| HappyAbsSyn23 (MplLanguage.AbsMPL.Infixl8op)
+	| HappyAbsSyn24 (MplLanguage.AbsMPL.Close)
+	| HappyAbsSyn25 (MplLanguage.AbsMPL.Halt)
+	| HappyAbsSyn26 (MplLanguage.AbsMPL.Get)
+	| HappyAbsSyn27 (MplLanguage.AbsMPL.Put)
+	| HappyAbsSyn28 (MplLanguage.AbsMPL.HCase)
+	| HappyAbsSyn29 (MplLanguage.AbsMPL.HPut)
+	| HappyAbsSyn30 (MplLanguage.AbsMPL.Split)
+	| HappyAbsSyn31 (MplLanguage.AbsMPL.Fork)
+	| HappyAbsSyn32 (MplLanguage.AbsMPL.ChId)
+	| HappyAbsSyn33 (MplLanguage.AbsMPL.Case)
+	| HappyAbsSyn34 (MplLanguage.AbsMPL.UIdent)
+	| HappyAbsSyn35 (MplLanguage.AbsMPL.PIdent)
+	| HappyAbsSyn36 (MplLanguage.AbsMPL.UPIdent)
+	| HappyAbsSyn37 ([MplLanguage.AbsMPL.PIdent])
+	| HappyAbsSyn38 (MplLanguage.AbsMPL.MplProg)
+	| HappyAbsSyn39 (MplLanguage.AbsMPL.MplStmt)
+	| HappyAbsSyn40 ([MplLanguage.AbsMPL.MplDefn])
+	| HappyAbsSyn41 ([MplLanguage.AbsMPL.MplStmt])
+	| HappyAbsSyn42 (MplLanguage.AbsMPL.MplWhere)
+	| HappyAbsSyn43 ([MplLanguage.AbsMPL.MplWhere])
+	| HappyAbsSyn44 (MplLanguage.AbsMPL.MplDefn)
+	| HappyAbsSyn45 (MplLanguage.AbsMPL.MplType)
+	| HappyAbsSyn49 (MplLanguage.AbsMPL.TupleListType)
+	| HappyAbsSyn50 (MplLanguage.AbsMPL.ForallVarList)
+	| HappyAbsSyn51 ([MplLanguage.AbsMPL.ForallVarList])
+	| HappyAbsSyn52 ([MplLanguage.AbsMPL.TupleListType])
+	| HappyAbsSyn53 ([MplLanguage.AbsMPL.MplType])
+	| HappyAbsSyn54 (MplLanguage.AbsMPL.SequentialTypeDefn)
+	| HappyAbsSyn55 (MplLanguage.AbsMPL.SeqTypeClauseDefn)
+	| HappyAbsSyn56 (MplLanguage.AbsMPL.SeqTypePhraseDefn)
+	| HappyAbsSyn57 ([MplLanguage.AbsMPL.SeqTypeClauseDefn])
+	| HappyAbsSyn58 ([MplLanguage.AbsMPL.SeqTypePhraseDefn])
+	| HappyAbsSyn59 (MplLanguage.AbsMPL.ConcurrentTypeDefn)
+	| HappyAbsSyn60 (MplLanguage.AbsMPL.ConcurrentTypeClauseDefn)
+	| HappyAbsSyn61 (MplLanguage.AbsMPL.ConcurrentTypePhraseDefn)
+	| HappyAbsSyn62 ([MplLanguage.AbsMPL.ConcurrentTypeClauseDefn])
+	| HappyAbsSyn63 ([MplLanguage.AbsMPL.ConcurrentTypePhraseDefn])
+	| HappyAbsSyn64 (MplLanguage.AbsMPL.TypeHandleName)
+	| HappyAbsSyn65 ([MplLanguage.AbsMPL.TypeHandleName])
+	| HappyAbsSyn66 (MplLanguage.AbsMPL.Expr)
+	| HappyAbsSyn77 (MplLanguage.AbsMPL.UnfoldExprPhrase)
+	| HappyAbsSyn78 ([MplLanguage.AbsMPL.UnfoldExprPhrase])
+	| HappyAbsSyn79 (MplLanguage.AbsMPL.FoldExprPhrase)
+	| HappyAbsSyn80 ([MplLanguage.AbsMPL.FoldExprPhrase])
+	| HappyAbsSyn81 (MplLanguage.AbsMPL.LetExprPhrase)
+	| HappyAbsSyn82 ([MplLanguage.AbsMPL.LetExprPhrase])
+	| HappyAbsSyn83 (MplLanguage.AbsMPL.TupleExprList)
+	| HappyAbsSyn84 ([MplLanguage.AbsMPL.TupleExprList])
+	| HappyAbsSyn85 (MplLanguage.AbsMPL.RecordExprPhrase)
+	| HappyAbsSyn86 ([MplLanguage.AbsMPL.RecordExprPhrase])
+	| HappyAbsSyn87 (MplLanguage.AbsMPL.SwitchExprPhrase)
+	| HappyAbsSyn88 ([MplLanguage.AbsMPL.SwitchExprPhrase])
+	| HappyAbsSyn89 ([MplLanguage.AbsMPL.Expr])
+	| HappyAbsSyn90 (MplLanguage.AbsMPL.PattExprPhrase)
+	| HappyAbsSyn91 (MplLanguage.AbsMPL.Pattern)
+	| HappyAbsSyn92 ([MplLanguage.AbsMPL.Pattern])
+	| HappyAbsSyn95 (MplLanguage.AbsMPL.TupleListPattern)
+	| HappyAbsSyn96 ([MplLanguage.AbsMPL.TupleListPattern])
+	| HappyAbsSyn97 (MplLanguage.AbsMPL.DestructorPatternPhrase)
+	| HappyAbsSyn98 ([MplLanguage.AbsMPL.DestructorPatternPhrase])
+	| HappyAbsSyn99 (MplLanguage.AbsMPL.FunctionDefn)
+	| HappyAbsSyn100 ([MplLanguage.AbsMPL.PattExprPhrase])
+	| HappyAbsSyn101 (MplLanguage.AbsMPL.ProcessDefn)
+	| HappyAbsSyn102 (MplLanguage.AbsMPL.ProcessPhrase)
+	| HappyAbsSyn103 ([MplLanguage.AbsMPL.ProcessPhrase])
+	| HappyAbsSyn104 (MplLanguage.AbsMPL.ProcessCommandsBlock)
+	| HappyAbsSyn105 ([MplLanguage.AbsMPL.ProcessCommand])
+	| HappyAbsSyn106 (MplLanguage.AbsMPL.ProcessCommand)
+	| HappyAbsSyn107 (MplLanguage.AbsMPL.HCasePhrase)
+	| HappyAbsSyn108 ([MplLanguage.AbsMPL.HCasePhrase])
+	| HappyAbsSyn109 (MplLanguage.AbsMPL.SplitChannel)
+	| HappyAbsSyn110 ([MplLanguage.AbsMPL.SplitChannel])
+	| HappyAbsSyn111 (MplLanguage.AbsMPL.ForkPhrase)
+	| HappyAbsSyn112 ([MplLanguage.AbsMPL.ForkPhrase])
+	| HappyAbsSyn113 (MplLanguage.AbsMPL.ForkChannel)
+	| HappyAbsSyn114 ([MplLanguage.AbsMPL.ForkChannel])
+	| HappyAbsSyn115 (MplLanguage.AbsMPL.RacePhrase)
+	| HappyAbsSyn116 ([MplLanguage.AbsMPL.RacePhrase])
+	| HappyAbsSyn117 (MplLanguage.AbsMPL.PlugPhrase)
+	| HappyAbsSyn118 ([MplLanguage.AbsMPL.PlugPhrase])
+	| HappyAbsSyn119 (MplLanguage.AbsMPL.ProcessCasePhrase)
+	| HappyAbsSyn120 ([MplLanguage.AbsMPL.ProcessCasePhrase])
+	| HappyAbsSyn121 (MplLanguage.AbsMPL.ProcessSwitchPhrase)
+	| HappyAbsSyn122 ([MplLanguage.AbsMPL.ProcessSwitchPhrase])
 
 {- to allow type-synonyms as our monads (likely
  - with explicitly-specified bind and return)
@@ -4557,231 +4557,231 @@ action_479 _ = happyReduce_217
 happyReduce_1 = happySpecReduce_1  4 happyReduction_1
 happyReduction_1 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn4
-		 (Language.AbsMPL.PInteger (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.PInteger (mkPosToken happy_var_1)
 	)
 happyReduction_1 _  = notHappyAtAll 
 
 happyReduce_2 = happySpecReduce_1  5 happyReduction_2
 happyReduction_2 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn5
-		 (Language.AbsMPL.PDouble (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.PDouble (mkPosToken happy_var_1)
 	)
 happyReduction_2 _  = notHappyAtAll 
 
 happyReduce_3 = happySpecReduce_1  6 happyReduction_3
 happyReduction_3 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn6
-		 (Language.AbsMPL.PChar (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.PChar (mkPosToken happy_var_1)
 	)
 happyReduction_3 _  = notHappyAtAll 
 
 happyReduce_4 = happySpecReduce_1  7 happyReduction_4
 happyReduction_4 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn7
-		 (Language.AbsMPL.PString (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.PString (mkPosToken happy_var_1)
 	)
 happyReduction_4 _  = notHappyAtAll 
 
 happyReduce_5 = happySpecReduce_1  8 happyReduction_5
 happyReduction_5 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn8
-		 (Language.AbsMPL.Par (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.Par (mkPosToken happy_var_1)
 	)
 happyReduction_5 _  = notHappyAtAll 
 
 happyReduce_6 = happySpecReduce_1  9 happyReduction_6
 happyReduction_6 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn9
-		 (Language.AbsMPL.Tensor (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.Tensor (mkPosToken happy_var_1)
 	)
 happyReduction_6 _  = notHappyAtAll 
 
 happyReduce_7 = happySpecReduce_1  10 happyReduction_7
 happyReduction_7 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn10
-		 (Language.AbsMPL.LBracket (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.LBracket (mkPosToken happy_var_1)
 	)
 happyReduction_7 _  = notHappyAtAll 
 
 happyReduce_8 = happySpecReduce_1  11 happyReduction_8
 happyReduction_8 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn11
-		 (Language.AbsMPL.RBracket (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.RBracket (mkPosToken happy_var_1)
 	)
 happyReduction_8 _  = notHappyAtAll 
 
 happyReduce_9 = happySpecReduce_1  12 happyReduction_9
 happyReduction_9 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn12
-		 (Language.AbsMPL.LSquareBracket (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.LSquareBracket (mkPosToken happy_var_1)
 	)
 happyReduction_9 _  = notHappyAtAll 
 
 happyReduce_10 = happySpecReduce_1  13 happyReduction_10
 happyReduction_10 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn13
-		 (Language.AbsMPL.RSquareBracket (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.RSquareBracket (mkPosToken happy_var_1)
 	)
 happyReduction_10 _  = notHappyAtAll 
 
 happyReduce_11 = happySpecReduce_1  14 happyReduction_11
 happyReduction_11 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn14
-		 (Language.AbsMPL.NullPattern (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.NullPattern (mkPosToken happy_var_1)
 	)
 happyReduction_11 _  = notHappyAtAll 
 
 happyReduce_12 = happySpecReduce_1  15 happyReduction_12
 happyReduction_12 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn15
-		 (Language.AbsMPL.Colon (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.Colon (mkPosToken happy_var_1)
 	)
 happyReduction_12 _  = notHappyAtAll 
 
 happyReduce_13 = happySpecReduce_1  16 happyReduction_13
 happyReduction_13 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn16
-		 (Language.AbsMPL.Infixl1op (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.Infixl1op (mkPosToken happy_var_1)
 	)
 happyReduction_13 _  = notHappyAtAll 
 
 happyReduce_14 = happySpecReduce_1  17 happyReduction_14
 happyReduction_14 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn17
-		 (Language.AbsMPL.Infixl2op (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.Infixl2op (mkPosToken happy_var_1)
 	)
 happyReduction_14 _  = notHappyAtAll 
 
 happyReduce_15 = happySpecReduce_1  18 happyReduction_15
 happyReduction_15 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn18
-		 (Language.AbsMPL.Infixl3op (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.Infixl3op (mkPosToken happy_var_1)
 	)
 happyReduction_15 _  = notHappyAtAll 
 
 happyReduce_16 = happySpecReduce_1  19 happyReduction_16
 happyReduction_16 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn19
-		 (Language.AbsMPL.Infixl4op (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.Infixl4op (mkPosToken happy_var_1)
 	)
 happyReduction_16 _  = notHappyAtAll 
 
 happyReduce_17 = happySpecReduce_1  20 happyReduction_17
 happyReduction_17 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn20
-		 (Language.AbsMPL.Infixl5op (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.Infixl5op (mkPosToken happy_var_1)
 	)
 happyReduction_17 _  = notHappyAtAll 
 
 happyReduce_18 = happySpecReduce_1  21 happyReduction_18
 happyReduction_18 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn21
-		 (Language.AbsMPL.Infixl6op (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.Infixl6op (mkPosToken happy_var_1)
 	)
 happyReduction_18 _  = notHappyAtAll 
 
 happyReduce_19 = happySpecReduce_1  22 happyReduction_19
 happyReduction_19 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn22
-		 (Language.AbsMPL.Infixr7op (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.Infixr7op (mkPosToken happy_var_1)
 	)
 happyReduction_19 _  = notHappyAtAll 
 
 happyReduce_20 = happySpecReduce_1  23 happyReduction_20
 happyReduction_20 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn23
-		 (Language.AbsMPL.Infixl8op (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.Infixl8op (mkPosToken happy_var_1)
 	)
 happyReduction_20 _  = notHappyAtAll 
 
 happyReduce_21 = happySpecReduce_1  24 happyReduction_21
 happyReduction_21 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn24
-		 (Language.AbsMPL.Close (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.Close (mkPosToken happy_var_1)
 	)
 happyReduction_21 _  = notHappyAtAll 
 
 happyReduce_22 = happySpecReduce_1  25 happyReduction_22
 happyReduction_22 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn25
-		 (Language.AbsMPL.Halt (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.Halt (mkPosToken happy_var_1)
 	)
 happyReduction_22 _  = notHappyAtAll 
 
 happyReduce_23 = happySpecReduce_1  26 happyReduction_23
 happyReduction_23 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn26
-		 (Language.AbsMPL.Get (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.Get (mkPosToken happy_var_1)
 	)
 happyReduction_23 _  = notHappyAtAll 
 
 happyReduce_24 = happySpecReduce_1  27 happyReduction_24
 happyReduction_24 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn27
-		 (Language.AbsMPL.Put (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.Put (mkPosToken happy_var_1)
 	)
 happyReduction_24 _  = notHappyAtAll 
 
 happyReduce_25 = happySpecReduce_1  28 happyReduction_25
 happyReduction_25 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn28
-		 (Language.AbsMPL.HCase (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.HCase (mkPosToken happy_var_1)
 	)
 happyReduction_25 _  = notHappyAtAll 
 
 happyReduce_26 = happySpecReduce_1  29 happyReduction_26
 happyReduction_26 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn29
-		 (Language.AbsMPL.HPut (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.HPut (mkPosToken happy_var_1)
 	)
 happyReduction_26 _  = notHappyAtAll 
 
 happyReduce_27 = happySpecReduce_1  30 happyReduction_27
 happyReduction_27 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn30
-		 (Language.AbsMPL.Split (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.Split (mkPosToken happy_var_1)
 	)
 happyReduction_27 _  = notHappyAtAll 
 
 happyReduce_28 = happySpecReduce_1  31 happyReduction_28
 happyReduction_28 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn31
-		 (Language.AbsMPL.Fork (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.Fork (mkPosToken happy_var_1)
 	)
 happyReduction_28 _  = notHappyAtAll 
 
 happyReduce_29 = happySpecReduce_1  32 happyReduction_29
 happyReduction_29 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn32
-		 (Language.AbsMPL.ChId (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.ChId (mkPosToken happy_var_1)
 	)
 happyReduction_29 _  = notHappyAtAll 
 
 happyReduce_30 = happySpecReduce_1  33 happyReduction_30
 happyReduction_30 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn33
-		 (Language.AbsMPL.Case (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.Case (mkPosToken happy_var_1)
 	)
 happyReduction_30 _  = notHappyAtAll 
 
 happyReduce_31 = happySpecReduce_1  34 happyReduction_31
 happyReduction_31 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn34
-		 (Language.AbsMPL.UIdent (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.UIdent (mkPosToken happy_var_1)
 	)
 happyReduction_31 _  = notHappyAtAll 
 
 happyReduce_32 = happySpecReduce_1  35 happyReduction_32
 happyReduction_32 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn35
-		 (Language.AbsMPL.PIdent (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.PIdent (mkPosToken happy_var_1)
 	)
 happyReduction_32 _  = notHappyAtAll 
 
 happyReduce_33 = happySpecReduce_1  36 happyReduction_33
 happyReduction_33 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn36
-		 (Language.AbsMPL.UPIdent (mkPosToken happy_var_1)
+		 (MplLanguage.AbsMPL.UPIdent (mkPosToken happy_var_1)
 	)
 happyReduction_33 _  = notHappyAtAll 
 
@@ -4809,7 +4809,7 @@ happyReduction_36 _ _ _  = notHappyAtAll
 happyReduce_37 = happySpecReduce_1  38 happyReduction_37
 happyReduction_37 (HappyAbsSyn41  happy_var_1)
 	 =  HappyAbsSyn38
-		 (Language.AbsMPL.MPL_PROG happy_var_1
+		 (MplLanguage.AbsMPL.MPL_PROG happy_var_1
 	)
 happyReduction_37 _  = notHappyAtAll 
 
@@ -4824,7 +4824,7 @@ happyReduction_38 (_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn39
-		 (Language.AbsMPL.MPL_DEFN_STMS_WHERE happy_var_3 happy_var_7
+		 (MplLanguage.AbsMPL.MPL_DEFN_STMS_WHERE happy_var_3 happy_var_7
 	) `HappyStk` happyRest
 
 happyReduce_39 = happyReduce 4 39 happyReduction_39
@@ -4834,13 +4834,13 @@ happyReduction_39 (_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn39
-		 (Language.AbsMPL.MPL_DEFN_STMS happy_var_3
+		 (MplLanguage.AbsMPL.MPL_DEFN_STMS happy_var_3
 	) `HappyStk` happyRest
 
 happyReduce_40 = happySpecReduce_1  39 happyReduction_40
 happyReduction_40 (HappyAbsSyn44  happy_var_1)
 	 =  HappyAbsSyn39
-		 (Language.AbsMPL.MPL_STMT happy_var_1
+		 (MplLanguage.AbsMPL.MPL_STMT happy_var_1
 	)
 happyReduction_40 _  = notHappyAtAll 
 
@@ -4876,7 +4876,7 @@ happyReduction_44 _ _  = notHappyAtAll
 happyReduce_45 = happySpecReduce_1  42 happyReduction_45
 happyReduction_45 (HappyAbsSyn39  happy_var_1)
 	 =  HappyAbsSyn42
-		 (Language.AbsMPL.MPL_WHERE happy_var_1
+		 (MplLanguage.AbsMPL.MPL_WHERE happy_var_1
 	)
 happyReduction_45 _  = notHappyAtAll 
 
@@ -4904,41 +4904,41 @@ happyReduction_48 _ _ _  = notHappyAtAll
 happyReduce_49 = happySpecReduce_1  44 happyReduction_49
 happyReduction_49 (HappyAbsSyn54  happy_var_1)
 	 =  HappyAbsSyn44
-		 (Language.AbsMPL.MPL_SEQUENTIAL_TYPE_DEFN happy_var_1
+		 (MplLanguage.AbsMPL.MPL_SEQUENTIAL_TYPE_DEFN happy_var_1
 	)
 happyReduction_49 _  = notHappyAtAll 
 
 happyReduce_50 = happySpecReduce_1  44 happyReduction_50
 happyReduction_50 (HappyAbsSyn59  happy_var_1)
 	 =  HappyAbsSyn44
-		 (Language.AbsMPL.MPL_CONCURRENT_TYPE_DEFN happy_var_1
+		 (MplLanguage.AbsMPL.MPL_CONCURRENT_TYPE_DEFN happy_var_1
 	)
 happyReduction_50 _  = notHappyAtAll 
 
 happyReduce_51 = happySpecReduce_1  44 happyReduction_51
 happyReduction_51 (HappyAbsSyn99  happy_var_1)
 	 =  HappyAbsSyn44
-		 (Language.AbsMPL.MPL_FUNCTION_DEFN happy_var_1
+		 (MplLanguage.AbsMPL.MPL_FUNCTION_DEFN happy_var_1
 	)
 happyReduction_51 _  = notHappyAtAll 
 
 happyReduce_52 = happySpecReduce_1  44 happyReduction_52
 happyReduction_52 (HappyAbsSyn101  happy_var_1)
 	 =  HappyAbsSyn44
-		 (Language.AbsMPL.MPL_PROCESS_DEFN happy_var_1
+		 (MplLanguage.AbsMPL.MPL_PROCESS_DEFN happy_var_1
 	)
 happyReduction_52 _  = notHappyAtAll 
 
 happyReduce_53 = happySpecReduce_1  44 happyReduction_53
 happyReduction_53 _
 	 =  HappyAbsSyn44
-		 (Language.AbsMPL.MPL_DEFNTEST
+		 (MplLanguage.AbsMPL.MPL_DEFNTEST
 	)
 
 happyReduce_54 = happySpecReduce_1  45 happyReduction_54
 happyReduction_54 (HappyAbsSyn45  happy_var_1)
 	 =  HappyAbsSyn45
-		 (Language.AbsMPL.MPL_TYPE happy_var_1
+		 (MplLanguage.AbsMPL.MPL_TYPE happy_var_1
 	)
 happyReduction_54 _  = notHappyAtAll 
 
@@ -4947,7 +4947,7 @@ happyReduction_55 (HappyAbsSyn45  happy_var_3)
 	(HappyAbsSyn8  happy_var_2)
 	(HappyAbsSyn45  happy_var_1)
 	 =  HappyAbsSyn45
-		 (Language.AbsMPL.PAR_TYPE happy_var_1 happy_var_2 happy_var_3
+		 (MplLanguage.AbsMPL.PAR_TYPE happy_var_1 happy_var_2 happy_var_3
 	)
 happyReduction_55 _ _ _  = notHappyAtAll 
 
@@ -4963,7 +4963,7 @@ happyReduction_57 (HappyAbsSyn45  happy_var_3)
 	(HappyAbsSyn9  happy_var_2)
 	(HappyAbsSyn45  happy_var_1)
 	 =  HappyAbsSyn45
-		 (Language.AbsMPL.TENSOR_TYPE happy_var_1 happy_var_2 happy_var_3
+		 (MplLanguage.AbsMPL.TENSOR_TYPE happy_var_1 happy_var_2 happy_var_3
 	)
 happyReduction_57 _ _ _  = notHappyAtAll 
 
@@ -4981,7 +4981,7 @@ happyReduction_59 ((HappyAbsSyn11  happy_var_4) `HappyStk`
 	(HappyAbsSyn34  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn45
-		 (Language.AbsMPL.MPL_UIDENT_ARGS_TYPE happy_var_1 happy_var_2 happy_var_3 happy_var_4
+		 (MplLanguage.AbsMPL.MPL_UIDENT_ARGS_TYPE happy_var_1 happy_var_2 happy_var_3 happy_var_4
 	) `HappyStk` happyRest
 
 happyReduce_60 = happyReduce 6 48 happyReduction_60
@@ -4993,13 +4993,13 @@ happyReduction_60 ((HappyAbsSyn11  happy_var_6) `HappyStk`
 	(HappyAbsSyn34  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn45
-		 (Language.AbsMPL.MPL_UIDENT_SEQ_CONC_ARGS_TYPE happy_var_1 happy_var_2 happy_var_3 happy_var_5 happy_var_6
+		 (MplLanguage.AbsMPL.MPL_UIDENT_SEQ_CONC_ARGS_TYPE happy_var_1 happy_var_2 happy_var_3 happy_var_5 happy_var_6
 	) `HappyStk` happyRest
 
 happyReduce_61 = happySpecReduce_1  48 happyReduction_61
 happyReduction_61 (HappyAbsSyn34  happy_var_1)
 	 =  HappyAbsSyn45
-		 (Language.AbsMPL.MPL_UIDENT_NO_ARGS_TYPE happy_var_1
+		 (MplLanguage.AbsMPL.MPL_UIDENT_NO_ARGS_TYPE happy_var_1
 	)
 happyReduction_61 _  = notHappyAtAll 
 
@@ -5007,7 +5007,7 @@ happyReduce_62 = happySpecReduce_2  48 happyReduction_62
 happyReduction_62 (HappyAbsSyn11  happy_var_2)
 	(HappyAbsSyn10  happy_var_1)
 	 =  HappyAbsSyn45
-		 (Language.AbsMPL.MPL_UNIT_TYPE happy_var_1 happy_var_2
+		 (MplLanguage.AbsMPL.MPL_UNIT_TYPE happy_var_1 happy_var_2
 	)
 happyReduction_62 _ _  = notHappyAtAll 
 
@@ -5016,7 +5016,7 @@ happyReduction_63 (HappyAbsSyn11  happy_var_3)
 	(HappyAbsSyn45  happy_var_2)
 	(HappyAbsSyn10  happy_var_1)
 	 =  HappyAbsSyn45
-		 (Language.AbsMPL.MPL_BRACKETED_TYPE happy_var_1 happy_var_2 happy_var_3
+		 (MplLanguage.AbsMPL.MPL_BRACKETED_TYPE happy_var_1 happy_var_2 happy_var_3
 	)
 happyReduction_63 _ _ _  = notHappyAtAll 
 
@@ -5025,7 +5025,7 @@ happyReduction_64 (HappyAbsSyn13  happy_var_3)
 	(HappyAbsSyn45  happy_var_2)
 	(HappyAbsSyn12  happy_var_1)
 	 =  HappyAbsSyn45
-		 (Language.AbsMPL.MPL_LIST_TYPE happy_var_1 happy_var_2 happy_var_3
+		 (MplLanguage.AbsMPL.MPL_LIST_TYPE happy_var_1 happy_var_2 happy_var_3
 	)
 happyReduction_64 _ _ _  = notHappyAtAll 
 
@@ -5037,20 +5037,20 @@ happyReduction_65 ((HappyAbsSyn11  happy_var_5) `HappyStk`
 	(HappyAbsSyn10  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn45
-		 (Language.AbsMPL.MPL_TUPLE_TYPE happy_var_1 happy_var_2 happy_var_4 happy_var_5
+		 (MplLanguage.AbsMPL.MPL_TUPLE_TYPE happy_var_1 happy_var_2 happy_var_4 happy_var_5
 	) `HappyStk` happyRest
 
 happyReduce_66 = happySpecReduce_1  49 happyReduction_66
 happyReduction_66 (HappyAbsSyn45  happy_var_1)
 	 =  HappyAbsSyn49
-		 (Language.AbsMPL.TUPLE_LIST_TYPE happy_var_1
+		 (MplLanguage.AbsMPL.TUPLE_LIST_TYPE happy_var_1
 	)
 happyReduction_66 _  = notHappyAtAll 
 
 happyReduce_67 = happySpecReduce_1  50 happyReduction_67
 happyReduction_67 (HappyAbsSyn34  happy_var_1)
 	 =  HappyAbsSyn50
-		 (Language.AbsMPL.MPL_SEQ_FUN_TYPE_FORALL_LIST happy_var_1
+		 (MplLanguage.AbsMPL.MPL_SEQ_FUN_TYPE_FORALL_LIST happy_var_1
 	)
 happyReduction_67 _  = notHappyAtAll 
 
@@ -5108,7 +5108,7 @@ happyReduce_75 = happySpecReduce_2  54 happyReduction_75
 happyReduction_75 (HappyAbsSyn57  happy_var_2)
 	_
 	 =  HappyAbsSyn54
-		 (Language.AbsMPL.DATA_DEFN happy_var_2
+		 (MplLanguage.AbsMPL.DATA_DEFN happy_var_2
 	)
 happyReduction_75 _ _  = notHappyAtAll 
 
@@ -5116,7 +5116,7 @@ happyReduce_76 = happySpecReduce_2  54 happyReduction_76
 happyReduction_76 (HappyAbsSyn57  happy_var_2)
 	_
 	 =  HappyAbsSyn54
-		 (Language.AbsMPL.CODATA_DEFN happy_var_2
+		 (MplLanguage.AbsMPL.CODATA_DEFN happy_var_2
 	)
 happyReduction_76 _ _  = notHappyAtAll 
 
@@ -5130,7 +5130,7 @@ happyReduction_77 (_ `HappyStk`
 	(HappyAbsSyn45  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn55
-		 (Language.AbsMPL.SEQ_TYPE_CLAUSE happy_var_1 happy_var_3 happy_var_6
+		 (MplLanguage.AbsMPL.SEQ_TYPE_CLAUSE happy_var_1 happy_var_3 happy_var_6
 	) `HappyStk` happyRest
 
 happyReduce_78 = happyReduce 5 56 happyReduction_78
@@ -5141,7 +5141,7 @@ happyReduction_78 ((HappyAbsSyn45  happy_var_5) `HappyStk`
 	(HappyAbsSyn65  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn56
-		 (Language.AbsMPL.SEQ_TYPE_PHRASE happy_var_1 happy_var_3 happy_var_5
+		 (MplLanguage.AbsMPL.SEQ_TYPE_PHRASE happy_var_1 happy_var_3 happy_var_5
 	) `HappyStk` happyRest
 
 happyReduce_79 = happySpecReduce_1  57 happyReduction_79
@@ -5185,7 +5185,7 @@ happyReduce_84 = happySpecReduce_2  59 happyReduction_84
 happyReduction_84 (HappyAbsSyn62  happy_var_2)
 	_
 	 =  HappyAbsSyn59
-		 (Language.AbsMPL.PROTOCOL_DEFN happy_var_2
+		 (MplLanguage.AbsMPL.PROTOCOL_DEFN happy_var_2
 	)
 happyReduction_84 _ _  = notHappyAtAll 
 
@@ -5193,7 +5193,7 @@ happyReduce_85 = happySpecReduce_2  59 happyReduction_85
 happyReduction_85 (HappyAbsSyn62  happy_var_2)
 	_
 	 =  HappyAbsSyn59
-		 (Language.AbsMPL.COPROTOCOL_DEFN happy_var_2
+		 (MplLanguage.AbsMPL.COPROTOCOL_DEFN happy_var_2
 	)
 happyReduction_85 _ _  = notHappyAtAll 
 
@@ -5207,7 +5207,7 @@ happyReduction_86 (_ `HappyStk`
 	(HappyAbsSyn45  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn60
-		 (Language.AbsMPL.CONCURRENT_TYPE_CLAUSE happy_var_1 happy_var_3 happy_var_6
+		 (MplLanguage.AbsMPL.CONCURRENT_TYPE_CLAUSE happy_var_1 happy_var_3 happy_var_6
 	) `HappyStk` happyRest
 
 happyReduce_87 = happyReduce 5 61 happyReduction_87
@@ -5218,7 +5218,7 @@ happyReduction_87 ((HappyAbsSyn45  happy_var_5) `HappyStk`
 	(HappyAbsSyn65  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn61
-		 (Language.AbsMPL.CONCURRENT_TYPE_PHRASE happy_var_1 happy_var_3 happy_var_5
+		 (MplLanguage.AbsMPL.CONCURRENT_TYPE_PHRASE happy_var_1 happy_var_3 happy_var_5
 	) `HappyStk` happyRest
 
 happyReduce_88 = happySpecReduce_1  62 happyReduction_88
@@ -5261,7 +5261,7 @@ happyReduction_92 _ _ _  = notHappyAtAll
 happyReduce_93 = happySpecReduce_1  64 happyReduction_93
 happyReduction_93 (HappyAbsSyn34  happy_var_1)
 	 =  HappyAbsSyn64
-		 (Language.AbsMPL.TYPE_HANDLE_NAME happy_var_1
+		 (MplLanguage.AbsMPL.TYPE_HANDLE_NAME happy_var_1
 	)
 happyReduction_93 _  = notHappyAtAll 
 
@@ -5284,7 +5284,7 @@ happyReduction_95 _ _ _  = notHappyAtAll
 happyReduce_96 = happySpecReduce_1  66 happyReduction_96
 happyReduction_96 (HappyAbsSyn66  happy_var_1)
 	 =  HappyAbsSyn66
-		 (Language.AbsMPL.EXPR happy_var_1
+		 (MplLanguage.AbsMPL.EXPR happy_var_1
 	)
 happyReduction_96 _  = notHappyAtAll 
 
@@ -5297,7 +5297,7 @@ happyReduction_97 ((HappyAbsSyn66  happy_var_6) `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn66
-		 (Language.AbsMPL.IF_EXPR happy_var_2 happy_var_4 happy_var_6
+		 (MplLanguage.AbsMPL.IF_EXPR happy_var_2 happy_var_4 happy_var_6
 	) `HappyStk` happyRest
 
 happyReduce_98 = happyReduce 6 66 happyReduction_98
@@ -5309,7 +5309,7 @@ happyReduction_98 ((HappyAbsSyn66  happy_var_6) `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn66
-		 (Language.AbsMPL.LET_EXPR happy_var_3 happy_var_6
+		 (MplLanguage.AbsMPL.LET_EXPR happy_var_3 happy_var_6
 	) `HappyStk` happyRest
 
 happyReduce_99 = happySpecReduce_3  67 happyReduction_99
@@ -5317,7 +5317,7 @@ happyReduction_99 (HappyAbsSyn66  happy_var_3)
 	(HappyAbsSyn15  happy_var_2)
 	(HappyAbsSyn66  happy_var_1)
 	 =  HappyAbsSyn66
-		 (Language.AbsMPL.INFIXR0_EXPR happy_var_1 happy_var_2 happy_var_3
+		 (MplLanguage.AbsMPL.INFIXR0_EXPR happy_var_1 happy_var_2 happy_var_3
 	)
 happyReduction_99 _ _ _  = notHappyAtAll 
 
@@ -5333,7 +5333,7 @@ happyReduction_101 (HappyAbsSyn66  happy_var_3)
 	(HappyAbsSyn16  happy_var_2)
 	(HappyAbsSyn66  happy_var_1)
 	 =  HappyAbsSyn66
-		 (Language.AbsMPL.INFIXL1_EXPR happy_var_1 happy_var_2 happy_var_3
+		 (MplLanguage.AbsMPL.INFIXL1_EXPR happy_var_1 happy_var_2 happy_var_3
 	)
 happyReduction_101 _ _ _  = notHappyAtAll 
 
@@ -5349,7 +5349,7 @@ happyReduction_103 (HappyAbsSyn66  happy_var_3)
 	(HappyAbsSyn17  happy_var_2)
 	(HappyAbsSyn66  happy_var_1)
 	 =  HappyAbsSyn66
-		 (Language.AbsMPL.INFIXL2_EXPR happy_var_1 happy_var_2 happy_var_3
+		 (MplLanguage.AbsMPL.INFIXL2_EXPR happy_var_1 happy_var_2 happy_var_3
 	)
 happyReduction_103 _ _ _  = notHappyAtAll 
 
@@ -5365,7 +5365,7 @@ happyReduction_105 (HappyAbsSyn66  happy_var_3)
 	(HappyAbsSyn18  happy_var_2)
 	(HappyAbsSyn66  happy_var_1)
 	 =  HappyAbsSyn66
-		 (Language.AbsMPL.INFIXL3_EXPR happy_var_1 happy_var_2 happy_var_3
+		 (MplLanguage.AbsMPL.INFIXL3_EXPR happy_var_1 happy_var_2 happy_var_3
 	)
 happyReduction_105 _ _ _  = notHappyAtAll 
 
@@ -5381,7 +5381,7 @@ happyReduction_107 (HappyAbsSyn66  happy_var_3)
 	(HappyAbsSyn19  happy_var_2)
 	(HappyAbsSyn66  happy_var_1)
 	 =  HappyAbsSyn66
-		 (Language.AbsMPL.INFIXL4_EXPR happy_var_1 happy_var_2 happy_var_3
+		 (MplLanguage.AbsMPL.INFIXL4_EXPR happy_var_1 happy_var_2 happy_var_3
 	)
 happyReduction_107 _ _ _  = notHappyAtAll 
 
@@ -5397,7 +5397,7 @@ happyReduction_109 (HappyAbsSyn66  happy_var_3)
 	(HappyAbsSyn20  happy_var_2)
 	(HappyAbsSyn66  happy_var_1)
 	 =  HappyAbsSyn66
-		 (Language.AbsMPL.INFIXL5_EXPR happy_var_1 happy_var_2 happy_var_3
+		 (MplLanguage.AbsMPL.INFIXL5_EXPR happy_var_1 happy_var_2 happy_var_3
 	)
 happyReduction_109 _ _ _  = notHappyAtAll 
 
@@ -5413,7 +5413,7 @@ happyReduction_111 (HappyAbsSyn66  happy_var_3)
 	(HappyAbsSyn21  happy_var_2)
 	(HappyAbsSyn66  happy_var_1)
 	 =  HappyAbsSyn66
-		 (Language.AbsMPL.INFIXL6_EXPR happy_var_1 happy_var_2 happy_var_3
+		 (MplLanguage.AbsMPL.INFIXL6_EXPR happy_var_1 happy_var_2 happy_var_3
 	)
 happyReduction_111 _ _ _  = notHappyAtAll 
 
@@ -5429,7 +5429,7 @@ happyReduction_113 (HappyAbsSyn66  happy_var_3)
 	(HappyAbsSyn22  happy_var_2)
 	(HappyAbsSyn66  happy_var_1)
 	 =  HappyAbsSyn66
-		 (Language.AbsMPL.INFIXR7_EXPR happy_var_1 happy_var_2 happy_var_3
+		 (MplLanguage.AbsMPL.INFIXR7_EXPR happy_var_1 happy_var_2 happy_var_3
 	)
 happyReduction_113 _ _ _  = notHappyAtAll 
 
@@ -5445,7 +5445,7 @@ happyReduction_115 (HappyAbsSyn66  happy_var_3)
 	(HappyAbsSyn23  happy_var_2)
 	(HappyAbsSyn66  happy_var_1)
 	 =  HappyAbsSyn66
-		 (Language.AbsMPL.INFIXL8_EXPR happy_var_1 happy_var_2 happy_var_3
+		 (MplLanguage.AbsMPL.INFIXL8_EXPR happy_var_1 happy_var_2 happy_var_3
 	)
 happyReduction_115 _ _ _  = notHappyAtAll 
 
@@ -5461,42 +5461,42 @@ happyReduction_117 (HappyAbsSyn13  happy_var_3)
 	(HappyAbsSyn89  happy_var_2)
 	(HappyAbsSyn12  happy_var_1)
 	 =  HappyAbsSyn66
-		 (Language.AbsMPL.LIST_EXPR happy_var_1 happy_var_2 happy_var_3
+		 (MplLanguage.AbsMPL.LIST_EXPR happy_var_1 happy_var_2 happy_var_3
 	)
 happyReduction_117 _ _ _  = notHappyAtAll 
 
 happyReduce_118 = happySpecReduce_1  76 happyReduction_118
 happyReduction_118 (HappyAbsSyn35  happy_var_1)
 	 =  HappyAbsSyn66
-		 (Language.AbsMPL.VAR_EXPR happy_var_1
+		 (MplLanguage.AbsMPL.VAR_EXPR happy_var_1
 	)
 happyReduction_118 _  = notHappyAtAll 
 
 happyReduce_119 = happySpecReduce_1  76 happyReduction_119
 happyReduction_119 (HappyAbsSyn4  happy_var_1)
 	 =  HappyAbsSyn66
-		 (Language.AbsMPL.INT_EXPR happy_var_1
+		 (MplLanguage.AbsMPL.INT_EXPR happy_var_1
 	)
 happyReduction_119 _  = notHappyAtAll 
 
 happyReduce_120 = happySpecReduce_1  76 happyReduction_120
 happyReduction_120 (HappyAbsSyn7  happy_var_1)
 	 =  HappyAbsSyn66
-		 (Language.AbsMPL.STRING_EXPR happy_var_1
+		 (MplLanguage.AbsMPL.STRING_EXPR happy_var_1
 	)
 happyReduction_120 _  = notHappyAtAll 
 
 happyReduce_121 = happySpecReduce_1  76 happyReduction_121
 happyReduction_121 (HappyAbsSyn6  happy_var_1)
 	 =  HappyAbsSyn66
-		 (Language.AbsMPL.CHAR_EXPR happy_var_1
+		 (MplLanguage.AbsMPL.CHAR_EXPR happy_var_1
 	)
 happyReduction_121 _  = notHappyAtAll 
 
 happyReduce_122 = happySpecReduce_1  76 happyReduction_122
 happyReduction_122 (HappyAbsSyn5  happy_var_1)
 	 =  HappyAbsSyn66
-		 (Language.AbsMPL.DOUBLE_EXPR happy_var_1
+		 (MplLanguage.AbsMPL.DOUBLE_EXPR happy_var_1
 	)
 happyReduction_122 _  = notHappyAtAll 
 
@@ -5504,7 +5504,7 @@ happyReduce_123 = happySpecReduce_2  76 happyReduction_123
 happyReduction_123 (HappyAbsSyn11  happy_var_2)
 	(HappyAbsSyn10  happy_var_1)
 	 =  HappyAbsSyn66
-		 (Language.AbsMPL.UNIT_EXPR happy_var_1 happy_var_2
+		 (MplLanguage.AbsMPL.UNIT_EXPR happy_var_1 happy_var_2
 	)
 happyReduction_123 _ _  = notHappyAtAll 
 
@@ -5517,7 +5517,7 @@ happyReduction_124 (_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn66
-		 (Language.AbsMPL.FOLD_EXPR happy_var_2 happy_var_5
+		 (MplLanguage.AbsMPL.FOLD_EXPR happy_var_2 happy_var_5
 	) `HappyStk` happyRest
 
 happyReduce_125 = happyReduce 6 76 happyReduction_125
@@ -5529,7 +5529,7 @@ happyReduction_125 (_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn66
-		 (Language.AbsMPL.UNFOLD_EXPR happy_var_2 happy_var_5
+		 (MplLanguage.AbsMPL.UNFOLD_EXPR happy_var_2 happy_var_5
 	) `HappyStk` happyRest
 
 happyReduce_126 = happyReduce 6 76 happyReduction_126
@@ -5541,7 +5541,7 @@ happyReduction_126 (_ `HappyStk`
 	(HappyAbsSyn33  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn66
-		 (Language.AbsMPL.CASE_EXPR happy_var_1 happy_var_2 happy_var_5
+		 (MplLanguage.AbsMPL.CASE_EXPR happy_var_1 happy_var_2 happy_var_5
 	) `HappyStk` happyRest
 
 happyReduce_127 = happyReduce 4 76 happyReduction_127
@@ -5551,7 +5551,7 @@ happyReduction_127 (_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn66
-		 (Language.AbsMPL.SWITCH_EXP happy_var_3
+		 (MplLanguage.AbsMPL.SWITCH_EXP happy_var_3
 	) `HappyStk` happyRest
 
 happyReduce_128 = happyReduce 4 76 happyReduction_128
@@ -5561,13 +5561,13 @@ happyReduction_128 ((HappyAbsSyn11  happy_var_4) `HappyStk`
 	(HappyAbsSyn34  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn66
-		 (Language.AbsMPL.DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR happy_var_1 happy_var_2 happy_var_3 happy_var_4
+		 (MplLanguage.AbsMPL.DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR happy_var_1 happy_var_2 happy_var_3 happy_var_4
 	) `HappyStk` happyRest
 
 happyReduce_129 = happySpecReduce_1  76 happyReduction_129
 happyReduction_129 (HappyAbsSyn34  happy_var_1)
 	 =  HappyAbsSyn66
-		 (Language.AbsMPL.DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR happy_var_1
+		 (MplLanguage.AbsMPL.DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR happy_var_1
 	)
 happyReduction_129 _  = notHappyAtAll 
 
@@ -5579,7 +5579,7 @@ happyReduction_130 ((HappyAbsSyn11  happy_var_5) `HappyStk`
 	(HappyAbsSyn10  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn66
-		 (Language.AbsMPL.TUPLE_EXPR happy_var_1 happy_var_2 happy_var_4 happy_var_5
+		 (MplLanguage.AbsMPL.TUPLE_EXPR happy_var_1 happy_var_2 happy_var_4 happy_var_5
 	) `HappyStk` happyRest
 
 happyReduce_131 = happyReduce 4 76 happyReduction_131
@@ -5589,7 +5589,7 @@ happyReduction_131 ((HappyAbsSyn11  happy_var_4) `HappyStk`
 	(HappyAbsSyn35  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn66
-		 (Language.AbsMPL.FUN_EXPR happy_var_1 happy_var_2 happy_var_3 happy_var_4
+		 (MplLanguage.AbsMPL.FUN_EXPR happy_var_1 happy_var_2 happy_var_3 happy_var_4
 	) `HappyStk` happyRest
 
 happyReduce_132 = happySpecReduce_3  76 happyReduction_132
@@ -5597,7 +5597,7 @@ happyReduction_132 (HappyAbsSyn11  happy_var_3)
 	(HappyAbsSyn86  happy_var_2)
 	(HappyAbsSyn10  happy_var_1)
 	 =  HappyAbsSyn66
-		 (Language.AbsMPL.RECORD_EXPR happy_var_1 happy_var_2 happy_var_3
+		 (MplLanguage.AbsMPL.RECORD_EXPR happy_var_1 happy_var_2 happy_var_3
 	)
 happyReduction_132 _ _ _  = notHappyAtAll 
 
@@ -5606,7 +5606,7 @@ happyReduction_133 (HappyAbsSyn11  happy_var_3)
 	(HappyAbsSyn66  happy_var_2)
 	(HappyAbsSyn10  happy_var_1)
 	 =  HappyAbsSyn66
-		 (Language.AbsMPL.BRACKETED_EXPR happy_var_1 happy_var_2 happy_var_3
+		 (MplLanguage.AbsMPL.BRACKETED_EXPR happy_var_1 happy_var_2 happy_var_3
 	)
 happyReduction_133 _ _ _  = notHappyAtAll 
 
@@ -5618,7 +5618,7 @@ happyReduction_134 (_ `HappyStk`
 	(HappyAbsSyn91  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn77
-		 (Language.AbsMPL.UNFOLD_EXPR_PHRASE happy_var_1 happy_var_4
+		 (MplLanguage.AbsMPL.UNFOLD_EXPR_PHRASE happy_var_1 happy_var_4
 	) `HappyStk` happyRest
 
 happyReduce_135 = happySpecReduce_1  78 happyReduction_135
@@ -5645,7 +5645,7 @@ happyReduction_137 ((HappyAbsSyn66  happy_var_5) `HappyStk`
 	(HappyAbsSyn34  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn79
-		 (Language.AbsMPL.FOLD_EXPR_PHRASE happy_var_1 happy_var_2 happy_var_3 happy_var_5
+		 (MplLanguage.AbsMPL.FOLD_EXPR_PHRASE happy_var_1 happy_var_2 happy_var_3 happy_var_5
 	) `HappyStk` happyRest
 
 happyReduce_138 = happySpecReduce_1  80 happyReduction_138
@@ -5667,7 +5667,7 @@ happyReduction_139 _ _ _  = notHappyAtAll
 happyReduce_140 = happySpecReduce_1  81 happyReduction_140
 happyReduction_140 (HappyAbsSyn39  happy_var_1)
 	 =  HappyAbsSyn81
-		 (Language.AbsMPL.LET_EXPR_PHRASE happy_var_1
+		 (MplLanguage.AbsMPL.LET_EXPR_PHRASE happy_var_1
 	)
 happyReduction_140 _  = notHappyAtAll 
 
@@ -5690,7 +5690,7 @@ happyReduction_142 _ _ _  = notHappyAtAll
 happyReduce_143 = happySpecReduce_1  83 happyReduction_143
 happyReduction_143 (HappyAbsSyn66  happy_var_1)
 	 =  HappyAbsSyn83
-		 (Language.AbsMPL.TUPLE_EXPR_LIST happy_var_1
+		 (MplLanguage.AbsMPL.TUPLE_EXPR_LIST happy_var_1
 	)
 happyReduction_143 _  = notHappyAtAll 
 
@@ -5715,7 +5715,7 @@ happyReduction_146 (HappyAbsSyn90  happy_var_3)
 	_
 	(HappyAbsSyn34  happy_var_1)
 	 =  HappyAbsSyn85
-		 (Language.AbsMPL.RECORD_EXPR_HIGHER_ORDER_PHRASE happy_var_1 happy_var_3
+		 (MplLanguage.AbsMPL.RECORD_EXPR_HIGHER_ORDER_PHRASE happy_var_1 happy_var_3
 	)
 happyReduction_146 _ _ _  = notHappyAtAll 
 
@@ -5740,7 +5740,7 @@ happyReduction_149 (HappyAbsSyn66  happy_var_3)
 	_
 	(HappyAbsSyn66  happy_var_1)
 	 =  HappyAbsSyn87
-		 (Language.AbsMPL.SWITCH_EXPR_PHRASE happy_var_1 happy_var_3
+		 (MplLanguage.AbsMPL.SWITCH_EXPR_PHRASE happy_var_1 happy_var_3
 	)
 happyReduction_149 _ _ _  = notHappyAtAll 
 
@@ -5786,14 +5786,14 @@ happyReduction_155 (HappyAbsSyn66  happy_var_3)
 	_
 	(HappyAbsSyn92  happy_var_1)
 	 =  HappyAbsSyn90
-		 (Language.AbsMPL.PATTERN_TO_EXPR happy_var_1 happy_var_3
+		 (MplLanguage.AbsMPL.PATTERN_TO_EXPR happy_var_1 happy_var_3
 	)
 happyReduction_155 _ _ _  = notHappyAtAll 
 
 happyReduce_156 = happySpecReduce_1  91 happyReduction_156
 happyReduction_156 (HappyAbsSyn91  happy_var_1)
 	 =  HappyAbsSyn91
-		 (Language.AbsMPL.PATTERN happy_var_1
+		 (MplLanguage.AbsMPL.PATTERN happy_var_1
 	)
 happyReduction_156 _  = notHappyAtAll 
 
@@ -5823,7 +5823,7 @@ happyReduction_160 (HappyAbsSyn91  happy_var_3)
 	(HappyAbsSyn15  happy_var_2)
 	(HappyAbsSyn91  happy_var_1)
 	 =  HappyAbsSyn91
-		 (Language.AbsMPL.LIST_COLON_PATTERN happy_var_1 happy_var_2 happy_var_3
+		 (MplLanguage.AbsMPL.LIST_COLON_PATTERN happy_var_1 happy_var_2 happy_var_3
 	)
 happyReduction_160 _ _ _  = notHappyAtAll 
 
@@ -5841,13 +5841,13 @@ happyReduction_162 ((HappyAbsSyn11  happy_var_4) `HappyStk`
 	(HappyAbsSyn34  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn91
-		 (Language.AbsMPL.CONSTRUCTOR_PATTERN_ARGS happy_var_1 happy_var_2 happy_var_3 happy_var_4
+		 (MplLanguage.AbsMPL.CONSTRUCTOR_PATTERN_ARGS happy_var_1 happy_var_2 happy_var_3 happy_var_4
 	) `HappyStk` happyRest
 
 happyReduce_163 = happySpecReduce_1  94 happyReduction_163
 happyReduction_163 (HappyAbsSyn34  happy_var_1)
 	 =  HappyAbsSyn91
-		 (Language.AbsMPL.CONSTRUCTOR_PATTERN_NO_ARGS happy_var_1
+		 (MplLanguage.AbsMPL.CONSTRUCTOR_PATTERN_NO_ARGS happy_var_1
 	)
 happyReduction_163 _  = notHappyAtAll 
 
@@ -5855,7 +5855,7 @@ happyReduce_164 = happySpecReduce_2  94 happyReduction_164
 happyReduction_164 (HappyAbsSyn11  happy_var_2)
 	(HappyAbsSyn10  happy_var_1)
 	 =  HappyAbsSyn91
-		 (Language.AbsMPL.UNIT_PATTERN happy_var_1 happy_var_2
+		 (MplLanguage.AbsMPL.UNIT_PATTERN happy_var_1 happy_var_2
 	)
 happyReduction_164 _ _  = notHappyAtAll 
 
@@ -5864,7 +5864,7 @@ happyReduction_165 (HappyAbsSyn11  happy_var_3)
 	(HappyAbsSyn98  happy_var_2)
 	(HappyAbsSyn10  happy_var_1)
 	 =  HappyAbsSyn91
-		 (Language.AbsMPL.RECORD_PATTERN happy_var_1 happy_var_2 happy_var_3
+		 (MplLanguage.AbsMPL.RECORD_PATTERN happy_var_1 happy_var_2 happy_var_3
 	)
 happyReduction_165 _ _ _  = notHappyAtAll 
 
@@ -5873,7 +5873,7 @@ happyReduction_166 (HappyAbsSyn13  happy_var_3)
 	(HappyAbsSyn92  happy_var_2)
 	(HappyAbsSyn12  happy_var_1)
 	 =  HappyAbsSyn91
-		 (Language.AbsMPL.LIST_PATTERN happy_var_1 happy_var_2 happy_var_3
+		 (MplLanguage.AbsMPL.LIST_PATTERN happy_var_1 happy_var_2 happy_var_3
 	)
 happyReduction_166 _ _ _  = notHappyAtAll 
 
@@ -5885,41 +5885,41 @@ happyReduction_167 ((HappyAbsSyn11  happy_var_5) `HappyStk`
 	(HappyAbsSyn10  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn91
-		 (Language.AbsMPL.TUPLE_PATTERN happy_var_1 happy_var_2 happy_var_4 happy_var_5
+		 (MplLanguage.AbsMPL.TUPLE_PATTERN happy_var_1 happy_var_2 happy_var_4 happy_var_5
 	) `HappyStk` happyRest
 
 happyReduce_168 = happySpecReduce_1  94 happyReduction_168
 happyReduction_168 (HappyAbsSyn35  happy_var_1)
 	 =  HappyAbsSyn91
-		 (Language.AbsMPL.VAR_PATTERN happy_var_1
+		 (MplLanguage.AbsMPL.VAR_PATTERN happy_var_1
 	)
 happyReduction_168 _  = notHappyAtAll 
 
 happyReduce_169 = happySpecReduce_1  94 happyReduction_169
 happyReduction_169 (HappyAbsSyn7  happy_var_1)
 	 =  HappyAbsSyn91
-		 (Language.AbsMPL.STR_PATTERN happy_var_1
+		 (MplLanguage.AbsMPL.STR_PATTERN happy_var_1
 	)
 happyReduction_169 _  = notHappyAtAll 
 
 happyReduce_170 = happySpecReduce_1  94 happyReduction_170
 happyReduction_170 (HappyAbsSyn6  happy_var_1)
 	 =  HappyAbsSyn91
-		 (Language.AbsMPL.CHAR_PATTERN happy_var_1
+		 (MplLanguage.AbsMPL.CHAR_PATTERN happy_var_1
 	)
 happyReduction_170 _  = notHappyAtAll 
 
 happyReduce_171 = happySpecReduce_1  94 happyReduction_171
 happyReduction_171 (HappyAbsSyn4  happy_var_1)
 	 =  HappyAbsSyn91
-		 (Language.AbsMPL.INT_PATTERN happy_var_1
+		 (MplLanguage.AbsMPL.INT_PATTERN happy_var_1
 	)
 happyReduction_171 _  = notHappyAtAll 
 
 happyReduce_172 = happySpecReduce_1  94 happyReduction_172
 happyReduction_172 (HappyAbsSyn14  happy_var_1)
 	 =  HappyAbsSyn91
-		 (Language.AbsMPL.NULL_PATTERN happy_var_1
+		 (MplLanguage.AbsMPL.NULL_PATTERN happy_var_1
 	)
 happyReduction_172 _  = notHappyAtAll 
 
@@ -5928,14 +5928,14 @@ happyReduction_173 (HappyAbsSyn11  happy_var_3)
 	(HappyAbsSyn91  happy_var_2)
 	(HappyAbsSyn10  happy_var_1)
 	 =  HappyAbsSyn91
-		 (Language.AbsMPL.BRACKETED_PATTERN happy_var_1 happy_var_2 happy_var_3
+		 (MplLanguage.AbsMPL.BRACKETED_PATTERN happy_var_1 happy_var_2 happy_var_3
 	)
 happyReduction_173 _ _ _  = notHappyAtAll 
 
 happyReduce_174 = happySpecReduce_1  95 happyReduction_174
 happyReduction_174 (HappyAbsSyn91  happy_var_1)
 	 =  HappyAbsSyn95
-		 (Language.AbsMPL.TUPLE_LIST_PATTERN happy_var_1
+		 (MplLanguage.AbsMPL.TUPLE_LIST_PATTERN happy_var_1
 	)
 happyReduction_174 _  = notHappyAtAll 
 
@@ -5960,7 +5960,7 @@ happyReduction_177 (HappyAbsSyn91  happy_var_3)
 	_
 	(HappyAbsSyn34  happy_var_1)
 	 =  HappyAbsSyn97
-		 (Language.AbsMPL.DESTRUCTOR_PATTERN_PHRASE happy_var_1 happy_var_3
+		 (MplLanguage.AbsMPL.DESTRUCTOR_PATTERN_PHRASE happy_var_1 happy_var_3
 	)
 happyReduction_177 _ _ _  = notHappyAtAll 
 
@@ -5993,7 +5993,7 @@ happyReduction_180 (_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn99
-		 (Language.AbsMPL.TYPED_FUNCTION_DEFN happy_var_2 happy_var_4 happy_var_6 happy_var_9
+		 (MplLanguage.AbsMPL.TYPED_FUNCTION_DEFN happy_var_2 happy_var_4 happy_var_6 happy_var_9
 	) `HappyStk` happyRest
 
 happyReduce_181 = happyReduce 6 99 happyReduction_181
@@ -6005,7 +6005,7 @@ happyReduction_181 (_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn99
-		 (Language.AbsMPL.FUNCTION_DEFN happy_var_2 happy_var_5
+		 (MplLanguage.AbsMPL.FUNCTION_DEFN happy_var_2 happy_var_5
 	) `HappyStk` happyRest
 
 happyReduce_182 = happySpecReduce_1  100 happyReduction_182
@@ -6039,7 +6039,7 @@ happyReduction_184 (_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn101
-		 (Language.AbsMPL.TYPED_PROCESS_DEFN happy_var_2 happy_var_4 happy_var_6 happy_var_8 happy_var_11
+		 (MplLanguage.AbsMPL.TYPED_PROCESS_DEFN happy_var_2 happy_var_4 happy_var_6 happy_var_8 happy_var_11
 	) `HappyStk` happyRest
 
 happyReduce_185 = happyReduce 6 101 happyReduction_185
@@ -6051,7 +6051,7 @@ happyReduction_185 (_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn101
-		 (Language.AbsMPL.PROCESS_DEFN happy_var_2 happy_var_5
+		 (MplLanguage.AbsMPL.PROCESS_DEFN happy_var_2 happy_var_5
 	) `HappyStk` happyRest
 
 happyReduce_186 = happyReduce 7 102 happyReduction_186
@@ -6064,7 +6064,7 @@ happyReduction_186 ((HappyAbsSyn104  happy_var_7) `HappyStk`
 	(HappyAbsSyn92  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn102
-		 (Language.AbsMPL.PROCESS_PHRASE happy_var_1 happy_var_3 happy_var_5 happy_var_7
+		 (MplLanguage.AbsMPL.PROCESS_PHRASE happy_var_1 happy_var_3 happy_var_5 happy_var_7
 	) `HappyStk` happyRest
 
 happyReduce_187 = happySpecReduce_1  103 happyReduction_187
@@ -6090,13 +6090,13 @@ happyReduction_189 (_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn104
-		 (Language.AbsMPL.PROCESS_COMMANDS_DO_BLOCK happy_var_3
+		 (MplLanguage.AbsMPL.PROCESS_COMMANDS_DO_BLOCK happy_var_3
 	) `HappyStk` happyRest
 
 happyReduce_190 = happySpecReduce_1  104 happyReduction_190
 happyReduction_190 (HappyAbsSyn106  happy_var_1)
 	 =  HappyAbsSyn104
-		 (Language.AbsMPL.PROCESS_COMMANDS_SINGLE_COMMAND_BLOCK happy_var_1
+		 (MplLanguage.AbsMPL.PROCESS_COMMANDS_SINGLE_COMMAND_BLOCK happy_var_1
 	)
 happyReduction_190 _  = notHappyAtAll 
 
@@ -6127,14 +6127,14 @@ happyReduction_193 ((HappyAbsSyn11  happy_var_8) `HappyStk`
 	(HappyAbsSyn35  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn106
-		 (Language.AbsMPL.PROCESS_RUN happy_var_1 happy_var_2 happy_var_3 happy_var_5 happy_var_7 happy_var_8
+		 (MplLanguage.AbsMPL.PROCESS_RUN happy_var_1 happy_var_2 happy_var_3 happy_var_5 happy_var_7 happy_var_8
 	) `HappyStk` happyRest
 
 happyReduce_194 = happySpecReduce_2  106 happyReduction_194
 happyReduction_194 (HappyAbsSyn35  happy_var_2)
 	(HappyAbsSyn24  happy_var_1)
 	 =  HappyAbsSyn106
-		 (Language.AbsMPL.PROCESS_CLOSE happy_var_1 happy_var_2
+		 (MplLanguage.AbsMPL.PROCESS_CLOSE happy_var_1 happy_var_2
 	)
 happyReduction_194 _ _  = notHappyAtAll 
 
@@ -6142,7 +6142,7 @@ happyReduce_195 = happySpecReduce_2  106 happyReduction_195
 happyReduction_195 (HappyAbsSyn35  happy_var_2)
 	(HappyAbsSyn25  happy_var_1)
 	 =  HappyAbsSyn106
-		 (Language.AbsMPL.PROCESS_HALT happy_var_1 happy_var_2
+		 (MplLanguage.AbsMPL.PROCESS_HALT happy_var_1 happy_var_2
 	)
 happyReduction_195 _ _  = notHappyAtAll 
 
@@ -6153,7 +6153,7 @@ happyReduction_196 ((HappyAbsSyn35  happy_var_4) `HappyStk`
 	(HappyAbsSyn26  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn106
-		 (Language.AbsMPL.PROCESS_GET happy_var_1 happy_var_2 happy_var_4
+		 (MplLanguage.AbsMPL.PROCESS_GET happy_var_1 happy_var_2 happy_var_4
 	) `HappyStk` happyRest
 
 happyReduce_197 = happyReduce 4 106 happyReduction_197
@@ -6163,7 +6163,7 @@ happyReduction_197 ((HappyAbsSyn35  happy_var_4) `HappyStk`
 	(HappyAbsSyn27  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn106
-		 (Language.AbsMPL.PROCESS_PUT happy_var_1 happy_var_2 happy_var_4
+		 (MplLanguage.AbsMPL.PROCESS_PUT happy_var_1 happy_var_2 happy_var_4
 	) `HappyStk` happyRest
 
 happyReduce_198 = happyReduce 6 106 happyReduction_198
@@ -6175,7 +6175,7 @@ happyReduction_198 (_ `HappyStk`
 	(HappyAbsSyn28  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn106
-		 (Language.AbsMPL.PROCESS_HCASE happy_var_1 happy_var_2 happy_var_5
+		 (MplLanguage.AbsMPL.PROCESS_HCASE happy_var_1 happy_var_2 happy_var_5
 	) `HappyStk` happyRest
 
 happyReduce_199 = happyReduce 4 106 happyReduction_199
@@ -6185,7 +6185,7 @@ happyReduction_199 ((HappyAbsSyn35  happy_var_4) `HappyStk`
 	(HappyAbsSyn29  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn106
-		 (Language.AbsMPL.PROCESS_HPUT happy_var_1 happy_var_2 happy_var_4
+		 (MplLanguage.AbsMPL.PROCESS_HPUT happy_var_1 happy_var_2 happy_var_4
 	) `HappyStk` happyRest
 
 happyReduce_200 = happyReduce 4 106 happyReduction_200
@@ -6195,7 +6195,7 @@ happyReduction_200 ((HappyAbsSyn110  happy_var_4) `HappyStk`
 	(HappyAbsSyn30  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn106
-		 (Language.AbsMPL.PROCESS_SPLIT happy_var_1 happy_var_2 happy_var_4
+		 (MplLanguage.AbsMPL.PROCESS_SPLIT happy_var_1 happy_var_2 happy_var_4
 	) `HappyStk` happyRest
 
 happyReduce_201 = happyReduce 6 106 happyReduction_201
@@ -6207,7 +6207,7 @@ happyReduction_201 (_ `HappyStk`
 	(HappyAbsSyn31  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn106
-		 (Language.AbsMPL.PROCESS_FORK happy_var_1 happy_var_2 happy_var_5
+		 (MplLanguage.AbsMPL.PROCESS_FORK happy_var_1 happy_var_2 happy_var_5
 	) `HappyStk` happyRest
 
 happyReduce_202 = happySpecReduce_3  106 happyReduction_202
@@ -6215,7 +6215,7 @@ happyReduction_202 (HappyAbsSyn35  happy_var_3)
 	(HappyAbsSyn32  happy_var_2)
 	(HappyAbsSyn35  happy_var_1)
 	 =  HappyAbsSyn106
-		 (Language.AbsMPL.PROCESS_ID happy_var_1 happy_var_2 happy_var_3
+		 (MplLanguage.AbsMPL.PROCESS_ID happy_var_1 happy_var_2 happy_var_3
 	)
 happyReduction_202 _ _ _  = notHappyAtAll 
 
@@ -6226,7 +6226,7 @@ happyReduction_203 ((HappyAbsSyn35  happy_var_4) `HappyStk`
 	(HappyAbsSyn35  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn106
-		 (Language.AbsMPL.PROCESS_NEG happy_var_1 happy_var_2 happy_var_4
+		 (MplLanguage.AbsMPL.PROCESS_NEG happy_var_1 happy_var_2 happy_var_4
 	) `HappyStk` happyRest
 
 happyReduce_204 = happyReduce 4 106 happyReduction_204
@@ -6236,7 +6236,7 @@ happyReduction_204 (_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn106
-		 (Language.AbsMPL.PROCESS_RACE happy_var_3
+		 (MplLanguage.AbsMPL.PROCESS_RACE happy_var_3
 	) `HappyStk` happyRest
 
 happyReduce_205 = happyReduce 4 106 happyReduction_205
@@ -6246,7 +6246,7 @@ happyReduction_205 (_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn106
-		 (Language.AbsMPL.PROCESS_PLUG happy_var_3
+		 (MplLanguage.AbsMPL.PROCESS_PLUG happy_var_3
 	) `HappyStk` happyRest
 
 happyReduce_206 = happyReduce 6 106 happyReduction_206
@@ -6258,7 +6258,7 @@ happyReduction_206 (_ `HappyStk`
 	(HappyAbsSyn33  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn106
-		 (Language.AbsMPL.PROCESS_CASE happy_var_1 happy_var_2 happy_var_5
+		 (MplLanguage.AbsMPL.PROCESS_CASE happy_var_1 happy_var_2 happy_var_5
 	) `HappyStk` happyRest
 
 happyReduce_207 = happyReduce 6 106 happyReduction_207
@@ -6270,7 +6270,7 @@ happyReduction_207 ((HappyAbsSyn104  happy_var_6) `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn106
-		 (Language.AbsMPL.PROCESS_IF happy_var_2 happy_var_4 happy_var_6
+		 (MplLanguage.AbsMPL.PROCESS_IF happy_var_2 happy_var_4 happy_var_6
 	) `HappyStk` happyRest
 
 happyReduce_208 = happyReduce 4 106 happyReduction_208
@@ -6280,7 +6280,7 @@ happyReduction_208 (_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn106
-		 (Language.AbsMPL.PROCESS_SWITCH happy_var_3
+		 (MplLanguage.AbsMPL.PROCESS_SWITCH happy_var_3
 	) `HappyStk` happyRest
 
 happyReduce_209 = happySpecReduce_3  107 happyReduction_209
@@ -6288,7 +6288,7 @@ happyReduction_209 (HappyAbsSyn104  happy_var_3)
 	_
 	(HappyAbsSyn34  happy_var_1)
 	 =  HappyAbsSyn107
-		 (Language.AbsMPL.HCASE_PHRASE happy_var_1 happy_var_3
+		 (MplLanguage.AbsMPL.HCASE_PHRASE happy_var_1 happy_var_3
 	)
 happyReduction_209 _ _ _  = notHappyAtAll 
 
@@ -6316,7 +6316,7 @@ happyReduction_212 _ _ _  = notHappyAtAll
 happyReduce_213 = happySpecReduce_1  109 happyReduction_213
 happyReduction_213 (HappyAbsSyn35  happy_var_1)
 	 =  HappyAbsSyn109
-		 (Language.AbsMPL.SPLIT_CHANNEL happy_var_1
+		 (MplLanguage.AbsMPL.SPLIT_CHANNEL happy_var_1
 	)
 happyReduction_213 _  = notHappyAtAll 
 
@@ -6341,7 +6341,7 @@ happyReduction_216 (HappyAbsSyn104  happy_var_3)
 	_
 	(HappyAbsSyn35  happy_var_1)
 	 =  HappyAbsSyn111
-		 (Language.AbsMPL.FORK_PHRASE happy_var_1 happy_var_3
+		 (MplLanguage.AbsMPL.FORK_PHRASE happy_var_1 happy_var_3
 	)
 happyReduction_216 _ _ _  = notHappyAtAll 
 
@@ -6353,7 +6353,7 @@ happyReduction_217 ((HappyAbsSyn104  happy_var_5) `HappyStk`
 	(HappyAbsSyn35  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn111
-		 (Language.AbsMPL.FORK_WITH_PHRASE happy_var_1 happy_var_3 happy_var_5
+		 (MplLanguage.AbsMPL.FORK_WITH_PHRASE happy_var_1 happy_var_3 happy_var_5
 	) `HappyStk` happyRest
 
 happyReduce_218 = happySpecReduce_1  112 happyReduction_218
@@ -6375,7 +6375,7 @@ happyReduction_219 _ _ _  = notHappyAtAll
 happyReduce_220 = happySpecReduce_1  113 happyReduction_220
 happyReduction_220 (HappyAbsSyn35  happy_var_1)
 	 =  HappyAbsSyn113
-		 (Language.AbsMPL.FORK_CHANNEL happy_var_1
+		 (MplLanguage.AbsMPL.FORK_CHANNEL happy_var_1
 	)
 happyReduction_220 _  = notHappyAtAll 
 
@@ -6405,7 +6405,7 @@ happyReduction_224 (HappyAbsSyn104  happy_var_3)
 	_
 	(HappyAbsSyn35  happy_var_1)
 	 =  HappyAbsSyn115
-		 (Language.AbsMPL.RACE_PHRASE happy_var_1 happy_var_3
+		 (MplLanguage.AbsMPL.RACE_PHRASE happy_var_1 happy_var_3
 	)
 happyReduction_224 _ _ _  = notHappyAtAll 
 
@@ -6433,7 +6433,7 @@ happyReduction_227 _ _ _  = notHappyAtAll
 happyReduce_228 = happySpecReduce_1  117 happyReduction_228
 happyReduction_228 (HappyAbsSyn104  happy_var_1)
 	 =  HappyAbsSyn117
-		 (Language.AbsMPL.PLUG_PHRASE happy_var_1
+		 (MplLanguage.AbsMPL.PLUG_PHRASE happy_var_1
 	)
 happyReduction_228 _  = notHappyAtAll 
 
@@ -6445,7 +6445,7 @@ happyReduction_229 ((HappyAbsSyn104  happy_var_5) `HappyStk`
 	(HappyAbsSyn37  happy_var_1) `HappyStk`
 	happyRest)
 	 = HappyAbsSyn117
-		 (Language.AbsMPL.PLUG_PHRASE_AS happy_var_1 happy_var_3 happy_var_5
+		 (MplLanguage.AbsMPL.PLUG_PHRASE_AS happy_var_1 happy_var_3 happy_var_5
 	) `HappyStk` happyRest
 
 happyReduce_230 = happySpecReduce_1  118 happyReduction_230
@@ -6469,7 +6469,7 @@ happyReduction_232 (HappyAbsSyn104  happy_var_3)
 	_
 	(HappyAbsSyn91  happy_var_1)
 	 =  HappyAbsSyn119
-		 (Language.AbsMPL.PROCESS_CASE_PHRASE happy_var_1 happy_var_3
+		 (MplLanguage.AbsMPL.PROCESS_CASE_PHRASE happy_var_1 happy_var_3
 	)
 happyReduction_232 _ _ _  = notHappyAtAll 
 
@@ -6494,7 +6494,7 @@ happyReduction_235 (HappyAbsSyn104  happy_var_3)
 	_
 	(HappyAbsSyn66  happy_var_1)
 	 =  HappyAbsSyn121
-		 (Language.AbsMPL.PROCESS_SWITCH_PHRASE happy_var_1 happy_var_3
+		 (MplLanguage.AbsMPL.PROCESS_SWITCH_PHRASE happy_var_1 happy_var_3
 	)
 happyReduction_235 _ _ _  = notHappyAtAll 
 

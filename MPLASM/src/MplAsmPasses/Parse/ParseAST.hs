@@ -11,21 +11,19 @@ import Data.Function
 
 {- | declarations of data to configure the asm syntax tree. -}
 data MplAsmParsed 
-type instance IdP MplAsmParsed  = Ident
+type instance IdP MplAsmParsed = LocatedName
 
-newtype Ident = Ident { _identStr :: String }
-  deriving (Show, Eq, Ord)
 
-data LocatedIdent = LocatedIdent 
-    { locatedIdentIdent :: Ident 
-    , locatedIdentLoc :: RowCol
+data LocatedName = LocatedName 
+    { _locatedNameName :: Name 
+    , _locatedNameLoc :: RowCol
     }
 
 type RowCol = (Int, Int)
 
-toIdent :: forall t. Coercible t (RowCol, String) => t -> Ident
-toIdent t = case (coerce :: t -> (RowCol, String))  t of
-    (_rowcol, str) -> Ident str 
+toLocatedName :: forall t. Coercible t (RowCol, String) => t -> LocatedName
+toLocatedName t = case (coerce :: t -> (RowCol, String))  t of
+    (rowcol, str) -> LocatedName (coerce str) rowcol
 
 toRowCol :: forall t. Coercible t (RowCol, String) => t -> RowCol
 toRowCol t = case (coerce :: t -> (RowCol, String))  t of
@@ -40,7 +38,10 @@ pCharToChar = read . snd . (coerce :: B.Character -> ((Int, Int), String))
 pBoolToBool :: B.BBool -> Bool
 pBoolToBool = read . snd . (coerce :: B.BBool -> ((Int, Int), String))
 
-$(makeClassy ''Ident)
+$(makeLenses ''LocatedName)
+
+instance HasName LocatedName where
+    name = locatedNameName
 
 type instance XCAssign MplAsmParsed = RowCol
 type instance XCLoad MplAsmParsed = RowCol

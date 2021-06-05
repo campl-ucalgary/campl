@@ -36,6 +36,10 @@ import MPLIdent
 -- because # is not permited in the front end
 cmplUniqueTmp :: String
 cmplUniqueTmp = amplAsmUniquePrefix ++ "tmp"
+  where
+    -- TODO: I'm not too sure why i put this here honestly... come back and fix this May 31/2021
+    amplAsmUniquePrefix  = "#"
+--cmplUniqueTmp = amplAsmUniquePrefix ++ "tmp"
 
 defaultCmplUniqueVarState :: CmplUniqueVarState 
 defaultCmplUniqueVarState = CmplUniqueVarState {

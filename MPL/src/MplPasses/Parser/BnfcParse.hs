@@ -1,12 +1,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE LambdaCase #-}
 module MplPasses.Parser.BnfcParse (
-    module Language.AbsMPL
-    , module Language.ErrM
-    , module Language.LayoutMPL
-    , module Language.LexMPL
-    , module Language.ParMPL
-    , module Language.PrintMPL
+    module MplLanguage.AbsMPL
+    , module MplLanguage.ErrM
+    , module MplLanguage.LayoutMPL
+    , module MplLanguage.LexMPL
+    , module MplLanguage.ParMPL
+    , module MplLanguage.PrintMPL
     , runBnfc
     , BnfcErrors (..)
     , AsBnfcErrors (..)
@@ -14,12 +14,12 @@ module MplPasses.Parser.BnfcParse (
 
 import Optics
 
-import Language.AbsMPL
-import Language.ErrM
-import Language.LayoutMPL
-import Language.LexMPL
-import Language.ParMPL
-import Language.PrintMPL
+import MplLanguage.AbsMPL
+import MplLanguage.ErrM
+import MplLanguage.LayoutMPL
+import MplLanguage.LexMPL
+import MplLanguage.ParMPL
+import MplLanguage.PrintMPL
 
 {- Module for defining wrappers around BNFC's generated code
  -}

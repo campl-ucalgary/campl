@@ -22,8 +22,10 @@ data AmplLogger = AmplLogger {
 
 -- | intialize the ampl logger (mainly used to create the file..)
 initAmplLogger :: 
-    FilePath ->     -- ^ directory to create the file..
-    String ->       -- ^ name of the file. e.g. foo.ext will become fooXXX.ext
+    -- | directory to create the file..
+    FilePath ->     
+    -- | name of the file. e.g. foo.ext will become fooXXX.ext
+    String ->       
     IO AmplLogger
 initAmplLogger filepath filename = do
     (fp, h) <- openTempFile filepath filename
@@ -49,9 +51,12 @@ amplLogStdOut AmplLogger{  stdLock = stdlk, fileLogger = (fp, h, flk) } str =
 -- | This logs only the different strings....
 nonRedundantFileAmplLogger :: 
     AmplLogger -> 
-    IO String ->       -- ^ Before log string
-    IO String ->       -- ^ After log string
-    String ->          -- ^ String to log
+    -- | Before log string
+    IO String ->       
+    -- | After log string
+    IO String ->       
+    -- | String to log
+    String ->          
     IO ()
 nonRedundantFileAmplLogger AmplLogger{  stdLock = stdlk, fileLogger = (fp, h, flk) } before after str =
     modifyMVar flk f

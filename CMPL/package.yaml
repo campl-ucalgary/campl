@@ -26,6 +26,8 @@ dependencies:
     - AMPL
     - AMPLASM
 
+    - mpl-lib
+    - mtl
     - optics
     - recursion-schemes
 

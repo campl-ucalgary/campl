@@ -43,9 +43,28 @@ data MplAsmCompileStUniqs = MplAsmCompileStUniqs
     , _uniqFunId :: FunID
     }
 
+{-
+data MplAsmCompileStSymTabs = MplAsmCompileStSymTabs 
+    { _symTabFuns :: Map (IdP x) (FunID, Word)
+        -- ^ function name --> (function id,number of args)
+    , _symTabProcs :: Map (IdP x) (FunID, (Word, [LocalChanID], [LocalChanID]))
+        -- ^ function name --> (function id,(number of seq args, inchs, outchs))
+
+    , _symTabData :: Map (IdP x)  (Map (IdP x) (CaseIx, Word))
+        -- ^ data name --> (caseix ,number of args)
+    , _symTabCodata :: Map (IdP x)  (Map (IdP x) (CaseIx, Word))
+        -- ^ codata name --> (caseix ,number of args)
+    , _symTabProtocol :: Map (IdP x) (Map (IdP x) HCaseIx)
+        -- ^ protocol name --> hcaseix
+    , _symTabCoprotocol :: Map (IdP x) (Map (IdP x) HCaseIx)
+        -- ^ coprotocol name --> hcaseix
+    }
+-}
+
 
 $(makeLenses ''MplAsmCompileSt )
 $(makeLenses ''MplAsmCompileStUniqs)
+-- $(makeLenses ''MplAsmCompileStSymTabs)
 
 localMplAsmCompileSt ::
     ( MonadState (MplAsmCompileSt x) m ) =>

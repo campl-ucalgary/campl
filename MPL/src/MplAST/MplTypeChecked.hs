@@ -150,7 +150,8 @@ type instance XECasePattern MplTypeChecked = XMplPattern MplTypeChecked
 type instance XECall MplTypeChecked = 
     XMplType MplTypeChecked
 
-type instance XEObjCall MplTypeChecked = XMplType MplTypeChecked
+type instance XEObjCall MplTypeChecked = 
+    (MplSeqObjDefn MplTypeCheckedPhrase, XMplType MplTypeChecked)
 type instance XERecord MplTypeChecked = (Location, XMplType MplTypeChecked)
 type instance XERecordPhrase MplTypeChecked = MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag)
 type instance XXExpr MplTypeChecked = Void

@@ -75,7 +75,7 @@ getExprFromSubstitutable = \case
     RecordSub u (phrase, des) -> assert (has (typePhraseFrom % _1 % _Empty) phrase) $ 
         -- TODO: this get type isn't totally correct -- i.e. if the type is specialized from the actual type, this
         -- won't have the specializaiotn e.g. Type should be @MyType(Int)@ but this will say it is @MyType(A)@
-        EObjCall (getCodataPhraseTypeResult phrase) des $ [getExprFromSubstitutable u]
+        EObjCall (CodataDefn phrase, getCodataPhraseTypeResult phrase) des $ [getExprFromSubstitutable u]
 
     TupleSub  u (ty, proj) -> EProj ty proj (getExprFromSubstitutable u)
 
@@ -109,14 +109,14 @@ substituteCallIdentByRecord ::
     ) 
     -> t MplPatternCompiled
     -> t MplPatternCompiled
-substituteCallIdentByRecord sub@(s, (u, (_phrase, des))) = mapMplExpr k
+substituteCallIdentByRecord sub@(s, (u, (phrase, des))) = mapMplExpr k
   where
     uexpr = getExprFromSubstitutable u
     k = \case
             EVar ann ident | ident == s -> 
-                EObjCall ann des $ [uexpr]
+                EObjCall (CodataDefn phrase, ann) des $ [uexpr]
             ECall ann ident args | ident == s -> 
-                EObjCall ann des $ args ++ [uexpr]
+                EObjCall (CodataDefn phrase, ann) des $ args ++ [uexpr]
             n -> n
 
 -- | Substitutes a 'EVar' by an expression.

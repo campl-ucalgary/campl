@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: fa60fe23400f950b0818d89fa07081953e6e07a9722b006976ae8efe6bcd5cea
+-- hash: 876793704eeff43246e34127bd90988e684da6f4415f51b80f07b6effd2774ea
 
 name:           MPL
 version:        0.1.0.0
@@ -19,8 +19,8 @@ license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
     src/MPL.bnfc
-    src/Language/LexMPL.x
-    src/Language/ParMPL.y
+    src/MplLanguage/LexMPL.x
+    src/MplLanguage/ParMPL.y
 extra-doc-files:
     README.md
     ChangeLog.md
@@ -31,13 +31,6 @@ source-repository head
 
 library
   exposed-modules:
-      Language.AbsMPL
-      Language.ErrM
-      Language.LayoutMPL
-      Language.LexMPL
-      Language.ParMPL
-      Language.PrintMPL
-      Language.SkelMPL
       MplAST.MplCmd
       MplAST.MplCore
       MplAST.MplExpr
@@ -55,7 +48,13 @@ library
       MplAST.MplType
       MplAST.MplTypeChecked
       MplCompile
-      MPLMain
+      MplLanguage.AbsMPL
+      MplLanguage.ErrM
+      MplLanguage.LayoutMPL
+      MplLanguage.LexMPL
+      MplLanguage.ParMPL
+      MplLanguage.PrintMPL
+      MplLanguage.SkelMPL
       MplPasses.Env
       MplPasses.LambdaLifter.LambdaLift
       MplPasses.LambdaLifter.LambdaLiftUtil

@@ -72,8 +72,8 @@ data AmplConstructsBag = AmplConstructsBag {
 emptyAmplConstructsBag = AmplConstructsBag [] [] [] []
 
 collectSymbols :: 
+    -- | AMPLCODE from bnfc
     AMPLCODE ->                         
-        -- ^ AMPLCODE from bnfc
     AmplAsmBag
 collectSymbols (Main constructs start) = 
     AmplAsmBag imports prgmain $ AmplConstructsBag handles cohandles datas codatas processes functions

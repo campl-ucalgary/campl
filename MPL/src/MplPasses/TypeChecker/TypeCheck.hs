@@ -129,10 +129,10 @@ typeCheckStmt (MplStmt defns wheres) = do
             $ NE.toList defns
         let terrs = collectPkgErrors errpkg
             erroccured = hasn't _Empty 
-                $ filter (hasn't _CannotCallTypeCts)
-
-                $ filter (hasn't _CannotCallCh) 
-                $ filter (hasn't _CannotCallTerm) terrs
+                -- $ filter (has _CannotCallTypeCts)
+                -- $ filter (has _CannotCallCh) 
+                -- $ filter (has _CannotCallTerm) 
+                    terrs
 
             foralls = foldMap (view _1) eqns
             exists = foldMap (view _2) eqns
@@ -1102,7 +1102,7 @@ typeCheckExpr = para f
 
         return 
             ( _EObjCall # 
-              ( fromJust $ lookupInferredSeqTypeExpr ttype ttypemap
+              ( (seqdef, fromJust $ lookupInferredSeqTypeExpr ttype ttypemap)
               , ident
               , args' ) 
             , [eqns] )

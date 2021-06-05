@@ -60,7 +60,7 @@ newtype Unique = Unique Word
 uniqueFromSupply :: UniqueSupply -> Unique 
 uniqueFromSupply ~(UniqueSupply a _ _) = Unique a
 
--- | Generates infinite fresh unique supplies.
+-- | Generates infinite fresh uniques.
 uniquesFromSupply :: 
     UniqueSupply -> 
     Stream Unique
@@ -69,6 +69,14 @@ uniquesFromSupply supply =
         :/ uniquesFromSupply r
   where
     ~(_,r) = split supply
+
+-- | Generates infinite fresh unique supplies.
+uniqueSupplies :: 
+    UniqueSupply -> 
+    [UniqueSupply]
+uniqueSupplies supply = l : uniqueSupplies r
+  where
+    ~(l,r) = split supply
 
 -- | Initializses a fresh unique supply given a seed Word
 initUniqueSupply :: Word -> IO UniqueSupply

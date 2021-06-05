@@ -15,6 +15,7 @@ type family IdP x
 
 type family XCAssign x
 type family XCLoad x
+type family XCStore x
 type family XCRet x
 type family XCCall x
 type family XCInt x
@@ -57,6 +58,7 @@ type ForallMplAsmCom c x =
     ( c (IdP x)
     , c (XCAssign x)
     , c (XCLoad x)
+    , c (XCStore x)
     , c (XCRet x)
     , c (XCCall x)
     , c (XCInt x)
@@ -102,6 +104,8 @@ $(makeLenses ''TypeAndSpec)
 data MplAsmCom x
     = CAssign (XCAssign x) (IdP x) (MplAsmCom x)
     | CLoad (XCLoad x) (IdP x)
+    -- | stores the top element of the stack to the identifier
+    | CStore (XCStore x) (IdP x)
     | CRet (XCRet x)
     | CCall (XCCall x) (IdP x) [IdP x]
     | CInt (XCInt x) Int

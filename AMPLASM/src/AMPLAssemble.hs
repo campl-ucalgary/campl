@@ -93,7 +93,9 @@ amplCodeToInstr servicegeneratorstate amplcode =
         f :: (String, FunctionInfo [ACom]) -> Either (Ident, [AssemblerErrors]) (FunID,(String, [Instr]))
         f (fname, (fpos, (args, coms))) = do
             (_, (_, funid)) <- Bifunctor.first (((fname,fpos),) . pure) $ lookupFunction (fname, fpos) symboltable
-            Bifunctor.bimap (\errs -> ((fname, fpos), errs)) (\(instrs, _) -> (funid, (fname,instrs)))
+            Bifunctor.bimap 
+                (\errs -> ((fname, fpos), errs)) 
+                (\(instrs, _) -> (funid, (fname,instrs)))
                 $ compileRunner coms 
                     (CompileEnv { symbolTable = symboltable }) 
                     (CompileState { localVarStack = map fst args , channelTranslations = [] } )
@@ -148,7 +150,8 @@ getTranslationsInternalServiceChannelsAndExternalServiceChannels pol = foldrM f 
     f :: HasPolarityMismatch e => 
         (Ident, LocalChanID) -> 
         ([Translation], [GlobalChanID], [(GlobalChanID, (ServiceDataType, ServiceType))]) ->
-        StateT ServiceState (Except e) ([Translation], [GlobalChanID], [(GlobalChanID, (ServiceDataType, ServiceType))])
+        StateT ServiceState (Except e) 
+            ([Translation], [GlobalChanID], [(GlobalChanID, (ServiceDataType, ServiceType))])
     f (name, lch) (translations, nonservices, services) = do
         svstype <- getServiceChannelType pol name
         case svstype of

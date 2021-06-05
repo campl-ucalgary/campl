@@ -1,5 +1,9 @@
 module Main where
 
+
+main = undefined
+
+{-
 import Data.Array
 import Data.List
 import Data.Function
@@ -48,3 +52,4 @@ main = do
             putStrLn $ show initmachstate
             printInitMachineStateToBytecodeFile output initmachstate
         _ -> error "Usage: amplm2amplb <input> <output>"
+        -}

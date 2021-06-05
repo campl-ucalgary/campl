@@ -67,11 +67,11 @@ compile ::
     [ACom] ->
     RWS 
         (CompileEnv e)
-            -- ^ compiling environment
+            --  compiling environment
         [e]
-            -- ^ accumlated errors
+            --  accumlated errors
         CompileState
-            -- ^ State of local variables and channel translations
+            --  State of local variables and channel translations
         [Instr]
 compile [] = return []
 compile (c:cs) = do
@@ -104,10 +104,13 @@ compile (c:cs) = do
             if length funargs == length args  
                 then do
                     lclstack <- gets localVarStack
-                    loads <- liftEither $ Bifunctor.first (map (illegalInstrCall call)) $ getLocalVarLookupInstrs args lclstack
+                    loads <- liftEither 
+                        $ Bifunctor.first (map (illegalInstrCall call)) 
+                        $ getLocalVarLookupInstrs args lclstack
                     modify (\s -> s { localVarStack = map fst args})
                     return $ loads ++ [iCall funid (genericLength funargs)]
-                else throwError [functionArityMismatch ((fst callfun, funpos ), funargs) (snd callfun, args)]
+                else throwError 
+                    [functionArityMismatch ((fst callfun, funpos ), funargs) (snd callfun, args)]
         AInt _ v -> return [iConst (VInt v)]
         AChar _ v -> return [iConst (VChar v)]
         AAnd _ -> return [iAndBool]
@@ -144,7 +147,7 @@ compile (c:cs) = do
                     lclstack <- gets localVarStack
                     either 
                         (\errs -> tell errs >> return []) 
-                            -- ^ this error message is not very informative...
+                            -- this error message is not very informative...
                         (\loads -> return (loads ++ [iCons consix consargs]))
                         (getLocalVarLookupInstrs args lclstack)
                 else tell [ 
@@ -240,11 +243,16 @@ compile (c:cs) = do
             (pol, lch) <- liftEither $ Bifunctor.first (pure . illegalInstrCall hsplitident) $ lookupTranslation ch translations
             let lch1 = computeFreshLocalChanIDByMaximum translations
                 lch2 = succ lch1
-            modify (\s ->  s { channelTranslations = (fst ch2, (pol, lch2)) : (fst ch1, (pol, lch1)): channelTranslations s})
+            modify (\s -> s 
+                { channelTranslations = 
+                    (fst ch2, (pol, lch2)) 
+                    : (fst ch1, (pol, lch1))
+                    : channelTranslations s
+                })
             return [iSplit lch (lch1, lch2)]
 
         -- AC_FORKf   .COM ::= Fork PIdent "as" "{" PIdent "with" [PIdent] ":" COMS ";" PIdent "with" [PIdent] ":" COMS "}" ;
-          -- | AC_FORKf Fork PIdent PIdent [PIdent] COMS PIdent [PIdent] COMS
+          --  AC_FORKf Fork PIdent PIdent [PIdent] COMS PIdent [PIdent] COMS
         AFork forkident ch
             ((ch1, chs1), coms1)
             ((ch2, chs2), coms2) -> do

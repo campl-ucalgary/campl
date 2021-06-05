@@ -36,12 +36,12 @@ import MplAST.MplExt
 
 import MplUtil.UniqueSupply
 
-import qualified Language.AbsMPL as B
-import qualified Language.ErrM as B
-import qualified Language.LayoutMPL as B
-import qualified Language.LexMPL as B
-import qualified Language.ParMPL as B
-import qualified Language.PrintMPL as B
+import qualified MplLanguage.AbsMPL as B
+import qualified MplLanguage.ErrM as B
+import qualified MplLanguage.LayoutMPL as B
+import qualified MplLanguage.LexMPL as B
+import qualified MplLanguage.ParMPL as B
+import qualified MplLanguage.PrintMPL as B
 
 import Optics
 
@@ -223,6 +223,10 @@ class MplTypeToBnfc t x where
 instance MplTypeToBnfc IdentR x where
     mplTypeToBnfc proxy i = mplTypeToBnfc proxy (_TypeVar # ((), i) :: MplType MplRenamed)
 
+instance MplTypeToBnfc IdentP x where
+    mplTypeToBnfc proxy i = mplTypeToBnfc proxy (_TypeVar # ((), i) :: MplType MplParsed)
+
+
 instance ( PPrint (IdP x) t, PPrint (TypeP x) t) => MplTypeToBnfc (MplType x) t where
     mplTypeToBnfc proxy = f
       where
@@ -301,6 +305,16 @@ instance ( PPrint (IdP x) t, PPrint (TypeP x) t) => MplTypeToBnfc (MplType x) t 
 class UserProvidedTypeToBnfc t x where
     userProvidedTypeToBnfc :: Proxy x -> t -> Maybe B.MplType
 
+instance UserProvidedTypeToBnfc (Maybe ([MplType MplParsed], [MplType MplParsed], [MplType MplParsed])) MplParsed where
+    userProvidedTypeToBnfc proxy Nothing = Nothing
+    userProvidedTypeToBnfc proxy (Just (seqs, ins, outs)) = Just $ 
+        B.MPL_CONC_ARROW_TYPE [] (map (mplTypeToBnfc proxy) seqs) (map (mplTypeToBnfc proxy) ins) (map (mplTypeToBnfc proxy) outs)
+
+instance UserProvidedTypeToBnfc (Maybe ([MplType MplParsed], MplType MplParsed)) x where
+    userProvidedTypeToBnfc proxy Nothing = Nothing
+    userProvidedTypeToBnfc proxy (Just (froms, to)) = Just $
+        B.MPL_SEQ_ARROW_TYPE [] (map (mplTypeToBnfc proxy) froms) (mplTypeToBnfc proxy to) 
+
 instance PPrint ident x => UserProvidedTypeToBnfc 
     (Maybe ([ident], [MplType MplRenamed], [MplType MplRenamed], [MplType MplRenamed])) x where
 
@@ -347,6 +361,9 @@ instance MplTypesToBnfc (MplType MplRenamed) x where
 instance MplTypesToBnfc (MplType MplTypeChecked) x where
     mplTypesToBnfc proxy = pure . mplTypeToBnfc proxy
 
+instance MplTypesToBnfc [MplType MplParsed] x where
+    mplTypesToBnfc proxy = map (mplTypeToBnfc proxy)
+
 instance MplTypesToBnfc [MplType MplRenamed] x where
     mplTypesToBnfc proxy = map (mplTypeToBnfc proxy)
 
@@ -361,6 +378,15 @@ instance MplTypesToBnfc ([MplType MplTypeChecked], MplType MplTypeChecked) x whe
 
 instance MplTypesToBnfc ([MplType MplRenamed], IdentR) x where
     mplTypesToBnfc proxy (as, a) = map (mplTypeToBnfc proxy) (as++ [_TypeVar # ((),a)])
+
+instance MplTypesToBnfc ([MplType MplParsed], IdentP) x where
+    mplTypesToBnfc proxy (as, a) = map (mplTypeToBnfc proxy) (as++ [_TypeVar # ((),a)])
+
+
+{-
+instance MplTypesToBnfc ([MplType MplRenamed], MplType MplRenamed) x where
+    mplTypesToBnfc proxy (as, a) = map (mplTypeToBnfc proxy) (as++[a])
+-}
 
     
 instance MplTypesToBnfc IdentR x where
@@ -760,6 +786,10 @@ instance ( PPrint ident y, MplCmdToBnfc t y) => MplToForkPhrase (ident, [ident],
     mplToForkPhrase proxy (ch, cxt, cmds) = B.FORK_WITH_PHRASE 
         (toBnfcIdent proxy ch) (map (toBnfcIdent proxy) cxt) $ mplCmdsToBnfc proxy cmds
 
+instance ( PPrint ident y, MplCmdToBnfc t y) => MplToForkPhrase (ident, Maybe [ident], NonEmpty t) y where
+    mplToForkPhrase proxy (ch, Just cxt, cmds) = mplToForkPhrase proxy (ch, cxt, cmds)
+    mplToForkPhrase proxy (ch, Nothing, cmds) = B.FORK_PHRASE (toBnfcIdent proxy ch)  $ mplCmdsToBnfc proxy cmds
+
 class MplToPlugPhrase t y where
     mplToPlugPhrase :: Proxy y -> t -> B.PlugPhrase
           {-
@@ -850,6 +880,8 @@ mplStmtToBnfc ::
     Proxy y -> 
     MplStmt x -> 
     B.MplStmt
+mplStmtToBnfc proxy (MplStmt (defn:| []) []) = 
+    B.MPL_STMT $ mplDefnToBnfc proxy defn
 mplStmtToBnfc proxy (MplStmt defns []) = 
     B.MPL_DEFN_STMS $ NE.toList $ fmap (mplDefnToBnfc proxy) defns
 mplStmtToBnfc proxy (MplStmt defns wheres) = 

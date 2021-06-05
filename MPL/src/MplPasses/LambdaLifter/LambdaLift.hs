@@ -50,15 +50,16 @@ import Unsafe.Coerce
 
 runLambdaLiftProg ::
     MplProg MplPatternCompiled ->
-    [MplDefn MplLambdaLifted]
-runLambdaLiftProg (MplProg prog) = concatMap runlambdaLiftStmt prog
+    MplProg MplLambdaLifted
+runLambdaLiftProg (MplProg prog) = MplProg $ map runlambdaLiftStmt prog
 
 runlambdaLiftStmt ::
     MplStmt MplPatternCompiled ->
-    [MplDefn MplLambdaLifted]
-runlambdaLiftStmt stmt = 
-    foldMapOf (stmtDefns % folded) runLambdaLiftDefn stmt
-    <> foldMapOf (stmtWhereBindings % folded) runlambdaLiftStmt stmt 
+    MplStmt MplLambdaLifted
+    -- [MplDefn MplLambdaLifted]
+runlambdaLiftStmt stmt = MplStmt
+    (NE.fromList (foldMapOf (stmtDefns % folded) runLambdaLiftDefn stmt))
+    (stmt ^..  stmtWhereBindings % folded % to runlambdaLiftStmt)
 
 runLambdaLiftDefn ::
     MplDefn MplPatternCompiled -> 

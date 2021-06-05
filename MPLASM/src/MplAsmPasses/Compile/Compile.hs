@@ -39,7 +39,7 @@ import Control.Exception
 mplAsmProgToInitMachState ::
     ( Ord (IdP x) 
     , AsCompileError err x 
-    , HasIdent (IdP x)
+    , HasName (IdP x)
     ) =>
     MplAsmProg x -> 
     Either [err] InitAMPLMachState 
@@ -49,6 +49,12 @@ mplAsmProgToInitMachState prog = case runWriter res of
   where
     res = flip evalStateT initMplAsmCompileSt $ do
         {- compilation of statements is straightforward -}
+
+        {- TODO: This makes it impossible to define data and codata, functions and process, etc. that depend on 
+         - each other. This needs to be changed to put everything in the symbol table first. 
+         - Easiest way to fix this is to put everything in the symbol table first... alternatively, there's
+         - the magic monad fix alternative way to do this 
+         -}
         funs <- fmap concat $ traverse mplAsmCompileStmt (prog ^. mplAsmStmts)
 
         {- compilation of the main function is a bit more complicated.  
@@ -97,7 +103,7 @@ mplAsmProgToInitMachState prog = case runWriter res of
                  - and all the service channels
                  -}
                 intransandservices <- for (zip ins insids) $ \(ch, chid) -> do
-                    let chstr = ch ^. identStr 
+                    let chstr = ch ^. nameStr 
                     if | chstr == "console" -> do
                             gch <- freshGlobalChanId
                             return $ ([(Input, (chid, gch))], [(gch, (IntService, StdService))])
@@ -109,7 +115,7 @@ mplAsmProgToInitMachState prog = case runWriter res of
                 -- handles services in the future.. probably do some WAI / warp webserver
                 -- is the best way to do this
                 outtransandservices <- for (zip outs outsids) $ \(ch, chid) -> do
-                    let chstr = ch ^. identStr 
+                    let chstr = ch ^. nameStr 
                         nkey = show (coerce chid :: Int)
                     if | "int" `isPrefixOf` chstr -> do
                             gch <- freshGlobalChanId

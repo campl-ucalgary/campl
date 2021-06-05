@@ -3,7 +3,7 @@
 {
 {-# OPTIONS -fno-warn-incomplete-patterns #-}
 {-# OPTIONS_GHC -w #-}
-module Language.LexMPL where
+module MplLanguage.LexMPL where
 
 import qualified Data.Bits
 import Data.Word (Word8)

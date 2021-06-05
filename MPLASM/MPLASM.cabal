@@ -40,6 +40,11 @@ library
       MplAsmPasses.Compile.Compile
       MplAsmPasses.Compile.CompileErrors
       MplAsmPasses.Compile.Stack
+      MplAsmPasses.Parse.BnfcParse
+      MplAsmPasses.Parse.Parse
+      MplAsmPasses.Parse.ParseAST
+      MplAsmPasses.Parse.ParseErrors
+      MplAsmPasses.Passes
   other-modules:
       Paths_MPLASM
   hs-source-dirs:

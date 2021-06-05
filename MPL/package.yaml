@@ -12,10 +12,8 @@ extra-doc-files:
 
 extra-source-files:
     - src/MPL.bnfc
-    - src/Language/LexMPL.x
-    - src/Language/ParMPL.y
-
-    # These are test files
+    - src/MplLanguage/LexMPL.x
+    - src/MplLanguage/ParMPL.y
 
 # Metadata used when publishing your package
 # synopsis:            Short description of your package
@@ -47,6 +45,7 @@ dependencies:
     - raw-strings-qq
     - deepseq
 
+      # If I recall, this is used for show instances for playing with stuff in Ghci
     - pretty-simple
 
 

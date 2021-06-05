@@ -33,7 +33,7 @@ import qualified Data.Queue as Queue
 -- | Type class for looking up supercombinators
 class HasSuperCombinators a where
     superCombInstrLookup :: a -> FunID -> [Instr]
-    superCombNameLookup :: a -> FunID -> String
+    -- superCombNameLookup :: a -> FunID -> String
 
 -- | type class for getting a logger.
 -- By convention, we adopt that: 
@@ -141,11 +141,12 @@ class HasNetworkedConnections a where
 
 -- | newtype wrapper for an array of supercombinators
 -- (supercombinators is the terminolgy Simon Peyton Jones uses for functions)
-newtype Supercombinators = Supercombinators (Array FunID (String, [Instr]))
+newtype Supercombinators = Supercombinators (Array FunID [Instr])
 
 -- | Smart constructor for supercombinators
 mkSupercombinators :: 
-    [(FunID, (String, [Instr]))] ->          -- ^ association list of funciton ids and its name / instruction
+    -- | association list of funciton ids and its name / instruction
+    [(FunID, [Instr])] ->          
     Supercombinators 
 mkSupercombinators defs 
     | null defs = Supercombinators (array (FunID 1, FunID 0) [])
@@ -194,10 +195,14 @@ data AmplEnv = AmplEnv
 
 -- | Smart constructor for the environment
 amplEnv :: 
-    [(FunID, (String, [Instr]))] ->          -- ^ association list of funciton ids and its name / instruction
-    AmplTCPServer ->                         -- ^ AmplTCP server
-    AmplLogger ->                            -- ^ logger.
-    (Services, ChannelManager, Stream ChannelIdRep) ->  -- ^ service related things
+    -- | association list of funciton ids and its name / instruction
+    [(FunID, [Instr])] ->          
+    -- | AmplTCP server
+    AmplTCPServer ->                         
+    -- | logger.
+    AmplLogger ->                            
+    -- | service related things
+    (Services, ChannelManager, Stream ChannelIdRep) ->  
     IO AmplEnv
 amplEnv defs tcpsv lg (svs, chm, nmg) = do
     chan <- newChan
@@ -233,12 +238,12 @@ amplEnv defs tcpsv lg (svs, chm, nmg) = do
             }
 
 instance HasSuperCombinators Supercombinators where
-    superCombInstrLookup (Supercombinators arr) ix = snd (arr ! ix)
-    superCombNameLookup (Supercombinators arr) ix = fst (arr ! ix)
+    superCombInstrLookup (Supercombinators arr) ix = arr ! ix
+    -- superCombNameLookup (Supercombinators arr) ix = fst (arr ! ix)
 
 instance HasSuperCombinators AmplEnv where
     superCombInstrLookup env ix = (`superCombInstrLookup`ix) (supercombinators env)
-    superCombNameLookup env ix = (`superCombNameLookup`ix) (supercombinators env)
+    -- superCombNameLookup env ix = (`superCombNameLookup`ix) (supercombinators env)
 
 instance HasLog AmplEnv where
     getFileLog AmplEnv { amplLogger = logger } = nonRedundantFileAmplLogger logger dashesTimeStampLn (return dashesLn) 

@@ -1,4 +1,5 @@
 module Bytecode where
+{-
 import Data.Array
 import Data.List
 import Data.Function
@@ -253,7 +254,7 @@ translateSequential (IEq ) = emit $ BI B_AM_EQ
 translateSequential (ILeq) = emit $ BI B_AM_LE
 
 
-translateSequential (ICons (ConsIx consIdx) nargs) = do
+translateSequential (ICons (CaseIx consIdx) nargs) = do
     ret <- emit $ BI B_AM_CONS
     emit $ BIdx $ fromIntegral consIdx
     emit $ BU $ fromIntegral nargs
@@ -292,7 +293,7 @@ translateSequential (IRec entryInstructions) = let
         return ret
 
 
-translateSequential (IDest (DesIx idx) nargs) = do
+translateSequential (IDest (CaseIx idx) nargs) = do
         ret <- emit $ BI B_AM_DEST
         emit $ BIdx $ fromIntegral idx
         emit $ BU $ fromIntegral nargs
@@ -649,3 +650,4 @@ initMachineStateToBytecodeString :: InitAMPLMachState -> String
 initMachineStateToBytecodeString mach = let
         (bytecode, fs) = translateMachineState mach
     in ((formatBytecodeString "\n" bytecode) ++ "\n" ++ (show fs))
+    -}

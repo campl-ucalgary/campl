@@ -57,7 +57,7 @@ getExprType = \case
     EChar ann _ -> ann
     EDouble ann _ -> ann
     ECase ann _ _ -> ann
-    EObjCall ann _ _ -> ann
+    EObjCall ann _ _ -> snd ann
     ECall ann _ _ -> ann
     ERecord ann _ -> ann
     {-

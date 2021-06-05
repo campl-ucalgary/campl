@@ -31,7 +31,7 @@ resolver:
 #   - wai
 packages:
 - .
-- ../AMPLASM
+- ../MPLASM
 - ../CMPL/
 - ../AMPL
 - ../MPL

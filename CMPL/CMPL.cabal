@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f6a858b77b66c87130f87a9ba3e84f95a3dbb7b1021fa9091d9984f2129d8250
+-- hash: 2ee83fe2c4101763720d6402a97f5bdbe8b581492ad31c14d776dbf38ed2c672
 
 name:           CMPL
 version:        0.1.0.0
@@ -41,6 +41,8 @@ library
     , AMPLASM
     , GenericPretty
     , base >=4.7 && <5
+    , mpl-lib
+    , mtl
     , optics
     , pretty
     , recursion-schemes
@@ -60,6 +62,8 @@ test-suite CMPL-test
     , CMPL
     , GenericPretty
     , base >=4.7 && <5
+    , mpl-lib
+    , mtl
     , optics
     , pretty
     , recursion-schemes

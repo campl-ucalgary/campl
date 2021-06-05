@@ -24,6 +24,7 @@ import System.Environment
 import Network.Socket
 
 testAmplTCPServer = "5000" 
+{-
 
 {-
 The general structure for writing the program is as follows...
@@ -51,7 +52,7 @@ codataMain =
                 , [iConst (VInt 100), iAccess 0, iAddInt, iRet]     -- 1
                 , [iConst (VInt 200), iAccess 0, iAddInt, iRet]     -- 2
                 ]
-        , iDest (DesIx 2) 1
+        , iDest (CaseIx 2) 1
         ]
 sequentialCodataTest = do
     svs <- genServicesChannelManagerAndStream [] []
@@ -443,7 +444,7 @@ boolToChartf = [
     , iRet
     ]
 
-getStdCharAndcallToServiceOutFunDefs = [ (FunID 0, ("chartfToBool", chartfToBool)), (FunID 1, ("boolToChartf",boolToChartf)) ]
+getStdCharAndcallToServiceOutFunDefs = [ (FunID 0, ({-"chartfToBool",-} chartfToBool)), (FunID 1, ({-"boolToChartf",-}boolToChartf)) ]
 
 getStdCharAndcallToServiceOutTest = do
     svs <- genServicesChannelManagerAndStream 
@@ -908,7 +909,7 @@ repeatedlyAskAndAddTest = do
                     [(GlobalChanID service0POr, (IntService, StdService) )]
     execAmplMachWithDefaults 
         repeatedlyAskAndAddMain
-        [(FunID 0, ("repeatedlyAskAndAddFun", repeatedlyAskAndAddFun))]
+        [(FunID 0, ({-"repeatedlyAskAndAddFun",-} repeatedlyAskAndAddFun))]
         testAmplTCPServer
         svs
 
@@ -1189,10 +1190,10 @@ ticketBookingTest = do
                     ]
     execAmplMachWithDefaults 
         ticketBookingMain
-        [ (bookClientFunId, ("bookClient", bookClient))
-        , (ticketServerFunId, ("ticketServer", ticketServer))
-        , (ticketServerHelperFunId, ("ticketServerHelper", ticketServerHelper))
-        , (ticketServerHelperId', ("ticketServerHelper'", ticketServerHelper'))
+        [ (bookClientFunId, ({-"bookClient",-} bookClient))
+        , (ticketServerFunId, ({-"ticketServer",-} ticketServer))
+        , (ticketServerHelperFunId, ({- "ticketServerHelper",-} ticketServerHelper))
+        , (ticketServerHelperId', ({-"ticketServerHelper'",-} ticketServerHelper'))
         ]
         testAmplTCPServer
         svs
@@ -1200,4 +1201,4 @@ ticketBookingTest = do
 -------------------------
 -- Id test...
 -------------------------
-
+-}

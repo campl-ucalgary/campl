@@ -86,6 +86,9 @@ instance ToAsmIdP IdentT where
         , show (coerce (identt ^. identRUniqueTag) :: Word)
         ]
 
+instance ToAsmIdP ChIdentT where
+    toAsmIdP chidentt = chidentt ^. chIdentTChIdentR % chIdentRIdentR % to toAsmIdP
+
 mplAssembleStmt ::
     forall s m.
     ( HasUniqueSupply s
@@ -376,15 +379,17 @@ mplAssembleCmd ::
 mplAssembleCmd = cata go
   where
     go = \case
-        CRunF _ callid seqs ins outs -> undefined
+        CRunF _ callid seqs ins outs -> do
+            (seqs', es) <- fmap unzip $ for seqs $ \seq -> do
+                e <- freshTmpName
+                seq' <- mplAssembleExpr seq
+                return $ (seq' ++ [Asm.CStore () e], e)
+                
+            return $ concat seqs' <> [ Asm.CRun () (toAsmIdP callid) (es, map toAsmIdP ins, map toAsmIdP outs) ]
+        CCloseF _ ch -> return [Asm.CClose () $ toAsmIdP ch]
+        CHaltF _ ch -> return [Asm.CHalt () $ toAsmIdP ch]
+        CGetF _ pat ch -> return [Asm.CHalt () $ toAsmIdP ch]
     {-
-    = MplAST.MplCmd.CRunF !(MplAST.MplCmd.XCRun x)
-                        (MplAST.MplCore.IdP x)
-                        [XMplExpr x]
-                        [ChP x]
-                        [ChP x]
-  | MplAST.MplCmd.CCloseF !(MplAST.MplCmd.XCClose x) (ChP x)
-  | MplAST.MplCmd.CHaltF !(MplAST.MplCmd.XCHalt x) (ChP x)
   | MplAST.MplCmd.CGetF !(MplAST.MplCmd.XCGet x)
                         (XMplPattern x)
                         (ChP x)

@@ -6,12 +6,12 @@ import System.Environment ( getArgs, getProgName )
 import System.Exit        ( exitFailure, exitSuccess )
 import Control.Monad      ( when )
 
-import Language.LexMPL    ( Token )
-import Language.ParMPL    ( pMplProg, myLexer )
-import Language.SkelMPL   ()
-import Language.PrintMPL  ( Print, printTree )
-import Language.AbsMPL    ()
-import Language.LayoutMPL ( resolveLayout )
+import MplLanguage.LexMPL    ( Token )
+import MplLanguage.ParMPL    ( pMplProg, myLexer )
+import MplLanguage.SkelMPL   ()
+import MplLanguage.PrintMPL  ( Print, printTree )
+import MplLanguage.AbsMPL    ()
+import MplLanguage.LayoutMPL ( resolveLayout )
 
 type Err = Either String
 type ParseFun a = [Token] -> Err a

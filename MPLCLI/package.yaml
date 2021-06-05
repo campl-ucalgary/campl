@@ -28,9 +28,8 @@ dependencies:
 - optics
 
 - MPL
-- CMPL
+- MPLASM
 - AMPL
-- AMPLASM
 
 
 library:

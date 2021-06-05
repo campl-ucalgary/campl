@@ -137,7 +137,8 @@ data AmplTCPServer = AmplTCPServer {
 
 -- | Opens a TCP server... 
 initAmplTCPServer :: 
-    String ->                  -- ^ port e.g. 514
+    -- | port e.g. 514
+    String ->                  
     IO AmplTCPServer 
 initAmplTCPServer port = withSocketsDo $ do
     -- look up the port..  From the documentation, 

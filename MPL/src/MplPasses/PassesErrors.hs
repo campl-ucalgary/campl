@@ -4,12 +4,34 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE NamedWildCards #-}
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
-module MplPasses.PassesErrors where
+module MplPasses.PassesErrors 
+    ( module MplPasses.Parser.ParseErrors
+    , module MplPasses.Renamer.RenameErrors
+    , module MplPasses.TypeChecker.TypeCheckErrors
+    , module MplPasses.TypeChecker.TypeCheckSemanticErrors 
+    , module MplPasses.TypeChecker.TypeCheckCallErrors 
+    , module MplPasses.PatternCompiler.PatternCompileErrors
+    , module MplPasses.PassesErrorsPprint
+    , MplPassesErrors (..)
+    , PprintMplPassesErrors  
+    , pprintMplPassesErrors 
+    )
+    where
 
 import Optics
 import Optics.TH
 
 import Data.List
+
+
+-- these are mainly here for the rexport...
+import MplPasses.Parser.ParseErrors
+import MplPasses.Renamer.RenameErrors
+import MplPasses.TypeChecker.TypeCheckErrors
+import MplPasses.TypeChecker.TypeCheckSemanticErrors 
+import MplPasses.TypeChecker.TypeCheckCallErrors 
+import MplPasses.PatternCompiler.PatternCompileErrors
+import MplPasses.PassesErrorsPprint
 
 import qualified MplPasses.Parser.BnfcParse as B
 import qualified MplPasses.Parser.Parse as P
@@ -68,29 +90,25 @@ instance PC.AsPatternCompileErrors MplPassesErrors where
     _PatternCompileErrors  = _MplPatternCompilationErrors 
 
 
-pprintMplPassesErrors :: MplPassesErrors -> MplDoc
-pprintMplPassesErrors = vsep . go
-  where
-    go :: MplPassesErrors -> [MplDoc]
-    go (MplBnfcErrors (B.BnfcParseError err)) = 
-        [ pretty "Error during BNFC parsing:"
-        , indent' $ pretty err
-        ] 
-    go (MplParseErrors err) = 
-        [ pretty "Error during parsing:"
-        , indent' $ P.pprintParseErrors err
-        ]
-    go (MplRenameErrors err) = 
-        [ pretty "Error during renaming:"
-        , indent' $ R.pprintRenameErrors err
-        ]
-    go (MplTypeCheckErrors err) = 
-        [ pretty "Error during type checking:"
-        , indent' $ T.pprintTypeCheckErrors err
-        ]
-    go (MplPatternCompilationErrors err) = 
-        [ pretty "Error during pattern compilation:"
-        , indent' $ PC.pprintPatternCompileErrors err
-        ]
+class PprintMplPassesErrors  t where
+    pprintMplPassesErrors :: t -> MplDoc
 
-    indent' = indent 4
+instance PprintMplPassesErrors MplPassesErrors where
+    pprintMplPassesErrors = vsep . go
+      where
+        go :: MplPassesErrors -> [MplDoc]
+        go (MplBnfcErrors (B.BnfcParseError err)) = 
+            [ indent' $ pretty err ] 
+        go (MplParseErrors err) = 
+            [ indent' $ P.pprintParseErrors err ]
+        go (MplRenameErrors err) = 
+            [ indent' $ R.pprintRenameErrors err ]
+        go (MplTypeCheckErrors err) = 
+            [ indent' $ T.pprintTypeCheckErrors err ]
+        go (MplPatternCompilationErrors err) = 
+            [ indent' $ PC.pprintPatternCompileErrors err ]
+
+        indent' = indent 4
+
+instance PprintMplPassesErrors a => PprintMplPassesErrors [a] where
+    pprintMplPassesErrors = vsep . map pprintMplPassesErrors

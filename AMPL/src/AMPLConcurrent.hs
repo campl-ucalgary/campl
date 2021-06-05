@@ -53,15 +53,15 @@ stepConcurrent ::
     ( HasBroadcastChan r 
     , HasSuperCombinators r 
     , HasChannelNameGenerator r) =>
+    -- | concurrent instruction to execute
     ConcurrentInstr ->                                      
-        -- ^ concurrent instruction to execute
+        -- | (s, t, e, c) of the focused process...
     Stec ->               
-        -- ^ (s, t, e, c) of the focused process...
-    ReaderT r IO ProcessConcurrentStepResult
-        -- ^ result of the concurrent step.. Either the process ends,
+        -- | result of the concurrent step.. Either the process ends,
         -- the process continues, or the process diverges..
         -- Note we need IO here because we are modifying the broadcast 
         -- channel, and need unique names...
+    ReaderT r IO ProcessConcurrentStepResult
 stepConcurrent (IGet a) pr@(s, t, e, c) = do
     let ta = fromJust (lookupLocalChanIDToGlobalChanID a t)
     env <- ask 
@@ -196,9 +196,12 @@ prependQInstr Input qinstr = second (qinstr `Queue.prepend`)
 -- this returns a new channel manger with the appropriate 
 -- modifcations of the broadcast commands
 addCommandToChannelManager :: 
-    BInstr ->       -- ^ Broadcast channel instruction
-    ChannelManager ->          -- ^ old channel manager
-    ChannelManager             -- ^ new channel manager
+    -- | Broadcast channel instruction
+    BInstr ->       
+    -- | old channel manager
+    ChannelManager ->          
+    -- | new channel manager
+    ChannelManager             
 addCommandToChannelManager (BGet (pol, gch) n) chm = 
     chm { channelManager = Map.adjust (appendQInstr pol (QGet n)) gch $ channelManager chm }
 
@@ -273,12 +276,12 @@ emptyStepChannelManagerResult = StepChannelManagerResult [] [] [] []
 
 -- | Steps the channel manager (corresponding to Table 3)
 stepChannelManager :: 
+    -- | services
     Set GlobalChanID -> 
-        -- ^ services
+    -- | channel manager map
     Chm ->
-        -- ^ channel manager map
+    -- | new processes, and new map
     (StepChannelManagerResult, Chm)   
-        -- ^ new processes, and new map
 stepChannelManager services = 
     second (Map.fromAscList . fst)
                         -- get all the proccesed channels, and since they are in ascending order,

@@ -25,18 +25,19 @@ source-repository head
 
 library
   exposed-modules:
-      CLIRunner
-      Config
-      Lib
+      MplCliMain
+      MplCliRunner.Flags
+      MplCliRunner.LambdaLiftedToAsm
+      MplCliRunner.Runner
+      MplCliRunner.Stack
   other-modules:
       Paths_MPLCLI
   hs-source-dirs:
       src
   build-depends:
       AMPL
-    , AMPLASM
-    , CMPL
     , MPL
+    , MPLASM
     , base >=4.7 && <5
     , filepath
     , mtl
@@ -54,9 +55,8 @@ executable mpl
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       AMPL
-    , AMPLASM
-    , CMPL
     , MPL
+    , MPLASM
     , MPLCLI
     , base >=4.7 && <5
     , filepath
@@ -76,9 +76,8 @@ test-suite MPLCLI-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       AMPL
-    , AMPLASM
-    , CMPL
     , MPL
+    , MPLASM
     , MPLCLI
     , base >=4.7 && <5
     , filepath

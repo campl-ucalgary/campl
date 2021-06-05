@@ -118,8 +118,8 @@ makeSymbolTable' AmplConstructsBag{
 
     typeToSymEntryAssocList :: 
         HasAmbiguousLookupError e =>
+            -- | function to construct the sym table entry from the corresponding entry in the bag
         ((RowColPos, b) -> SymEntry) -> 
-            -- ^ function to construct the sym table entry from the corresponding entry in the bag
         [(String, Either e SymEntry)] -> 
         NonEmpty (String, (RowColPos, b)) -> 
         [(String, Either e SymEntry)]
@@ -274,17 +274,17 @@ lookupCodataAndDestructor' codata dest map = (coerce :: (RowColPos, (Ident, (Des
 
 typeLookupHelper ::
     ( Ident -> e
-        -- ^ Type (data / codata / protocol / coprotocol )does not exist error function 
+        --  Type (data / codata / protocol / coprotocol )does not exist error function 
     , Either e SymEntry -> Either e b ) ->
-        -- ^ relook up function (for the subtype){
+        --  relook up function (for the subtype){
+    -- | Protocol
     Ident ->    
-        -- ^ Protocol
+    -- | Constructor
     Ident -> 
-        -- ^ Constructor
+    -- | map to lookup
     Map String (Either e SymEntry) ->
-        -- ^ map to lookup
+    -- | result
     Either e b
-        -- ^ result
 typeLookupHelper (mainTypeDoesNotExist, relookup) mainType subtype map = maybe 
     (Left (mainTypeDoesNotExist mainType))
     relookup

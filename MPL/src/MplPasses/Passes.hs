@@ -5,7 +5,17 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE NamedWildCards #-}
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
-module MplPasses.Passes where
+module MplPasses.Passes 
+    ( module MplPasses.Parser.Parse
+    , module MplPasses.Renamer.Rename
+    , module MplPasses.TypeChecker.TypeCheck
+    , module MplPasses.PatternCompiler.PatternCompile
+    , module MplPasses.LambdaLifter.LambdaLift
+    , MplPassesEnv (..)
+    , mplPassesEnv
+    , runPasses
+    )
+    where
 
 import Optics
 
@@ -67,7 +77,7 @@ mplPassesEnv = do
 runPasses :: 
     MplPassesEnv -> 
     String -> 
-    Either [MplPassesErrors] [MplDefn MplLambdaLifted]
+    Either [MplPassesErrors] (MplProg MplLambdaLifted)
 runPasses MplPassesEnv{mplPassesEnvUniqueSupply = supply, mplPassesTopLevel = toplvl} = 
     return . runLambdaLiftProg
 

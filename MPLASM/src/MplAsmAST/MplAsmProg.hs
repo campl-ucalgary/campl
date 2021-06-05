@@ -30,8 +30,13 @@ data MplAsmStmt x
     -- | Function name, arguments, commands
     | Functions [(IdP x, [IdP x], MplAsmComs x)]
     -- | process name, arguments, commands
-    | Processes [(IdP x, ([IdP x], [IdP x], [IdP x]), MplAsmComs x)]
+    | Processes [(IdP x, ([IdP x], [IdP x], [IdP x]), MplAsmComs x)] 
 
+
+newtype Name = Name { _nameStr :: String }
+  deriving (Show, Eq, Ord)
+
+$(makeClassy ''Name)
 $(makeLenses ''TypeAndConcSpecs)
 $(makeLenses ''TypeAndSeqSpecs)
 $(makeLenses ''MplAsmProg)

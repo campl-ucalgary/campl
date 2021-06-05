@@ -50,7 +50,8 @@ runAmplMach ::
     , HasNetworkedConnections r
     , HasLog r 
     , HasChannelNameGenerator r ) =>
-    ([Instr], [Translation]) ->    -- ^ (main process instructions, translations)
+    -- | (main process instructions, translations)
+    ([Instr], [Translation]) ->    
     ReaderT r IO ()
 runAmplMach (mainf, maint) = do
     env <- ask 
@@ -291,8 +292,10 @@ amplNetworkedServiceLoop ::
     , HasNetworkedConnections r
     , HasBroadcastChan r
     , HasLog r ) =>
-    (Handle, SockAddr) ->           -- ^ client connection (note that we do not actually need SockAddr)
-    (GlobalChanID, ServiceEnv) ->   -- ^ required environment from the service
+    -- | client connection (note that we do not actually need SockAddr)
+    (Handle, SockAddr) ->           
+    -- | required environment from the service
+    (GlobalChanID, ServiceEnv) ->   
     ReaderT r IO ()
 amplNetworkedServiceLoop client@(clienthandle, clientaddr) sv@(gch, ServiceEnv{ serviceDataType = svdty, serviceOpen = open, serviceRequest = svrq }) = do
     env <- ask
