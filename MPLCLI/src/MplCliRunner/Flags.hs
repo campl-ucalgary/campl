@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Config where
+module MplCliRunner.Flags where
 
 import Optics
 import System.FilePath
@@ -18,6 +18,15 @@ data DumpOutput
     = DumpToFile FilePath
     | DumpToStdOut 
   deriving (Show, Eq)
+
+{- | runs a dump output -}
+dumpOutput :: 
+    DumpOutput ->
+    String ->
+    IO ()
+dumpOutput opt str =  case opt of
+    DumpToFile fp -> writeFile fp str
+    DumpToStdOut -> putStrLn str
 
 data DumpOpt
     = Parsed
