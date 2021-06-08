@@ -38,6 +38,7 @@ import Control.Monad.Except
 import Control.Arrow hiding ((<+>))
 import Data.Foldable
 import Data.Traversable
+import Data.List
 
 import Data.Map (Map)
 import qualified Data.Map as Map

@@ -13,6 +13,13 @@ module MplPasses.PassesErrors
     , module MplPasses.PatternCompiler.PatternCompileErrors
     , module MplPasses.PassesErrorsPprint
     , MplPassesErrors (..)
+
+    , _MplBnfcErrors 
+    , _MplParseErrors 
+    , _MplRenameErrors 
+    , _MplTypeCheckErrors 
+    , _MplPatternCompilationErrors 
+
     , PprintMplPassesErrors  
     , pprintMplPassesErrors 
     )
@@ -52,8 +59,8 @@ import qualified MplPasses.PatternCompiler.PatternCompileErrors as PC
 
 import MplPasses.PassesErrorsPprint
 
-data MplPassesErrors =
-    MplBnfcErrors B.BnfcErrors
+data MplPassesErrors 
+    = MplBnfcErrors B.BnfcErrors
     | MplParseErrors P.ParseErrors
     | MplRenameErrors R.RenameErrors
     | MplTypeCheckErrors T.TypeCheckErrors

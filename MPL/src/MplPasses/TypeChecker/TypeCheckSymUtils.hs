@@ -73,7 +73,10 @@ runZoomedLookup m = m >>= return
 
 -- we can generalize all of these expression lookups and make
 -- it more compositional with zoom..
-lookupSymExpr :: TypeCheckSymLookup (IdP MplRenamed) (Maybe (SymEntry SymSeqType SymExprInfo))
+lookupSymExpr :: 
+    TypeCheckSymLookup 
+        (IdP MplRenamed) 
+        (Maybe (SymEntry SymSeqType SymExprInfo))
 lookupSymExpr ident = runZoomedLookup $ zoomSymExpr ident (guse equality) 
 
 zoomSymExpr :: 
@@ -392,6 +395,7 @@ class EliminateSymTabObj (t :: ObjectDefnTag) where
 
 instance EliminateSymTabObj (t :: ObjectDefnTag) where
     eliminateSymTabObj spine = do
+        -- eliminate the types
         forOf_ 
             ( typeClauseSpineClauses 
             % traversed 
@@ -399,6 +403,7 @@ instance EliminateSymTabObj (t :: ObjectDefnTag) where
             % uniqueTag )
             spine $ \n -> symTabType % at n .= Nothing
 
+        -- eliminate the expresssions
         forOf_ 
             ( typeClauseSpineClauses 
             % traversed 
@@ -407,6 +412,16 @@ instance EliminateSymTabObj (t :: ObjectDefnTag) where
             % typePhraseName 
             % uniqueTag )
             spine $ \n -> symTabExpr % at n .= Nothing
+
+        -- eliminate the concurrent definitons
+        forOf_ 
+            ( typeClauseSpineClauses 
+            % traversed 
+            % typeClausePhrases 
+            % traversed 
+            % typePhraseName 
+            % uniqueTag )
+            spine $ \n -> symTabConc % at n .= Nothing
     
 
 -- | eliminates the symbol table definitions of 

@@ -99,7 +99,9 @@ typeCheckTypeClauseSpine spine = do
 
 
 class KindCheckObjArgsKindEnv (t :: ObjectDefnTag) where
-    kindCheckObjArgsKindEnv :: MplTypeClauseSpine MplRenamed t -> KindCheckEnv
+    kindCheckObjArgsKindEnv :: 
+        MplTypeClauseSpine MplRenamed t -> 
+        KindCheckEnv
 
 instance KindCheckObjArgsKindEnv (SeqObjTag t) where
     kindCheckObjArgsKindEnv spine = _KindCheckEnv # 
@@ -165,7 +167,9 @@ instance KindCheckPhrase (SeqObjTag CodataDefnTag) where
                     )
 
         kindCheckExpectedPrimitiveKind .= SeqKind () 
-        fromst' <- phrase ^. typePhraseFrom % _2 % to (primitiveKindCheck . review _TypeVar . ((),))
+        fromst' <- phrase ^. typePhraseFrom 
+            % _2 
+            % to (primitiveKindCheck . review _TypeVar . ((),))
 
         kindCheckExpectedPrimitiveKind .= SeqKind () 
         to' <- phrase ^. typePhraseTo % to primitiveKindCheck
@@ -182,7 +186,8 @@ instance KindCheckPhrase (ConcObjTag ProtocolDefnTag) where
         from' <- phrase ^. typePhraseFrom % to primitiveKindCheck
 
         kindCheckExpectedPrimitiveKind .= ConcKind () 
-        to' <- phrase ^. typePhraseTo % to (primitiveKindCheck . review _TypeVar . ((),))
+        to' <- phrase ^. typePhraseTo 
+            % to (primitiveKindCheck . review _TypeVar . ((),))
 
         return $ MplTypePhrase 
             (phrase ^. typePhraseName) 
@@ -193,7 +198,8 @@ instance KindCheckPhrase (ConcObjTag ProtocolDefnTag) where
 instance KindCheckPhrase (ConcObjTag CoprotocolDefnTag) where
     kindCheckPhrase (clause, phrase) = do
         kindCheckExpectedPrimitiveKind .= ConcKind () 
-        from' <- phrase ^. typePhraseFrom % to (primitiveKindCheck . review _TypeVar . ((),))
+        from' <- phrase ^. typePhraseFrom % to 
+            (primitiveKindCheck . review _TypeVar . ((),))
 
         kindCheckExpectedPrimitiveKind .= ConcKind () 
         to' <- phrase ^. typePhraseTo % to primitiveKindCheck

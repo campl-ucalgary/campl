@@ -1600,7 +1600,11 @@ typeCheckCmd cmd = case cmd of
 
         ~(SymEntry clauselkuptp (SymConcPhraseCall def)) <- zoom (envLcl % typeInfoSymTab) $ do
             res <- guse $ symTabConc % at (ident ^. uniqueTag)
-            tell $ review _InternalError $ maybe [_CannotCallTerm # ident] mempty res
+
+            tell $ review _InternalError $ 
+                maybe [_CannotCallTerm # ident] 
+                mempty 
+                res
             return $ fromJust res
 
         tell $ review _ExternalError 
