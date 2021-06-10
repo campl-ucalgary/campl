@@ -34,12 +34,12 @@ data DumpOpt
     | TypeChecked
     | PatternCompiled
     | LambdaLifted
-    | Asm
+    | Assembled
   deriving (Show, Eq, Enum)
 
 -- | List of all dump options.
 allDumpOpts :: [DumpOpt]
-allDumpOpts = [Parsed .. Asm]
+allDumpOpts = [Parsed .. Assembled]
 
 -- | Converts a dumped opt to a String for printing
 -- for generating the command line operations
@@ -50,7 +50,7 @@ dumpOptShowOptions dumpopt = case dumpopt of
     TypeChecked -> "type-checked"
     PatternCompiled -> "pattern-compiled"
     LambdaLifted -> "lambda-lifted"
-    Asm -> "asm"
+    Assembled -> "assembled"
 
 data Flag
     = Inp FilePath

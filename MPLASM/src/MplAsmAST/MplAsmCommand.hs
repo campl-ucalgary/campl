@@ -1,5 +1,8 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
@@ -98,6 +101,8 @@ data TypeAndSpec x = TypeAndSpec
     { _typeAndSpecTy :: IdP x
     , _typeAndSpecSpec :: IdP x
     }
+
+deriving instance Show (IdP x) => Show (TypeAndSpec x)
 
 $(makeLenses ''TypeAndSpec)
 

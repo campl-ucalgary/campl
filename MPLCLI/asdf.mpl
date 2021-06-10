@@ -1,3 +1,22 @@
+
+proc p1 =
+    | => a -> do
+        put 3 on a
+        halt a
+
+proc p2 =
+    | b =>  -> do
+        get _ on b
+        halt b
+
+
+proc run =
+    | => -> do
+        plug
+            p1(| => a)
+            p2(| a => )
+
+{-
 protocol Mem(M|) => S =
     MemPut :: Put(M|S) => S
     MemGet :: Get(M|S) => S
@@ -67,5 +86,5 @@ proc run :: | => InpTerm(Int |) , InpTerm(Int|) =
             p2(| passer => inpterm1, mem)
             memory(100 | mem => )
 
-        
+        -}
 

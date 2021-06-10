@@ -1,9 +1,11 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE LambdaCase #-}
 module MplAsmAST.MplAsmPrinter where
 
 import Optics
 import Control.Arrow
+import Data.Coerce
 
 import MplAsmAST.MplAsmCommand
 import MplAsmAST.MplAsmProg
@@ -14,6 +16,7 @@ import qualified MplAsmLanguage.PrintMPLASM as B
 
 import Data.Functor.Foldable
 
+-- | type class for pretty printing things regarding 
 class PPrint t where
     pprint :: t -> String
 
@@ -26,6 +29,16 @@ instance PPrint Word where
 instance PPrint Char where
     pprint = show
 
+instance PPrint Bool where
+    pprint = show
+
+instance PPrint Name where
+    pprint = coerce
+
+instance ( PPrint (IdP x) ) => PPrint (MplAsmProg x) where
+    pprint = B.printTree . mplAsmProgToBnfc
+
+-- | type class for converting types to a bnfc ident
 class ToBnfcIdent t where
     toBnfcIdent :: PPrint a => a -> t
 
@@ -43,8 +56,12 @@ instance ToBnfcIdent B.PInteger where
 instance ToBnfcIdent B.Character where
     toBnfcIdent idp = B.Character (invalidPosition, pprint idp)
 
+instance ToBnfcIdent B.BBool where
+    toBnfcIdent idp = B.BBool (invalidPosition, pprint idp)
+
 invalidPosition :: (Int, Int)
 invalidPosition = (-1,-1)
+
 
 mplAsmProgToBnfc :: 
     ( PPrint (IdP x) ) => 
@@ -129,8 +146,12 @@ mplAsmComToBnfcCom = cata go
     go = \case
         CAssignF _ idp com -> 
             B.AC_ASSIGN (toBnfcIdent idp) com
-        CLoadF _ idp -> 
-            B.AC_LOAD bnfcKeyword (toBnfcIdent idp)
+
+        CStoreF _ idp -> B.AC_LOAD bnfcKeyword (toBnfcIdent idp)
+        CLoadF _ idp -> B.AC_LOAD bnfcKeyword (toBnfcIdent idp)
+
+        CBoolF _ bval -> B.AC_BOOL bnfcKeyword (toBnfcIdent bval)
+
         CRetF _ -> B.AC_RET bnfcKeyword
         CCallF _ idp args ->
             B.AC_CALL_FUN bnfcKeyword
@@ -247,6 +268,8 @@ mplAsmComToBnfcCom = cata go
             f (idp, coms) = B.AC_RACE_PHRASE
                 (toBnfcIdent idp)
                 (B.Prog coms)
+        CCloseF _ idp -> B.AC_CLOSE bnfcKeyword (toBnfcIdent idp)
+        CHaltF _ idp -> B.AC_HALT bnfcKeyword (toBnfcIdent idp)
 
 
     toLabelledSeqComs (TypeAndSpec a b, args, coms) = 
@@ -260,11 +283,7 @@ mplAsmComToBnfcCom = cata go
         B.AC_LABELLED_COMS_NO_ARGS
             (toBnfcIdent a)
             (toBnfcIdent b)
-            (B.Prog coms)
-        
-    
-    
-
+            (B.Prog coms) 
 
 class BnfcKeyword t where
     bnfcKeyword :: t
@@ -349,3 +368,6 @@ instance BnfcKeyword B.Halt where
 
 instance BnfcKeyword B.Main_run where
     bnfcKeyword = B.Main_run (invalidPosition, "run")
+
+instance BnfcKeyword B.CBool where
+    bnfcKeyword = B.CBool (invalidPosition, "cBool")

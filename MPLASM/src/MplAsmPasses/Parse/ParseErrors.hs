@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 module MplAsmPasses.Parse.ParseErrors where
 
 import Optics

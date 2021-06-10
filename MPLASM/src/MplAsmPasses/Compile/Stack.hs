@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts #-}
 module MplAsmPasses.Compile.Stack where
 
 import Optics
@@ -22,19 +24,7 @@ data MplAsmCompileSt x = MplAsmCompileSt
 
     , _uniqCounters :: MplAsmCompileStUniqs
 
-    , _symTabFuns :: Map (IdP x) (FunID, Word)
-        -- ^ function name --> (function id,number of args)
-    , _symTabProcs :: Map (IdP x) (FunID, (Word, [LocalChanID], [LocalChanID]))
-        -- ^ function name --> (function id,(number of seq args, inchs, outchs))
-
-    , _symTabData :: Map (IdP x)  (Map (IdP x) (CaseIx, Word))
-        -- ^ data name --> (caseix ,number of args)
-    , _symTabCodata :: Map (IdP x)  (Map (IdP x) (CaseIx, Word))
-        -- ^ codata name --> (caseix ,number of args)
-    , _symTabProtocol :: Map (IdP x) (Map (IdP x) HCaseIx)
-        -- ^ protocol name --> hcaseix
-    , _symTabCoprotocol :: Map (IdP x) (Map (IdP x) HCaseIx)
-        -- ^ coprotocol name --> hcaseix
+    , _symTab :: MplAsmCompileStSymTabs x
     }
 
 data MplAsmCompileStUniqs = MplAsmCompileStUniqs 
@@ -43,8 +33,7 @@ data MplAsmCompileStUniqs = MplAsmCompileStUniqs
     , _uniqFunId :: FunID
     }
 
-{-
-data MplAsmCompileStSymTabs = MplAsmCompileStSymTabs 
+data MplAsmCompileStSymTabs x = MplAsmCompileStSymTabs 
     { _symTabFuns :: Map (IdP x) (FunID, Word)
         -- ^ function name --> (function id,number of args)
     , _symTabProcs :: Map (IdP x) (FunID, (Word, [LocalChanID], [LocalChanID]))
@@ -59,12 +48,11 @@ data MplAsmCompileStSymTabs = MplAsmCompileStSymTabs
     , _symTabCoprotocol :: Map (IdP x) (Map (IdP x) HCaseIx)
         -- ^ coprotocol name --> hcaseix
     }
--}
 
 
 $(makeLenses ''MplAsmCompileSt )
 $(makeLenses ''MplAsmCompileStUniqs)
--- $(makeLenses ''MplAsmCompileStSymTabs)
+$(makeLenses ''MplAsmCompileStSymTabs)
 
 localMplAsmCompileSt ::
     ( MonadState (MplAsmCompileSt x) m ) =>
@@ -87,8 +75,12 @@ initMplAsmCompileSt = MplAsmCompileSt
         , _uniqGlobalChanId = coerce (0 :: ChannelIdRep)
         , _uniqFunId = coerce (0 :: Word)
         }
+    , _symTab = initMplAsmCompileStSymTabs 
+    }
 
-    , _symTabFuns = Map.empty
+initMplAsmCompileStSymTabs :: MplAsmCompileStSymTabs x
+initMplAsmCompileStSymTabs = MplAsmCompileStSymTabs 
+    { _symTabFuns = Map.empty
     , _symTabProcs = Map.empty
 
     , _symTabData = Map.empty

@@ -82,7 +82,7 @@ getExprFromSubstitutable = \case
 -- | @substitute (s, t)@ replaces all occurances of @s@ by @t@; the substitution
 -- is given by the 'Substitutable'
 substitute  ::
-    MapMplExpr t MplPatternCompiled =>
+    (TraverseMplExpr t MplPatternCompiled) => 
     (IdP MplPatternCompiled, Substitutable) ->
     t MplPatternCompiled ->
     t MplPatternCompiled
@@ -98,7 +98,7 @@ substituteExpr = substitute
 
 -- | Substitutes a record for a destructor
 substituteCallIdentByRecord ::
-    MapMplExpr t MplPatternCompiled =>
+    (TraverseMplExpr t MplPatternCompiled) => 
     ( IdentT
     , 
         ( Substitutable
@@ -121,7 +121,7 @@ substituteCallIdentByRecord sub@(s, (u, (phrase, des))) = mapMplExpr k
 
 -- | Substitutes a 'EVar' by an expression.
 substituteVarIdentByExpr ::
-    MapMplExpr t MplPatternCompiled =>
+    (TraverseMplExpr t MplPatternCompiled) => 
     (IdP MplPatternCompiled, MplExpr MplPatternCompiled) ->
     t MplPatternCompiled ->
     t MplPatternCompiled
@@ -133,7 +133,7 @@ substituteVarIdentByExpr sub = mapMplExpr k
 
 -- | substitutes tuples
 substituteVarIdentByTuple :: 
-    MapMplExpr t MplPatternCompiled =>
+    (TraverseMplExpr t MplPatternCompiled) => 
     (IdP MplPatternCompiled, (Substitutable, (XMplType MplTypeChecked, Int))) ->
     t MplPatternCompiled ->
     t MplPatternCompiled

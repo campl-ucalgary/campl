@@ -16,6 +16,8 @@ license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
+    README.md
+    ChangeLog.md
     src/MPLASM.bnfc
     src/MplAsmLanguage/LexMPLASM.x
     src/MplAsmLanguage/ParMPLASM.y
@@ -45,12 +47,16 @@ library
       MplAsmPasses.Parse.ParseAST
       MplAsmPasses.Parse.ParseErrors
       MplAsmPasses.Passes
+      MplAsmPasses.PassesErrorsPprint
   other-modules:
       Paths_MPLASM
   hs-source-dirs:
       src
   build-depends:
-      base >=4.7 && <5
+      AMPL
+    , array
+    , base >=4.7 && <5
+    , containers
     , mtl
     , optics
     , optics-extra
@@ -66,8 +72,11 @@ executable MPLASM-exe
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      MPLASM
+      AMPL
+    , MPLASM
+    , array
     , base >=4.7 && <5
+    , containers
     , mtl
     , optics
     , optics-extra
@@ -84,8 +93,11 @@ test-suite MPLASM-test
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      MPLASM
+      AMPL
+    , MPLASM
+    , array
     , base >=4.7 && <5
+    , containers
     , mtl
     , optics
     , optics-extra

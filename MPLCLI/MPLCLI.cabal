@@ -43,7 +43,9 @@ library
     , mtl
     , optics
     , parsec
+    , pretty-show
     , prettyprinter
+    , recursion-schemes
   default-language: Haskell2010
 
 executable mpl
@@ -63,7 +65,9 @@ executable mpl
     , mtl
     , optics
     , parsec
+    , pretty-show
     , prettyprinter
+    , recursion-schemes
   default-language: Haskell2010
 
 test-suite MPLCLI-test
@@ -84,5 +88,7 @@ test-suite MPLCLI-test
     , mtl
     , optics
     , parsec
+    , pretty-show
     , prettyprinter
+    , recursion-schemes
   default-language: Haskell2010

@@ -32,7 +32,6 @@ resolver:
 packages:
 - .
 - ../MPLASM
-- ../CMPL/
 - ../AMPL
 - ../MPL
 - ../mpl-lib

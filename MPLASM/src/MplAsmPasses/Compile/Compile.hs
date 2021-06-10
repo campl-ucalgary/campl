@@ -1,6 +1,10 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE FlexibleContexts #-}
 module MplAsmPasses.Compile.Compile where
 
 import AMPL
@@ -21,6 +25,7 @@ import Control.Monad.Writer
 import Data.Foldable
 import Data.Traversable
 
+import Debug.Trace
 import Data.Coerce
 import Data.Word
 import Data.List
@@ -39,8 +44,7 @@ import Control.Exception
 mplAsmProgToInitMachState ::
     ( Ord (IdP x) 
     , AsCompileError err x 
-    , HasName (IdP x)
-    ) =>
+    , HasName (IdP x)) =>
     MplAsmProg x -> 
     Either [err] InitAMPLMachState 
 mplAsmProgToInitMachState prog = case runWriter res of
@@ -50,11 +54,10 @@ mplAsmProgToInitMachState prog = case runWriter res of
     res = flip evalStateT initMplAsmCompileSt $ do
         {- compilation of statements is straightforward -}
 
-        {- TODO: This makes it impossible to define data and codata, functions and process, etc. that depend on 
-         - each other. This needs to be changed to put everything in the symbol table first. 
-         - Easiest way to fix this is to put everything in the symbol table first... alternatively, there's
-         - the magic monad fix alternative way to do this 
-         -}
+        -- first, put evreything in symbol table. see 'mplAsmCollectStmtsInSymTab' for why
+        -- this is necessasry[
+        mplAsmCollectStmtsInSymTab prog
+
         funs <- fmap concat $ traverse mplAsmCompileStmt (prog ^. mplAsmStmts)
 
         {- compilation of the main function is a bit more complicated.  
@@ -72,9 +75,12 @@ mplAsmProgToInitMachState prog = case runWriter res of
          -}
         ~(Just (services, mainf)) <- case prog ^. mplAsmMain of
             Just (mainident, (seqs, ins, outs), coms) -> assert (null seqs) $ do
-                let overlapping = group $ sort $ seqs ++ ins ++ outs
-                tell $ bool [_OverlappingDeclarations # overlapping] [] $ length overlapping == 1
+                let overlapping = filter ((>1) . length) $ group $ sort $ seqs ++ ins ++ outs
+                tell $ bool [_OverlappingDeclarations # overlapping] [] $ null overlapping 
 
+                ~(Just (funid, (_, insids, outsids))) <- guse (symTab % symTabProcs % at mainident)
+
+                {- Main function should already be put in (if it exists from 'mplAsmCollectStmtsInSymTab')
                 -- reset local channel id
                 uniqCounters % uniqLocalChanId .= (coerce (0 :: ChannelIdRep) :: LocalChanID)
 
@@ -85,7 +91,9 @@ mplAsmProgToInitMachState prog = case runWriter res of
                 -- main function should have a fresh funciton id
                 funid <- freshFunId 
                 -- update the symbol table accordingly (in case we want to recursively call the main function)
-                symTabProcs % at mainident ?= (funid, (genericLength seqs, insids, outsids))
+                symTab % symTabProcs % at mainident 
+                    ?= (funid, (genericLength seqs, insids, outsids))
+                -}
 
                 -- no need to add the sequential arugments to the stack
                 -- varStack .= reverse seqs
@@ -166,6 +174,160 @@ mplAsmProgToInitMachState prog = case runWriter res of
                 }
 
 
+{- | collects all the elements into the symbol table. Note: this is required to permit mutually
+ - recursive declarations between data / codta and functions, etc. -}
+mplAsmCollectStmtsInSymTab ::
+    ( MonadState (MplAsmCompileSt x) m
+    , Ord (IdP x)
+    , AsCompileError err x
+    , MonadWriter [err] m) =>
+    MplAsmProg x ->
+    m ()
+mplAsmCollectStmtsInSymTab prog = do
+    -- First, check for overlapping declarations
+    overlappingCheck typeAndConcSpecsType protocols
+    overlappingCheck typeAndConcSpecsType coprotocols
+    overlappingCheck typeAndSeqSpecsType constructors
+    overlappingCheck typeAndSeqSpecsType destructors
+
+
+
+    overlappingCheck _1 processes
+    overlappingCheck _1 functions
+
+    -- add things in the symbol table
+    concObjSymTab (symTab % symTabProtocol) protocols
+    concObjSymTab (symTab % symTabCoprotocol) coprotocols
+
+    seqObjSymTab (symTab % symTabData) constructors
+    seqObjSymTab (symTab % symTabCodata) destructors
+
+    funSymTab functions
+    procSymTab processes
+
+  where
+    stmts = prog ^. mplAsmStmts
+
+    protocols = concat $ mapMaybe (preview _Protocols) stmts  
+    coprotocols = concat $ mapMaybe (preview _Coprotocols) stmts 
+
+    constructors = concat $ mapMaybe (preview _Constructors) stmts 
+    destructors = concat $ mapMaybe (preview _Destructors) stmts 
+
+    functions = concat $ mapMaybe (preview _Functions) stmts
+    processes = mainf ++ concat (mapMaybe (preview _Processes) stmts)
+
+    mainf = maybeToList $ prog ^. mplAsmMain 
+
+    -- checks for overlapping declaraings based on what is focused by the @viewlens@
+    overlappingCheck viewlens decs = do
+        let overlapping = filter ((>1) . length) $ group $ sort $ map (view viewlens) decs
+        tell $ bool [_OverlappingDeclarations # overlapping] [] $ null overlapping 
+
+    -- insert protocl / coprotocls to the part of the smbol table that is focused by @viewlens@
+    concObjSymTab viewlens decs = 
+        for_ decs $ \(TypeAndConcSpecs tp handles) -> do
+            let handles' = zip handles (coerce [0 :: Word ..] :: [HCaseIx])
+
+            viewlens % at tp ?= Map.fromList handles'
+
+    -- insert data / codatas to the part of the smbol table that is focused by @viewlens@
+    seqObjSymTab viewlens decs =
+        for_ decs $ \(TypeAndSeqSpecs tp handles) -> do
+            let handles' = map (\((idp, numargs),caseix) -> (idp, (caseix,numargs))) 
+                    $ zip handles (coerce [0 :: Word ..] :: [CaseIx])
+            viewlens % at tp ?= Map.fromList handles'
+
+    funSymTab decs = 
+        for_ decs $ \(fname, args, _) -> do
+            funid <- freshFunId 
+
+            symTab % symTabFuns % at fname ?= (funid, genericLength args)
+
+    procSymTab decs =
+        for_ decs $ \(pname, (seqs, ins, outs), _) -> do
+            uniqCounters % uniqLocalChanId .= (coerce (0 :: ChannelIdRep) :: LocalChanID)
+
+            insids <- traverse (const freshLocalChanId) ins
+            outsids <- traverse (const freshLocalChanId) outs
+
+            funid <- freshFunId 
+            symTab % symTabProcs % at pname 
+                ?= (funid, (genericLength seqs, insids, outsids))
+
+{-
+    case stmt of
+    Protocols tpconcspecs -> do
+        let overlapping = group $ sort $ map (view typeAndConcSpecsType) tpconcspecs 
+        tell $ bool [_OverlappingDeclarations # overlapping] [] 
+            $ length overlapping <= 1
+
+        for tpconcspecs $ \(TypeAndConcSpecs tp handles) -> do
+            let handles' = zip handles (coerce [0 :: Word ..] :: [HCaseIx])
+
+            symTab % symTabProtocol % at tp ?= Map.fromList handles'
+
+        return ()
+    Coprotocols tpconcspecs -> do
+        let overlapping = group $ sort $ map (view typeAndConcSpecsType) tpconcspecs 
+        tell $ bool [_OverlappingDeclarations # overlapping] [] $ length overlapping <= 1
+
+        for tpconcspecs $ \(TypeAndConcSpecs tp handles) -> do
+            let handles' = zip handles (coerce [0 :: Word ..] :: [HCaseIx])
+
+            symTab % symTabCoprotocol % at tp ?= Map.fromList handles'
+        return ()
+    Constructors tpseqspecs -> do
+        let overlapping = group $ sort $ map (view typeAndSeqSpecsType) tpseqspecs 
+        tell $ bool [_OverlappingDeclarations # overlapping] [] $ length overlapping <= 1
+
+        for tpseqspecs $ \(TypeAndSeqSpecs tp handles) -> do
+            let handles' = map (\((idp, numargs),caseix) -> (idp, (caseix,numargs))) 
+                    $ zip handles (coerce [0 :: Word ..] :: [CaseIx])
+            symTab % symTabData % at tp ?= Map.fromList handles'
+        return ()
+
+    Destructors tpseqspecs -> do
+        let overlapping = group $ sort $ map (view typeAndSeqSpecsType) tpseqspecs 
+        tell $ bool [_OverlappingDeclarations # overlapping] [] $ length overlapping <= 1
+
+        for tpseqspecs $ \(TypeAndSeqSpecs tp handles) -> do
+            let handles' = map (\((idp, numargs),caseix) -> (idp, (caseix,numargs))) 
+                    $ zip handles (coerce [0 :: Word ..] :: [CaseIx])
+
+            symTab % symTabCodata % at tp ?= Map.fromList handles'
+        return ()
+
+    Functions funs -> do
+        let overlapping = group $ sort $ map (view _1) funs 
+        tell $ bool [_OverlappingDeclarations # overlapping] [] $ length overlapping <= 1
+
+        -- put everything in symbol table first.
+        for funs $ \(fname, args, _) -> do
+            funid <- freshFunId 
+
+            symTab % symTabFuns % at fname ?= (funid, genericLength args)
+
+        return ()
+
+    Processes procs -> do
+        let overlapping = group $ sort $ map (view _1) procs
+        tell $ bool [_OverlappingDeclarations # overlapping] [] $ length overlapping <= 1
+
+        -- put everything in symbol table first.
+        for procs $ \(pname, (seqs, ins, outs), _) -> do
+            uniqCounters % uniqLocalChanId .= (coerce (0 :: ChannelIdRep) :: LocalChanID)
+
+            insids <- traverse (const freshLocalChanId) ins
+            outsids <- traverse (const freshLocalChanId) outs
+
+            funid <- freshFunId 
+            symTab % symTabProcs % at pname 
+                ?= (funid, (genericLength seqs, insids, outsids))
+
+        return ()
+-}
+
 {- | Converts a statment into function ids to instructions. Note that this will
 appropriately modify the monadic context.  -}
 mplAsmCompileStmt ::
@@ -176,76 +338,28 @@ mplAsmCompileStmt ::
     MplAsmStmt x ->
     m [(FunID, [Instr])]
 mplAsmCompileStmt stmt = case stmt of
-    Protocols tpconcspecs -> do
-        let overlapping = group $ sort $ map (view typeAndConcSpecsType) tpconcspecs 
-        tell $ bool [_OverlappingDeclarations # overlapping] [] $ length overlapping == 1
+    Protocols tpconcspecs -> return []
+    Coprotocols tpconcspecs -> return []
+    Constructors tpseqspecs -> return []
+    Destructors tpseqspecs -> return []
 
-        for tpconcspecs $ \(TypeAndConcSpecs tp handles) -> do
-            let handles' = zip handles (coerce [0 :: Word ..] :: [HCaseIx])
-            symTabProtocol % at tp ?= Map.fromList handles'
-        return []
-    Coprotocols tpconcspecs -> do
-        let overlapping = group $ sort $ map (view typeAndConcSpecsType) tpconcspecs 
-        tell $ bool [_OverlappingDeclarations # overlapping] [] $ length overlapping == 1
-
-        for tpconcspecs $ \(TypeAndConcSpecs tp handles) -> do
-            let handles' = zip handles (coerce [0 :: Word ..] :: [HCaseIx])
-            symTabCoprotocol % at tp ?= Map.fromList handles'
-        return []
-    Constructors tpseqspecs -> do
-        let overlapping = group $ sort $ map (view typeAndSeqSpecsType) tpseqspecs 
-        tell $ bool [_OverlappingDeclarations # overlapping] [] $ length overlapping == 1
-
-        for tpseqspecs $ \(TypeAndSeqSpecs tp handles) -> do
-            let handles' = map (\((idp, numargs),caseix) -> (idp, (caseix,numargs))) 
-                    $ zip handles (coerce [0 :: Word ..] :: [CaseIx])
-            symTabData % at tp ?= Map.fromList handles'
-        return []
-
-    Destructors tpseqspecs -> do
-        let overlapping = group $ sort $ map (view typeAndSeqSpecsType) tpseqspecs 
-        tell $ bool [_OverlappingDeclarations # overlapping] [] $ length overlapping == 1
-
-        for tpseqspecs $ \(TypeAndSeqSpecs tp handles) -> do
-            let handles' = map (\((idp, numargs),caseix) -> (idp, (caseix,numargs))) 
-                    $ zip handles (coerce [0 :: Word ..] :: [CaseIx])
-            symTabCodata % at tp ?= Map.fromList handles'
-        return []
-    Functions funs -> do
-        let overlapping = group $ sort $ map (view _1) funs 
-        tell $ bool [_OverlappingDeclarations # overlapping] [] $ length overlapping == 1
-
-        -- put everything in symbol table first.
-        for funs $ \(fname, args, _) -> do
-            funid <- freshFunId 
-            symTabFuns % at fname ?= (funid, genericLength args)
-
+    Functions funs -> 
         for funs $ \(fname, args, coms) -> localMplAsmCompileSt $ do
-            let overlapping = group $ sort $ args
-            tell $ bool [_OverlappingDeclarations # overlapping] [] $ length overlapping == 1
+            let overlapping = filter ((>1) . length) $ group $ sort $ args
+            tell $ bool [_OverlappingDeclarations # overlapping] [] $ null overlapping 
 
-            ~(Just (funid,_)) <- guse (symTabFuns % at fname)
+            ~(Just (funid,_)) <- guse (symTab % symTabFuns % at fname)
 
             varStack .= reverse args
             instrs <- mplAsmComsToInstr coms
             return (funid, instrs)
 
-    Processes procs -> do
-        -- put everything in symbol table first.
-        for procs $ \(pname, (seqs, ins, outs), _) -> do
-            uniqCounters % uniqLocalChanId .= (coerce (0 :: ChannelIdRep) :: LocalChanID)
-
-            insids <- traverse (const freshLocalChanId) ins
-            outsids <- traverse (const freshLocalChanId) outs
-
-            funid <- freshFunId 
-            symTabProcs % at pname ?= (funid, (genericLength seqs, insids, outsids))
-
+    Processes procs -> 
         for procs $ \(pname, (seqs, ins, outs), coms) -> localMplAsmCompileSt $ do
-            let overlapping = group $ sort $ seqs ++ ins ++ outs
-            tell $ bool [_OverlappingDeclarations # overlapping] [] $ length overlapping == 1
+            let overlapping = filter ((>1) . length) $ group $ sort $ seqs ++ ins ++ outs
+            tell $ bool [_OverlappingDeclarations # overlapping] [] $ null overlapping 
 
-            ~(Just (funid, (_, insids, outsids))) <- guse (symTabProcs % at pname)
+            ~(Just (funid, (_, insids, outsids))) <- guse (symTab % symTabProcs % at pname)
 
             varStack .= reverse seqs
             channelTranslations .= Map.fromList (zip ins (map (Input,) insids) ++ zip outs (map (Output,) outsids))
@@ -279,9 +393,12 @@ mplAsmComToInstr = \case
         com' <- mplAsmComToInstr com
         varStack %= (v:)
         return $ com' ++ [iStore]
+    CStore _ v -> do
+        varStack %= (v:)
+        return [iStore]
     -- load the variable @v@ so it is at the top of the stack
     CLoad _ v -> do
-        ~(Just ix)<- lookupVarStack v
+        ~(Just ix) <- lookupVarStack v
         return $ [iAccess ix]
     CRet _ -> return [iRet]
     CCall _ fname args -> do
@@ -524,7 +641,7 @@ lookupFun ::
     IdP x ->
     m (Maybe (FunID, Word))
 lookupFun v = do
-    res <- guse (symTabFuns % at v ) 
+    res <- guse (symTab % symTabFuns % at v ) 
     tell $ bool [_OutOfScopeFun # v] [] $ isJust res
     return res
 
@@ -536,7 +653,7 @@ lookupProc ::
     IdP x ->
     m (Maybe (FunID, (Word, [LocalChanID], [LocalChanID])))
 lookupProc v = do
-    res <- guse (symTabProcs % at v ) 
+    res <- guse (symTab % symTabProcs % at v ) 
     tell $ bool [_OutOfScopeProc # v] [] $ isJust res
     return res
 
@@ -548,7 +665,7 @@ lookupData ::
     TypeAndSpec x ->
     m (Maybe (CaseIx, Word))
 lookupData tpspec@(TypeAndSpec tp spec) = do   
-    res <- guse (symTabData % at tp % _Just % at spec % _Just)
+    res <- guse (symTab % symTabData % at tp % _Just % at spec % _Just)
     tell $ bool [_OutOfScopeData # tpspec] [] $ isJust res
     return res
 
@@ -560,7 +677,7 @@ lookupCodata ::
     TypeAndSpec x ->
     m (Maybe (CaseIx, Word))
 lookupCodata tpspec@(TypeAndSpec tp spec) = do   
-    res <- guse (symTabCodata % at tp % _Just % at spec % _Just)
+    res <- guse (symTab % symTabCodata % at tp % _Just % at spec % _Just)
     tell $ bool [_OutOfScopeCodata # tpspec] [] $ isJust res
     return res
 
@@ -572,7 +689,7 @@ lookupProtocol ::
     TypeAndSpec x ->
     m (Maybe HCaseIx)
 lookupProtocol tpspec@(TypeAndSpec tp spec) = do
-    res <- guse (symTabProtocol % at tp % _Just % at spec % _Just)
+    res <- guse (symTab % symTabProtocol % at tp % _Just % at spec % _Just)
     tell $ bool [_OutOfScopeProtocol # tpspec] [] $ isJust res
     return res
 
@@ -584,7 +701,7 @@ lookupCoprotocol ::
     TypeAndSpec x ->
     m (Maybe HCaseIx)
 lookupCoprotocol tpspec@(TypeAndSpec tp spec) = do
-    res <- guse (symTabCoprotocol % at tp % _Just % at spec % _Just)
+    res <- guse (symTab % symTabCoprotocol % at tp % _Just % at spec % _Just)
     tell $ bool [_OutOfScopeCoprotocol # tpspec] [] $ isJust res
     return res
 
@@ -614,7 +731,7 @@ freshGlobalChanId ::
 freshGlobalChanId = 
     uniqCounters % uniqGlobalChanId <<%= (coerce :: ChannelIdRep -> GlobalChanID) 
         . succ 
-        . (coerce :: GlobalChanID -> ChannelIdRep)
+        . coerce @GlobalChanID @ChannelIdRep
 
 freshFunId ::
     MonadState (MplAsmCompileSt x) m =>
@@ -622,4 +739,5 @@ freshFunId ::
 freshFunId = 
     uniqCounters % uniqFunId <<%= (coerce :: Word -> FunID) 
         . succ 
-        . (coerce :: FunID -> Word)
+        . coerce @FunID @Word
+

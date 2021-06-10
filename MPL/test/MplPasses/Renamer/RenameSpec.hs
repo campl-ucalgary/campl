@@ -24,6 +24,7 @@ import MplPasses.PassesErrors
 import MplPasses.Parser.ParseErrors
 import MplPasses.Renamer.Rename
 import MplPasses.Renamer.RenameErrors
+
 import qualified MplPasses.Renamer.RenameSym as R
 import MplPasses.Passes
 import MplPasses.Env

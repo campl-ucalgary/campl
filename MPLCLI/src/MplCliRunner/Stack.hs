@@ -38,6 +38,7 @@ data FrontEndException
     | RenamedException String
     | TypeCheckedException String
     | PatternCompiledException String
+    | AssembledException String
 
 instance Show FrontEndException where
     show fee = case fee of
@@ -45,6 +46,8 @@ instance Show FrontEndException where
         RenamedException str -> concat [ "rename error:" , "\n" , str ]
         TypeCheckedException str -> concat [ "type check / semantic error:" , "\n" , str ]
         PatternCompiledException str -> concat [ "pattern compilation error:" , "\n" , str ]
+        AssembledException str -> concat [ "assembler error:" , "\n" , str ]
+
 
 instance Exception FrontEndException where
 

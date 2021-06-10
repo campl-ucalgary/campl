@@ -31,7 +31,7 @@ import Data.Ix
 type family IdP x 
 
 newtype Name = 
-    Name String
+    Name { _nameStr :: String }
   deriving (Show, Ord, Eq)
 
 data Location = 
@@ -69,7 +69,6 @@ instance Eq NameOcc where
 
 newtype KeyWordNameOcc = KeyWordNameOcc NameOcc
   deriving Show
-
 
 data Namespace = 
     TypeLevel

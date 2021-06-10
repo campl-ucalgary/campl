@@ -26,6 +26,8 @@ dependencies:
 - prettyprinter
 - mtl
 - optics
+- recursion-schemes
+- pretty-show
 
 - MPL
 - MPLASM
@@ -36,7 +38,6 @@ library:
   source-dirs: src
 
 executables:
-    # MPLCLI-exe:
   mpl:
     main:                Main.hs
     source-dirs:         app

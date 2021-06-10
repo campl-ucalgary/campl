@@ -180,6 +180,7 @@ instance TraverseMplExpr MplCmd x where
                     >>= return . CSwitch ann 
             n -> embed <$> sequenceA n
 
+{-
 class MapMplExpr t x where
     mapMplExpr ::
         ( XFunctionDefn x ~  MplFunction x
@@ -189,6 +190,18 @@ class MapMplExpr t x where
         (MplExpr x -> MplExpr x) ->
         t x ->
         t x 
+-}
 
-instance TraverseMplExpr t x => MapMplExpr t x where
-    mapMplExpr f = runIdentity . traverseMplExpr (Identity . f)
+-- instance TraverseMplExpr t x => MapMplExpr t x where
+mapMplExpr ::
+    ( TraverseMplExpr t x 
+    , XFunctionDefn x ~  MplFunction x
+    , XProcessDefn x ~  MplProcess x 
+    , XMplExpr x ~ MplExpr x
+    , XMplCmd x ~ MplCmd x ) =>
+    (MplExpr x -> MplExpr x) ->
+    t x ->
+    t x 
+mapMplExpr f tx = runIdentity (traverseMplExpr (Identity . f) tx)
+
+        

@@ -1,6 +1,6 @@
 module Main where
 
-import CLIRunner
+import MplCliRunner.Runner
 
 main :: IO ()
 main = cliRunner

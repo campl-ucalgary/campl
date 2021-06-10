@@ -1,10 +1,14 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 module MplAsmAST.MplAsmProg where
 
 import Optics
 
 import MplAsmAST.MplAsmCommand
+
+import Data.Coerce
+import Data.Text.Prettyprint.Doc
 
 -- |  protocol / coprotocol info.
 data TypeAndConcSpecs x = TypeAndConcSpecs 
@@ -36,9 +40,13 @@ data MplAsmStmt x
 newtype Name = Name { _nameStr :: String }
   deriving (Show, Eq, Ord)
 
+instance Pretty Name where
+    pretty = pretty . coerce @Name @String
+
 $(makeClassy ''Name)
 $(makeLenses ''TypeAndConcSpecs)
 $(makeLenses ''TypeAndSeqSpecs)
 $(makeLenses ''MplAsmProg)
 $(makePrisms ''MplAsmProg)
+$(makePrisms ''MplAsmStmt)
 
