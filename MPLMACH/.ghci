@@ -1,0 +1,42 @@
+:set -fwarn-incomplete-patterns
+:set -isrc
+:set -XTemplateHaskell 
+:set -XDataKinds 
+:set -XUndecidableInstances 
+:set -XTypeFamilies 
+:set -XMultiParamTypeClasses 
+:set -XFlexibleInstances 
+:set -XFunctionalDependencies 
+:set -XDeriveGeneric 
+:set -XDeriveFunctor 
+:set -XDeriveFoldable 
+:set -XDeriveTraversable 
+:set -XFlexibleContexts
+:set -XPartialTypeSignatures
+:set prompt "> "
+
+import Optics
+import Optics.State.Operators
+import Control.Monad.State
+import Control.Monad.Writer
+import Control.Monad.Reader
+import Control.Monad.Except
+import Control.Monad.RWS
+import Data.Maybe
+import qualified Data.Bifunctor as Bifunctor
+import Control.Arrow
+import Data.List
+import qualified Data.List.NonEmpty as NE
+import GHC.Generics hiding ( to )
+import Data.List.NonEmpty (NonEmpty (..))
+import Control.Applicative
+import Data.Bool
+import Data.Function
+import Data.Foldable
+
+import qualified Data.Map as Map
+import Data.Map (Map )
+import qualified Data.Set as Set
+import Data.Set (Set)
+
+:set -interactive-print=Text.Pretty.Simple.pPrint
