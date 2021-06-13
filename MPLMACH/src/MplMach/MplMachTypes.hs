@@ -1,31 +1,82 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE StrictData #-}
-{-# LANGUAGE EmptyDataDeriving #-}
+{-# LANGUAGE LambdaCase #-}
+{-| This module all the data types for the abstract machine.
+-}
 module MplMach.MplMachTypes where
 
 import Optics
 import Data.IORef
 import Data.Void
 import Data.Array
-import Data.Sequence (Seq (..))
-import qualified Data.Sequence as Sequence
+import Data.Coerce
 
+import Control.Concurrent.STM
+import Control.Concurrent.STM.TVar
+
+import Data.Map.Strict (Map (..))
+import qualified Data.Map.Strict as Map
+
+import Data.Set (Set (..))
+import qualified Data.Set as Set
+
+import Control.Arrow
+
+{- | A channel manager queue is an 'TVar' to a queue (well a 'Seq') of 'QInstr' -}
+newtype ChMQueue = ChMQueue (TVar (TQueue QInstr))
+
+instance Show ChMQueue where
+    show _ = "ChMQueue _"
+
+{- | old convention from Prashant: output queue is left queue, and input queue is right queue -}
+data ChMQueues = ChMQueues 
+    { _chMOutputQueue :: ChMQueue
+    , _chMInputQueue :: ChMQueue
+    }
+
+{- | A local channel is simply an index in the translation. See 'Stec' below. -}
 newtype LocalChan = LocalChan Int
   deriving (Show, Ord, Eq, Ix)
 
 {- | A global channel is simpe simply a mapping to the corresponding channel manager.
  - Some notational convetions:
- -      - (q :|> head, head':<| q')  denotes how we will parse through these.
- - -}
-newtype GlobalChan = GlobalChan (IORef (Seq QInstr, Seq QInstr))
+ -      - (head :<| q, head':<| q')  denotes how we will parse through these.
+ -}
+newtype GlobalChan = GlobalChan ChMQueues
 
 instance Show GlobalChan where
     show _ = "GlobalChan _"
 
-data LocalChanToLocalChanMapping
+{- | This data keeps track of the polarity of the channel. This is necessary for 
+ - the channel to know which part of the queue it should put its commands on. -}
+data Polarity
+    = Output
+    | Input
   deriving Show
 
-data LocalChanToGlobalChanMapping
+
+type LocalChanToLocalChanMapping = Map LocalChan LocalChan
+
+-- | Type alias to map a local channel to its polarity and appropriate
+-- polarity and queue (a mapping to the global channel manager)
+type Translation = Map LocalChan TranslationLkup
+
+{-| the look up result looking up a 'LocalChan'. -}
+data TranslationLkup 
+    = InputLkup 
+        -- ^ the channel looked up is of __input__ polarity
+        { _activeQueue :: ChMQueue
+            -- ^ the queue for which this channel should put stuff on (the input queue)
+        , _otherQueue :: ChMQueue
+            -- ^ the queue for which this channel should NOT put stuff on (the output queue)
+        }
+    | OutputLkup
+        -- ^ the channel looked up is of __output__ polarity
+        { _activeQueue :: ChMQueue
+            -- ^ the queue for which this channel should put stuff on (the output queue)
+        , _otherQueue :: ChMQueue
+            -- ^ the queue for which this channel should NOT put stuff on (the input queue)
+        }
   deriving Show
 
 -- function / process
@@ -33,7 +84,8 @@ data LocalChanToGlobalChanMapping
 -- * data type for the machine
 data Stec = Stec 
     { _stack :: ![Val]
-    , _translation :: Array LocalChan GlobalChan
+    -- | LocalChan --> (Polarity, ChMQueue). 
+    , _translation :: Translation
     , _environment :: ![Val]
     , _code :: ![Instr]
     }
@@ -60,9 +112,13 @@ data IConc
     = IGet LocalChan
     | IPut LocalChan
 
+    -- | split a into (b, c)
     | ISplit LocalChan (LocalChan, LocalChan)
-    -- split a into (b, c)
-    | IFork LocalChan ( (LocalChan, [LocalChan], [Instr]) , (LocalChan, [LocalChan], [Instr]) )
+    -- | fork a into (b with bs, c with cs) 
+    | IFork LocalChan 
+        ( (LocalChan, Set LocalChan, [Instr]) 
+        , (LocalChan, Set LocalChan, [Instr]) 
+        )
 
     | IClose LocalChan
     | IHalt LocalChan
@@ -70,11 +126,11 @@ data IConc
     | IId LocalChan LocalChan
 
     -- We have [a1, .., a_n], and by convention (i.e., Prashant) we have (out channel, in channel)
-    | IPlug [LocalChan] (([LocalChan], [Instr]), ([LocalChan], [Instr]))
+    | IPlug [LocalChan] ((Set LocalChan, [Instr]), (Set LocalChan, [Instr]))
 
 
-    | IRun [LocalChanToLocalChanMapping] CallIx Word
-    -- Translation mappings, FunctionID and number of arguments to call with this function..
+    -- | Translation mappings, FunctionID and number of arguments to call with this function..
+    | IRun LocalChanToLocalChanMapping CallIx -- Word
 
     | IHPut LocalChan HCaseIx
     | IHCase LocalChan (Array HCaseIx [Instr])
@@ -146,14 +202,17 @@ data Val
 -- * Instruction types for channel manager
 data QInstr 
     = QGet Stec
-    | QPut Instr
+    | QPut Val
     | QSplit GlobalChan GlobalChan
+    -- | Notes:
+    -- The 'LocalChan' should be added to the translation of 'Stec' immediately when 
+    -- matched with the split, and the @t@ part of 'Stec' is restricted ONLY to the
+    -- @withs@ given in the fork phrase (although this is unnecessary).
     | QFork 
-        LocalChanToGlobalChanMapping 
-        [Val]
-        (LocalChan, LocalChanToGlobalChanMapping, [Instr])
-        (LocalChan, LocalChanToGlobalChanMapping, [Instr])
-    | QId GlobalChan GlobalChan
+        (LocalChan, Stec)
+        (LocalChan, Stec)
+
+    | QId GlobalChan
 
     -- this is not needed, since we just build open the new channels immediately in the 
     -- channel manager
@@ -169,10 +228,32 @@ data QInstr
     | QHCase Stec (Array HCaseIx [Instr])
 
     -- | other channels to race, stec
-    | QRace [LocalChan] Stec
-
+    -- old definition was 'QRace [LocalChan] Stec', but now we just make them
+    -- all share one election object.
+    | QRace Stec
   deriving Show
 
+{-| a leader election object i.e., a trivial wrapper around an 'IORef Bool'. True means won the election
+and false means lost the election. This is used for races. -}
+newtype LeaderElect = LeaderElect (IORef Bool)
+
+instance Show LeaderElect where
+    show _ = "LeaderElect _"
+
+{-| creates a new 'LeaderElect' object to be shared by multiple threads -}
+freshLeaderElect :: IO LeaderElect
+freshLeaderElect = fmap coerce (newIORef True)
+
+{-| runs the leader election. 
+
+    * Returning true means wins the leader election
+
+    * Returning false means loses the leader election
+-}
+leaderElect ::
+    LeaderElect ->
+    IO Bool
+leaderElect le = atomicModifyIORef' (coerce le) (const False &&& id)
 
 
 -- * Template haskell
@@ -181,6 +262,9 @@ $(makeClassyPrisms ''IConc)
 $(makeClassyPrisms ''ISeq)
 $(makePrisms ''Instr)
 $(makeLenses ''Stec)
+$(makeLenses ''ChMQueues)
+$(makeLenses ''TranslationLkup)
+$(makePrisms ''TranslationLkup)
 
 instance AsISeq Instr where
     _ISeq = _SeqInstr
