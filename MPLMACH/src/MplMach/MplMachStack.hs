@@ -25,26 +25,40 @@ import Control.Monad.Reader
 
 import MplMach.MplMachTypes
 
+import Data.Map (Map)
+
+
 import qualified Text.Show.Pretty as PrettyShow
 
+import Network.Socket
 
 {- | This is simply a wrapper for the 'IO' monad and 'ReaderT'. -}
-newtype MplMach a = MplMach { unwrapMplMach :: ReaderT MplMachEnv IO a }
+newtype MplMach r a = MplMach { unwrapMplMach :: ReaderT r IO a }
   deriving newtype
     ( Functor
     , Applicative
     , Monad
     , MonadIO
-    , MonadReader MplMachEnv 
+    , MonadReader r 
     )
 
-data MplMachEnv = MplMachEnv {
-    _supercombinators :: Array CallIx [Instr]
-}
+data MplMachEnv = MplMachEnv 
+    { _supercombinators :: Array CallIx [Instr]
+
+    , _servicesEnv :: MplMachServicesEnv 
+    }
+
+data MplMachServicesEnv = MplMachServicesEnv
+    { _serviceHostName :: String
+    , _servicePortName :: String
+    , _serviceMap :: IORef (Map ServiceCh TranslationLkup)
+    }
+
+
 
 runMplMach ::
-    MplMach a ->
-    MplMachEnv  ->
+    MplMach r a ->
+    r ->
     IO a 
 runMplMach ma env = runReaderT (unwrapMplMach ma) env
     
@@ -53,7 +67,7 @@ runMplMach ma env = runReaderT (unwrapMplMach ma) env
 writeChMQueue ::
     ChMQueue ->
     QInstr ->
-    MplMach ()
+    MplMach r ()
 writeChMQueue q instr = liftIO $ atomically $ 
     readTVar (coerce @ChMQueue @(TVar (TQueue QInstr)) q)  
         >>= \q' -> writeTQueue q' instr
@@ -61,7 +75,7 @@ writeChMQueue q instr = liftIO $ atomically $
 
 {- | wrapper for 'newTQueue' -}
 newGlobalChan ::
-    MplMach GlobalChan
+    MplMach r GlobalChan
 newGlobalChan = liftIO $ atomically $ do
     out <- newChMQueue
     inp <- newChMQueue
@@ -126,8 +140,6 @@ readChMQueue = view
     )
 
 
-
-
 {-| Reads both look up queues. Recall by convention (i.e., Prashant) we have:
 
     * output is LEFT queue; and 
@@ -180,4 +192,9 @@ peekChMQueues qs = do
 -}
 
 
-$(makeLenses ''MplMachEnv)
+$(makeClassy ''MplMachEnv)
+$(makeClassy ''MplMachServicesEnv)
+
+instance HasMplMachServicesEnv MplMachEnv where
+    mplMachServicesEnv = servicesEnv 
+    

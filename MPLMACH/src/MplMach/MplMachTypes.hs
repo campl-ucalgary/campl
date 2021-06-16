@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-| This module all the data types for the abstract machine.
 -}
 module MplMach.MplMachTypes where
@@ -37,6 +38,10 @@ data ChMQueues = ChMQueues
 {- | A local channel is simply an index in the translation. See 'Stec' below. -}
 newtype LocalChan = LocalChan Int
   deriving (Show, Ord, Eq, Ix)
+
+{- | A service channel -}
+newtype ServiceCh = ServiceCh Int
+  deriving (Show, Eq, Ord)
 
 {- | A global channel is simpe simply a mapping to the corresponding channel manager.
  - Some notational convetions:
@@ -101,6 +106,15 @@ newtype HCaseIx = HCaseIx IxRep
   deriving (Show, Eq, Ord, Ix)
 newtype TupleIx = TupleIx IxRep
   deriving (Show, Eq, Ord, Ix)
+
+-- we reserve some special indices for services..
+pattern SGetHCaseIx = HCaseIx 0 
+pattern SPutHCaseIx = HCaseIx 1 
+pattern SCloseHCaseIx = HCaseIx 2 
+
+
+
+
 
 -- * Instruction types for the machine
 data Instr
@@ -227,34 +241,26 @@ data QInstr
     | QHPut HCaseIx
     | QHCase Stec (Array HCaseIx [Instr])
 
+    -- special QHPut for services
+    | QHSPut SInstr
+
     -- | other channels to race, stec
     -- old definition was 'QRace [LocalChan] Stec', but now we just make them
     -- all share one election object.
     | QRace Stec
   deriving Show
 
-{-| a leader election object i.e., a trivial wrapper around an 'IORef Bool'. True means won the election
-and false means lost the election. This is used for races. -}
-newtype LeaderElect = LeaderElect (IORef Bool)
 
-instance Show LeaderElect where
-    show _ = "LeaderElect _"
+{- | a service instruction -}
+data SInstr 
+    = SGetChar
+    | SPutChar
 
-{-| creates a new 'LeaderElect' object to be shared by multiple threads -}
-freshLeaderElect :: IO LeaderElect
-freshLeaderElect = fmap coerce (newIORef True)
+    | SGetInt
+    | SPutInt
 
-{-| runs the leader election. 
-
-    * Returning true means wins the leader election
-
-    * Returning false means loses the leader election
--}
-leaderElect ::
-    LeaderElect ->
-    IO Bool
-leaderElect le = atomicModifyIORef' (coerce le) (const False &&& id)
-
+    | SClose
+  deriving Show
 
 -- * Template haskell
 $(makeClassyPrisms ''Val)

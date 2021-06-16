@@ -29,10 +29,11 @@ import Control.Concurrent.STM
 import Control.Concurrent.Async
 import Control.Monad.IO.Class
 
+
 {- | runs the MplMach from start to finish -}
 mplMachSteps :: 
     Stec ->
-    MplMach ()
+    MplMach MplMachEnv ()
 mplMachSteps = go . Just 
   where
     go = \case
@@ -136,10 +137,10 @@ seqStep k stec = case steccode of
 {- | executes a concurrent step in the machine -}
 concStep ::
     -- | continuation with what to do next if all pattern matches fails
-    (Stec -> MplMach (Maybe Stec)) ->
+    (Stec -> MplMach MplMachEnv (Maybe Stec)) ->
     -- | current state to execute a step
     Stec ->
-    MplMach (Maybe Stec)
+    MplMach MplMachEnv (Maybe Stec)
 concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = runMplMach (mplMachSteps inpstec) fundefns in case steccode of
     {- (stack, translation, environment, code -}
     ConcInstr instr : c -> case (stecstack, stectranslation, stecenv, instr) of
