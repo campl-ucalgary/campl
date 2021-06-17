@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts #-}
 module MplMach.MplMachRunner where
 
 import Optics 
@@ -17,67 +18,6 @@ import Control.Monad.IO.Class
 import Control.Concurrent.Async
 
 import Control.Monad
-
-{-
-import Network.Wai
-import Network.Wai.Handler.Warp
-import Network.HTTP.Types.Status
-import Data.Binary.Builder
-
-
-
-mplMachRunnner :: IO ()
-mplMachRunnner = do
-    run 5000 application
-
-application :: Application
-application req respond = respond $ case pathInfo req of
-    _ -> responseBuilder status200 [ ("Content-Type", "text/plain") ] "yo"
-
--}
-
-
-{-
-for : takes results of producers, and 
--}
-
-
-{-
-
-stdinLn :: Producer String IO ()
-stdinLn = do
-    eof <- lift isEOF
-    unless eof $ do
-        str <- lift getLine
-        yield str
-        stdinLn 
-
-
-triple :: Functor m => a -> Producer a m ()
-triple a = do
-    yield a
-    yield a
-
-incrementer :: Int -> Server Int Int IO r
-incrementer question = do
-    lift $ putStrLn $ "Server received : " ++ show question
-    let answer = question + 1
-    lift $ putStrLn $ "Server responded: " ++ show answer
-    nextQuestion <- respond answer
-    incrementer nextQuestion 
-
-oneTwoThree :: () -> Client Int Int IO ()
-oneTwoThree () = forM_ [1, 2, 3] $ \question -> do
-    lift $ putStrLn $ "Client requested: " ++ show question
-    answer <- request question
-    lift $ putStrLn $ "Client received : " ++ show answer
-    lift $ putStrLn "*"
-
--- session = oneTwoThree <-< incrementer
-
-mplMachRunnner :: IO ()
-mplMachRunnner = runEffect $ for stdinLn (lift . putStrLn)
--}
 
 {- | Runs the mpl machine. Some notes:
     
@@ -102,10 +42,10 @@ mplMachRunnner env stec = withSocketsDo $ flip runMplMach env $ do
     liftIO $ bracket 
         -- open the socket resource
         (open addrinf)
-        -- run the main application
-        (flip runMplMach env . loop)
         -- close the socket (library call)
         close
+        -- run the main application
+        (flip runMplMach env . loop)
   where
     -- opens the socket with sane defaults (standard C way of opening a socket translated to Haskell)
     open addrinf = do
@@ -128,6 +68,6 @@ mplMachRunnner env stec = withSocketsDo $ flip runMplMach env $ do
 
         -- run the machine; and unconditionally kill the other thread
         _ <- liftIO $ liftIO (flip runMplMach env (mplMachSteps stec)) 
-            `finally` liftIO (cancel svthd)
+                `finally` liftIO (cancel svthd)
 
         return ()

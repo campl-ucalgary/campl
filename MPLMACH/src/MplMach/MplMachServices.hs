@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 module MplMach.MplMachServices where
 
@@ -13,7 +14,7 @@ import qualified Pipes.Attoparsec as PA
 import qualified Pipes.Prelude as P
 
 import Data.ByteString (ByteString)
-import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as B
 import qualified Data.Attoparsec.ByteString.Char8 as A
 
 import Control.Monad.State.Strict
@@ -41,17 +42,16 @@ import Network.Socket.ByteString
 data SNInstr
     = SNInt Int
     | SNChar Char
-    | SNGet
-    | SNPut
 
-defMplMachServicesEnv :: IO MplMachServicesEnv 
-defMplMachServicesEnv = do
-    mp <- newIORef mempty
-    return MplMachServicesEnv 
-        { _serviceHostName = "localhost"
-        , _servicePortName = "6969"
-        , _serviceMap = mp
-        }
+    | SNGetInt
+    | SNPutInt 
+
+    | SNGetChar
+    | SNPutChar
+
+    | SNClose
+  deriving Show
+
 
 serviceManager :: 
     HasMplMachServicesEnv r =>
@@ -70,57 +70,92 @@ serviceClient  ::
     Socket ->
     MplMach r ()
 serviceClient s = gview equality >>= \env -> do
-    ~(Just egch, ps) <- P.runStateT (PA.parse pServiceCh) (recvPipe s) 
+    ~(Just egch, pbts) <- P.runStateT (PA.parse pServiceCh) (recvPipe s) 
     svmp <- liftIO $ env ^. serviceMap % to readIORef 
     case egch of
-        Right gch -> runEffect $ for (queueReader gchlkup) $ \case
-            SGetChar -> do
-                -- Producer ByteString (MplMach r) () 
-                -- P.runStateT (PA.parse pServiceCh) fk
-
-                undefined
-            SPutChar -> undefined
-
-            SClose -> error "impossible"
-          where
-            gchlkup = fromJust $ svmp ^. at gch 
+        Right gch -> let gchlkup = fromJust $ svmp ^. at gch in
+            serviceClientLoop s gchlkup pbts (serviceQueueSInstrPipe gchlkup)
         Left err -> liftIO $ throwIO err
+
+{- | This is honestly super confusing and literally everything is horrible about this...  Some remarks
+    to clear things up...
+
+    * Since we know that services are a protocol / coprotocol, we know the first response must
+        FOR SURE be a HPut
+    * Then, that HPut (with the particular index) determines what we want to do
+
+Again, this language is literally unusable with this design of services.
+-}
+
+serviceClientLoop ::
+    HasMplMachServicesEnv r =>
+    -- | socket
+    Socket ->
+    -- | Translation lookup
+    TranslationLkup ->
+    -- | producer for the socket
+    Producer ByteString (MplMach r) () ->
+    -- | producer from the instructions
+    Producer SInstr (MplMach r) () ->
+    -- | result
+    MplMach r ()
+serviceClientLoop sock gchlkup psock pinstrs = next pinstrs >>= \case
+    Left () -> return ()
+    Right (instr, pinstrs') -> case instr of
+        SHGetInt -> do
+            -- send that we want an int
+            liftIO $ sendAll sock $ snInstrToByteString SNGetInt
+            -- keep looking querying until we actually parse an int
+            (psock', inp) <- loop psock
+
+            -- add it to the queue
+            writeChMQueue (gchlkup ^. activeQueue) $ QPut $ VInt inp
+
+            serviceClientLoop sock gchlkup psock' pinstrs'
+          where
+            loop psock = do
+                ~(mval, psock') <- P.runStateT (PA.parse pSNInt) psock 
+                case mval of
+                    Just (Right val) -> return (psock', val)
+                    _ -> loop psock'
+        SHPutInt -> do
+            v <- liftIO $ atomically $ 
+                gchlkup ^. otherQueue % to readChMQueue
+                    >>= readTQueue
+                    >>= \case
+                        QPut (VInt v) -> return v
+                        bad -> throwSTM $ ppShowIllegalStep bad
+            -- send we want to put an int
+            liftIO $ sendAll sock $ snInstrToByteString $ SNPutInt
+            -- send actually put the int
+            liftIO $ sendAll sock $ snInstrToByteString $ SNInt v
+                
+            serviceClientLoop sock gchlkup psock pinstrs'
+
+        SHClose -> return ()
+
+serviceQueueSInstrPipe ::
+    ( HasMplMachServicesEnv r ) =>
+    TranslationLkup ->
+    Producer SInstr (MplMach r) ()
+serviceQueueSInstrPipe gchlkup = go
   where
-    {- This is honestly super confusing and literally everything is horrible about this...  Some remarks
-        to clear things up...
-
-        * Since we know that services are a protocol / coprotocol, we know the first response must
-            FOR SURE be a HPut
-        * Then, that HPut (with the particular index) determines what we want to do
-    -}
-    queueReader gchlkup = loop
-      where
-        loop = do
-            sinstr <- liftIO $ atomically $ gchlkup ^. otherQueue % to readChMQueue 
-                >>= readTQueue
-                >>= \case 
-                    QHSPut sinstr -> return sinstr
-                    bad -> throwSTM $ ppShowIllegalService bad
-            case sinstr of
-                -- close is just not doing anything
-                SClose -> return ()
-
-                n -> yield n
-
-    {-
-    case res of
-        Just pres -> case pres of
-            Right gch -> return ()
-            Left err -> return ()
-        Nothing -> return ()
-    -}
+    go = join $ fmap yield $ liftIO $ atomically $ gchlkup ^. otherQueue % to readChMQueue 
+        >>= readTQueue
+        >>= \case 
+            QHSPut sinstr -> return sinstr
+            bad -> throwSTM $ ppShowIllegalService bad
 
 recvPipe :: 
     ( MonadIO m ) =>
     Socket ->
     Producer ByteString m ()
-recvPipe s = join $ fmap yield $ liftIO $ recv s rECV_MAX_BYTES_TO_RECEIVE
+recvPipe s = go 
   where
+    go = do
+        res <- liftIO $ recv s rECV_MAX_BYTES_TO_RECEIVE
+        unless (B.null res) (yield res >> go)
+
     rECV_MAX_BYTES_TO_RECEIVE :: Int
     rECV_MAX_BYTES_TO_RECEIVE = 4096
     
@@ -142,65 +177,64 @@ recvPipe s = join $ fmap yield $ liftIO $ recv s rECV_MAX_BYTES_TO_RECEIVE
     * Different parts of the protocol are always terminted wth "\r\n" (CRLF)
 -}
 pVal :: A.Parser Val
-pVal = A.choice 
-    [ VInt <$> pInt
-    , VChar <$> pChar
-    ]
-  where
-    pInt :: A.Parser Int
-    pInt = A.char ':' *> A.signed A.decimal <* A.endOfLine
+pVal = undefined
 
-
-    pError :: Char
-    pError = undefined
+pSNInt :: A.Parser Int
+pSNInt = A.char ':' *> A.signed A.decimal <* A.endOfLine
 
 {-| ";<SOMECHAR>\r\n" -}
-pChar :: A.Parser Char
-pChar = A.char ';' *> A.anyChar <* A.endOfLine
+pSNChar :: A.Parser Char
+pSNChar = A.char ';' *> A.anyChar <* A.endOfLine
+
+
+pSNCmd :: A.Parser SNInstr
+pSNCmd = 
+    A.char '+' *> 
+    A.choice 
+        [ SNGetChar <$ A.string "GETCHAR"
+        , SNPutChar <$ A.string "PUTCHAR"
+        , SNGetInt <$ A.string "GETINT"
+        , SNPutInt <$ A.string "PUTINT"
+
+        , SNPutInt <$ A.string "CLOSE"
+        ]
+    <* A.endOfLine
+
+snInstrToByteString :: 
+    SNInstr ->
+    ByteString
+snInstrToByteString = \case
+    SNInt n -> ':' `B.cons` (B.pack (show n) `B.append` eoc)
+    SNChar n -> ';' `B.cons` (B.pack (show n) `B.append` eoc)
+
+    SNGetChar -> '+' `B.cons` ("GETCHAR" `B.append` eoc)
+    SNPutChar -> '+' `B.cons` ("PUTCHAR" `B.append` eoc)
+
+    SNGetInt -> '+' `B.cons` ("GETINT" `B.append` eoc)
+    SNPutInt -> '+' `B.cons` ("PUTINT" `B.append` eoc)
+
+    SNClose -> '+' `B.cons` ("CLOSE" `B.append` eoc)
+  where
+    eoc = "\r\n"
+    {-
+
+    | SNGetInt
+    | SNPutInt
+
+    -}
+
+serviceChToByteString :: 
+    ServiceCh ->
+    ByteString
+serviceChToByteString ch = ':' `B.cons` (B.pack (show (coerce @ServiceCh @Int ch)) `B.append` "\r\n")
+    
+
 
 {-| Parses a service channel which is given by:
     
     * first char is "=" then followed by an integer (of the channel), and ending with "\r\n" as usual
 -}
 pServiceCh :: A.Parser ServiceCh
-pServiceCh = fmap (coerce @Int @ServiceCh) $  A.char '=' *> A.signed A.decimal <* A.endOfLine
-
-
-literallyunusable = do
-    let hints = defaultHints { addrFlags = [AI_PASSIVE], addrSocketType = Stream }
-    addrinf <- fmap head $ getAddrInfo (Just hints) 
-            (Just $ "localhost") 
-            (Just $ "6969")
-    liftIO $ bracket 
-        -- open the socket resource
-        (open addrinf)
-        -- run the main application
-        loop
-        -- close the socket (library call)
-        close
-  where
-    -- opens the socket with sane defaults (standard C way of opening a socket translated to Haskell)
-    open addrinf = do
-        s <- socket 
-            (addrFamily addrinf) 
-            (addrSocketType addrinf) 
-            (addrProtocol addrinf)
-        setSocketOption s ReuseAddr 1
-        withFdSocket s setCloseOnExecIfNeeded
-        bind s (addrAddress addrinf)
-        listen s 1024
-        return s
-
-    -- the main ``loop'' of the program.
-    loop s = forever $ do
-        (s', _) <- accept s
-        forkFinally (hah s') $ \err -> close s' >> case err of
-            Left e -> throwIO e
-            Right () -> return () 
-
-    hah s = do
-        ~(Just egch, ps) <- P.runStateT (PA.parse pServiceCh) (recvPipe s) 
-        print egch
-        runEffect $ ps >-> P.print
-        runEffect $ ps >-> P.print
+pServiceCh = fmap (coerce @Int @ServiceCh) 
+    $  A.char '=' *> A.signed A.decimal <* A.endOfLine
 

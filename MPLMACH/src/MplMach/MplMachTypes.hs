@@ -160,7 +160,7 @@ data ISeq
     | IAccess Int
     | IRet
     -- | Call function CallIx 
-    | ICall [Instr]
+    | ICall CallIx
 
     | IConst Val
 
@@ -253,13 +253,13 @@ data QInstr
 
 {- | a service instruction -}
 data SInstr 
-    = SGetChar
-    | SPutChar
+    = SHGetChar
+    | SHPutChar
 
-    | SGetInt
-    | SPutInt
+    | SHGetInt
+    | SHPutInt
 
-    | SClose
+    | SHClose
   deriving Show
 
 -- * Template haskell

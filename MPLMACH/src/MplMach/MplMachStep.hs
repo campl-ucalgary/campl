@@ -14,6 +14,9 @@ import Data.Array (Array (..))
 import qualified Data.Array as Arr
 import Control.Arrow
 import Data.Foldable
+import Data.Traversable
+import Data.IORef
+import Data.Maybe
 
 import Data.Sequence (Seq (..))
 import qualified Data.Sequence as Sequence
@@ -28,6 +31,8 @@ import MplMach.MplMachException
 import Control.Concurrent.STM
 import Control.Concurrent.Async
 import Control.Monad.IO.Class
+
+import System.Process
 
 
 {- | runs the MplMach from start to finish -}
@@ -45,14 +50,14 @@ mplMachSteps = go . Just
  - continutaiton. Returns Nothing if the machine has reached its final
  - execution state. -}
 seqStep :: 
-    ( Applicative m ) =>
+    ( HasMplMachSuperCombinators r ) =>
     -- | continuation with what to do next if all sequential pattern
     -- matches fails
-    (Stec -> m (Maybe Stec)) ->
+    (Stec -> MplMach r (Maybe Stec)) ->
     -- | current machine
     Stec ->
     -- | result 
-    m (Maybe Stec)
+    MplMach r (Maybe Stec)
 seqStep k stec = case steccode of
     {- (code, environemnt, stack) -}
     -- no code left, means we are done
@@ -67,9 +72,11 @@ seqStep k stec = case steccode of
             stec & code !~ c
                  & stack %!~ cons (e !! n)
         {- Call(c'):c, e, s --> c', e, clos(c,e):s -}
-        (ICall c', e, s) -> pure $ Just $
-            stec & code !~ c'
-                 & stack %!~ cons (VClos c e)
+        (ICall cix, e, s) -> do
+            c' <- gviews supercombinators $ (Arr.! cix)
+            return $ Just $ 
+                stec & code !~ c'
+                    & stack %!~ cons (VClos c e)
 
         {- Ret:c, e, v:clos(c',e'):s ---> c', e', v:s -}
         (IRet, e , v : VClos c' e': s) -> pure $ Just $
@@ -342,10 +349,37 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
 
         (s, t, e, IPlug chs ((chs0, instrs0), (chs1, instrs1))) -> do
             -- this is essentially the channel manager actions
-            lchsgchs <- traverse (\ch -> fmap (ch,) newGlobalChan) chs
+            -- lchsgchs <- for chs $ \ch -> (\ch -> fmap (ch,) newGlobalChan) chs
+            -- Okay this is kinda stupid 
+            lchsgchs <- for chs $ \ch -> do
+                gch <- newGlobalChan 
+                let chint = coerce @LocalChan @Int ch
 
-            let 
-                -- new translations for t0 (recall the first phrase should be 
+                -- negative channels are reserved for servicechannels
+                when (chint < 0) $ void $ do
+                    chref <- gview serviceChRefFresh 
+                    liftIO $ atomicModifyIORef' chref 
+                        ( coerce @Int @ServiceCh 
+                        . succ 
+                        . coerce @ServiceCh @Int &&& id)
+
+                    -- silly way of doing services. like actually so silly. still can't believe
+                    -- this was decided to do it this way...
+                    hn <- gview serviceHostName
+                    pn <- gview servicePortName
+                    liftIO $ spawnCommand $ concat
+                        [ "xterm -e "
+                        , "'"
+                        , "mpl-client"
+                        , " --hostname=" ++ show hn
+                        , " --port=" ++ show pn
+                        , " --service-ch=" ++ show (show ch)
+                        , "'"
+                        ]
+
+                return (ch, gch)
+
+            let -- new translations for t0 (recall the first phrase should be 
                 -- all output polarity)
                 t0n = Map.fromList 
                         ( lchsgchs & mapped %~

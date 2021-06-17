@@ -43,7 +43,7 @@ newtype MplMach r a = MplMach { unwrapMplMach :: ReaderT r IO a }
     )
 
 data MplMachEnv = MplMachEnv 
-    { _supercombinators :: Array CallIx [Instr]
+    { _supercombinatorEnv :: MplMachSuperCombinators
 
     , _servicesEnv :: MplMachServicesEnv 
     }
@@ -52,8 +52,23 @@ data MplMachServicesEnv = MplMachServicesEnv
     { _serviceHostName :: String
     , _servicePortName :: String
     , _serviceMap :: IORef (Map ServiceCh TranslationLkup)
+    , _serviceChRefFresh :: IORef ServiceCh
     }
 
+newtype MplMachSuperCombinators = MpMachSuperCombinators {
+        _supercombinators :: Array CallIx [Instr]
+    }
+
+defaultMplMachEnv :: IO MplMachServicesEnv 
+defaultMplMachEnv = do
+    mp <- newIORef mempty
+    svch <- newIORef $ coerce @Int @ServiceCh (-10)
+    return MplMachServicesEnv 
+        { _serviceHostName = "localhost"
+        , _servicePortName = "6969"
+        , _serviceMap = mp
+        , _serviceChRefFresh = svch
+        }
 
 
 runMplMach ::
@@ -194,7 +209,11 @@ peekChMQueues qs = do
 
 $(makeClassy ''MplMachEnv)
 $(makeClassy ''MplMachServicesEnv)
+$(makeClassy ''MplMachSuperCombinators)
 
 instance HasMplMachServicesEnv MplMachEnv where
     mplMachServicesEnv = servicesEnv 
+
+instance HasMplMachSuperCombinators MplMachEnv where
+    mplMachSuperCombinators = supercombinatorEnv 
     
