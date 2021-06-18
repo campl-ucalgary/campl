@@ -9,8 +9,8 @@
 {-# LANGUAGE MonoLocalBinds #-}
 module MplAsmPasses.Compile.CompileErrors where
 
-import AMPL
-import AMPLTypes
+
+import MplMach.MplMachTypes
 
 import Optics
 import MplAsmAST.MplAsmCore
@@ -36,14 +36,14 @@ data CompileError x
     | NotAllSameHCase [[TypeAndSpec x]]
 
     -- | fun name, expectaed number of args, actual number of args
-    | IllegalFunCall (IdP x) Word Word
-    | IllegalProcCall (IdP x) (Word,Word,Word) (Word,Word,Word)
+    | IllegalFunCall (IdP x) Int Int
+    | IllegalProcCall (IdP x) (Int,Int,Int) (Int,Int,Int)
 
     | OutOfScopeData (TypeAndSpec x)
-    | IllegalConstructorCall (TypeAndSpec x) Word Word
+    | IllegalConstructorCall (TypeAndSpec x) Int Int
 
     | OutOfScopeCodata (TypeAndSpec x)
-    | IllegalDestructorCall (TypeAndSpec x) Word Word
+    | IllegalDestructorCall (TypeAndSpec x) Int Int
 
     | UnknownInputService (IdP x)
     | UnknownOutputService (IdP x)

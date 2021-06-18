@@ -7,9 +7,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 module MplAsmPasses.Compile.Compile where
 
-import AMPL
-import AMPLTypes
-import AMPLServices
+import MplMach.MplMachTypes
 
 import MplAsmAST.MplAsmCore
 import MplAsmPasses.Compile.CompileErrors
@@ -27,7 +25,6 @@ import Data.Traversable
 
 import Debug.Trace
 import Data.Coerce
-import Data.Word
 import Data.List
 import Data.Maybe
 import Data.Function
@@ -39,14 +36,18 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set  as Set
 
+import qualified Data.Array as Arr
+
 import Control.Exception
 
 mplAsmProgToInitMachState ::
     ( Ord (IdP x) 
     , AsCompileError err x 
     , HasName (IdP x)) =>
+    -- | an assembly program
     MplAsmProg x -> 
-    Either [err] InitAMPLMachState 
+    -- | Either: errors; or an array of the supercombinators and the main function instruction
+    Either [err] (MplMachSuperCombinators, [Instr])
 mplAsmProgToInitMachState prog = case runWriter res of
     (res', []) -> Right res'
     (_, errs) -> Left errs
@@ -73,6 +74,7 @@ mplAsmProgToInitMachState prog = case runWriter res of
                 - compile the commands
                 - resolve the channels according to the above "weirdness"
          -}
+        {-
         ~(Just (services, mainf)) <- case prog ^. mplAsmMain of
             Just (mainident, (seqs, ins, outs), coms) -> assert (null seqs) $ do
                 let overlapping = filter ((>1) . length) $ group $ sort $ seqs ++ ins ++ outs
@@ -82,14 +84,14 @@ mplAsmProgToInitMachState prog = case runWriter res of
 
                 {- Main function should already be put in (if it exists from 'mplAsmCollectStmtsInSymTab')
                 -- reset local channel id
-                uniqCounters % uniqLocalChanId .= (coerce (0 :: ChannelIdRep) :: LocalChanID)
+                uniqCounters % uniqLocalChan .= (coerce (0 :: Int) :: LocalChan)
 
                 -- give fresh local channel ids to the channels
-                insids <- traverse (const freshLocalChanId) ins
-                outsids <- traverse (const freshLocalChanId) outs
+                insids <- traverse (const freshLocalChan) ins
+                outsids <- traverse (const freshLocalChan) outs
 
                 -- main function should have a fresh funciton id
-                funid <- freshFunId 
+                funid <- freshCallIx 
                 -- update the symbol table accordingly (in case we want to recursively call the main function)
                 symTab % symTabProcs % at mainident 
                     ?= (funid, (genericLength seqs, insids, outsids))
@@ -166,12 +168,16 @@ mplAsmProgToInitMachState prog = case runWriter res of
 
                 return $ Just (intransandservices  <> outtransandservices, (funid, maininstrs))
             Nothing -> tell [_NoMainFunction # ()] >> return Nothing
+        -}
 
+        undefined
+        {-
         return $ InitAMPLMachState 
                 { initAmplMachStateServices = foldOf (folded % _2) services
                 , initAmplMachMainFun = (snd mainf, foldOf (folded % _1) services )
                 , initAmplMachFuns = mainf:funs 
                 }
+        -}
 
 
 {- | collects all the elements into the symbol table. Note: this is required to permit mutually
@@ -189,7 +195,6 @@ mplAsmCollectStmtsInSymTab prog = do
     overlappingCheck typeAndConcSpecsType coprotocols
     overlappingCheck typeAndSeqSpecsType constructors
     overlappingCheck typeAndSeqSpecsType destructors
-
 
 
     overlappingCheck _1 processes
@@ -227,7 +232,7 @@ mplAsmCollectStmtsInSymTab prog = do
     -- insert protocl / coprotocls to the part of the smbol table that is focused by @viewlens@
     concObjSymTab viewlens decs = 
         for_ decs $ \(TypeAndConcSpecs tp handles) -> do
-            let handles' = zip handles (coerce [0 :: Word ..] :: [HCaseIx])
+            let handles' = zip handles (coerce [0 :: Int ..] :: [HCaseIx])
 
             viewlens % at tp ?= Map.fromList handles'
 
@@ -235,25 +240,24 @@ mplAsmCollectStmtsInSymTab prog = do
     seqObjSymTab viewlens decs =
         for_ decs $ \(TypeAndSeqSpecs tp handles) -> do
             let handles' = map (\((idp, numargs),caseix) -> (idp, (caseix,numargs))) 
-                    $ zip handles (coerce [0 :: Word ..] :: [CaseIx])
+                    $ zip handles (coerce [0 :: Int ..] :: [CaseIx])
             viewlens % at tp ?= Map.fromList handles'
 
     funSymTab decs = 
         for_ decs $ \(fname, args, _) -> do
-            funid <- freshFunId 
+            funid <- freshCallIx 
 
             symTab % symTabFuns % at fname ?= (funid, genericLength args)
 
     procSymTab decs =
         for_ decs $ \(pname, (seqs, ins, outs), _) -> do
-            uniqCounters % uniqLocalChanId .= (coerce (0 :: ChannelIdRep) :: LocalChanID)
+            uniqCounters % uniqLocalChan .= (coerce (0 :: Int) :: LocalChan)
 
-            insids <- traverse (const freshLocalChanId) ins
-            outsids <- traverse (const freshLocalChanId) outs
+            insids <- traverse (const freshLocalChan) ins
+            outsids <- traverse (const freshLocalChan) outs
 
-            funid <- freshFunId 
-            symTab % symTabProcs % at pname 
-                ?= (funid, (genericLength seqs, insids, outsids))
+            funid <- freshCallIx 
+            symTab % symTabProcs % at pname ?= (funid, (length seqs, insids, outsids))
 
 {-
     case stmt of
@@ -304,7 +308,7 @@ mplAsmCollectStmtsInSymTab prog = do
 
         -- put everything in symbol table first.
         for funs $ \(fname, args, _) -> do
-            funid <- freshFunId 
+            funid <- freshCallIx 
 
             symTab % symTabFuns % at fname ?= (funid, genericLength args)
 
@@ -316,12 +320,12 @@ mplAsmCollectStmtsInSymTab prog = do
 
         -- put everything in symbol table first.
         for procs $ \(pname, (seqs, ins, outs), _) -> do
-            uniqCounters % uniqLocalChanId .= (coerce (0 :: ChannelIdRep) :: LocalChanID)
+            uniqCounters % uniqLocalChan .= (coerce (0 :: Int) :: LocalChan)
 
-            insids <- traverse (const freshLocalChanId) ins
-            outsids <- traverse (const freshLocalChanId) outs
+            insids <- traverse (const freshLocalChan) ins
+            outsids <- traverse (const freshLocalChan) outs
 
-            funid <- freshFunId 
+            funid <- freshCallIx 
             symTab % symTabProcs % at pname 
                 ?= (funid, (genericLength seqs, insids, outsids))
 
@@ -336,7 +340,7 @@ mplAsmCompileStmt ::
     , AsCompileError err x
     , MonadWriter [err] m) =>
     MplAsmStmt x ->
-    m [(FunID, [Instr])]
+    m [(CallIx, [Instr])]
 mplAsmCompileStmt stmt = case stmt of
     Protocols tpconcspecs -> return []
     Coprotocols tpconcspecs -> return []
@@ -392,31 +396,38 @@ mplAsmComToInstr = \case
     CAssign _ v com -> do
         com' <- mplAsmComToInstr com
         varStack %= (v:)
-        return $ com' ++ [iStore]
+        return $ com' ++ [_IStore # ()]
     CStore _ v -> do
         varStack %= (v:)
-        return [iStore]
+        return [_IStore # ()]
     -- load the variable @v@ so it is at the top of the stack
     CLoad _ v -> do
         ~(Just ix) <- lookupVarStack v
-        return $ [iAccess ix]
-    CRet _ -> return [iRet]
+        return $ [_IAccess # ix]
+    CRet _ -> return [_IRet # ()]
     CCall _ fname args -> do
         ~(Just (funid, numargs)) <- lookupFun fname
         ~(Just ixs) <- fmap sequenceA $ traverse lookupVarStack args
         tell $ bool [_IllegalFunCall # (fname, numargs, genericLength args)] [] $ genericLength args == numargs
-        let ixs' = reverse ixs
-        return $ map iAccess ixs' ++ [iCall funid numargs]
-    CInt _ n -> return [iConst (VInt n)]
-    CChar _ n -> return [iConst (VChar n)]
-    CBool _ n -> return [iConst (VBool n)]
-    CEqInt _ -> return [iEq]
-    CEqChar _ -> return [iEq]
-    CLeqInt _ -> return [iLeq]
-    CLeqChar _ -> return [iLeq]
-    CAdd _ -> return [iAddInt]
-    CSub _ -> return [iSubInt]
-    CMul _ -> return [iMulInt]
+        -- let ixs' = reverse ixs
+        let ixs' = ixs
+        -- return $ map (review _IAccess) ixs' ++ [_ICall # (funid, numargs)]
+        return $ concatMap (\ix -> [_IAccess # ix, _IStore # ()]) ixs' ++ [_ICall # funid]
+        -- TODO: Calling is broken
+
+    CInt _ n  -> return [_IConst # (VInt n)]
+    CChar _ n -> return [_IConst # (VChar n)]
+    CBool _ n -> return [_IConst # (VBool n)]
+
+    CEqInt _   -> return [_IEqInt # ()]
+    CEqChar _  -> return [_IEqChar # ()]
+
+    CLeqInt _  -> return [_ILeqInt # ()]
+    CLeqChar _ -> return [_ILeqChar # ()]
+
+    CAdd _ -> return [_IAddInt # ()]
+    CSub _ -> return [_ISubInt # ()]
+    CMul _ -> return [_IMulInt # ()]
     CConstructor _ typeandspec args -> do
         ~(Just (caseix, numargs)) <- lookupData typeandspec
         tell $ bool [ _IllegalConstructorCall # (typeandspec, numargs, genericLength args)] [] $ genericLength args == numargs
@@ -424,7 +435,7 @@ mplAsmComToInstr = \case
         let loadixs' = reverse loadixs
 
         tell $ bool [_IllegalConstructorCall # (typeandspec, numargs, genericLength args)] [] $ genericLength args == numargs
-        return $ map iAccess loadixs' ++ [iCons caseix numargs]
+        return $ map (review _IAccess) loadixs' ++ [_ICons # (caseix, numargs)]
         
     CDestructor _ typeandspec args v -> do
         ~(Just (caseix, numargs)) <- lookupCodata typeandspec
@@ -432,7 +443,7 @@ mplAsmComToInstr = \case
         ~(Just loadixs) <- fmap sequenceA $ traverse lookupVarStack args
         let loadixs' = reverse loadixs
         tell $ bool [_IllegalDestructorCall # (typeandspec, numargs, genericLength args)] [] $ genericLength args == numargs
-        return $ map iAccess loadixs ++ [iAccess loadv, iDest caseix numargs]
+        return $ map (review _IAccess) loadixs ++ [_IAccess # loadv, _IDest # (caseix, numargs)]
 
     CCase _ caseon labelledcoms -> do
         ~(Just caseonix) <- lookupVarStack caseon
@@ -450,7 +461,7 @@ mplAsmComToInstr = \case
             coms' <-  mplAsmComsToInstr coms
             return coms'
 
-        return $ [iAccess caseonix] ++ [iCase instrs]
+        return $ [_IAccess # caseonix] ++ [_ICase # Arr.listArray (coerce @Int @CaseIx 0, coerce @Int @CaseIx $ length instrs - 1) instrs]
 
     CRecord _ labelledcoms -> do
         let allsame = 
@@ -467,34 +478,34 @@ mplAsmComToInstr = \case
             varStack %= (reverse args<>)
             coms' <- localMplAsmCompileSt $ mplAsmComsToInstr coms
             return coms'
-        return $ [iRec instrs]
+        return $ [_IRec # Arr.listArray (coerce @Int @CaseIx 0, coerce @Int @CaseIx $ length instrs - 1) instrs]
     CIf _ caseon thenc elsec -> do
         ~(Just caseonix) <- lookupVarStack caseon
         thecinstrs <- localMplAsmCompileSt $ mplAsmComsToInstr thenc
         elscinstrs <- localMplAsmCompileSt $ mplAsmComsToInstr elsec
-        return $ [iAccess caseonix] ++ [iIf thecinstrs elscinstrs]
+        return $ [_IAccess # caseonix] ++ [_IIf # (thecinstrs, elscinstrs)]
 
     CTuple _ tuplelems -> do
         ~(Just tupleelemsix) <- fmap sequenceA $ traverse lookupVarStack tuplelems
         let tupleelemsix' = reverse tupleelemsix
 
-        return $ map iAccess tupleelemsix' ++ [iTuple $ genericLength tuplelems]
+        return $ map (review _IAccess) tupleelemsix' ++ [_ITuple # length tuplelems]
 
     CProj _ proj tuple -> do
         ~(Just tupleix) <- lookupVarStack tuple
-        return $ [iAccess tupleix] ++ [iTupleElem $ coerce proj]
+        return $ [_IAccess # tupleix] ++ [_ITupleElem # coerce @Int @TupleIx proj]
 
     CGet _ v ch -> do
         -- since we are getting a new value, we need to immedaitely put it on the
         -- stack so that it corresponds to actually being put on the stack
         ~(Just (_pol, chid)) <- lookupCh ch
         varStack %= (v:)
-        return $ [iGet chid, iStore]
+        return $ [_IGet # chid, _IStore # ()]
 
     CPut _ v ch -> do
         ~(Just vix) <- lookupVarStack v
         ~(Just (_pol, chid)) <- lookupCh ch
-        return $ [iAccess vix, iPut chid]
+        return $ [_IAccess # vix, _IPut # chid]
 
     CHPut _ tpspec ch -> do
         ~(Just (pol, chid)) <- lookupCh ch
@@ -503,10 +514,10 @@ mplAsmComToInstr = \case
         case pol of
             Input -> do
                 ~(Just hcaseix) <- lookupProtocol tpspec
-                return $ [iHPut chid hcaseix]
+                return $ [_IHPut # (chid, hcaseix)]
             Output -> do
                 ~(Just hcaseix) <- lookupCoprotocol tpspec
-                return $ [iHPut chid hcaseix]
+                return $ [_IHPut # (chid, hcaseix)]
 
         -- recall input polarity means you hcase protocol...
         -- recall output polarity means you hcase coprotocol...
@@ -527,16 +538,20 @@ mplAsmComToInstr = \case
                 ~(Just _hcaseix) <- lookupCoprotocol tpandspec
                 comsinstrs <- mplAsmComsToInstr coms
                 return comsinstrs
-        return [iHCase chid instrs]
+        return 
+            [_IHCase # 
+                ( chid
+                , Arr.listArray (coerce @Int @HCaseIx 0, coerce @Int @HCaseIx $ length instrs - 1) instrs)
+            ]
 
     CSplit _ ch (lch, rch) -> do
         ~(Just (pol, chid)) <- lookupCh ch 
-        lchid <- freshLocalChanId
-        rchid <- freshLocalChanId
+        lchid <- freshLocalChan
+        rchid <- freshLocalChan
         channelTranslations % at lch ?= (pol, lchid)
         channelTranslations % at rch ?= (pol, rchid)
 
-        return [iSplit chid (lchid, rchid)]
+        return [_ISplit # (chid, (lchid, rchid)) ]
 
     -- TODO: probably should do an exhaustive fork check
     CFork _ ch ((ch0, with0, coms0), (ch1, with1, coms1)) -> do
@@ -544,26 +559,26 @@ mplAsmComToInstr = \case
         ~(Just with0ids) <- fmap sequenceA $ traverse lookupCh with0 
         ~(Just with1ids) <- fmap sequenceA $ traverse lookupCh with1 
 
-        ch0id <- freshLocalChanId
+        ch0id <- freshLocalChan
         coms0instr <- localMplAsmCompileSt $ do
             channelTranslations %= flip Map.restrictKeys (Set.fromList with0)
             channelTranslations % at ch0 ?= (pol, ch0id)
             mplAsmComsToInstr coms0
 
-        ch1id <- freshLocalChanId
+        ch1id <- freshLocalChan
         coms1instr <- localMplAsmCompileSt $ do
             channelTranslations %= flip Map.restrictKeys (Set.fromList with1)
             channelTranslations % at ch1 ?= (pol, ch1id)
             mplAsmComsToInstr coms1
 
-        return [iFork chid ((ch0id, map snd with0ids, coms0instr), (ch1id, map snd with1ids, coms1instr)) ]
+        return [_IFork # (chid, ((ch0id, Set.fromList (map snd with0ids), coms0instr), (ch1id, Set.fromList (map snd with1ids), coms1instr))) ]
 
     -- TODO: There is definately a bug here... recall we need the USER to 
     -- supply what polarity the plugged channels are, so we can't just ASSUME that
     -- the first one plug commands are output channels, then the next are input..
     -- this is WRONG and needs to be fixed in the future.
     CPlug _ plugs ((with0, coms0), (with1, coms1)) -> do
-        plugsids <- traverse (const freshLocalChanId) plugs
+        plugsids <- traverse (const freshLocalChan) plugs
         ~(Just with0ids) <- fmap sequenceA $ traverse lookupCh with0 
         ~(Just with1ids) <- fmap sequenceA $ traverse lookupCh with1 
         let plugsandids = zip plugs plugsids
@@ -580,7 +595,14 @@ mplAsmComToInstr = \case
                 channelTranslations % at ch ?= (Input, chid)
             mplAsmComsToInstr coms1
 
-        return [iPlug plugsids ((map snd with0ids, coms0instrs), (map snd with1ids, coms1instrs))]
+        return 
+            [ _IPlug # 
+                ( plugsids, 
+                    ( (Set.fromList $ map snd with0ids, coms0instrs)
+                    , (Set.fromList $ map snd with1ids, coms1instrs)
+                    )
+                )
+            ]
 
     -- TODO: technically should do some polarity checks here
     CRun _ callp (seqs, ins, outs) -> do
@@ -590,19 +612,23 @@ mplAsmComToInstr = \case
         ~(Just outssids) <- fmap sequenceA $ traverse lookupCh outs 
 
         ~(Just (callid, (numargs, callins, callouts))) <- lookupProc callp
-        let ixseqs' = reverse ixseqs
-            instranslations = map (Input,) $ zip callins (map snd insids)
-            outstranslations = map (Output,) $ zip callouts (map snd outssids)
+        -- let ixseqs' = reverse ixseqs
+        let ixseqs' = ixseqs
+            -- instranslations = map (Input,) $ zip callins (map snd insids)
+            -- outstranslations = map (Output,) $ zip callouts (map snd outssids)
+            instranslations = zip callins (map snd insids)
+            outstranslations = zip callouts (map snd outssids)
             translationmapping = instranslations ++ outstranslations 
 
-        return $ map iAccess ixseqs' ++ [iRun translationmapping callid numargs]
+        -- return $ map (review _IAccess) ixseqs' ++ [_IRun # (translationmapping, callid, numargs)]
+        return $ concatMap (\ix -> [_IAccess # ix, _IStore # ()]) ixseqs' 
+            ++ [_IRun # (coerce $ Map.fromList translationmapping, callid)]
 
     -- TODO: Technically, should do some polarity checking here
     CId _ (lch, rch) -> do
         ~(Just (_lpol, lchid)) <- lookupCh lch
         ~(Just (_rpol, rchid)) <- lookupCh rch
-        return [iId lchid rchid]
-            
+        return [_IId # (lchid, rchid)]
 
     -- TODO: should do some polarity checking and exhaustiveness checking here
     CRace _ phrases -> do
@@ -610,16 +636,15 @@ mplAsmComToInstr = \case
             ~(Just (_pol, chid)) <- lookupCh ch
             instrs <- mplAsmComsToInstr coms
             return (chid, instrs)
-        return [iRace phrasesinstrs]
+        return [_IRace # phrasesinstrs]
 
     CClose _ ch -> do
         ~(Just (_,chid)) <- lookupCh ch
-        return [iClose chid]
+        return [_IClose # chid]
 
     CHalt _ ch -> do
         ~(Just (_,chid)) <- lookupCh ch
-        return [iHalt $ pure chid]
-        
+        return [_IHalt # chid]
 
 lookupVarStack ::
     ( MonadState (MplAsmCompileSt x) m
@@ -627,9 +652,9 @@ lookupVarStack ::
     , AsCompileError err x
     , MonadWriter [err] m ) =>
     IdP x ->
-    m (Maybe Word)
+    m (Maybe Int)
 lookupVarStack v = do
-    res <- fmap (fmap fromIntegral) $ guses varStack (elemIndex v)
+    res <- guses varStack (elemIndex v)
     tell $ bool [_OutOfScopeVariable # v] [] $ isJust res
     return res
 
@@ -639,7 +664,7 @@ lookupFun ::
     , AsCompileError err x
     , MonadWriter [err] m ) =>
     IdP x ->
-    m (Maybe (FunID, Word))
+    m (Maybe (CallIx, Int))
 lookupFun v = do
     res <- guse (symTab % symTabFuns % at v ) 
     tell $ bool [_OutOfScopeFun # v] [] $ isJust res
@@ -651,7 +676,7 @@ lookupProc ::
     , AsCompileError err x
     , MonadWriter [err] m ) =>
     IdP x ->
-    m (Maybe (FunID, (Word, [LocalChanID], [LocalChanID])))
+    m (Maybe (CallIx, (Int, [LocalChan], [LocalChan])))
 lookupProc v = do
     res <- guse (symTab % symTabProcs % at v ) 
     tell $ bool [_OutOfScopeProc # v] [] $ isJust res
@@ -663,7 +688,7 @@ lookupData ::
     , AsCompileError err x
     , MonadWriter [err] m ) =>
     TypeAndSpec x ->
-    m (Maybe (CaseIx, Word))
+    m (Maybe (CaseIx, Int))
 lookupData tpspec@(TypeAndSpec tp spec) = do   
     res <- guse (symTab % symTabData % at tp % _Just % at spec % _Just)
     tell $ bool [_OutOfScopeData # tpspec] [] $ isJust res
@@ -675,7 +700,7 @@ lookupCodata ::
     , AsCompileError err x
     , MonadWriter [err] m ) =>
     TypeAndSpec x ->
-    m (Maybe (CaseIx, Word))
+    m (Maybe (CaseIx, Int))
 lookupCodata tpspec@(TypeAndSpec tp spec) = do   
     res <- guse (symTab % symTabCodata % at tp % _Just % at spec % _Just)
     tell $ bool [_OutOfScopeCodata # tpspec] [] $ isJust res
@@ -711,33 +736,35 @@ lookupCh ::
     , AsCompileError err x
     , MonadWriter [err] m ) =>
     IdP x ->
-    m (Maybe (Polarity, LocalChanID))
+    m (Maybe (Polarity, LocalChan))
 lookupCh idp = do
     res <- guse (channelTranslations % at idp)
     tell $ bool [_OutOfScopeChannel # idp] [] $ isJust res
     return res
 
-freshLocalChanId ::
+freshLocalChan ::
     MonadState (MplAsmCompileSt x) m =>
-    m LocalChanID
-freshLocalChanId = 
-    uniqCounters % uniqLocalChanId <<%= (coerce :: ChannelIdRep -> LocalChanID) 
+    m LocalChan
+freshLocalChan = 
+    uniqCounters % uniqLocalChan <<%= (coerce :: Int -> LocalChan) 
         . succ 
-        . (coerce :: LocalChanID -> ChannelIdRep)
+        . (coerce :: LocalChan -> Int)
 
+{-
 freshGlobalChanId ::
     MonadState (MplAsmCompileSt x) m =>
     m GlobalChanID
 freshGlobalChanId = 
-    uniqCounters % uniqGlobalChanId <<%= (coerce :: ChannelIdRep -> GlobalChanID) 
+    uniqCounters % uniqGlobalChanId <<%= (coerce :: Int -> GlobalChanID) 
         . succ 
-        . coerce @GlobalChanID @ChannelIdRep
+        . coerce @GlobalChanID @Int
+-}
 
-freshFunId ::
+freshCallIx ::
     MonadState (MplAsmCompileSt x) m =>
-    m FunID
-freshFunId = 
-    uniqCounters % uniqFunId <<%= (coerce :: Word -> FunID) 
+    m CallIx
+freshCallIx = 
+    uniqCounters % uniqCallIx <<%= (coerce :: Int -> CallIx) 
         . succ 
-        . coerce @FunID @Word
+        . coerce @CallIx @Int
 

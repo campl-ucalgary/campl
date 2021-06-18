@@ -4,7 +4,6 @@ module MplAsmPasses.Compile.Stack where
 
 import Optics
 import Optics.State.Operators
-import AMPLTypes
 
 import Data.Coerce
 
@@ -13,14 +12,15 @@ import qualified Data.Map as Map
 import Control.Monad.State
 
 import MplAsmAST.MplAsmCore
+import MplMach.MplMachTypes
 
 data SymEntry x 
-    = SymProc FunID
+    = SymProc CallIx
     | SymConcObj (Map (IdP x) HCaseIx)
 
 data MplAsmCompileSt x = MplAsmCompileSt 
     { _varStack :: [IdP x]
-    , _channelTranslations :: Map (IdP x) (Polarity, LocalChanID)
+    , _channelTranslations :: Map (IdP x) (Polarity, LocalChan)
 
     , _uniqCounters :: MplAsmCompileStUniqs
 
@@ -28,20 +28,21 @@ data MplAsmCompileSt x = MplAsmCompileSt
     }
 
 data MplAsmCompileStUniqs = MplAsmCompileStUniqs 
-    { _uniqLocalChanId :: LocalChanID
-    , _uniqGlobalChanId :: GlobalChanID
-    , _uniqFunId :: FunID
+    { _uniqLocalChan :: LocalChan
+    -- | recall that service channels are negative.
+    , _uniqServiceChan :: LocalChan
+    , _uniqCallIx :: CallIx
     }
 
 data MplAsmCompileStSymTabs x = MplAsmCompileStSymTabs 
-    { _symTabFuns :: Map (IdP x) (FunID, Word)
+    { _symTabFuns :: Map (IdP x) (CallIx, Int)
         -- ^ function name --> (function id,number of args)
-    , _symTabProcs :: Map (IdP x) (FunID, (Word, [LocalChanID], [LocalChanID]))
+    , _symTabProcs :: Map (IdP x) (CallIx, (Int, [LocalChan], [LocalChan]))
         -- ^ function name --> (function id,(number of seq args, inchs, outchs))
 
-    , _symTabData :: Map (IdP x)  (Map (IdP x) (CaseIx, Word))
+    , _symTabData :: Map (IdP x)  (Map (IdP x) (CaseIx, Int))
         -- ^ data name --> (caseix ,number of args)
-    , _symTabCodata :: Map (IdP x)  (Map (IdP x) (CaseIx, Word))
+    , _symTabCodata :: Map (IdP x)  (Map (IdP x) (CaseIx, Int))
         -- ^ codata name --> (caseix ,number of args)
     , _symTabProtocol :: Map (IdP x) (Map (IdP x) HCaseIx)
         -- ^ protocol name --> hcaseix
@@ -71,9 +72,9 @@ initMplAsmCompileSt = MplAsmCompileSt
     , _channelTranslations = Map.empty
 
     , _uniqCounters = MplAsmCompileStUniqs 
-        { _uniqLocalChanId = coerce (0 :: ChannelIdRep)
-        , _uniqGlobalChanId = coerce (0 :: ChannelIdRep)
-        , _uniqFunId = coerce (0 :: Word)
+        { _uniqLocalChan = coerce (0 :: Int)
+        , _uniqServiceChan = coerce (-10 :: Int)
+        , _uniqCallIx = coerce (0 :: Int)
         }
     , _symTab = initMplAsmCompileStSymTabs 
     }
