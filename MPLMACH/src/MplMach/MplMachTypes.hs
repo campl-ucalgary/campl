@@ -1,6 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-| This module all the data types for the abstract machine.
 -}
@@ -11,6 +13,8 @@ import Data.IORef
 import Data.Void
 import Data.Array
 import Data.Coerce
+import Data.Foldable
+import Data.Traversable
 
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TVar
@@ -23,11 +27,34 @@ import qualified Data.Set as Set
 
 import Control.Arrow
 
+import System.IO.Unsafe
+
 {- | A channel manager queue is an 'TVar' to a queue (well a 'Seq') of 'QInstr' -}
+-- newtype ChMQueue = ChMQueue (TVar (TQueue QInstr))
 newtype ChMQueue = ChMQueue (TVar (TQueue QInstr))
 
 instance Show ChMQueue where
     show _ = "ChMQueue _"
+
+{- | helpful little debug function to essentially get a snap shot of the queue 
+a given point of time -}
+showChMQueue :: 
+    ChMQueue ->
+    IO _ 
+showChMQueue (ChMQueue tvar) = atomically $ do
+    q <- readTVar tvar
+    res <- flushTQueue q
+    for (reverse res) (unGetTQueue q)
+    return res
+
+    {-
+    q <- readTVar tvar
+    res <- tryPeekTQueue q
+    -- for (reverse res) (unGetTQueue q)
+    return [res]
+    -}
+
+    
 
 {- | old convention from Prashant: output queue is left queue, and input queue is right queue -}
 data ChMQueues = ChMQueues 
@@ -84,6 +111,33 @@ data TranslationLkup
         }
   deriving Show
 
+
+showTranslationLkup :: 
+    TranslationLkup -> 
+    IO _
+showTranslationLkup lkup = do
+    (actinsrs, othinstrs) <- atomically $ do
+        actq <- readTVar (coerce @ChMQueue @(TVar (TQueue QInstr)) act)
+        actres <- flushTQueue actq
+        for (reverse actres) (unGetTQueue actq)
+
+        othq <- readTVar (coerce @ChMQueue @(TVar (TQueue QInstr)) oth)
+        othres <- flushTQueue othq
+        for (reverse othres) (unGetTQueue othq)
+
+        return (actres, othres)
+    
+    return $ case lkup of
+        InputLkup _ _ -> (actinsrs, othinstrs)
+        OutputLkup _ _ -> (actinsrs, othinstrs)
+
+        -- InputLkup _ _ -> concat [ "InputLkup", " ", show (actinsrs, othinstrs)]
+        -- OutputLkup _ _ -> concat [ "OutputLkup", " ", show (actinsrs, othinstrs)]
+  where
+    act = _activeQueue lkup 
+    oth = _otherQueue lkup 
+
+
 -- function / process
 
 -- * data type for the machine
@@ -108,13 +162,11 @@ newtype TupleIx = TupleIx IxRep
   deriving (Show, Eq, Ord, Ix)
 
 -- we reserve some special indices for services..
+{-
 pattern SGetHCaseIx = HCaseIx 0 
 pattern SPutHCaseIx = HCaseIx 1 
 pattern SCloseHCaseIx = HCaseIx 2 
-
-
-
-
+-}
 
 -- * Instruction types for the machine
 data Instr
@@ -147,6 +199,10 @@ data IConc
     | IRun LocalChanToLocalChanMapping CallIx -- Word
 
     | IHPut LocalChan HCaseIx
+
+    -- | HPut for services
+    | ISHPut LocalChan SInstr 
+
     | IHCase LocalChan (Array HCaseIx [Instr])
 
     | IRace [(LocalChan, [Instr])]
@@ -182,6 +238,9 @@ data ISeq
     | IEqInt
     | ILeqInt
 
+    | IEqChar
+    | ILeqChar
+
     -- data instructions...
     -- | pushes the i'th constructor onto the stack with the top n elements in the stack
     | ICons CaseIx Int 
@@ -213,6 +272,11 @@ data Val
     | VRec (Array CaseIx [Instr]) [Val]
   deriving Show
 
+newtype MplMachSuperCombinators = MpMachSuperCombinators {
+        _supercombinators :: Array CallIx [Instr]
+    }
+ deriving Show
+
 -- * Instruction types for channel manager
 data QInstr 
     = QGet Stec
@@ -242,7 +306,7 @@ data QInstr
     | QHCase Stec (Array HCaseIx [Instr])
 
     -- special QHPut for services
-    | QHSPut SInstr
+    | QSHPut SInstr
 
     -- | other channels to race, stec
     -- old definition was 'QRace [LocalChan] Stec', but now we just make them
@@ -262,6 +326,12 @@ data SInstr
     | SHClose
   deriving Show
 
+{- | (-10) or less than are generic service channels -}
+isTermServiceCh :: 
+    LocalChan ->
+    Bool
+isTermServiceCh = (<= -1) . coerce @LocalChan @Int
+
 -- * Template haskell
 $(makeClassyPrisms ''Val)
 $(makeClassyPrisms ''IConc)
@@ -271,6 +341,7 @@ $(makeLenses ''Stec)
 $(makeLenses ''ChMQueues)
 $(makeLenses ''TranslationLkup)
 $(makePrisms ''TranslationLkup)
+$(makeClassy ''MplMachSuperCombinators)
 
 instance AsISeq Instr where
     _ISeq = _SeqInstr

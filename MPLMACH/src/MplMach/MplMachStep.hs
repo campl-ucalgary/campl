@@ -30,9 +30,15 @@ import MplMach.MplMachException
 
 import Control.Concurrent.STM
 import Control.Concurrent.Async
+import Control.Concurrent.MVar
+import Control.Concurrent
 import Control.Monad.IO.Class
 
+import Debug.Trace
+import qualified Text.Show.Pretty as PrettyShow
+
 import System.Process
+
 
 
 {- | runs the MplMach from start to finish -}
@@ -42,8 +48,30 @@ mplMachSteps ::
 mplMachSteps = go . Just 
   where
     go = \case
+        {-
         Just stec -> seqStep (concStep (liftIO . throwIO . ppShowIllegalStep)) stec 
             >>= go
+        -}
+        Just stec -> do
+            {-
+            mvar <- gview stdLock
+
+            liftIO $ do
+                takeMVar mvar
+                PrettyShow.pPrint stec
+
+                fkk <- liftIO 
+                    $ sequenceOf (traversed % _2) $ stec ^. translation 
+                    % to (Map.toList >>> map (second showTranslationLkup))
+                PrettyShow.pPrint $ "Queues"
+                PrettyShow.pPrint $ fkk
+
+                putMVar mvar ()
+            -}
+
+            stec' <- seqStep (concStep (liftIO . throwIO . ppShowIllegalStep)) stec 
+
+            go stec'
         Nothing -> return ()
 
 {- | Executes a sequential step, and if all matches fails, exectutes the 
@@ -67,6 +95,7 @@ seqStep k stec = case steccode of
         (IStore, e, v:s) -> pure $ Just $
             stec & code !~ c
                  & environment %!~ cons v
+                 & stack !~ s
         {- Access(n):c, e, s ---> c, e, e[n]:s -}
         (IAccess n, e, s) -> pure $ Just $
             stec & code !~ c
@@ -82,7 +111,7 @@ seqStep k stec = case steccode of
         (IRet, e , v : VClos c' e': s) -> pure $ Just $
             stec & code !~ c'
                  & environment !~ e'
-                 & stack %!~ cons v
+                 & stack !~ cons v s
 
         {- Cons(i,n):c, e, v_1:...:v_n:s --> c,e,cons(i,[v_1,...,v_n]):s-}
         (ICons i n, e, s) -> pure $ Just $
@@ -175,7 +204,8 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
 
             return $ Just $ stec'
           where
-            chlkup = t Map.! ch
+            -- chlkup = t Map.! ch
+            Just chlkup = Map.lookup ch t 
 
         (v:s, t, e, IPut ch) -> do
             writeChMQueue (chlkup ^. activeQueue) (QPut v)
@@ -183,9 +213,10 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
                 & stack !~ s
                 & code !~ c
           where
-            chlkup = t Map.! ch
+            -- chlkup = t Map.! ch
+            Just chlkup = Map.lookup ch t 
 
-        ([], t, e, ISplit ch (lch, rch)) -> do
+        (_, t, e, ISplit ch (lch, rch)) -> do
             glch <- newGlobalChan
             grch <- newGlobalChan
 
@@ -199,9 +230,10 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
                 -- and update the code
                 & code !~ c
           where
-            chlkup = t Map.! ch
+            -- chlkup = t Map.! ch
+            Just chlkup = Map.lookup ch t 
 
-        ([], t, e, IFork ch ((ch0, chwiths0, instrs0), (ch1, chwiths1, instrs1))) -> do
+        (_, t, e, IFork ch ((ch0, chwiths0, instrs0), (ch1, chwiths1, instrs1))) -> do
             let stec0 = stec
                     & code !~ instrs0
                     & translation %!~ flip Map.restrictKeys chwiths0
@@ -251,7 +283,8 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
             
             return Nothing
           where
-            chlkup = t Map.! ch
+            -- chlkup = t Map.! ch
+            Just chlkup = Map.lookup ch t 
 
         -- actually there's probably a bug here: need to do some extra work (but when?)
         -- to run the channel manager when we have (close, close)
@@ -261,11 +294,11 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
                 & code !~ c
                 & translation % at ch !~ Nothing
           where
-            chlkup = t Map.! ch
+            -- chlkup = t Map.! ch
+            Just chlkup = Map.lookup ch t 
 
         (s, t, e, IId lch rch) -> do
-            writeChMQueue (lchlkup ^. activeQueue) 
-                $ QId (translationLkupToGlobalChan rchlkup)
+            writeChMQueue (lchlkup ^. activeQueue) $ QId (translationLkupToGlobalChan rchlkup)
 
             -- the channel manager action
             liftIO $ atomically $ do
@@ -285,8 +318,7 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
                         InputLkup linqueue loutqueue -> do
                             -- wait for other queue to be empty of the right 
                             -- channel to be empty
-                            ((isEmptyTQueue <=< readTVar) outrgch) >>= 
-                                check
+                            ((isEmptyTQueue <=< readTVar) outrgch) >>= check
 
                             -- get the left channels output queue and set this
                             -- output queue to the right channels output queue (
@@ -315,16 +347,28 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
                                 (b, [id b = a] | q ) , (a, q'  | [])
                             Set:
 
-                                * [] to point to q
-
                                 * the pointer after removing the head of [id b = a]
                                     to point to q'
+
+                                * [] to point to q
+
                             Mostly duplciated code from previous case:
                             -}
                         OutputLkup loutqueue linqueue -> do
                             ((isEmptyTQueue <=< readTVar) inrgch) >>= 
                                 check
 
+                            outrgch' <- readTVar outrgch
+                            writeTVar (coerce loutqueue) outrgch'
+
+
+                            linqueue' <- linqueue
+                                ^. coerced @ChMQueue @(TVar (TQueue QInstr)) 
+                                % to readTVar
+                            writeTVar inrgch linqueue'
+
+
+                            {-
                             linqueue' <- linqueue 
                                 ^. coerced @ChMQueue @(TVar (TQueue QInstr)) 
                                 % to readTVar
@@ -332,58 +376,35 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
 
                             outrgch' <- readTVar outrgch 
                             writeTVar (coerce loutqueue) outrgch' 
+                            -}
                           where
                             inrgch = rgch ^. coerced 
-                                % chMOutputQueue 
+                                % chMInputQueue 
                                 % coerced @ChMQueue @(TVar (TQueue QInstr)) 
                             outrgch = rgch ^. coerced 
-                                % chMInputQueue 
+                                % chMOutputQueue 
                                 % coerced @ChMQueue @(TVar (TQueue QInstr)) 
 
                     _ -> retry
             return Nothing
 
           where
-            lchlkup = t Map.! lch
-            rchlkup = t Map.! rch
+            -- lchlkup = t Map.! lch
+            Just lchlkup = Map.lookup lch t 
+            -- rchlkup = t Map.! rch
+            Just rchlkup = Map.lookup rch t 
 
         (s, t, e, IPlug chs ((chs0, instrs0), (chs1, instrs1))) -> do
             -- this is essentially the channel manager actions
             -- lchsgchs <- for chs $ \ch -> (\ch -> fmap (ch,) newGlobalChan) chs
             -- Okay this is kinda stupid 
-            lchsgchs <- for chs $ \ch -> do
-                gch <- newGlobalChan 
-                let chint = coerce @LocalChan @Int ch
-
-                -- negative channels are reserved for servicechannels
-                when (chint < 0) $ void $ do
-                    chref <- gview serviceChRefFresh 
-                    liftIO $ atomicModifyIORef' chref 
-                        ( coerce @Int @ServiceCh 
-                        . succ 
-                        . coerce @ServiceCh @Int &&& id)
-
-                    -- silly way of doing services. like actually so silly. still can't believe
-                    -- this was decided to do it this way...
-                    hn <- gview serviceHostName
-                    pn <- gview servicePortName
-                    liftIO $ spawnCommand $ concat
-                        [ "xterm -e "
-                        , "'"
-                        , "mpl-client"
-                        , " --hostname=" ++ show hn
-                        , " --port=" ++ show pn
-                        , " --service-ch=" ++ show (show ch)
-                        , "'"
-                        ]
-
-                return (ch, gch)
+            lchsgchs <- mplMachOpenChs chs
 
             let -- new translations for t0 (recall the first phrase should be 
                 -- all output polarity)
                 t0n = Map.fromList 
-                        ( lchsgchs & mapped %~
-                            \(ch, gch) -> (ch,) $ OutputLkup 
+                        ( lchsgchs & mapped % _2 %~
+                            \gch -> OutputLkup 
                                 { _activeQueue = gch ^. coerced % chMOutputQueue
                                 , _otherQueue = gch ^. coerced % chMInputQueue
                                 }
@@ -391,13 +412,13 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
                 -- new translations for t1 (recall the second phrase should be 
                 -- all input polarity)
                 t1n = Map.fromList 
-                        ( lchsgchs & mapped %~
-                            \(ch, gch) -> (ch,) $ InputLkup 
+                        ( lchsgchs & mapped % _2 %~
+                            \gch -> InputLkup 
                                 { _activeQueue = gch ^. coerced % chMInputQueue 
                                 , _otherQueue = gch ^. coerced % chMOutputQueue
                                 }
                         )
-                t0 = Map.restrictKeys t chs0 <>  t0n
+                t0 = Map.restrictKeys t chs0 <> t0n
                 t1 = Map.restrictKeys t chs1 <> t1n
 
                 stec0 = stec 
@@ -416,15 +437,17 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
 
             return Nothing
 
-        ([], t, e, IHalt ch) -> do
+        (_, t, e, IHalt ch) -> do
             -- writeChMQueue (chlkup ^. activeQueue) QHalt
             return Nothing
           where
-            chlkup = t Map.! ch
+            -- chlkup = t Map.! ch
+            Just chlkup = Map.lookup ch t
 
         (s, t, e, IRun tmapping callix ) -> do
-            instrs <- gviews supercombinators (Arr.!callix)
-            let t' = Map.map (\lch -> t Map.! lch) $ coerce tmapping
+            instrs <- gviews supercombinators (Arr.! callix)
+            -- let t' = Map.map (\lch -> t Map.! lch) $ coerce tmapping
+            let t' = Map.map (\lch -> fromJust $ Map.lookup lch t) $ coerce tmapping
 
             return $ Just $ stec 
                 & translation !~ t'
@@ -435,7 +458,16 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
             return $ Just $ stec
                 & code !~ c
           where
-            chlkup = t Map.! ch
+            -- chlkup = t Map.! ch
+            Just chlkup = Map.lookup ch t 
+
+        (s, t, e, ISHPut ch sinstr) -> do
+            writeChMQueue (chlkup ^. activeQueue) $ QSHPut sinstr
+            return $ Just $ stec
+                & code !~ c
+          where
+            Just chlkup = Map.lookup ch t 
+            -- chlkup = t Map.! ch
 
         (s, t , e, IHCase ch hcases) -> do
             writeChMQueue (chlkup ^. activeQueue) $ QHCase (stec & code !~ c) hcases
@@ -536,3 +568,63 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
     stecenv = stec ^. environment
     stecstack = stec ^. stack
     stectranslation = stec ^. translation
+
+-- | this is essentially the channel manager actions
+-- lchsgchs <- for chs $ \ch -> (\ch -> fmap (ch,) newGlobalChan) chs
+-- Okay this is kinda stupid. like not kinda, like really really stupid..
+mplMachOpenChs :: 
+    -- | local channels to open up
+    [LocalChan] ->
+    -- | each local channel and its coresponding global channel
+    MplMach MplMachEnv [(LocalChan, GlobalChan)]
+mplMachOpenChs chs = for chs $ \ch -> do
+    gch <- newGlobalChan 
+    let chint = coerce @LocalChan @Int ch
+
+    -- negative channels are reserved for servicechannels
+    when (isTermServiceCh ch) $ void $ do
+        liftIO $ putStrLn $ "SERVICE CH: "++ show ch
+        -- give this service channel a unique id
+        chref <- gview serviceChRefFresh 
+        -- Okay a bit strange -- @svch@ SHOULD be the same integer
+        -- as @ch@.
+        {-
+        svch <- liftIO $ atomicModifyIORef' chref 
+            ( coerce @Int @ServiceCh 
+            . pred 
+            . coerce @ServiceCh @Int &&& id)
+        -}
+        let svch = coerce @LocalChan @ServiceCh ch
+
+        -- then, add this to the map of all services.
+        svmap <- gview serviceMap
+        () <- liftIO $ atomicModifyIORef' svmap
+            ( 
+              Map.insert svch 
+                ( InputLkup 
+                    { _activeQueue = gch ^. coerced % chMInputQueue
+                    , _otherQueue = gch ^. coerced % chMOutputQueue
+                    }
+                )  
+              &&& const ()
+            ) 
+
+
+        -- silly way of doing services. 
+        -- like actually so silly. still can't believe
+        -- this was decided to do it this way...
+        hn <- gview serviceHostName
+        pn <- gview servicePortName
+        liftIO $ spawnCommand $ concat
+            [ "xterm -e "
+            , "'"
+            , "mpl-client"
+            , " --hostname=" ++ show hn
+            , " --port=" ++ show pn
+            , " --service-ch=" ++ show (show $ coerce @LocalChan @Int ch)
+            , "; read"
+            , "'"
+            ]
+        liftIO $ threadDelay 100000
+
+    return (ch, gch)

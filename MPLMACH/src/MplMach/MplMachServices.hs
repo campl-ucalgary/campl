@@ -20,6 +20,7 @@ import qualified Data.Attoparsec.ByteString.Char8 as A
 import Control.Monad.State.Strict
 
 import Control.Exception
+import Control.Concurrent hiding (yield)
 import Control.Concurrent.STM
 import Control.Concurrent (forkFinally)
 
@@ -37,6 +38,8 @@ import Data.Maybe
 
 import Network.Socket
 import Network.Socket.ByteString
+
+import Debug.Trace
 
 
 data SNInstr
@@ -73,7 +76,7 @@ serviceClient s = gview equality >>= \env -> do
     ~(Just egch, pbts) <- P.runStateT (PA.parse pServiceCh) (recvPipe s) 
     svmp <- liftIO $ env ^. serviceMap % to readIORef 
     case egch of
-        Right gch -> let gchlkup = fromJust $ svmp ^. at gch in
+        Right gch -> let gchlkup = fromJust $ svmp ^. at gch in 
             serviceClientLoop s gchlkup pbts (serviceQueueSInstrPipe gchlkup)
         Left err -> liftIO $ throwIO err
 
@@ -119,20 +122,25 @@ serviceClientLoop sock gchlkup psock pinstrs = next pinstrs >>= \case
                     Just (Right val) -> return (psock', val)
                     _ -> loop psock'
         SHPutInt -> do
+
             v <- liftIO $ atomically $ 
                 gchlkup ^. otherQueue % to readChMQueue
                     >>= readTQueue
                     >>= \case
                         QPut (VInt v) -> return v
                         bad -> throwSTM $ ppShowIllegalStep bad
+
             -- send we want to put an int
             liftIO $ sendAll sock $ snInstrToByteString $ SNPutInt
+
             -- send actually put the int
             liftIO $ sendAll sock $ snInstrToByteString $ SNInt v
                 
             serviceClientLoop sock gchlkup psock pinstrs'
 
-        SHClose -> return ()
+        SHClose -> do
+            liftIO $ sendAll sock $ snInstrToByteString SNClose
+            return ()
 
 serviceQueueSInstrPipe ::
     ( HasMplMachServicesEnv r ) =>
@@ -140,12 +148,13 @@ serviceQueueSInstrPipe ::
     Producer SInstr (MplMach r) ()
 serviceQueueSInstrPipe gchlkup = go
   where
-    go = join $ fmap yield $ liftIO $ atomically $ gchlkup ^. otherQueue % to readChMQueue 
-        >>= readTQueue
-        >>= \case 
-            QHSPut sinstr -> return sinstr
-            bad -> throwSTM $ ppShowIllegalService bad
-
+    -- go = forever $ join $ fmap yield $ liftIO $ atomically $ gchlkup ^. otherQueue % to readChMQueue 
+    go = forever $ join $ fmap yield $ liftIO $ atomically $ do
+        chotherqueue <- gchlkup ^. otherQueue % to readChMQueue 
+        peekTQueue chotherqueue >>= \case
+            QSHPut sinstr -> readTQueue chotherqueue >> return sinstr
+            _ -> retry
+            
 recvPipe :: 
     ( MonadIO m ) =>
     Socket ->
@@ -153,8 +162,11 @@ recvPipe ::
 recvPipe s = go 
   where
     go = do
-        res <- liftIO $ recv s rECV_MAX_BYTES_TO_RECEIVE
-        unless (B.null res) (yield res >> go)
+        -- urgh, for some reason this isn't blocking if it doesn't receive anything
+        -- so we thread delay so it doesn't needlessy spin the cpu...
+        res <- liftIO $ recv s rECV_MAX_BYTES_TO_RECEIVE <* threadDelay 10000
+        unless (B.null res) $ yield res 
+        go
 
     rECV_MAX_BYTES_TO_RECEIVE :: Int
     rECV_MAX_BYTES_TO_RECEIVE = 4096
@@ -196,7 +208,7 @@ pSNCmd =
         , SNGetInt <$ A.string "GETINT"
         , SNPutInt <$ A.string "PUTINT"
 
-        , SNPutInt <$ A.string "CLOSE"
+        , SNClose <$ A.string "CLOSE"
         ]
     <* A.endOfLine
 
@@ -226,7 +238,7 @@ snInstrToByteString = \case
 serviceChToByteString :: 
     ServiceCh ->
     ByteString
-serviceChToByteString ch = ':' `B.cons` (B.pack (show (coerce @ServiceCh @Int ch)) `B.append` "\r\n")
+serviceChToByteString ch = '=' `B.cons` (B.pack (show (coerce @ServiceCh @Int ch)) `B.append` "\r\n")
     
 
 

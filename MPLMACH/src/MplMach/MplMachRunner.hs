@@ -12,6 +12,11 @@ import MplMach.MplMachServices
 
 import Network.Socket
 
+import Data.Map (Map)
+import qualified Data.Map as Map
+
+import Control.Arrow
+
 import Control.Exception
 import Control.Monad.IO.Class
 
@@ -33,10 +38,10 @@ mplMachRunnner ::
     -- | environemnt to run this machine in
     MplMachEnv -> 
     -- | main function to execute.
-    Stec -> 
+    (([LocalChan], [LocalChan]), [Instr]) -> 
     -- | resulting in IO monad
     IO ()
-mplMachRunnner env stec = withSocketsDo $ flip runMplMach env $ do
+mplMachRunnner env ((mainins, mainouts), instrs) = withSocketsDo $ flip runMplMach env $ do
     let hints = defaultHints { addrSocketType = Stream }
     addrinf <- liftIO $ fmap head $ getAddrInfo (Just hints) (Just $ env ^. serviceHostName) (Just $ env ^. servicePortName)
     liftIO $ bracket 
@@ -56,7 +61,7 @@ mplMachRunnner env stec = withSocketsDo $ flip runMplMach env $ do
         listen s 1024
         return s
 
-    -- the main ``loop'' of the program.
+    -- the main ``loop'' of the program which doesn't actaully loop.
     loop s = gview equality >>= \env -> do
 
         -- set up the thread for managing services. we use the 'link' so that if
@@ -65,6 +70,24 @@ mplMachRunnner env stec = withSocketsDo $ flip runMplMach env $ do
             svthd <- async $ flip runMplMach env $ serviceManager s 
             link svthd
             return svthd
+
+        -- Set up the main function with the required translations 
+        -- open up the channels used in the arguments of the main function
+        gmainins <- mplMachOpenChs mainins
+        gmainouts <- mplMachOpenChs mainouts
+        let maint = Map.fromList $ concat
+                [ gmainins & mapped % _2 %~
+                    \gch -> InputLkup 
+                        { _activeQueue = gch ^. coerced % chMInputQueue
+                        , _otherQueue = gch ^. coerced % chMOutputQueue
+                        }
+                , gmainouts & mapped % _2 %~
+                    \gch -> OutputLkup 
+                        { _activeQueue = gch ^. coerced % chMOutputQueue
+                        , _otherQueue = gch ^. coerced % chMInputQueue
+                        }
+                ]
+            stec = Stec mempty maint mempty instrs
 
         -- run the machine; and unconditionally kill the other thread
         _ <- liftIO $ liftIO (flip runMplMach env (mplMachSteps stec)) 

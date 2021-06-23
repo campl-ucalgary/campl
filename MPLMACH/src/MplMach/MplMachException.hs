@@ -4,11 +4,15 @@ import qualified Text.Show.Pretty as PrettyShow
 
 -- | Exception for an step
 newtype IllegalStep = IllegalStep String
-  deriving Show
+
+instance Show IllegalStep where
+    show (IllegalStep str) = "IllegalStep: " ++ str
 
 -- | Exception for an illegal service
 newtype IllegalService = IllegalService String
-  deriving Show
+
+instance Show IllegalService where
+    show (IllegalService str) = "IllegalService: " ++ str
 
 instance Exception IllegalStep where
 instance Exception IllegalService where
