@@ -63,6 +63,7 @@ import MplAsmLanguage.LexMPLASM
   L_Unstring { PT _ (T_Unstring _) }
   L_LeqI { PT _ (T_LeqI _) }
   L_EqI { PT _ (T_EqI _) }
+  L_EqB { PT _ (T_EqB _) }
   L_LeqC { PT _ (T_LeqC _) }
   L_EqC { PT _ (T_EqC _) }
   L_Leqs { PT _ (T_Leqs _) }
@@ -79,6 +80,7 @@ import MplAsmLanguage.LexMPLASM
   L_Get { PT _ (T_Get _) }
   L_Put { PT _ (T_Put _) }
   L_Hput { PT _ (T_Hput _) }
+  L_Shput { PT _ (T_Shput _) }
   L_Hcase { PT _ (T_Hcase _) }
   L_Split { PT _ (T_Split _) }
   L_Fork { PT _ (T_Fork _) }
@@ -152,6 +154,9 @@ LeqI  : L_LeqI { MplAsmLanguage.AbsMPLASM.LeqI (mkPosToken $1) }
 EqI :: { MplAsmLanguage.AbsMPLASM.EqI}
 EqI  : L_EqI { MplAsmLanguage.AbsMPLASM.EqI (mkPosToken $1) }
 
+EqB :: { MplAsmLanguage.AbsMPLASM.EqB}
+EqB  : L_EqB { MplAsmLanguage.AbsMPLASM.EqB (mkPosToken $1) }
+
 LeqC :: { MplAsmLanguage.AbsMPLASM.LeqC}
 LeqC  : L_LeqC { MplAsmLanguage.AbsMPLASM.LeqC (mkPosToken $1) }
 
@@ -199,6 +204,9 @@ Put  : L_Put { MplAsmLanguage.AbsMPLASM.Put (mkPosToken $1) }
 
 Hput :: { MplAsmLanguage.AbsMPLASM.Hput}
 Hput  : L_Hput { MplAsmLanguage.AbsMPLASM.Hput (mkPosToken $1) }
+
+Shput :: { MplAsmLanguage.AbsMPLASM.Shput}
+Shput  : L_Shput { MplAsmLanguage.AbsMPLASM.Shput (mkPosToken $1) }
 
 Hcase :: { MplAsmLanguage.AbsMPLASM.Hcase}
 Hcase  : L_Hcase { MplAsmLanguage.AbsMPLASM.Hcase (mkPosToken $1) }
@@ -353,6 +361,7 @@ ListCom : {- empty -} { [] }
 
 Com :: { MplAsmLanguage.AbsMPLASM.Com }
 Com : PIdent ':=' Com { MplAsmLanguage.AbsMPLASM.AC_ASSIGN $1 $3 }
+    | Store PIdent { MplAsmLanguage.AbsMPLASM.AC_STORE $1 $2 }
     | Load PIdent { MplAsmLanguage.AbsMPLASM.AC_LOAD $1 $2 }
     | Ret { MplAsmLanguage.AbsMPLASM.AC_RET $1 }
     | Call PIdent '(' ListPIdent ')' { MplAsmLanguage.AbsMPLASM.AC_CALL_FUN $1 $2 $4 }
@@ -366,6 +375,7 @@ Com : PIdent ':=' Com { MplAsmLanguage.AbsMPLASM.AC_ASSIGN $1 $3 }
     | Append { MplAsmLanguage.AbsMPLASM.AC_APPEND $1 }
     | CBool BBool { MplAsmLanguage.AbsMPLASM.AC_BOOL $1 $2 }
     | Unstring { MplAsmLanguage.AbsMPLASM.AC_UNSTRING $1 }
+    | EqB { MplAsmLanguage.AbsMPLASM.AC_EQB $1 }
     | LeqI { MplAsmLanguage.AbsMPLASM.AC_LEQ $1 }
     | EqI { MplAsmLanguage.AbsMPLASM.AC_EQI $1 }
     | LeqC { MplAsmLanguage.AbsMPLASM.AC_LEQC $1 }
@@ -391,6 +401,7 @@ Com : PIdent ':=' Com { MplAsmLanguage.AbsMPLASM.AC_ASSIGN $1 $3 }
     | Get PIdent 'on' PIdent { MplAsmLanguage.AbsMPLASM.AC_GET $1 $2 $4 }
     | Put PIdent 'on' PIdent { MplAsmLanguage.AbsMPLASM.AC_PUT $1 $2 $4 }
     | Hput UIdent '.' UIdent 'on' PIdent { MplAsmLanguage.AbsMPLASM.AC_HPUT $1 $2 $4 $6 }
+    | Shput UIdent 'on' PIdent { MplAsmLanguage.AbsMPLASM.AC_SHPUT $1 $2 $4 }
     | Hcase PIdent 'of' '{' ListLabelledComs '}' { MplAsmLanguage.AbsMPLASM.AC_HCASE $1 $2 $5 }
     | Split PIdent 'into' PIdent PIdent { MplAsmLanguage.AbsMPLASM.AC_SPLIT $1 $2 $4 $5 }
     | Fork PIdent 'as' '{' PIdent 'with' ListPIdent ':' Coms ';' PIdent 'with' ListPIdent ':' Coms '}' { MplAsmLanguage.AbsMPLASM.AC_FORK $1 $2 $5 $7 $9 $11 $13 $15 }

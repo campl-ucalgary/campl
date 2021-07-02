@@ -18,13 +18,19 @@ import qualified MplAsmAST.MplAsmPrinter as Asm
 import qualified MplAsmAST.MplAsmProg as Asm
 import qualified MplAsmPasses.Compile.Compile as Asm
 import qualified MplAsmPasses.Compile.CompileErrors as Asm
+import qualified MplAsmPasses.FromLambdaLifted.FromLambdaLifted as Asm
+import qualified MplAsmPasses.FromLambdaLifted.FromLambdaLiftedErrors as Asm
+import qualified MplAsmPasses.PassesErrorsPprint as Asm
+
 
 -- from cli
 import MplCliRunner.Flags
 import MplCliRunner.Stack
-import MplCliRunner.LambdaLiftedToAsm
 
-import qualified AMPL as AMPL
+-- abstract machine
+import qualified MplMach.MplMachTypes as MplMach
+import qualified MplMach.MplMachRunner as MplMach
+import qualified MplMach.MplMachStack as MplMach
 
 import Optics
 
@@ -51,9 +57,8 @@ import Data.Foldable
 import Text.Show.Pretty
 
 
-cliRunner :: IO ()
-cliRunner = do
-    getOpts >>= execMplCli cliRunPipeline . review _MplCliEnv
+cliRunner :: [String] -> IO ()
+cliRunner args = getOpts args >>= execMplCli cliRunPipeline . review _MplCliEnv
 
 -- | runs the front end passes
 cliRunPipeline :: MplCli ()
@@ -80,7 +85,7 @@ cliRunPipeline = do
         Dump opt@Parsed dpoutput -> liftIO 
             $ dumpOutput dpoutput 
             $ intercalate "\n" 
-                [ intercalate " " ["-- dumped", dumpOptShowOptions opt, " output"]
+                [ intercalate " " ["-- dumped", dumpOptShowOptions opt, "output"]
                 , MplCore.pprint (Proxy :: Proxy MplCore.MplParsed) parsed
                 ]
         _ -> return ()
@@ -99,7 +104,7 @@ cliRunPipeline = do
         Dump opt@Renamed dpoutput -> liftIO 
             $ dumpOutput dpoutput 
             $ intercalate "\n" 
-                [ intercalate " " ["-- dumped", dumpOptShowOptions opt, " output"]
+                [ intercalate " " ["-- dumped", dumpOptShowOptions opt, "output"]
                 , MplCore.pprint (Proxy :: Proxy MplCore.MplRenamed) renamed
                 ]
         _ -> return ()
@@ -119,7 +124,7 @@ cliRunPipeline = do
         Dump opt@TypeChecked dpoutput -> liftIO 
             $ dumpOutput dpoutput 
             $ intercalate "\n" 
-                [ intercalate " " ["-- dumped", dumpOptShowOptions opt, " output"]
+                [ intercalate " " ["-- dumped", dumpOptShowOptions opt, "output"]
                 , MplCore.pprint (Proxy :: Proxy MplCore.MplTypeChecked) typechecked
                 ]
         _ -> return ()
@@ -139,7 +144,7 @@ cliRunPipeline = do
         Dump opt@PatternCompiled dpoutput -> liftIO 
             $ dumpOutput dpoutput 
             $ intercalate "\n" 
-                [ intercalate " " ["-- dumped", dumpOptShowOptions opt, " output"]
+                [ intercalate " " ["-- dumped", dumpOptShowOptions opt, "output"]
                 , MplCore.pprint (Proxy :: Proxy MplCore.MplPatternCompiled) patterncompiled
                 ]
         _ -> return ()
@@ -150,24 +155,31 @@ cliRunPipeline = do
         Dump opt@LambdaLifted dpoutput -> liftIO 
             $ dumpOutput dpoutput 
             $ intercalate "\n" 
-                [ intercalate " " ["-- dumped", dumpOptShowOptions opt, " output"]
+                [ intercalate " " ["-- dumped", dumpOptShowOptions opt, "output"]
                 , MplCore.pprint (Proxy :: Proxy MplCore.MplLambdaLifted) lambdalifted
                 ]
         _ -> return ()
 
     -- to the assembly format
-    let assembled = mplAssembleProg s3 lambdalifted
+    assembled <- liftEither
+        $ Bifunctor.first 
+            ( AssembledException 
+            . show 
+            . (Asm.pprintFromLambdaLiftedErrors :: [Asm.FromLambdaLiftedError] -> Asm.MplAsmDoc) 
+            )
+        $ Asm.mplAssembleProg s3 lambdalifted
+
     for_ flags $ \case
         Dump opt@Assembled dpoutput -> liftIO 
             $ dumpOutput dpoutput 
             $ intercalate "\n" 
-                [ intercalate " " ["-- dumped", dumpOptShowOptions opt, " output"]
+                [ intercalate " " ["-- dumped", dumpOptShowOptions opt, "output"]
                 , Asm.pprint assembled
                 ]
         _ -> return ()
 
     -- transform it to the initial machine state
-    initmachst <- liftEither 
+    (supercombs, mainf) <- liftEither 
         $ Bifunctor.first 
             ( AssembledException 
             . show
@@ -175,9 +187,16 @@ cliRunPipeline = do
             )
         $ Asm.mplAsmProgToInitMachState assembled
 
-    liftIO $ pPrint initmachst
-    -- actually run the machine
-    -- liftIO $ AMPL.execAmplMachWithDefaultsFromInitAMPLMachState "5000" initmachst
+    {-
+    liftIO $ do
+        pPrint supercombs
+        pPrint mainf
+    -}
+
+    -- when the user actulllay wants to run the machien, actually run the machine
+    when (has (folded % _RunMplMach) flags) $ liftIO $ do
+        env <- MplMach.initMplMachEnv supercombs
+        MplMach.mplMachRunnner env mainf
 
     return ()
 

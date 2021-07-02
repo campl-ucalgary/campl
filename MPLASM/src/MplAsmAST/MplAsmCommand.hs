@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
@@ -13,6 +14,8 @@ module MplAsmAST.MplAsmCommand where
 import Optics
 import Data.Kind
 import Data.Functor.Foldable.TH
+
+import qualified MplMach.MplMachTypes as MplMach
 
 type family IdP x
 
@@ -117,10 +120,14 @@ data MplAsmCom x
     | CChar (XCChar x) Char
     | CBool (XCBool x) Bool
 
+    -- TODO: These SHOULD NOT all use the Eq int type family
     -- and, or other bool operators
+    | CEqBool (XCEqInt x)
 
     | CEqInt (XCEqInt x)
+    | CLtInt (XCLeqInt x)
     | CLeqInt (XCLeqInt x)
+
     | CEqChar (XCEqChar x)
     | CLeqChar (XCLeqChar x)
 
@@ -137,7 +144,7 @@ data MplAsmCom x
     | CIf (XCIf x) (IdP x) (MplAsmComs x) (MplAsmComs x)
 
     | CTuple (XCTuple x) [IdP x]
-    | CProj (XCProj x) Word (IdP x)
+    | CProj (XCProj x) Int (IdP x)
 
 
     -- | Concurrent command. @get a on channel@
@@ -145,6 +152,9 @@ data MplAsmCom x
     -- | Concurrent command. @put a on channel@
     | CPut (XCPut x) (IdP x) (IdP x)
     | CHPut (XCHPut x) (TypeAndSpec x) (IdP x)
+
+    | CSHPut (XCHPut x) MplAsmServices (IdP x)
+
     | CHCase (XCHCase x) (IdP x) [LabelledMplConcComs x]
     | CSplit (XCSplit x) (IdP x) (IdP x, IdP x)
     | CFork (XCFork x) (IdP x) (ForkPhrase x, ForkPhrase x)
@@ -154,6 +164,39 @@ data MplAsmCom x
     | CRace (XCRace x) [RacePhrase x]
     | CClose (XCRace x) (IdP x)
     | CHalt (XCRace x) (IdP x)
+
+{- | These are the possible external services. -}
+data MplAsmServices 
+    = SHGetInt
+    | SHPutInt
+
+    | SHGetString
+    | SHPutString
+
+    | SHGetChar
+    | SHPutChar
+
+    | SHClose
+  deriving Show
+
+maybeTermService :: 
+    MplAsmServices ->
+    Maybe MplMach.SInstr
+maybeTermService = \case
+    SHGetInt -> Just MplMach.SHGetInt
+    SHPutInt -> Just MplMach.SHPutInt
+
+    SHGetChar -> Just MplMach.SHGetChar
+    SHPutChar -> Just MplMach.SHPutChar
+
+
+    SHGetString -> Just MplMach.SHGetString
+    SHPutString -> Just MplMach.SHPutString
+
+    SHClose -> Just MplMach.SHClose
+
+    _ -> Nothing
+
 
 type MplAsmComs x = [MplAsmCom x]
 type LabelledMplSeqComs x = (TypeAndSpec x, [IdP x], MplAsmComs x) 

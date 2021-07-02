@@ -33,6 +33,7 @@ import Control.Applicative
 import Data.Bool
 import Data.Function
 import Data.Foldable
+import qualified Data.Array as Arr
 
 import Data.Functor.Foldable (Base, cata, para, histo)
 

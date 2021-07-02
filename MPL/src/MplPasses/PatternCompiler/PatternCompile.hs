@@ -36,6 +36,7 @@ import Data.Kind
 import Data.Maybe
 import Data.List
 import Data.Monoid
+import Data.Either
 
 
 import MplPasses.PatternCompiler.PatternCompileErrors
@@ -169,10 +170,10 @@ patternCompileExpr = cata go
         EBuiltInOpF ann op l r -> EBuiltInOp (snd ann) op <$> l <*> r
         EIfF ann iff thenf elsef -> EIf ann <$> iff <*> thenf <*> elsef
 
-        ESwitchF ann switches -> 
+        ESwitchF ann switches -> do
             sequenceOf (traversed % each) switches 
-                >>= patternCompileExhaustiveESwitchCheck 
-                >>= return . foldr f (EIllegalInstr ())
+                >>= \switches' -> patternCompileExhaustiveESwitchCheck switches'
+                    >>= return . foldr f (EIllegalInstr $ getExprType $ snd $ NE.head switches')
           where
             f :: 
                 (MplExpr MplPatternCompiled, MplExpr MplPatternCompiled) -> 
@@ -376,14 +377,6 @@ patternCompileExhaustiveCheck = and . fmap go . transpose . NE.toList
         , has (folded % _PNull) patts
 
         -- each of the vertical lines of matches on records must be exhaustive as well.
-        -- okay actually there is a bug here it is as follows:
-        --      - If you have 
-        --              (P0 := Cons(a,b)) -> ...
-        --              (P1 := MyNil) -> ...
-        --        it will think this is exhaustive, so we need to update it so it checks if the patterns
-        --          are exhaustive individually by the destructors.
-        --          TODO
-        --      - THIS HAS BEEN FIXED
         , and 
             [ isJust mdts
             , getAll $ foldMap (All . patternCompileExhaustiveCheck . NE.fromList . transpose . pure) dtspatts'
@@ -399,8 +392,22 @@ patternCompileExhaustiveCheck = and . fmap go . transpose . NE.toList
         -- (unlike Chars and Ints.. we just assume it is impossible to exhaust them completely)
         , and 
             [ isJust $ traverse  (preview _PBool) patts
-            , andOf (folded % _PBool % _2) patts
-            , andOf (folded % _PBool % _2 % to not) patts
+            , orOf (folded % _PBool % _2) patts
+            , orOf (folded % _PBool % _2 % to not) patts
+            ]
+
+        -- the built in list
+        , and
+            -- if all are lists, and we have a cons, and a null we are exhaustive 
+            [ all (\patt -> has _PListCons patt || has _PList patt) patts
+            , orOf (folded % _PListCons % to (const True)) patts
+            , orOf (folded % _PList % _2 % to null) patts
+            ]
+
+        -- the built in unit test
+        , and
+            -- if all are units, we are done
+            [ all (\patt -> has _PUnit patt) patts
             ]
             
         -- each constructor is present in this vertical line of patterns, and each of the patterns
@@ -499,9 +506,9 @@ patternCompileSeqPatPhrases pattphrases =
         let usandtp = zipWith (curry (second getPattType)) us (fst . NE.head $ pattphrases) 
             (patts :: [MplPattern MplPatternCompiled]) = fmap (review _PVar . swap) usandtp
 
-        pattexpr <- go (map VarSub usandtp) (NE.toList pattphrases) (EIllegalInstr ()) 
+        pattexpr <- go (map VarSub usandtp) (NE.toList pattphrases) (EIllegalInstr restp) 
 
-        return $ (patts, pattexpr)  
+        return (patts, pattexpr)  
   where
     -- the type of the codomain 
     restp :: XMplType MplTypeChecked
@@ -526,6 +533,8 @@ patternCompileSeqPatPhrases pattphrases =
                 , intrule
                 , boolrule
                 , charrule
+                , listrule
+                , unitrule
                 ]
           where
             varrule :: _ (Maybe (MplExpr MplPatternCompiled))
@@ -556,6 +565,124 @@ patternCompileSeqPatPhrases pattphrases =
                     ([MplPattern MplTypeChecked], MplExpr MplPatternCompiled)
                 h (Right v) pattsexpr = pattsexpr & _2 %~ substituteExpr (v,u)
                 h _ pattsexpr = pattsexpr 
+
+            -- rule for a built in list.. (essentially 'ctersrule' but hardcoded for lists)
+            listrule  :: _ (Maybe (MplExpr MplPatternCompiled))
+            listrule = sequenceA $ traverse (match . fst) pattheads <&> f
+              where
+                -- Left is PListCons
+                -- Right is Either PList or PString
+                match :: MplPattern MplTypeChecked -> Maybe 
+                    (Either 
+                        ((Location, MplType MplTypeChecked), MplPattern MplTypeChecked, MplPattern MplTypeChecked)
+                        (
+                        Either
+                            ((Location, MplType MplTypeChecked), [MplPattern MplTypeChecked])
+                            ((Location, MplType MplTypeChecked), String)
+                        )
+                    )
+                match = \case 
+                    PListCons cxt a b -> Just $ Left (cxt,a,b)
+                    PList cxt lst -> Just $ Right $ Left (cxt, lst)
+                    PString cxt str -> Just $ Right $ Right (cxt, str)
+                    _ -> Nothing
+
+                f :: NonEmpty _ -> m (MplExpr MplPatternCompiled)
+                f cters = fmap (ECase restp (getExprFromSubstitutable u) . NE.fromList) $ sequenceA [lstcons, lstnil]
+                    -- [ lstcons $ mapMaybe g0 $ NE.toList cters , lstnil  $ mapMaybe g1 $ NE.toList cters ]
+                  where 
+                    (consacc, nilacc) = foldl' g mempty $ reverse $ zip (NE.toList cters) (NE.toList patttails)
+                      where
+                        g acc (lstpatt, patttail) = case lstpatt of
+                            Left (ann, l, r) -> first ((patttail & _1 %~ ([l, r]<>)):) acc
+                            -- regular list
+                            Right (Left (ann, l:r)) -> first ((patttail & _1 %~ ([l, PList ann r]<>)):) acc
+                            Right (Left (ann, [])) -> second (patttail:) acc 
+                            -- string
+                            Right (Right (ann, [])) -> second (patttail:) acc 
+                            Right (Right (ann, l:r)) -> 
+                                first ((patttail & _1 %~ ([PChar ann l, PList ann $ map (PChar ann) r]<>)):) acc
+
+                    -- get the type of the list.. this is a bit of a mess just by design of the 
+                    -- language
+                    ~tplst@(TypeBuiltIn (TypeListF _ tphead)) = getPattType $ fst $ NE.head pattheads 
+
+                    lstcons = do
+                        u0 <- freshUIdP
+                        u1 <- freshUIdP
+
+                        let patt' =  PSimpleListCons tplst u0 u1
+
+                        if null consacc
+                            then pure $ (patt',) mexpr
+                            else fmap (patt',) $ go (map VarSub [(u0, tphead), (u1, tplst)] ++ us) consacc mexpr
+
+                    lstnil = do
+                        let patt' =  PSimpleListEmpty tplst 
+
+                        if null nilacc
+                            then pure $ (patt',) mexpr
+                            else fmap (patt',) $ go us nilacc mexpr
+
+                {-
+                match :: MplPattern MplTypeChecked -> Maybe 
+                    (Either 
+                        ((Location, MplType MplTypeChecked), MplPattern MplTypeChecked, MplPattern MplTypeChecked)
+                        ((Location, MplType MplTypeChecked), [MplPattern MplTypeChecked])
+                    )
+                match = \case 
+                    PListCons cxt a b -> Just $ Left (cxt,a,b)
+                    PList cxt lst -> Just $ Right (cxt, lst)
+                    _ -> Nothing
+
+
+                f :: NonEmpty _ -> m (MplExpr MplPatternCompiled)
+                f cters = fmap (ECase restp (getExprFromSubstitutable u) . NE.fromList) $ sequenceA [lstcons, lstnil]
+                    -- [ lstcons $ mapMaybe g0 $ NE.toList cters , lstnil  $ mapMaybe g1 $ NE.toList cters ]
+                  where 
+                    (consacc, nilacc) = foldl' g mempty $ reverse $ zip (NE.toList cters) (NE.toList patttails)
+                      where
+                        g acc (lstpatt, patttail) = case lstpatt of
+                            Left (ann, l, r) -> first ((patttail & _1 %~ ([l, r]<>)):) acc
+                            Right (ann, l:r) -> first ((patttail & _1 %~ ([l, PList ann r]<>)):) acc
+                            Right (ann, []) -> second (patttail:) acc 
+
+                    -- get the type of the list.. this is a bit of a mess just by design of the 
+                    -- language
+                    ~tplst@(TypeBuiltIn (TypeListF _ tphead)) = getPattType $ fst $ NE.head pattheads 
+
+                    lstcons = do
+                        u0 <- freshUIdP
+                        u1 <- freshUIdP
+
+                        let patt' =  PSimpleListCons tplst u0 u1
+
+                        if null consacc
+                            then pure $ (patt',) mexpr
+                            else fmap (patt',) $ go (map VarSub [(u0, tphead), (u1, tplst)] ++ us) consacc mexpr
+
+                    lstnil = do
+                        let patt' =  PSimpleListEmpty tplst 
+
+                        if null nilacc
+                            then pure $ (patt',) mexpr
+                            else fmap (patt',) $ go us nilacc mexpr
+                    -}
+
+
+            -- hard coded case for the unit rule
+            unitrule  :: _ (Maybe (MplExpr MplPatternCompiled))
+            unitrule = sequenceA $ traverse (match . fst) pattheads <&> f
+              where
+                match = preview _PSimpleUnit 
+
+                f :: NonEmpty (XPSimpleUnit (MplPass 'TypeChecked)) -> m (MplExpr MplPatternCompiled)
+                f cters = fmap (ECase restp (getExprFromSubstitutable u) . NE.fromList) $ sequenceA [unitpat]
+                  where
+                    unitpat = do
+                        let patt' = PSimpleUnit ty
+                        fmap (patt',) $ go us (NE.toList patttails) mexpr
+
 
             ctersrule :: _ (Maybe (MplExpr MplPatternCompiled))
             ctersrule = sequenceA $ match pattheads <&> f
@@ -786,13 +913,16 @@ patternCompileSeqPatPhrases pattphrases =
                 ([MplPattern MplTypeChecked], MplExpr MplPatternCompiled) -> 
                 Bool
             p a b =  let p' predicate = ((&&) `on`  predicate . head . fst) a b in or 
-                [ p' (has _PVar) || p' (has _PNull)
+                [ p' (\n -> has _PVar n || has _PNull n) 
                 , p' (has _PConstructor)
 
                 -- built in primitive types
                 , p' (has _PInt)
                 , p' (has _PChar)
                 , p' (has _PBool)
+
+                , p' (\n -> has _PList n || has _PListCons n)
+                , p' (has _PUnit) 
 
                 -- , p' (has _PRecord)
                 -- , p' (has _PTuple)
@@ -842,6 +972,8 @@ patternCompileConcPatPhrases pattphrases =
                 , intrule
                 , boolrule
                 , charrule
+                , listrule
+                , unitrule
                 ]
           where
             varrule :: _ (Maybe (NonEmpty (MplCmd MplPatternCompiled)))
@@ -872,6 +1004,82 @@ patternCompileConcPatPhrases pattphrases =
                     ([MplPattern MplTypeChecked], NonEmpty (MplCmd MplPatternCompiled))
                 h (Right v) pattsexpr = pattsexpr & _2 % mapped %~ substitute (v,u)
                 h _ pattsexpr = pattsexpr 
+
+            -- rule for a built in list.. (essentially 'ctersrule' but hardcoded for lists)
+            listrule  :: _ (Maybe (NonEmpty (MplCmd MplPatternCompiled)))
+            listrule = sequenceA $ traverse (match . fst) pattheads <&> f
+              where
+                -- Left is PListCons
+                -- Right is Either PList or PString
+                match :: MplPattern MplTypeChecked -> Maybe 
+                    (Either 
+                        ((Location, MplType MplTypeChecked), MplPattern MplTypeChecked, MplPattern MplTypeChecked)
+                        (
+                        Either
+                            ((Location, MplType MplTypeChecked), [MplPattern MplTypeChecked])
+                            ((Location, MplType MplTypeChecked), String)
+                        )
+                    )
+                match = \case 
+                    PListCons cxt a b -> Just $ Left (cxt,a,b)
+                    PList cxt lst -> Just $ Right $ Left (cxt, lst)
+                    PString cxt str -> Just $ Right $ Right (cxt, str)
+                    _ -> Nothing
+
+                f :: NonEmpty _ -> m (NonEmpty (MplCmd MplPatternCompiled))
+                f cters = fmap (pure . CCase () (getExprFromSubstitutable u) . NE.fromList) $ sequenceA [lstcons, lstnil]
+                    -- [ lstcons $ mapMaybe g0 $ NE.toList cters , lstnil  $ mapMaybe g1 $ NE.toList cters ]
+                  where 
+                    (consacc, nilacc) = foldl' g mempty $ reverse $ zip (NE.toList cters) (NE.toList patttails)
+                      where
+                        g acc (lstpatt, patttail) = case lstpatt of
+                            Left (ann, l, r) -> first ((patttail & _1 %~ ([l, r]<>)):) acc
+                            -- regular list
+                            Right (Left (ann, l:r)) -> first ((patttail & _1 %~ ([l, PList ann r]<>)):) acc
+                            Right (Left (ann, [])) -> second (patttail:) acc 
+                            -- string
+                            Right (Right (ann, [])) -> second (patttail:) acc 
+                            Right (Right (ann, l:r)) -> 
+                                first ((patttail & _1 %~ ([PChar ann l, PList ann $ map (PChar ann) r]<>)):) acc
+
+                    -- get the type of the list.. this is a bit of a mess just by design of the 
+                    -- language
+                    ~tplst@(TypeBuiltIn (TypeListF _ tphead)) = getPattType $ fst $ NE.head pattheads 
+
+                    lstcons = do
+                        u0 <- freshUIdP
+                        u1 <- freshUIdP
+
+                        let patt' =  PSimpleListCons tplst u0 u1
+
+                        if null consacc
+                            then pure $ (patt',) mexpr
+                            else fmap (patt',) $ go (map VarSub [(u0, tphead), (u1, tplst)] ++ us) consacc mexpr
+
+                    lstnil = do
+                        let patt' =  PSimpleListEmpty tplst 
+
+                        if null nilacc
+                            then pure $ (patt',) mexpr
+                            else fmap (patt',) $ go us nilacc mexpr
+
+
+
+            -- hard coded case for the unit rule
+            unitrule  :: _ (Maybe (NonEmpty (MplCmd MplPatternCompiled)))
+            unitrule = sequenceA $ traverse (match . fst) pattheads <&> f
+              where
+                match = preview _PSimpleUnit 
+
+                ty = getPattType $ fst $ NE.head pattheads 
+
+                f :: NonEmpty (XPSimpleUnit (MplPass 'TypeChecked)) -> m (NonEmpty (MplCmd MplPatternCompiled))
+                f cters = fmap (pure . CCase () (getExprFromSubstitutable u) . NE.fromList) $ sequenceA [unitpat]
+                  where
+                    unitpat = do
+                        let patt' = PSimpleUnit ty
+                        fmap (patt',) $ go us (NE.toList patttails) mexpr
+                        
 
             ctersrule :: _ (Maybe (NonEmpty (MplCmd MplPatternCompiled)))
             ctersrule = sequenceA $ match pattheads <&> f
@@ -927,6 +1135,8 @@ patternCompileConcPatPhrases pattphrases =
                         g acc ((phrase, identt, cterpatts), patttail) = 
                             let patttail' = patttail & _1 %~ (cterpatts<>)
                             in acc & at identt %~ Just . maybe ( patttail' :| [] ) (NE.cons patttail')
+
+
 
             {- There's some somewhat complicated interactions going on here (this simlarly occurs with the tuple).. 
              - Since we did not choose to group based on destructors, we know that when 
@@ -1099,13 +1309,16 @@ patternCompileConcPatPhrases pattphrases =
                 ([MplPattern MplTypeChecked], NonEmpty (MplCmd MplPatternCompiled)) -> 
                 Bool
             p a b =  let p' predicate = ((&&) `on`  predicate . head . fst) a b in or 
-                [ p' (has _PVar) || p' (has _PNull)
+                [ p' (\n -> has _PVar n || has _PNull n) 
                 , p' (has _PConstructor)
 
                 -- built in primitive types
                 , p' (has _PInt)
                 , p' (has _PChar)
                 , p' (has _PBool)
+
+                , p' (\n -> has _PList n || has _PListCons n)
+                , p' (has _PUnit) 
 
                 -- , p' (has _PRecord)
                 -- , p' (has _PTuple)

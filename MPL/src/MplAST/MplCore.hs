@@ -59,7 +59,7 @@ typeLocationSpan ::
     , HasLocation (XTypeIntF x)
     , HasLocation (XTypeCharF x)
     , HasLocation (XTypeDoubleF x)
-    , HasLocation (XTypeStringF x)
+    -- , HasLocation (XTypeStringF x)
     , HasLocation (XTypeUnitF x)
     , HasLocation (XTypeBoolF x)
     , HasLocation (XTypeListF x)
@@ -78,7 +78,7 @@ typeLocationSpan ::
     , c (XTypeIntF x)
     , c (XTypeCharF x)
     , c (XTypeDoubleF x)
-    , c (XTypeStringF x)
+    -- , c (XTypeStringF x)
     , c (XTypeUnitF x)
     , c (XTypeBoolF x)
     , c (XTypeListF x)
@@ -126,7 +126,7 @@ typeLocationSpan = cata go
             TypeNegF ann l -> sconcat $ locationToSpan ann :| [l]
             TypeTopBotF ann -> locationToSpan ann
 
-            TypeStringF ann -> locationToSpan ann
+            -- TypeStringF ann -> locationToSpan ann
             TypeUnitF ann -> locationToSpan ann
             TypeBoolF ann -> locationToSpan ann
             TypeListF ann rst -> locationToSpan ann <> rst

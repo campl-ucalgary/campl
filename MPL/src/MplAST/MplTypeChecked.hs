@@ -58,6 +58,8 @@ instance Eq TypeT where
 instance Ord TypeT where
     NamedType a <= NamedType b = a ^. uniqueTag <= b ^. uniqueTag
     GenNamedType a <= GenNamedType b = a <= b 
+    NamedType a <= GenNamedType b = a ^. uniqueTag <= b 
+    GenNamedType a <= NamedType b = a <= b ^. uniqueTag
 
 instance HasUniqueTag TypeT where
     uniqueTag = lens getter setter
@@ -204,6 +206,10 @@ type instance XPChar MplTypeChecked = (Location, XMplType MplTypeChecked)
 type instance XPList MplTypeChecked = (Location, XMplType MplTypeChecked)
 type instance XPListCons MplTypeChecked = (Location, XMplType MplTypeChecked)
 
+type instance XPSimpleListCons MplTypeChecked = Void
+type instance XPSimpleListEmpty MplTypeChecked = Void
+type instance XPSimpleUnit MplTypeChecked = Void
+
 -- Process Command
 type instance XMplCmd MplTypeChecked = MplCmd MplTypeChecked
 type instance XCRun MplTypeChecked = MplProcess MplTypeChecked
@@ -218,7 +224,6 @@ type instance XCFork MplTypeChecked = KeyWordNameOcc
 type instance XCId MplTypeChecked = KeyWordNameOcc
 type instance XCIdNeg MplTypeChecked = KeyWordNameOcc
 type instance XCRace MplTypeChecked = KeyWordNameOcc
-type instance XCPlug MplTypeChecked = Void
 type instance XCPlugs MplTypeChecked = 
     ( KeyWordNameOcc
     , [(IdP MplTypeChecked, XMplType MplTypeChecked)])
@@ -273,7 +278,7 @@ type instance XXType MplTypeChecked = Void
 type instance XTypeIntF MplTypeChecked = Maybe NameOcc
 type instance XTypeCharF MplTypeChecked = Maybe NameOcc
 type instance XTypeDoubleF MplTypeChecked = Maybe NameOcc
-type instance XTypeStringF MplTypeChecked = Maybe NameOcc
+-- type instance XTypeStringF MplTypeChecked = Maybe NameOcc
 type instance XTypeUnitF MplTypeChecked = Maybe NameOcc
 type instance XTypeBoolF MplTypeChecked = Maybe NameOcc
 type instance XTypeListF MplTypeChecked = Maybe NameOcc

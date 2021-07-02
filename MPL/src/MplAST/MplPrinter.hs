@@ -120,12 +120,19 @@ instance {-# OVERLAPPING #-} PPrint ChIdentR MplRenamed where
 instance PPrint PrimitiveOperators x where
     pprint _ = go
       where
-        go PrimitiveAdd = "+"
-        go PrimitiveSub = "-"
-        go PrimitiveMul = "*"
-        go PrimitiveDiv = "/"
-        go PrimitiveEq = "=="
-        go n = error $ "error in print -- operator not implemented yet: " ++ show n
+        go = \case
+            PrimitiveAdd -> "+"
+            PrimitiveSub -> "-"
+            PrimitiveMul -> "*"
+            PrimitiveDiv -> "/"
+            PrimitiveEq -> "=="
+            PrimitiveNeq -> "/="
+            PrimitiveLt -> "<"  
+            PrimitiveGt -> ">"
+            PrimitiveLeq -> "<="
+            PrimitiveGeq -> ">="
+            PrimitiveColon -> ":"
+            n -> error $ "error in print -- operator not implemented yet: " ++ show n
 
 {- | For converting to a bnfc ident (this heavily relies on the pprint instances above)-}
 class ToBnfcIdent t x where
@@ -152,6 +159,9 @@ instance ToBnfcIdent B.SplitChannel x where
 instance ToBnfcIdent B.PInteger x where
     toBnfcIdent proxy n =  B.PInteger ((-1,-1), pprint proxy n)
 
+instance ToBnfcIdent B.PString x where
+    toBnfcIdent proxy n =  B.PString ((-1,-1), pprint proxy n)
+
 instance ToBnfcIdent B.ForkChannel x where
     toBnfcIdent proxy n =  B.FORK_CHANNEL $ toBnfcIdent proxy n
 
@@ -161,9 +171,17 @@ instance ToBnfcIdent B.ForallVarList x where
 instance ToBnfcIdent B.TypeHandleName x where
     toBnfcIdent proxy n =  B.TYPE_HANDLE_NAME $ toBnfcIdent proxy n
 
+instance ToBnfcIdent B.Colon x where
+    toBnfcIdent proxy n =  B.Colon ((-1,-1), pprint proxy n) 
+
+instance ToBnfcIdent B.Infixl3op x where
+    toBnfcIdent proxy n =  B.Infixl3op ((-1,-1), pprint proxy n) 
 
 instance ToBnfcIdent B.Infixl5op x where
     toBnfcIdent proxy n =  B.Infixl5op ((-1,-1), pprint proxy n) 
+
+instance ToBnfcIdent B.Infixl6op x where
+    toBnfcIdent proxy n =  B.Infixl6op ((-1,-1), pprint proxy n) 
 
 {- For helping keywords-}
 class BnfcKeyword t where
@@ -177,6 +195,12 @@ instance BnfcKeyword B.LBracket where
 
 instance BnfcKeyword B.RBracket where
     bnfcKeyword = B.RBracket ((-1,-1), ")")
+
+instance BnfcKeyword B.LSquareBracket where
+    bnfcKeyword = B.LSquareBracket ((-1,-1), "[")
+
+instance BnfcKeyword B.RSquareBracket where
+    bnfcKeyword = B.RSquareBracket ((-1,-1), "]")
 
 instance BnfcKeyword B.NullPattern where
     bnfcKeyword = B.NullPattern ((-1,-1), "_")
@@ -293,6 +317,8 @@ instance ( PPrint (IdP x) t, PPrint (TypeP x) t) => MplTypeToBnfc (MplType x) t 
             TypeDoubleF _cxt -> B.MPL_UIDENT_NO_ARGS_TYPE $ toBnfcIdent proxy "Double"
             TypeCharF _cxt -> B.MPL_UIDENT_NO_ARGS_TYPE $ toBnfcIdent proxy "Char"
             TypeBoolF _cxt -> B.MPL_UIDENT_NO_ARGS_TYPE $ toBnfcIdent proxy "Bool"
+            TypeUnitF _cxt -> B.MPL_UNIT_TYPE bnfcKeyword bnfcKeyword
+            TypeListF _cxt rst -> B.MPL_LIST_TYPE bnfcKeyword (f rst) bnfcKeyword 
 
             TypeTupleF cxt (t0, t1, ts) -> 
                 B.MPL_TUPLE_TYPE 
@@ -406,6 +432,15 @@ instance
         f (PVar _ id) = B.VAR_PATTERN $ toBnfcIdent proxy id
         f (PChar _ id) = B.CHAR_PATTERN $ toBnfcIdent proxy id
         f (PInt _ id) = B.INT_PATTERN $ toBnfcIdent proxy id
+        f (PUnit _) = B.UNIT_PATTERN bnfcKeyword bnfcKeyword
+        f (PList _ lst) = B.LIST_PATTERN bnfcKeyword (map f lst) bnfcKeyword
+        f (PListCons _ a b) = B.LIST_COLON_PATTERN (f a) bnfcKeyword (f b)
+
+        f (PSimpleListCons _ a b) = B.LIST_COLON_PATTERN (B.VAR_PATTERN $ toBnfcIdent proxy a) bnfcKeyword (B.VAR_PATTERN $ toBnfcIdent proxy b)
+        f (PSimpleListEmpty _) = B.LIST_PATTERN bnfcKeyword [] bnfcKeyword
+        f (PSimpleUnit _) = B.UNIT_PATTERN bnfcKeyword bnfcKeyword
+
+        f (PString _ str) = B.STR_PATTERN $ toBnfcIdent proxy $ show str
 
         f (PConstructor _ id args) = 
             B.CONSTRUCTOR_PATTERN_ARGS (toBnfcIdent proxy id) bnfcKeyword (map f args) bnfcKeyword 
@@ -605,12 +640,27 @@ instance
         f (EPOps _ op exp0 exp1) = case op of
             PrimitiveAdd ->  B.INFIXL5_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
             PrimitiveSub ->  B.INFIXL5_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
-            PrimitiveEq ->  B.INFIXL5_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
-            _ ->  error "primitive op not implemented yet"
+            PrimitiveMul ->  B.INFIXL6_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
+            PrimitiveDiv ->  B.INFIXL6_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
+
+            PrimitiveEq ->  B.INFIXL3_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
+            PrimitiveNeq ->  B.INFIXL3_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
+            PrimitiveLeq ->  B.INFIXL3_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
+            PrimitiveLt ->  B.INFIXL3_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
+            PrimitiveGeq ->  B.INFIXL3_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
+            PrimitiveGt ->  B.INFIXL3_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
+            PrimitiveColon ->  B.INFIXR0_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
+            -- _ ->  error "primitive op not implemented yet"
+
+        f (EProj _ n expr) = B.FUN_EXPR  (toBnfcIdent proxy ("__INTERNAL_PROJ_" ++ show n)) bnfcKeyword [f expr] bnfcKeyword 
         f (EVar _ id) = B.VAR_EXPR $ toBnfcIdent proxy id 
         f (EInt _ id) = B.INT_EXPR $ toBnfcIdent proxy id 
         f (EChar _ id) = B.CHAR_EXPR $ toBnfcIdent proxy id
         f (EDouble _ id) = B.DOUBLE_EXPR $ toBnfcIdent proxy id 
+        f (EUnit _) = B.UNIT_EXPR bnfcKeyword bnfcKeyword
+        f (EList _ ls) = B.LIST_EXPR bnfcKeyword (map f ls) bnfcKeyword
+        f (EString _ ls) = B.STRING_EXPR (toBnfcIdent proxy $ show ls) 
+
         f (EBool _ id) = B.DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR  
             (toBnfcIdent proxy $ show id) 
             bnfcKeyword 
@@ -643,8 +693,7 @@ instance
             g (patt, expr) = B.PATTERN_TO_EXPR [mplPattToBnfc proxy patt] (mplExprToBnfc proxy expr)
         f (EObjCall _ id exprs) = B.DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR  
             (toBnfcIdent proxy id) bnfcKeyword (map f exprs) bnfcKeyword 
-        f (ECall _ id exprs) = B.FUN_EXPR  
-            (toBnfcIdent proxy id) bnfcKeyword (map f exprs) bnfcKeyword 
+        f (ECall _ id exprs) = B.FUN_EXPR  (toBnfcIdent proxy id) bnfcKeyword (map f exprs) bnfcKeyword 
         f (ELet _ stmts expr) = B.LET_EXPR (NE.toList (fmap g stmts)) (f expr)
           where
             g = B.LET_EXPR_PHRASE . mplStmtToBnfc proxy

@@ -2,6 +2,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
@@ -46,49 +47,58 @@ renamePattern = cata f
   where
     f :: Base (MplPattern MplParsed) (_ (MplPattern MplRenamed)) ->
         (_ (MplPattern MplRenamed))
-    f (PConstructorF () ident args) = do
-        symtab <- guse envLcl
-        args' <- sequenceA args
-        let ident' = fromJust $ 
-                lookupSymSeqPhrase ident symtab
-        tell $ outOfScopeWith lookupSymSeqPhrase symtab ident 
-
-        return $ _PConstructor # 
-            ( ()
-            , _IdentR # (ident, ident' ^. uniqueTag)
-            , args' )
-    f (PRecordF loc phrases) = do
-        phrases' <- traverse g phrases
-
-        return $ _PRecord # ( loc, phrases' )
-      where
-        g ((), ident, patt) = do
+    f = \case
+        PConstructorF () ident args -> do
             symtab <- guse envLcl
-            patt' <- patt
-            let ident' = fromJust $ lookupSymSeqPhrase ident symtab
+            args' <- sequenceA args
+            let ident' = fromJust $ 
+                    lookupSymSeqPhrase ident symtab
             tell $ outOfScopeWith lookupSymSeqPhrase symtab ident 
-            return ((), _IdentR # (ident, ident' ^. uniqueTag), patt')
+
+            return $ _PConstructor # 
+                ( ()
+                , _IdentR # (ident, ident' ^. uniqueTag)
+                , args' )
+        PRecordF loc phrases -> do
+            phrases' <- traverse g phrases
+
+            return $ _PRecord # ( loc, phrases' )
+          where
+            g ((), ident, patt) = do
+                symtab <- guse envLcl
+                patt' <- patt
+                let ident' = fromJust $ lookupSymSeqPhrase ident symtab
+                tell $ outOfScopeWith lookupSymSeqPhrase symtab ident 
+                return ((), _IdentR # (ident, ident' ^. uniqueTag), patt')
+
     -- extends the variable context
-    f (PVarF () ident) = do
-        ident' <- tagIdentP ident
-        envLcl %= ((collectSymTab ident')<>)
-        return $ _PVar # ((), ident')
-     
-    f (PNullF loc) = do
-        return $ _PNull # loc
+        PVarF () ident -> do
+            ident' <- tagIdentP ident
+            envLcl %= ((collectSymTab ident')<>)
+            return $ _PVar # ((), ident')
+         
+        PNullF loc -> do
+            return $ _PNull # loc
 
-    f (PTupleF loc (t0,t1,ts)) = do
-        ~(t0':t1':ts') <- sequenceA $ t0:t1:ts
-        return $ PTuple loc (t0',t1',ts')
+        PTupleF loc (t0,t1,ts) -> do
+            ~(t0':t1':ts') <- sequenceA $ t0:t1:ts
+            return $ PTuple loc (t0',t1',ts')
 
-    f (PCharF loc c) = return $ PChar loc c
+        PCharF loc c -> return $ PChar loc c
 
-    f (PIntF loc c) = return $ PInt loc c
-    f (PBoolF loc c) = return $ PBool loc c
+        PIntF loc c -> return $ PInt loc c
+        PBoolF loc c -> return $ PBool loc c
+
+        {- built in types -}
+        PUnitF loc -> return $ PUnit loc
+        PListF loc lst -> PList loc <$> sequenceA lst
+        PStringF loc lst -> return $ PString loc lst
+        PListConsF loc l ls -> PListCons loc <$> l <*> ls
 
     {- Here, we replace some of the code with user provided types data.
      - Honestly, this is a bit of a cheap hack!  -}
-    f (PUnitF loc) = do
+    {-
+    PUnitF loc -> do
         symtab <- guse envLcl
         let ident = _IdentP # 
                 ( _NameOcc # 
@@ -105,7 +115,7 @@ renamePattern = cata f
             , _IdentR # (ident, ident' ^. uniqueTag)
             , []
             )
-    f (PListF loc []) = do
+    PListF loc [] -> do
         symtab <- guse envLcl
         let ident = _IdentP # 
                 ( _NameOcc # 
@@ -122,9 +132,9 @@ renamePattern = cata f
             , _IdentR # (ident, ident' ^. uniqueTag)
             , [] )
 
-    f (PListF loc args) = plist loc args
-    f (PStringF loc args) = plist loc $ map (pure . PChar loc) args
-    f (PListConsF loc a as) = do
+    PListF loc args -> plist loc args
+    PStringF loc args -> plist loc $ map (pure . PChar loc) args
+    PListConsF loc a as -> do
         symtab <- guse envLcl
         a' <- a
         as' <- as
@@ -186,3 +196,4 @@ renamePattern = cata f
                     , [] )
 
         return $ foldr rcons rnil args'
+    -}

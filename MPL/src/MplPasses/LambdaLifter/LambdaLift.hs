@@ -102,7 +102,8 @@ lambdaLiftDefn defn  = case defn of
      -}
     -- we assert that the body should be null from compilation of pattern matching
     FunctionDefn (MplFunction funname funtp ((patts, expr) :| bdy)) -> assert (null bdy) $ do
-        ~(Just (bound, free, calls)) <- gview (lambdaLiftCallGraph % at funname) 
+        -- ~(Just (bound, free, calls)) <- gview (lambdaLiftCallGraph % at funname) 
+        (bound, free, calls) <- gview (lambdaLiftCallGraph % at funname % to (fromMaybe mempty)) 
 
         let nfrees = Set.toList $ free `Set.difference` bound
         nfreestps <- magnify lambdaLiftTpMap $ for nfrees $ \nvar -> 
@@ -151,7 +152,18 @@ lambdaLiftExpr = cata go
             exprs' <- sequenceA exprs
 
             -- get the extra free variables needed. this is duplciated code from above
-            ~(Just (bound, free, calls)) <- gview (lambdaLiftCallGraph % at idp) 
+            -- Note that sometimes this functino will not be in the callgraph because
+            -- it was previously already lifted. e.g.
+            -- @
+            -- fun testing1 =
+            --      a,b -> a
+            --
+            -- fun testing2 =
+            --      a -> testing1(a,0)
+            -- @
+            -- testing2 will call testing1, but testing1 is not in this functions call graph
+            -- ~(Just (bound, free, calls)) <- gview (lambdaLiftCallGraph % at idp) 
+            (bound, free, calls) <- gview (lambdaLiftCallGraph % at idp % to (fromMaybe mempty)) 
             let nfrees = Set.toList $ free `Set.difference` bound
             nfreestps <- magnify lambdaLiftTpMap $ for nfrees $ \nvar -> fmap fromJust $ gview (at nvar)
 
@@ -276,7 +288,7 @@ callGraphFunDefn (MplFunction funName funTp ((patts, expr) :| bdy)) = assert (nu
     Map.singleton funName (args,  vars `Set.difference` args, calls) 
   where
     args = Set.fromList $ fmap getPattVarIdent patts 
-    vars = collectVarsExpr expr
+    vars = collectFreeVarsExpr expr
     calls = collectCallsExpr expr
 
 {- This will collect the call graph of every let binding -}
@@ -322,15 +334,27 @@ mkVarsTpMap = execWriter . traverseMplExpr go
         res -> return res
 
 
-{- | Gets all the variables in an expression (note this DOES NOT recurse through the let bindings) -}
-collectVarsExpr :: 
+{- | Gets all the free variables in an expression (note this DOES NOT recurse through the let bindings). Note
+the ``free variables'' part means that it removes variables bound by a case statement. 
+
+N.B. Not too sure if I'm missing cases with other potential binders other than just case? TODO write some
+test cases to get this resolved.
+-}
+collectFreeVarsExpr :: 
     MplExpr MplPatternCompiled -> 
     FreeArgs
-collectVarsExpr = cata go
+collectFreeVarsExpr = cata go
   where
     go :: MplExprF MplPatternCompiled FreeArgs -> FreeArgs
     go = \case
         EVarF _ v -> Set.singleton v
+        ECaseF _ caseon patts -> (caseon `Set.union` foldMap snd patts) `Set.difference` foldMap (f . fst) patts
+          where
+            f = \case
+                PSimpleConstructor _ _ args -> Set.fromList $ map fst args
+                PSimpleListCons _ l r -> Set.fromList $ [l, r]
+                PSimpleListEmpty _ -> mempty
+                PSimpleUnit _ -> mempty
         res -> fold res
 
 {- | Gets all the functions called in an expression (note this DOES NOT recurse through the let bindings) -}

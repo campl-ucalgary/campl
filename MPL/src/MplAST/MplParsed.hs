@@ -141,6 +141,10 @@ type instance XPChar MplParsed = Location
 type instance XPList MplParsed = Location
 type instance XPListCons MplParsed = Location
 
+type instance XPSimpleListCons MplParsed = Void
+type instance XPSimpleListEmpty MplParsed = Void
+type instance XPSimpleUnit MplParsed = Void
+
 -- Process Command
 type instance XMplCmd MplParsed = MplCmd MplParsed
 type instance XCRun MplParsed = ()
@@ -155,7 +159,6 @@ type instance XCFork MplParsed = KeyWordNameOcc
 type instance XCId MplParsed = KeyWordNameOcc
 type instance XCIdNeg MplParsed = KeyWordNameOcc
 type instance XCRace MplParsed = KeyWordNameOcc
-type instance XCPlug MplParsed = Void
 type instance XCPlugs MplParsed = 
     (KeyWordNameOcc, Maybe [(ChP MplParsed)])
         -- user can explictly write the channels 
@@ -209,7 +212,7 @@ type instance XXType MplParsed = Void
 type instance XTypeIntF MplParsed = NameOcc
 type instance XTypeCharF MplParsed = NameOcc
 type instance XTypeDoubleF MplParsed = NameOcc
-type instance XTypeStringF MplParsed = NameOcc
+-- type instance XTypeStringF MplParsed = NameOcc
 type instance XTypeUnitF MplParsed = NameOcc
 type instance XTypeBoolF MplParsed = NameOcc
 type instance XTypeListF MplParsed = NameOcc

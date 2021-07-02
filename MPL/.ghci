@@ -37,7 +37,7 @@ import Data.Foldable
 import Data.Functor.Foldable (Base, cata, para, histo)
 
 import qualified Data.Map as Map
-import Data.Map (Map )
+import Data.Map (Map)
 import qualified Data.Set as Set
 import Data.Set (Set)
 

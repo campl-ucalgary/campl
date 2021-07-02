@@ -55,11 +55,21 @@ getExprType = \case
     EVar ann _ -> ann
     EInt ann _ -> ann
     EChar ann _ -> ann
+    EBool ann _ -> ann
     EDouble ann _ -> ann
     ECase ann _ _ -> ann
     EObjCall ann _ _ -> snd ann
     ECall ann _ _ -> ann
     ERecord ann _ -> ann
+    EList ann _ -> ann
+    EString ann _ -> ann
+    EUnit ann -> ann
+    ETuple ann _ -> ann
+    EIf ann _ _ _ -> ann
+    EProj ann _ _ -> ann
+    -- TODO: Should actually just store the type in the annotation information
+    ELet _ann _ expr -> getExprType expr
+    EIllegalInstr ann  -> ann
     {-
     EList ann _ -> snd ann
     EString ann _ -> snd ann
@@ -67,7 +77,6 @@ getExprType = \case
     ETuple ann _ -> snd ann
     EBuiltInOp ann _op _l _r -> snd ann
     EIf ann _iff _thenf _elsef -> ann
-    ELet _ann _ expr -> getExprType expr
     EFold ann _ _ -> ann
     EUnfold ann _ _ -> ann
     ESwitch ann _ -> ann
@@ -81,6 +90,11 @@ getCodataPhraseTypeResult ::
 getCodataPhraseTypeResult phrase = phrase ^. typePhraseTo
 
 -- | get type from a data phrase when fully applied to its arguments
+-- Why does this need more thought? Well the problem is that sometimes the 
+-- type of the typephrase has substitutions which change the type from the
+-- most general type.. this is honestly more of a shortcoming with the design of
+-- the language than an issue on this end... ideally, a systemF like representation
+-- or something would be nice so we wouldn't have to worry about these issues.
 getDataPhraseTypeResult :: 
     MplTypePhrase MplTypeChecked ('SeqObjTag 'DataDefnTag) -> 
     (MplType MplTypeChecked)
@@ -109,6 +123,7 @@ getPattType = \case
     PString ann _ -> snd ann
     PInt ann _ -> snd ann
     PChar ann _ -> snd ann
+    PBool ann _ -> snd ann
     PList ann _ -> snd ann
     PListCons ann _ _ -> snd ann
 

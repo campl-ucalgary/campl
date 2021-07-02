@@ -31,7 +31,7 @@ dependencies:
 
 - MPL
 - MPLASM
-- AMPL
+- MPLMACH
 
 
 library:
@@ -58,3 +58,11 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - MPLCLI
+    - QuickCheck
+    - HUnit
+    - hspec
+    - directory
+    # 'silently' is needed to listen to the output to stdout and verify it against the corrrect
+    # answer
+    - silently
+    - parsec

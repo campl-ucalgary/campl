@@ -186,127 +186,114 @@ renameExpr = cata f
   where
     f :: Base (MplExpr MplParsed) (_ (MplExpr MplRenamed)) ->
         (_ (MplExpr MplRenamed))
-    f (EPOpsF cxt op a b) = do
-        a' <- a
-        b' <- b
-        return $ _EPOps # (cxt, op, a', b')
+    f = \case
+        EPOpsF cxt op a b -> do
+            a' <- a
+            b' <- b
+            return $ _EPOps # (cxt, op, a', b')
         
-    f (EVarF cxt ident) = do
-        symtab <- guse envLcl
-        let ident' = fromJust $ lookupSymAny ident $  symtab
-        -- tell $ outOfScopeWith lookupSymAny (trace ("SYMYAB" ++ show symtab) symtab) $ trace ("vAR"++ show ident ) ident
-        tell $ outOfScopeWith lookupSymAny symtab $ ident
-        return $ _EVar # (cxt, _IdentR # (ident, ident' ^. uniqueTag))
-
-    f (EIntF cxt n) = return $ _EInt # (cxt, n)
-    f (EDoubleF cxt n) = return $ _EDouble # (cxt, n)
-    f (ECharF cxt n) = return $ _EChar # (cxt, n)
-    f (EBoolF cxt n) = return $ _EBool # (cxt, n)
-
-    f (EIfF cxt mcond mthenc melsec) = do
-        cond <- mcond
-        thenc <- mthenc
-        elsec <- melsec
-        return $ _EIf # (cxt, cond ,thenc, elsec)
-    f (ESwitchF cxt switches) = do
-        switches' <- sequenceOf (traversed % each) switches
-        return $ _ESwitch # (cxt, switches')
-
-    f (ETupleF cxt (t0, t1, ts)) = do 
-        ~(t0':t1':ts') <- sequenceA $ t0:t1:ts
-        return $ _ETuple # (cxt, (t0',t1',ts'))
-
-    f (ECaseF cxt caseon cases) = do
-        caseon' <- caseon
-        cases' <- traverse g cases
-        return $ _ECase # (cxt, caseon', cases')
-      where
-        g :: (MplPattern MplParsed, _ (MplExpr MplRenamed))
-            -> _ (MplPattern MplRenamed, MplExpr MplRenamed)
-        g (patt, mexpr) = do
+        EVarF cxt ident -> do
             symtab <- guse envLcl
-            patt' <- renamePattern patt
-            expr' <- mexpr
-            envLcl .= symtab
-            return (patt', expr')
-    f (EObjCallF cxt ident args) = do
-        symtab <- guse envLcl
-        let ident' = fromJust $ lookupSymSeqPhrase ident  symtab
-        tell $ outOfScopeWith lookupSymSeqPhrase symtab ident 
+            let ident' = fromJust $ lookupSymAny ident $  symtab
+            -- tell $ outOfScopeWith lookupSymAny (trace ("SYMYAB" ++ show symtab) symtab) $ trace ("vAR"++ show ident ) ident
+            tell $ outOfScopeWith lookupSymAny symtab $ ident
+            return $ _EVar # (cxt, _IdentR # (ident, ident' ^. uniqueTag))
 
-        args' <- sequenceA args
+        EIntF cxt n -> return $ _EInt # (cxt, n)
+        EDoubleF cxt n -> return $ _EDouble # (cxt, n)
+        ECharF cxt n -> return $ _EChar # (cxt, n)
+        EBoolF cxt n -> return $ _EBool # (cxt, n)
 
-        return $ _EObjCall # 
-            (cxt, _IdentR # (ident, ident' ^. uniqueTag), args')
-    -- same thing for call...
-    f (ECallF cxt ident args) = do
-        symtab <- guse envLcl 
-        let ident' = fromJust $ lookupSymAny ident symtab
-        tell $ outOfScopeWith lookupSymAny symtab $ ident 
+        {- some more built in expressions -}
+        EListF cxt lst -> EList cxt <$> sequenceA lst
+        EStringF cxt lst -> return $ EString cxt lst
+        EUnitF cxt -> return $ EUnit cxt
+        
 
-        args' <- sequenceA args
+        EIfF cxt mcond mthenc melsec -> do
+            cond <- mcond
+            thenc <- mthenc
+            elsec <- melsec
+            return $ _EIf # (cxt, cond ,thenc, elsec)
+        ESwitchF cxt switches -> do
+            switches' <- sequenceOf (traversed % each) switches
+            return $ _ESwitch # (cxt, switches')
 
-        return $ _ECall # 
-            (cxt, _IdentR # (ident, ident' ^. uniqueTag), args')
+        ETupleF cxt (t0, t1, ts) -> do 
+            ~(t0':t1':ts') <- sequenceA $ t0:t1:ts
+            return $ _ETuple # (cxt, (t0',t1',ts'))
 
-    f (ERecordF cxt args) = do
-        args' <- traverse g args
-        return $ _ERecord # (cxt, args')
-      where
-        g (cxt, ident, (patts, expr)) = do
+        ECaseF cxt caseon cases -> do
+            caseon' <- caseon
+            cases' <- traverse g cases
+            return $ _ECase # (cxt, caseon', cases')
+          where
+            g :: (MplPattern MplParsed, _ (MplExpr MplRenamed))
+                -> _ (MplPattern MplRenamed, MplExpr MplRenamed)
+            g (patt, mexpr) = do
+                symtab <- guse envLcl
+                patt' <- renamePattern patt
+                expr' <- mexpr
+                envLcl .= symtab
+                return (patt', expr')
+        EObjCallF cxt ident args -> do
             symtab <- guse envLcl
-            let ident' = fromJust $ lookupSymSeqPhrase ident symtab
-            tell $ outOfScopeWith lookupSymSeqPhrase symtab ident 
-
-            patts' <- traverse (splitUniqueSupply . renamePattern) patts
-            expr' <- expr
-
-            envLcl .= symtab
-
-            return 
-                ( cxt
-                , _IdentR # (ident, ident' ^. uniqueTag)
-                , (patts', expr')
-                )
-    f (ELetF cxt stmts expr) = do
-        stmts' <- traverse f stmts
-        envLcl %= (collectSymTab stmts' <>)
-        expr' <- expr 
-        return $ _ELet # (cxt, stmts', expr')
-      where
-        f :: MplStmt MplParsed -> _ (MplStmt MplRenamed)
-        f stmt = do
-            st <- guse equality
-            lcl <- guse envLcl
-            sup <- freshUniqueSupply
-            evalStateT (renameStmt stmt) (st & uniqueSupply .~ sup & envGbl .~ lcl)
-
-    f (EFoldF cxt foldon phrases) = do
-        symtab <- guse envLcl 
-
-        foldon' <- foldon
-
-        phrases' <- for phrases $ \(cxt, ident, patts, mexpr) -> localEnvSt id $ do
             let ident' = fromJust $ lookupSymSeqPhrase ident  symtab
             tell $ outOfScopeWith lookupSymSeqPhrase symtab ident 
 
-            patts' <- traverse renamePattern patts
-            expr' <- mexpr
+            args' <- sequenceA args
 
-            return (cxt, _IdentR # (ident, ident' ^. uniqueTag), patts', expr') 
+            return $ _EObjCall # 
+                (cxt, _IdentR # (ident, ident' ^. uniqueTag), args')
+        -- same thing for call...
+        ECallF cxt ident args -> do
+            symtab <- guse envLcl 
+            let ident' = fromJust $ lookupSymAny ident symtab
+            tell $ outOfScopeWith lookupSymAny symtab $ ident 
 
-        return $ _EFold # (cxt, foldon', phrases')
+            args' <- sequenceA args
 
-    f (EUnfoldF cxt unfoldon phrases) = do
-        symtab <- guse envLcl
+            return $ _ECall # 
+                (cxt, _IdentR # (ident, ident' ^. uniqueTag), args')
 
-        unfoldon' <- unfoldon
+        ERecordF cxt args -> do
+            args' <- traverse g args
+            return $ _ERecord # (cxt, args')
+          where
+            g (cxt, ident, (patts, expr)) = do
+                symtab <- guse envLcl
+                let ident' = fromJust $ lookupSymSeqPhrase ident symtab
+                tell $ outOfScopeWith lookupSymSeqPhrase symtab ident 
 
-        -- ((), patt, NonEmpty ((), identp, patts, expr) )
-        phrases' <- for phrases $ \(cxt0, patt, foldphrases) -> localEnvSt id $ do
-            patt' <- renamePattern patt
-            foldphrases' <- for foldphrases $ \(cxt1, ident, patts, mexpr) -> localEnvSt id $ do
-                -- duplciated from the fold case
+                patts' <- traverse (splitUniqueSupply . renamePattern) patts
+                expr' <- expr
+
+                envLcl .= symtab
+
+                return 
+                    ( cxt
+                    , _IdentR # (ident, ident' ^. uniqueTag)
+                    , (patts', expr')
+                    )
+        ELetF cxt stmts expr -> do
+            stmts' <- traverse f stmts
+            envLcl %= (collectSymTab stmts' <>)
+            expr' <- expr 
+            return $ _ELet # (cxt, stmts', expr')
+          where
+            f :: MplStmt MplParsed -> _ (MplStmt MplRenamed)
+            f stmt = do
+                st <- guse equality
+                lcl <- guse envLcl
+                sup <- freshUniqueSupply
+                evalStateT (renameStmt stmt) (st & uniqueSupply .~ sup & envGbl .~ lcl)
+
+        EFoldF cxt foldon phrases -> do
+            symtab <- guse envLcl 
+
+            foldon' <- foldon
+
+            phrases' <- for phrases $ \(cxt, ident, patts, mexpr) -> localEnvSt id $ do
                 let ident' = fromJust $ lookupSymSeqPhrase ident  symtab
                 tell $ outOfScopeWith lookupSymSeqPhrase symtab ident 
 
@@ -315,9 +302,29 @@ renameExpr = cata f
 
                 return (cxt, _IdentR # (ident, ident' ^. uniqueTag), patts', expr') 
 
-            return (cxt0, patt', foldphrases')
+            return $ _EFold # (cxt, foldon', phrases')
 
-        return $ _EUnfold # (cxt, unfoldon', phrases')
+        EUnfoldF cxt unfoldon phrases -> do
+            symtab <- guse envLcl
+
+            unfoldon' <- unfoldon
+
+            -- ((), patt, NonEmpty ((), identp, patts, expr) )
+            phrases' <- for phrases $ \(cxt0, patt, foldphrases) -> localEnvSt id $ do
+                patt' <- renamePattern patt
+                foldphrases' <- for foldphrases $ \(cxt1, ident, patts, mexpr) -> localEnvSt id $ do
+                    -- duplciated from the fold case
+                    let ident' = fromJust $ lookupSymSeqPhrase ident  symtab
+                    tell $ outOfScopeWith lookupSymSeqPhrase symtab ident 
+
+                    patts' <- traverse renamePattern patts
+                    expr' <- mexpr
+
+                    return (cxt, _IdentR # (ident, ident' ^. uniqueTag), patts', expr') 
+
+                return (cxt0, patt', foldphrases')
+
+            return $ _EUnfold # (cxt, unfoldon', phrases')
 
     {- translating some of the built in syntax to default constructors. -}
 

@@ -92,9 +92,9 @@ f o r k
     { tok (\p s -> PT p (eitherResIdent T_ChId s)) }
 c a s e
     { tok (\p s -> PT p (eitherResIdent T_Case s)) }
-(\# $c | $c)(\_ | ($d | $l)) *
+$c (\_ | ($d | $l)) *
     { tok (\p s -> PT p (eitherResIdent T_UIdent s)) }
-$l ([\' \_]| ($d | $l)) *
+(\_ | $l)([\' \_]| ($d | $l)) *
     { tok (\p s -> PT p (eitherResIdent T_PIdent s)) }
 $l ([\' \_]| ($d | $l)) *
     { tok (\p s -> PT p (eitherResIdent T_UPIdent s)) }

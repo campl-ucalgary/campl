@@ -69,6 +69,8 @@ except ``"`` unless preceded by ``\``.
 
 
 
+
+
 Store literals are recognized by the regular expression
 `````{"store"}`````
 
@@ -117,6 +119,9 @@ LeqI literals are recognized by the regular expression
 EqI literals are recognized by the regular expression
 `````{"eqi"}`````
 
+EqB literals are recognized by the regular expression
+`````{"eqb"}`````
+
 LeqC literals are recognized by the regular expression
 `````{"leqc"}`````
 
@@ -164,6 +169,9 @@ Put literals are recognized by the regular expression
 
 Hput literals are recognized by the regular expression
 `````{"hput"}`````
+
+Shput literals are recognized by the regular expression
+`````{"shput"}`````
 
 Hcase literals are recognized by the regular expression
 `````{"hcase"}`````
@@ -288,6 +296,7 @@ All other symbols are terminals.
   |  |  **|**  | //Com//
   |  |  **|**  | //Com// ``;`` //[Com]//
   | //Com// | -> | //PIdent// ``:=`` //Com//
+  |  |  **|**  | //Store// //PIdent//
   |  |  **|**  | //Load// //PIdent//
   |  |  **|**  | //Ret//
   |  |  **|**  | //Call// //PIdent// ``(`` //[PIdent]// ``)``
@@ -301,6 +310,7 @@ All other symbols are terminals.
   |  |  **|**  | //Append//
   |  |  **|**  | //CBool// //BBool//
   |  |  **|**  | //Unstring//
+  |  |  **|**  | //EqB//
   |  |  **|**  | //LeqI//
   |  |  **|**  | //EqI//
   |  |  **|**  | //LeqC//
@@ -326,6 +336,7 @@ All other symbols are terminals.
   |  |  **|**  | //Get// //PIdent// ``on`` //PIdent//
   |  |  **|**  | //Put// //PIdent// ``on`` //PIdent//
   |  |  **|**  | //Hput// //UIdent// ``.`` //UIdent// ``on`` //PIdent//
+  |  |  **|**  | //Shput// //UIdent// ``on`` //PIdent//
   |  |  **|**  | //Hcase// //PIdent// ``of`` ``{`` //[LabelledComs]// ``}``
   |  |  **|**  | //Split// //PIdent// ``into`` //PIdent// //PIdent//
   |  |  **|**  | //Fork// //PIdent// ``as`` ``{`` //PIdent// ``with`` //[PIdent]// ``:`` //Coms// ``;`` //PIdent// ``with`` //[PIdent]// ``:`` //Coms// ``}``

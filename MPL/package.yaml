@@ -25,28 +25,28 @@ extra-source-files:
 description:         Please see the README on GitHub at <https://github.com/githubuser/MPL#readme>
 
 dependencies:
-    - base >= 4.7 && < 5
-    - containers
-    - unordered-containers
-    - hashable
+- base >= 4.7 && < 5
+- containers
+- unordered-containers
+- hashable
 
-    - transformers
-    - mtl
+- transformers
+- mtl
 
-    - prettyprinter
-    - array
-    - optics
-    - optics-extra
-    - recursion-schemes
+- prettyprinter
+- array
+- optics
+- optics-extra
+- recursion-schemes
 
-    - directory
-    - filepath
+- directory
+- filepath
 
-    - raw-strings-qq
-    - deepseq
+- raw-strings-qq
+- deepseq
 
-      # If I recall, this is used for show instances for playing with stuff in Ghci
-    - pretty-simple
+  # If I recall, this is used for show instances for playing with stuff in Ghci
+- pretty-simple
 
 
 library:

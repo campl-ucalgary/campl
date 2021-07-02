@@ -22,6 +22,7 @@ import Control.Monad.State.Strict
 import Control.Exception
 import Control.Concurrent hiding (yield)
 import Control.Concurrent.STM
+import Control.Concurrent.Async
 import Control.Concurrent (forkFinally)
 
 import System.IO (isEOF)
@@ -38,6 +39,8 @@ import Data.Maybe
 
 import Network.Socket
 import Network.Socket.ByteString
+
+import qualified Text.Show.Pretty as PrettyShow
 
 import Debug.Trace
 
@@ -64,7 +67,9 @@ serviceManager s = forever $ gview equality >>= \env -> liftIO $ do
     (s', _) <- accept s
     forkFinally (flip runMplMach env $ serviceClient s') $ \err -> close s' >> case err of
         Right () -> return ()
-        Left e -> throwIO e
+        Left e -> case fromException e of
+            Just AsyncCancelled -> return ()
+            _ -> throwIO e
 
 {- | Honestly, literally everything about services is a silly mess. They make the 
 language frankly unusable for anything. -}
@@ -112,7 +117,7 @@ serviceClientLoop sock gchlkup psock pinstrs = next pinstrs >>= \case
             (psock', inp) <- loop psock
 
             -- add it to the queue
-            writeChMQueue (gchlkup ^. activeQueue) $ QPut $ VInt inp
+            fetchAndWriteChMQueue (gchlkup ^. activeQueue) $ QPut $ VInt inp
 
             serviceClientLoop sock gchlkup psock' pinstrs'
           where
@@ -249,4 +254,51 @@ serviceChToByteString ch = '=' `B.cons` (B.pack (show (coerce @ServiceCh @Int ch
 pServiceCh :: A.Parser ServiceCh
 pServiceCh = fmap (coerce @Int @ServiceCh) 
     $  A.char '=' *> A.signed A.decimal <* A.endOfLine
+
+
+-- * service loop for a local thread
+-- | this runs a service for a local thread
+serviceThread ::
+    TranslationLkup ->
+    MplMach MplMachEnv ()
+serviceThread chlkup = loop 
+  where
+    loop = gview equality >>= \env -> do
+        sinstr <- liftIO $ atomically $ do 
+            chotherqueue <- chlkup ^. otherQueue % to readChMQueue
+            peekTQueue chotherqueue >>= \case
+                QSHPut sinstr -> readTQueue chotherqueue >> return sinstr
+                _ -> retry 
+        case sinstr of
+            SHGetString -> do 
+                gview stdLock >>= \mvar -> liftIO $ withMVar mvar $ const $ do
+                    str <- getLine
+                    fetchAndWriteChMQueue 
+                        (chlkup ^. activeQueue) 
+                        (QPut (strToVal str))
+                loop
+            SHPutString -> do
+                ~(QPut inp) <- liftIO $ atomically $ 
+                    chlkup ^. otherQueue % to (readTQueue <=< readChMQueue)
+                gview stdLock >>= \mvar -> liftIO 
+                    $ withMVar mvar $ const $ putStrLn $ valToStr inp
+                loop
+
+            SHClose -> return ()
+
+    -- N.B. Note we make some assumptoins as given in the
+    -- assembler -- lists have 
+    --
+    --      - Cons as ix 0
+    --      - Empty as ix 1
+    --
+    -- Unfortunately, this is a bit hard coded....
+    strToVal = foldr 
+        (\c acc -> VCons (CaseIx 0) [VChar c, acc]) 
+        (VCons (CaseIx 1) [])
+
+    valToStr (VCons _ [VChar c, acc]) =  c : valToStr acc
+    valToStr (VCons _ []) =  []
+    valToStr bad = error $ "bad string: " ++ PrettyShow.ppShow bad
+    
 

@@ -64,6 +64,8 @@ l e q
     { tok (\p s -> PT p (eitherResIdent T_LeqI s)) }
 e q i
     { tok (\p s -> PT p (eitherResIdent T_EqI s)) }
+e q b
+    { tok (\p s -> PT p (eitherResIdent T_EqB s)) }
 l e q c
     { tok (\p s -> PT p (eitherResIdent T_LeqC s)) }
 e q c
@@ -96,6 +98,8 @@ p u t
     { tok (\p s -> PT p (eitherResIdent T_Put s)) }
 h p u t
     { tok (\p s -> PT p (eitherResIdent T_Hput s)) }
+s h p u t
+    { tok (\p s -> PT p (eitherResIdent T_Shput s)) }
 h c a s e
     { tok (\p s -> PT p (eitherResIdent T_Hcase s)) }
 s p l i t
@@ -166,6 +170,7 @@ data Tok =
  | T_Unstring !String
  | T_LeqI !String
  | T_EqI !String
+ | T_EqB !String
  | T_LeqC !String
  | T_EqC !String
  | T_Leqs !String
@@ -182,6 +187,7 @@ data Tok =
  | T_Get !String
  | T_Put !String
  | T_Hput !String
+ | T_Shput !String
  | T_Hcase !String
  | T_Split !String
  | T_Fork !String
@@ -251,6 +257,7 @@ tokenText t = case t of
   PT _ (T_Unstring s) -> s
   PT _ (T_LeqI s) -> s
   PT _ (T_EqI s) -> s
+  PT _ (T_EqB s) -> s
   PT _ (T_LeqC s) -> s
   PT _ (T_EqC s) -> s
   PT _ (T_Leqs s) -> s
@@ -267,6 +274,7 @@ tokenText t = case t of
   PT _ (T_Get s) -> s
   PT _ (T_Put s) -> s
   PT _ (T_Hput s) -> s
+  PT _ (T_Shput s) -> s
   PT _ (T_Hcase s) -> s
   PT _ (T_Split s) -> s
   PT _ (T_Fork s) -> s

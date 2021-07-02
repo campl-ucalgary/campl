@@ -147,7 +147,7 @@ mplAsmComToBnfcCom = cata go
         CAssignF _ idp com -> 
             B.AC_ASSIGN (toBnfcIdent idp) com
 
-        CStoreF _ idp -> B.AC_LOAD bnfcKeyword (toBnfcIdent idp)
+        CStoreF _ idp -> B.AC_STORE bnfcKeyword (toBnfcIdent idp)
         CLoadF _ idp -> B.AC_LOAD bnfcKeyword (toBnfcIdent idp)
 
         CBoolF _ bval -> B.AC_BOOL bnfcKeyword (toBnfcIdent bval)
@@ -167,6 +167,10 @@ mplAsmComToBnfcCom = cata go
                 (toBnfcIdent c)
         CEqIntF _ -> 
             B.AC_EQI bnfcKeyword
+
+        CEqBoolF _ -> 
+            B.AC_EQB bnfcKeyword
+
         CEqCharF _ -> 
             B.AC_EQC bnfcKeyword
 
@@ -219,6 +223,10 @@ mplAsmComToBnfcCom = cata go
                 (toBnfcIdent a)
                 (toBnfcIdent b)
                 (toBnfcIdent ch)
+
+        CSHPutF _ sv ch -> 
+            B.AC_SHPUT bnfcKeyword (toBnfcIdent $ Name (show sv)) (toBnfcIdent ch)
+
         CHCaseF _ ch labels ->
             B.AC_HCASE 
                 bnfcKeyword 
@@ -309,6 +317,9 @@ instance BnfcKeyword B.CChar where
 instance BnfcKeyword B.EqI where
     bnfcKeyword = B.EqI (invalidPosition, "eqi")
 
+instance BnfcKeyword B.EqB where
+    bnfcKeyword = B.EqB (invalidPosition, "eqb")
+
 instance BnfcKeyword B.EqC where
     bnfcKeyword = B.EqC (invalidPosition, "eqc")
 
@@ -371,3 +382,6 @@ instance BnfcKeyword B.Main_run where
 
 instance BnfcKeyword B.CBool where
     bnfcKeyword = B.CBool (invalidPosition, "cBool")
+
+instance BnfcKeyword B.Shput where
+    bnfcKeyword = B.Shput (invalidPosition, "shput")

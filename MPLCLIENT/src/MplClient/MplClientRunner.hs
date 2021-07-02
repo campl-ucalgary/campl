@@ -27,7 +27,7 @@ import Data.Maybe
 
 -- pSNCmd 
 mplClientRunner :: IO ()
-mplClientRunner = getOpts >>= \env -> flip runMplClient env $ do
+mplClientRunner = withSocketsDo $ getOpts >>= \env -> flip runMplClient env $ do
     hn <- gview hostname
     p <- gview port
     let hints = defaultHints { addrSocketType = Stream }
@@ -74,7 +74,7 @@ mplClient sock = do
                             loop ps''
                         bad -> liftIO $ throwIO $ IllegalServerCommand $ show bad
 
-                SNClose -> liftIO $ putStrLn "Closing... (press enter)" *> getLine *> return ()
+                SNClose -> liftIO $ putStrLn "Closing... (press enter)" *> return ()
 
                 bad -> liftIO $ throwIO $ IllegalServerCommand $ show bad
             bad -> liftIO $ throwIO $ IllegalServerCommand $ show bad

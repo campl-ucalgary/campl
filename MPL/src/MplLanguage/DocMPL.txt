@@ -137,10 +137,10 @@ Case literals are recognized by the regular expression
 `````{"case"}`````
 
 UIdent literals are recognized by the regular expression
-`````('#' upper | upper) ('_' | digit | letter)*`````
+`````upper ('_' | digit | letter)*`````
 
 PIdent literals are recognized by the regular expression
-`````letter (["'_"] | digit | letter)*`````
+`````('_' | letter) (["'_"] | digit | letter)*`````
 
 UPIdent literals are recognized by the regular expression
 `````letter (["'_"] | digit | letter)*`````

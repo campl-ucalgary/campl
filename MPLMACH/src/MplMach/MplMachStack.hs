@@ -16,6 +16,7 @@ import Data.IORef
 import Data.Coerce
 import Data.Array
 import Data.Traversable
+import Data.Foldable
 
 import System.IO.Unsafe
 import Control.Concurrent hiding (yield)
@@ -72,6 +73,7 @@ initMplMachEnv ::
 initMplMachEnv sp = do
     mp <- newIORef mempty
     svch <- newIORef $ coerce @Int @ServiceCh (-10)
+    frsh <- newIORef $ 0
     nmvar <- newMVar ()
     return $
         MplMachEnv 
@@ -92,19 +94,11 @@ runMplMach ::
 runMplMach ma env = runReaderT (unwrapMplMach ma) env
     
 
-{- | wrapper to write to the queue -}
-writeChMQueue ::
-    ChMQueue ->
-    QInstr ->
-    MplMach r ()
-writeChMQueue q instr = liftIO $ atomically $ 
-    readTVar (coerce @ChMQueue @(TVar (TQueue QInstr)) q)  
-        >>= \q' -> writeTQueue q' instr
-
 
 {- | wrapper for 'newTQueue' -}
 newGlobalChan ::
     MplMach r GlobalChan
+{-
 newGlobalChan = gview equality >>= \env -> liftIO $ do
 
     ans <- atomically $ do
@@ -127,11 +121,13 @@ newGlobalChan = gview equality >>= \env -> liftIO $ do
                 sqs <- for gchs $ \gch -> do
                     let gch' = coerce @GlobalChan @ChMQueues  gch
                     -- putStrLn "output"
-                    uhout <- showChMQueue $ gch' ^. chMOutputQueue 
+                    outt <- gch' ^. chMOutputQueue % to fetchChMQueue
+                    uhout <- showChMQueue outt
                     -- PrettyShow.pPrint $ uhout 
 
                     -- putStrLn "input"
-                    uhin <- showChMQueue $ gch' ^. chMInputQueue 
+                    inn <- gch' ^. chMInputQueue  % to fetchChMQueue
+                    uhin <- showChMQueue $ inn
                     -- PrettyShow.pPrint $ uhin
                     return $ intercalate "\n"
                         [ "output"
@@ -152,8 +148,36 @@ newGlobalChan = gview equality >>= \env -> liftIO $ do
     return ans
 
   where
-    newChMQueue = newTQueue 
-        >>= \q -> coerce @(TVar (TQueue QInstr)) @ChMQueue <$> newTVar q
+    newChMQueue = fmap CNil newTQueue 
+        >>= \q -> coerce <$> newTVar q
+
+    -- showChMQueue :: ChMQueue -> IO _ 
+    showChMQueue q = atomically $ do
+        res <- flushTQueue q
+        for (reverse res) (unGetTQueue q)
+        return res
+-}
+
+{-
+newGlobalChan = gview equality >>= \env -> liftIO $ atomically $ do
+    out <- newChMQueue
+    inp <- newChMQueue
+    return $ coerce @ChMQueues @GlobalChan $ ChMQueues out inp
+  where
+    newChMQueue = fmap CNil newTQueue 
+        >>= \q -> ChMQueue <$> newTVar q
+-}
+newGlobalChan = gview equality >>= \env -> liftIO $ do
+    out <- newChMQueue
+    inp <- newChMQueue
+    return $ coerce @ChMQueues @GlobalChan $ ChMQueues out inp
+  where
+    newChMQueue = fmap CNil newTQueueIO 
+        >>= \q -> ChMQueue <$> atomicModifyIORef' iNTFRESHREF  (succ &&& id) <*> newTVarIO q
+
+{-# NOINLINE iNTFRESHREF #-}
+iNTFRESHREF :: IORef Int
+iNTFRESHREF = unsafePerformIO $ newIORef 0
 
 {-# NOINLINE printPrintingThreadRef #-}
 printPrintingThreadRef :: IORef Bool
@@ -162,6 +186,50 @@ printPrintingThreadRef = unsafePerformIO $ newIORef True
 {-# NOINLINE gGlobalChans #-}
 gGlobalChans :: IORef [GlobalChan]
 gGlobalChans = unsafePerformIO $ newIORef []
+
+traceTranslationLkupWithHeader ::
+    String ->
+    TranslationLkup ->
+    STM ()
+traceTranslationLkupWithHeader str lkup = do
+    act <- lkup ^. activeQueue % to readChMQueue
+    oth <- lkup ^. otherQueue % to readChMQueue
+
+    resact <- flushTQueue act
+    resoth <- flushTQueue oth
+
+    traceM $ intercalate "\n" $
+        [ "----------------"
+        , str
+        , "----------------"
+        ]
+        ++ 
+        case lkup of
+            OutputLkup _ _ -> 
+                [ show $ lkup ^. activeQueue
+                , "act of " ++ "output"
+                , PrettyShow.ppShow resact
+                , show $ lkup ^. otherQueue
+                , "oth of " ++ "input"
+                , PrettyShow.ppShow resoth
+                ]
+            InputLkup _ _ ->
+                [ show $ lkup ^. activeQueue
+                , "act of " ++ "input"
+                , PrettyShow.ppShow resact
+                , show $ lkup ^. otherQueue
+                , "oth of " ++ "output"
+                , PrettyShow.ppShow resoth
+                ]
+
+    for_ (reverse resact) (unGetTQueue act)
+    for_ (reverse resoth) (unGetTQueue oth)
+
+    return ()
+
+
+    
+    
 
 {-| sets a translation lookup to use the channels given by a 'GlobalChan' -}
 setTranslationLkup ::
@@ -207,14 +275,108 @@ getPolChMQueue pol = case pol of
     Input -> view chMInputQueue 
 
 
+
 {-| reads the 'TVar' to get the 'TQueue QInstr' from queue -}
 readChMQueue :: 
     ChMQueue -> 
     STM (TQueue QInstr)
-readChMQueue = view 
-    ( coerced @ChMQueue @(TVar (TQueue QInstr)) 
-    % to readTVar
-    )
+readChMQueue q = q ^. chMQueueChainRef % to readTVar >>= go 
+  where 
+    go = \case
+        CCons tvarcontinue -> readTVar tvarcontinue >>= go 
+        CNil tqueue -> return tqueue
+
+{- | Similar to 'readChMQueue' but returns the last ptr to the queue as well -}
+readChMQueueWithLastPtr :: 
+    ChMQueue -> 
+    STM (TVar ChMQueueChain, TQueue QInstr)
+readChMQueueWithLastPtr q = readTVar q' >>= goInit
+  where 
+    q' = q ^. chMQueueChainRef
+
+    goInit = \case
+        CCons tvarcontinue -> go tvarcontinue 
+        CNil tqueue -> return (q', tqueue)
+
+    go tvarcontinue = readTVar tvarcontinue >>= \case
+        CCons tvarcontinue' -> go tvarcontinue'
+        CNil tqueue -> return (tvarcontinue, tqueue)
+
+
+
+{- | wrapper to write to the queue -}
+writeChMQueue ::
+    ChMQueue ->
+    QInstr ->
+    STM ()
+writeChMQueue q instr = readChMQueue q >>= \q' -> writeTQueue q' instr
+
+{- * Notes 
+#notes#
+
+Strictly speaking, if you're doing a lot of reads and writes with a ChMQueue,
+you should use 'readChMQueue' ONCE and just work with that queue given by the read...
+STM does have a performance overhead with lots of reads
+
+TODO: I'm almost certain that these lookups don't need to be all atomic i.e., we can 
+break it up to individual reads to get the next pointer (see the fetch function).
+-}
+
+{- | fetches the chm queue. -}
+fetchChMQueue ::
+    MonadIO m =>
+    ChMQueue -> 
+    m (TQueue QInstr)
+fetchChMQueue q = liftIO $ atomically (coerce q ^. chMQueueChainRef % to readTVar)
+    >>= go 
+  where 
+    go = \case
+        CCons tvarcontinue -> atomically (readTVar tvarcontinue) >>= go 
+        CNil tqueue -> return tqueue
+
+{- | fetches and writes the chm queue -}
+fetchAndWriteChMQueue ::
+    MonadIO m =>
+    ChMQueue -> 
+    QInstr ->
+    m () 
+-- fetchAndWriteChMQueue q instr = liftIO $ fetchChMQueue q >>= atomically . flip writeTQueue instr
+fetchAndWriteChMQueue q instr = liftIO $ atomically $ do
+    readChMQueue q >>= flip writeTQueue instr
+    -- fetchChMQueue q >>= atomically . flip writeTQueue instr
+
+        
+
+{- | Simplifies the chain of a chmqueue one step -- retuning (Just simplified) if 
+it can be simplified, otherwise returning Nothing
+(note that this mutates the queue, so it is not necessary to use the returned version
+since the one passed in has been mutated appropriatly)
+-}
+simplifyChMQueueChain ::
+    MonadIO m =>
+    ChMQueue -> 
+    m (Maybe ChMQueue)
+simplifyChMQueueChain q = liftIO $ atomically $ readTVar headtvar >>= go
+  where
+    headtvar = q ^. chMQueueChainRef
+    go = \case
+        CCons tvarcontinue -> do
+            chaincont <- readTVar tvarcontinue
+            writeTVar headtvar chaincont
+            return $ Just q
+        CNil _ -> return Nothing
+
+{- | fully simplifies a chm queue. -}
+fullySimplifyChMQueue ::
+    MonadIO m =>
+    ChMQueue -> 
+    m ()
+fullySimplifyChMQueue q = simplifyChMQueueChain q >>= go
+  where
+    go = \case
+        Just q' -> simplifyChMQueueChain q' >>= go
+        Nothing -> return ()
+
 
 traceMTranslationLkup ::
     MonadIO m => 

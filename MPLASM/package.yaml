@@ -24,8 +24,10 @@ dependencies:
 - recursion-schemes
 - array
 - containers
+- pretty-show
 
-- AMPL
+- MPLMACH
+- MPL
 
 extra-source-files:
 - README.md

@@ -57,7 +57,7 @@ type family XTypeIntF x
 type family XTypeCharF x
 type family XTypeDoubleF x
 
-type family XTypeStringF x
+-- type family XTypeStringF x
 type family XTypeUnitF x
 type family XTypeBoolF x
 type family XTypeListF x
@@ -109,7 +109,7 @@ data MplBuiltInTypesF x r =
     | TypeTopBotF !(XTypeTopBot x)
 
     -- built in non primitive types
-    | TypeStringF !(XTypeStringF x)
+    -- TypeStringF !(XTypeStringF x)
     | TypeUnitF !(XTypeUnitF x)
     | TypeBoolF !(XTypeBoolF x)
     | TypeListF !(XTypeListF x) r
@@ -124,7 +124,7 @@ data MplBuiltInTypesF x r =
 
 embedBuiltInTypes :: 
     ( XTypeTupleF x1 ~ XTypeTupleF x2
-    , XTypeStringF x1 ~ XTypeStringF x2
+    -- , XTypeStringF x1 ~ XTypeStringF x2
     , XTypeTensor x1 ~ XTypeTensor x2
     , XTypeCharF x1 ~ XTypeCharF x2
     , XTypeDoubleF x1 ~ XTypeDoubleF x2
@@ -150,7 +150,7 @@ embedBuiltInTypes (TypeTensorF cxt a b) = TypeTensorF cxt a b
 embedBuiltInTypes (TypeParF cxt a b) = TypeParF cxt a b
 embedBuiltInTypes (TypeNegF cxt a) = TypeNegF cxt a
 embedBuiltInTypes (TypeTopBotF cxt) = TypeTopBotF cxt
-embedBuiltInTypes (TypeStringF cxt) = TypeStringF cxt
+-- embedBuiltInTypes (TypeStringF cxt) = TypeStringF cxt
 embedBuiltInTypes (TypeUnitF cxt) = TypeUnitF cxt
 embedBuiltInTypes (TypeBoolF cxt) = TypeBoolF cxt
 embedBuiltInTypes (TypeListF cxt a) = TypeListF cxt a
@@ -175,7 +175,7 @@ type ForallMplType (c :: Type -> Constraint) x =
     , c (XTypeIntF x)
     , c (XTypeCharF x)
     , c (XTypeDoubleF x)
-    , c (XTypeStringF x)
+    -- , c (XTypeStringF x)
     , c (XTypeUnitF x)
     , c (XTypeBoolF x)
     , c (XTypeListF x)

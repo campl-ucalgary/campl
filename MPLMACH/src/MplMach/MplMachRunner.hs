@@ -73,8 +73,8 @@ mplMachRunnner env ((mainins, mainouts), instrs) = withSocketsDo $ flip runMplMa
 
         -- Set up the main function with the required translations 
         -- open up the channels used in the arguments of the main function
-        gmainins <- mplMachOpenChs mainins
-        gmainouts <- mplMachOpenChs mainouts
+        (gmainins, insvs) <- mplMachOpenChs mainins
+        (gmainouts, outsvs) <- mplMachOpenChs mainouts
         let maint = Map.fromList $ concat
                 [ gmainins & mapped % _2 %~
                     \gch -> InputLkup 
@@ -90,7 +90,10 @@ mplMachRunnner env ((mainins, mainouts), instrs) = withSocketsDo $ flip runMplMa
             stec = Stec mempty maint mempty instrs
 
         -- run the machine; and unconditionally kill the other thread
-        _ <- liftIO $ liftIO (flip runMplMach env (mplMachSteps stec)) 
-                `finally` liftIO (cancel svthd)
+        _ <- liftIO $ liftIO 
+            -- (flip runMplMach env (mplMachSteps stec)) 
+            ( mapConcurrently_ (flip runMplMach env) 
+                (mplMachSteps stec : insvs ++ outsvs)
+                ) `finally` liftIO (cancel svthd)
 
         return ()

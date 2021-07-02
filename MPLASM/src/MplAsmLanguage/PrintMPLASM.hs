@@ -145,6 +145,9 @@ instance Print MplAsmLanguage.AbsMPLASM.LeqI where
 instance Print MplAsmLanguage.AbsMPLASM.EqI where
   prt _ (MplAsmLanguage.AbsMPLASM.EqI (_,i)) = doc $ showString $ i
 
+instance Print MplAsmLanguage.AbsMPLASM.EqB where
+  prt _ (MplAsmLanguage.AbsMPLASM.EqB (_,i)) = doc $ showString $ i
+
 instance Print MplAsmLanguage.AbsMPLASM.LeqC where
   prt _ (MplAsmLanguage.AbsMPLASM.LeqC (_,i)) = doc $ showString $ i
 
@@ -192,6 +195,9 @@ instance Print MplAsmLanguage.AbsMPLASM.Put where
 
 instance Print MplAsmLanguage.AbsMPLASM.Hput where
   prt _ (MplAsmLanguage.AbsMPLASM.Hput (_,i)) = doc $ showString $ i
+
+instance Print MplAsmLanguage.AbsMPLASM.Shput where
+  prt _ (MplAsmLanguage.AbsMPLASM.Shput (_,i)) = doc $ showString $ i
 
 instance Print MplAsmLanguage.AbsMPLASM.Hcase where
   prt _ (MplAsmLanguage.AbsMPLASM.Hcase (_,i)) = doc $ showString $ i
@@ -374,6 +380,7 @@ instance Print [MplAsmLanguage.AbsMPLASM.Com] where
 instance Print MplAsmLanguage.AbsMPLASM.Com where
   prt i e = case e of
     MplAsmLanguage.AbsMPLASM.AC_ASSIGN pident com -> prPrec i 0 (concatD [prt 0 pident, doc (showString ":="), prt 0 com])
+    MplAsmLanguage.AbsMPLASM.AC_STORE store pident -> prPrec i 0 (concatD [prt 0 store, prt 0 pident])
     MplAsmLanguage.AbsMPLASM.AC_LOAD load pident -> prPrec i 0 (concatD [prt 0 load, prt 0 pident])
     MplAsmLanguage.AbsMPLASM.AC_RET ret -> prPrec i 0 (concatD [prt 0 ret])
     MplAsmLanguage.AbsMPLASM.AC_CALL_FUN call pident pidents -> prPrec i 0 (concatD [prt 0 call, prt 0 pident, doc (showString "("), prt 0 pidents, doc (showString ")")])
@@ -387,6 +394,7 @@ instance Print MplAsmLanguage.AbsMPLASM.Com where
     MplAsmLanguage.AbsMPLASM.AC_APPEND append -> prPrec i 0 (concatD [prt 0 append])
     MplAsmLanguage.AbsMPLASM.AC_BOOL cbool bbool -> prPrec i 0 (concatD [prt 0 cbool, prt 0 bbool])
     MplAsmLanguage.AbsMPLASM.AC_UNSTRING unstring -> prPrec i 0 (concatD [prt 0 unstring])
+    MplAsmLanguage.AbsMPLASM.AC_EQB eqb -> prPrec i 0 (concatD [prt 0 eqb])
     MplAsmLanguage.AbsMPLASM.AC_LEQ leqi -> prPrec i 0 (concatD [prt 0 leqi])
     MplAsmLanguage.AbsMPLASM.AC_EQI eqi -> prPrec i 0 (concatD [prt 0 eqi])
     MplAsmLanguage.AbsMPLASM.AC_LEQC leqc -> prPrec i 0 (concatD [prt 0 leqc])
@@ -412,6 +420,7 @@ instance Print MplAsmLanguage.AbsMPLASM.Com where
     MplAsmLanguage.AbsMPLASM.AC_GET get pident1 pident2 -> prPrec i 0 (concatD [prt 0 get, prt 0 pident1, doc (showString "on"), prt 0 pident2])
     MplAsmLanguage.AbsMPLASM.AC_PUT put pident1 pident2 -> prPrec i 0 (concatD [prt 0 put, prt 0 pident1, doc (showString "on"), prt 0 pident2])
     MplAsmLanguage.AbsMPLASM.AC_HPUT hput uident1 uident2 pident -> prPrec i 0 (concatD [prt 0 hput, prt 0 uident1, doc (showString "."), prt 0 uident2, doc (showString "on"), prt 0 pident])
+    MplAsmLanguage.AbsMPLASM.AC_SHPUT shput uident pident -> prPrec i 0 (concatD [prt 0 shput, prt 0 uident, doc (showString "on"), prt 0 pident])
     MplAsmLanguage.AbsMPLASM.AC_HCASE hcase pident labelledcomss -> prPrec i 0 (concatD [prt 0 hcase, prt 0 pident, doc (showString "of"), doc (showString "{"), prt 0 labelledcomss, doc (showString "}")])
     MplAsmLanguage.AbsMPLASM.AC_SPLIT split pident1 pident2 pident3 -> prPrec i 0 (concatD [prt 0 split, prt 0 pident1, doc (showString "into"), prt 0 pident2, prt 0 pident3])
     MplAsmLanguage.AbsMPLASM.AC_FORK fork pident1 pident2 pidents1 coms1 pident3 pidents2 coms2 -> prPrec i 0 (concatD [prt 0 fork, prt 0 pident1, doc (showString "as"), doc (showString "{"), prt 0 pident2, doc (showString "with"), prt 0 pidents1, doc (showString ":"), prt 0 coms1, doc (showString ";"), prt 0 pident3, doc (showString "with"), prt 0 pidents2, doc (showString ":"), prt 0 coms2, doc (showString "}")])

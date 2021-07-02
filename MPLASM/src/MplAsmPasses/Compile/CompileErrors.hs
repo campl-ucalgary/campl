@@ -14,6 +14,7 @@ import MplMach.MplMachTypes
 
 import Optics
 import MplAsmAST.MplAsmCore
+
 import MplAsmPasses.PassesErrorsPprint
 
 import Data.Traversable
@@ -45,6 +46,8 @@ data CompileError x
     | OutOfScopeCodata (TypeAndSpec x)
     | IllegalDestructorCall (TypeAndSpec x) Int Int
 
+    | IllegalServiceCall MplAsmServices (IdP x)
+
     | UnknownInputService (IdP x)
     | UnknownOutputService (IdP x)
 
@@ -56,8 +59,7 @@ deriving instance (Show (IdP x), Show (TypeAndSpec x)) => Show (CompileError x)
 
 pprintCompileErrors ::
     ( Pretty (IdP x) 
-    , Pretty (TypeAndSpec x) 
-    ) => 
+    , Pretty (TypeAndSpec x) ) => 
     [CompileError x] ->
     MplAsmDoc
 pprintCompileErrors = vsep . map go
@@ -184,6 +186,16 @@ pprintCompileErrors = vsep . map go
             [ pretty "Unknown output polarity service:"
             , line
             , indent' $ pretty idp
+            ]
+
+        IllegalServiceCall sv idp -> fold
+            [ pretty "The channel: "
+            , line
+            , indent' $ pretty idp
+            , line
+            , pretty "has the the wrong polarity for the service"
+            , space
+            , pretty $ show sv
             ]
 
         NoMainFunction -> fold

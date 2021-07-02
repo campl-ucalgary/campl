@@ -53,12 +53,12 @@ type family KindP x
 
 type family XXKind x
 
-data MplPrimitiveKind x = 
-    SeqKind !(XSeqKind x)
+data MplPrimitiveKind x 
+    = SeqKind !(XSeqKind x)
     | ConcKind !(XConcKind x)
 
-data MplKind x =
-    PrimitiveKind !(MplPrimitiveKind x)
+data MplKind x 
+    = PrimitiveKind !(MplPrimitiveKind x)
     | SeqArgKind !(XSeqArgKind x) [MplKind x]
     | ConcArgKind !(XConcArgKind x) ([MplKind x], [MplKind x])
     | ArrKind !(XArrKind x) (MplKind x) (MplKind x)

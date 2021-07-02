@@ -58,6 +58,9 @@ transLeqI x = case x of
 transEqI :: MplAsmLanguage.AbsMPLASM.EqI -> Result
 transEqI x = case x of
   MplAsmLanguage.AbsMPLASM.EqI string -> failure x
+transEqB :: MplAsmLanguage.AbsMPLASM.EqB -> Result
+transEqB x = case x of
+  MplAsmLanguage.AbsMPLASM.EqB string -> failure x
 transLeqC :: MplAsmLanguage.AbsMPLASM.LeqC -> Result
 transLeqC x = case x of
   MplAsmLanguage.AbsMPLASM.LeqC string -> failure x
@@ -106,6 +109,9 @@ transPut x = case x of
 transHput :: MplAsmLanguage.AbsMPLASM.Hput -> Result
 transHput x = case x of
   MplAsmLanguage.AbsMPLASM.Hput string -> failure x
+transShput :: MplAsmLanguage.AbsMPLASM.Shput -> Result
+transShput x = case x of
+  MplAsmLanguage.AbsMPLASM.Shput string -> failure x
 transHcase :: MplAsmLanguage.AbsMPLASM.Hcase -> Result
 transHcase x = case x of
   MplAsmLanguage.AbsMPLASM.Hcase string -> failure x
@@ -218,6 +224,7 @@ transComs x = case x of
 transCom :: MplAsmLanguage.AbsMPLASM.Com -> Result
 transCom x = case x of
   MplAsmLanguage.AbsMPLASM.AC_ASSIGN pident com -> failure x
+  MplAsmLanguage.AbsMPLASM.AC_STORE store pident -> failure x
   MplAsmLanguage.AbsMPLASM.AC_LOAD load pident -> failure x
   MplAsmLanguage.AbsMPLASM.AC_RET ret -> failure x
   MplAsmLanguage.AbsMPLASM.AC_CALL_FUN call pident pidents -> failure x
@@ -231,6 +238,7 @@ transCom x = case x of
   MplAsmLanguage.AbsMPLASM.AC_APPEND append -> failure x
   MplAsmLanguage.AbsMPLASM.AC_BOOL cbool bbool -> failure x
   MplAsmLanguage.AbsMPLASM.AC_UNSTRING unstring -> failure x
+  MplAsmLanguage.AbsMPLASM.AC_EQB eqb -> failure x
   MplAsmLanguage.AbsMPLASM.AC_LEQ leqi -> failure x
   MplAsmLanguage.AbsMPLASM.AC_EQI eqi -> failure x
   MplAsmLanguage.AbsMPLASM.AC_LEQC leqc -> failure x
@@ -256,6 +264,7 @@ transCom x = case x of
   MplAsmLanguage.AbsMPLASM.AC_GET get pident1 pident2 -> failure x
   MplAsmLanguage.AbsMPLASM.AC_PUT put pident1 pident2 -> failure x
   MplAsmLanguage.AbsMPLASM.AC_HPUT hput uident1 uident2 pident -> failure x
+  MplAsmLanguage.AbsMPLASM.AC_SHPUT shput uident pident -> failure x
   MplAsmLanguage.AbsMPLASM.AC_HCASE hcase pident labelledcomss -> failure x
   MplAsmLanguage.AbsMPLASM.AC_SPLIT split pident1 pident2 pident3 -> failure x
   MplAsmLanguage.AbsMPLASM.AC_FORK fork pident1 pident2 pidents1 coms1 pident3 pidents2 coms2 -> failure x

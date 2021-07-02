@@ -18,7 +18,7 @@ data TypeAndConcSpecs x = TypeAndConcSpecs
 -- | constructor / destructor info. We hve number of args.
 data TypeAndSeqSpecs x = TypeAndSeqSpecs 
     { _typeAndSeqSpecsType :: IdP x 
-    , _typeAndSeqSpecsSpecs ::  [(IdP x, Word)]
+    , _typeAndSeqSpecsSpecs ::  [(IdP x, Int)]
     }
 
 data MplAsmProg x = MplAsmProg 
@@ -49,4 +49,3 @@ $(makeLenses ''TypeAndSeqSpecs)
 $(makeLenses ''MplAsmProg)
 $(makePrisms ''MplAsmProg)
 $(makePrisms ''MplAsmStmt)
-

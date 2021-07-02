@@ -108,7 +108,7 @@ data TypeCheckSemanticErrors =
     | ExpectedAtMostTwoOccurencesOfAChannelInAPlugPhraseButGot [ChIdentR]
     | ExpectedVariablesToBeOfOppositePolarityInAPlugPhraseButGot [ChIdentR] 
     | ExpectedVariablesToBeInADifferentPlugPhraseButGotIn [ChIdentR] ([ChIdentR], [ChIdentR])
-    | ExpectedProcessesTo
+    -- ExpectedProcessesTo
     -- [ChIdentR] ([ChIdentR], [ChIdentR])
 
     | IllegalCycleInPlugPhrase [([ChIdentR], [ChIdentR])]
@@ -152,7 +152,9 @@ expectedInputPolarity ch = maybeToList $
  -      (c1) at most 2 occurences of each variable, 
  -      (c2) each variable must be of opposite polarity in each of the plug phrases
  -      (c3) each variable must be in a different phrase
+ -      (c4) phrases can be plugged along exactly one channel [the new composite plug that violates this will violate this condition (c5) cycles are not allowed]
  -}
+ {- look for the thing -}
 cutConditions :: 
     forall e. 
     ( AsTypeCheckSemanticErrors e ) => 

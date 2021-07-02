@@ -19,14 +19,16 @@ import Control.Monad.Writer
 
 import Data.Kind
 
-panicSymTab :: a
+import qualified GHC.Stack 
+
+panicSymTab :: GHC.Stack.HasCallStack => a
 panicSymTab = error "Illegal symbol table lookup -- most likely a thunk was evaluated too early."
 
-panicNotImplemented :: a
+panicNotImplemented :: GHC.Stack.HasCallStack => a
 panicNotImplemented = error "Not implemented yet...."
 
 
-panicDeprecated :: a
+panicDeprecated :: GHC.Stack.HasCallStack => a
 panicDeprecated = error "Sorry! This was deprecated..."
 
 {-

@@ -294,10 +294,12 @@ matchCont ty0 ty1 k = f ty0 ty1
         | otherwise = k type0 type1
 
     f type0@(TypeBuiltIn a) type1@(TypeBuiltIn b) = case (a,b) of
-        (TypeIntF _a, TypeIntF _b) -> return []
-        (TypeDoubleF _a, TypeDoubleF _b) -> return []
-        (TypeCharF _a, TypeCharF _b) -> return []
-        (TypeBoolF _a, TypeBoolF _b) -> return []
+        (TypeIntF _cxt0, TypeIntF _cxt1) -> return []
+        (TypeDoubleF _cxt0, TypeDoubleF _cxt1) -> return []
+        (TypeCharF _cxt0, TypeCharF _cxt1) -> return []
+        (TypeBoolF _cxt0, TypeBoolF _cxt1) -> return []
+        (TypeUnitF _cxt0, TypeUnitF _cxt1) -> return []
+        (TypeListF _cxt0 a, TypeListF _cxt1 b) -> f a b
 
         (TypeTopBotF a, TypeTopBotF b) -> return []
         (TypeNegF cxt0 a, TypeNegF cxt1 b) -> f a b

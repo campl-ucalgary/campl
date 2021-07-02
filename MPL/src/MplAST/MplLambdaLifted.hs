@@ -104,7 +104,7 @@ type instance XEUnfoldSubPhrase MplLambdaLifted =
     -- (MplTypePhrase MplLambdaLifted (SeqObjTag CodataDefnTag), XMplType MplLambdaLifted)
 -- type instance XESwitch MplLambdaLifted = XMplType MplLambdaLifted
 type instance XESwitch MplLambdaLifted = Void
-type instance XEIllegalInstr MplLambdaLifted = ()
+type instance XEIllegalInstr MplLambdaLifted = XEIllegalInstr MplPatternCompiled
 
 -- Pattern instances..
 type instance XMplPattern MplLambdaLifted = MplPattern MplPatternCompiled
@@ -129,6 +129,10 @@ type instance XPChar MplLambdaLifted = Void
 type instance XPList MplLambdaLifted = Void
 type instance XPListCons MplLambdaLifted =Void
 
+type instance XPSimpleListCons MplLambdaLifted = Void
+type instance XPSimpleListEmpty MplLambdaLifted = Void
+type instance XPSimpleUnit MplLambdaLifted = Void
+
 -- Process Command
 type instance XMplCmd MplLambdaLifted = MplCmd MplLambdaLifted
 type instance XCRun MplLambdaLifted = XCRun MplTypeChecked
@@ -144,7 +148,6 @@ type instance XCFork MplLambdaLifted = KeyWordNameOcc
 type instance XCId MplLambdaLifted = KeyWordNameOcc
 type instance XCIdNeg MplLambdaLifted = KeyWordNameOcc
 type instance XCRace MplLambdaLifted = KeyWordNameOcc
-type instance XCPlug MplLambdaLifted = Void
 type instance XCPlugs MplLambdaLifted = 
     ( KeyWordNameOcc
     , [(IdP MplLambdaLifted, (XMplType MplLambdaLifted))])
@@ -200,7 +203,7 @@ type instance XXType MplLambdaLifted = XXType MplTypeChecked
 type instance XTypeIntF MplLambdaLifted = XTypeIntF MplTypeChecked
 type instance XTypeCharF MplLambdaLifted = XTypeCharF MplTypeChecked
 type instance XTypeDoubleF MplLambdaLifted = XTypeDoubleF MplTypeChecked
-type instance XTypeStringF MplLambdaLifted = XTypeStringF MplTypeChecked
+-- type instance XTypeStringF MplLambdaLifted = XTypeStringF MplTypeChecked
 type instance XTypeUnitF MplLambdaLifted = XTypeUnitF MplTypeChecked
 type instance XTypeBoolF MplLambdaLifted = XTypeBoolF MplTypeChecked
 type instance XTypeListF MplLambdaLifted = XTypeListF MplTypeChecked

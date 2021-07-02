@@ -33,7 +33,7 @@ parseNoArgInternalType typeident = f $ typeident ^. to toTypeIdentP
             return $ _TypeTopBotF # toNameOcc ident
         | Just n <- ident ^? name % _Name % _InternalSeqBuiltInTypeParser = 
             case n of 
-                InternalString -> return $ _TypeStringF # toNameOcc ident
+                -- InternalString -> return $ _TypeStringF # toNameOcc ident
                 InternalUnit -> return $ _TypeUnitF # toNameOcc ident
                 InternalBool -> return $ _TypeBoolF # toNameOcc ident
                 _ -> Nothing

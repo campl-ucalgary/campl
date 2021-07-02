@@ -129,9 +129,11 @@ typeCheckStmt (MplStmt defns wheres) = do
             $ NE.toList defns
         let terrs = collectPkgErrors errpkg
             erroccured = hasn't _Empty 
-                -- $ filter (has _CannotCallTypeCts)
-                -- $ filter (has _CannotCallCh) 
-                -- $ filter (has _CannotCallTerm) 
+                {-  Previously tried filtering things out, but doesn't really work.
+                 filter (has _CannotCallTypeCts) 
+                 filter (has _CannotCallCh) 
+                 filter (has _CannotCallTerm) 
+                 -}
                     terrs
 
             foralls = foldMap (view _1) eqns
@@ -421,7 +423,7 @@ typeCheckExpr = para f
             ttypelp = annotateTypeTag ttypel lexpr
             ttyperp = annotateTypeTag ttyper rexpr
 
-        let addsubmul = do
+        let addsubmul = 
                 let eqn = TypeEqnsExist [ttypelp, ttyperp] $ 
                         [ TypeEqnsEq (typePtoTypeVar ttypep, typePtoTypeVar ttypelp )
                         , TypeEqnsEq (typePtoTypeVar ttypep, typePtoTypeVar ttyperp )
@@ -431,12 +433,12 @@ typeCheckExpr = para f
                         ]
                         <> leqns
                         <> reqns
-                return $ 
+                in
                     ( EPOps ( fromJust $ lookupInferredSeqTypeExpr ttype ttypemap ) op l' r'
                     , [eqn]
                     ) 
             -- duplicated code from @addsubmul@
-            div = do
+            div = 
                 let eqn = TypeEqnsExist [ttypelp, ttyperp] $ 
                         [ TypeEqnsEq (typePtoTypeVar ttypep, typePtoTypeVar ttypelp )
                         , TypeEqnsEq (typePtoTypeVar ttypep, typePtoTypeVar ttyperp )
@@ -446,20 +448,67 @@ typeCheckExpr = para f
                         ]
                         <> leqns
                         <> reqns
-                return $ 
+                in
+                    ( EPOps ( fromJust $ lookupInferredSeqTypeExpr ttype ttypemap ) op l' r'
+                    , [eqn]
+                    ) 
+            eqneq = 
+                let eqn = TypeEqnsExist [ttypelp, ttyperp] $
+                        [ TypeEqnsEq (typePtoTypeVar ttypep, _TypeBoolF % _Just % _TypeAnnExpr # opexpr)
+                        , TypeEqnsEq (typePtoTypeVar ttypelp, typePtoTypeVar ttyperp)
+                        ]
+                        <> leqns
+                        <> reqns
+                in
+                    ( EPOps ( fromJust $ lookupInferredSeqTypeExpr ttype ttypemap ) op l' r'
+                    , [eqn]
+                    ) 
+
+            -- inequalities on numbers
+            ineq = 
+                let eqn = TypeEqnsExist [ttypelp, ttyperp] $ 
+                        [ TypeEqnsEq (typePtoTypeVar ttypep, _TypeBoolF % _Just % _TypeAnnExpr # opexpr)
+
+                        , TypeEqnsEq (typePtoTypeVar ttypelp, typePtoTypeVar ttyperp)
+                        , TypeEqnsEq (typePtoTypeVar ttypelp, _TypeIntF % _Just % _TypeAnnExpr # lexpr )
+                        , TypeEqnsEq (typePtoTypeVar ttyperp, _TypeIntF % _Just % _TypeAnnExpr # rexpr )
+                        ]
+                        <> leqns
+                        <> reqns
+                in
+                    ( EPOps ( fromJust $ lookupInferredSeqTypeExpr ttype ttypemap ) op l' r'
+                    , [eqn]
+                    ) 
+            
+            -- colon operation
+            colon =
+                let eqn = TypeEqnsExist [ttypelp, ttyperp] $
+                        [ TypeEqnsEq (typePtoTypeVar ttypep, typePtoTypeVar ttyperp)
+                        , TypeEqnsEq (typePtoTypeVar ttyperp, _TypeListF # (_Just % _TypeAnnExpr # opexpr, typePtoTypeVar ttypelp))
+                        ]
+                        <> leqns
+                        <> reqns
+                in
                     ( EPOps ( fromJust $ lookupInferredSeqTypeExpr ttype ttypemap ) op l' r'
                     , [eqn]
                     ) 
 
 
-        case op of
+        return $ case op of
             PrimitiveAdd -> addsubmul
             PrimitiveSub -> addsubmul
             PrimitiveMul -> addsubmul
             PrimitiveDiv -> div
 
-            PrimitiveEq -> undefined
-            PrimitiveNeq -> undefined
+            PrimitiveEq -> eqneq
+            PrimitiveNeq -> eqneq
+
+            PrimitiveLt -> ineq
+            PrimitiveLeq -> ineq
+            PrimitiveGt -> ineq
+            PrimitiveGeq -> ineq
+
+            PrimitiveColon -> colon
             -- _ ->  error $ "not implemented op: " ++ show op
 
 
@@ -552,9 +601,86 @@ typeCheckExpr = para f
             , [eqn]
             )
 
-    f (EListF _ _ ) = panicNotImplemented
-    f (EStringF _ _) = panicNotImplemented
-    f (EUnitF _ ) = panicNotImplemented
+    {- more built in types... -}
+    f (EListF cxt ts) = do
+        ttype <- guse (envLcl % typeInfoEnvTypeTag)
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        (ttypets, (ts', tseqns)) <- fmap (second unzip . unzip) $ traverse (withFreshTypeTag . snd) ts
+
+        tp <- freshTypeTag
+
+        let ann = _EList # (cxt, map fst ts) :: MplExpr MplRenamed
+            tpp = annotateTypeTag tp ann
+            ttypep = annotateTypeTag ttype ann
+            ttypepts = annotateTypeTags ttypets $ map fst ts
+
+            eqns = TypeEqnsExist [_TypeIdentT # (tp, TypeIdentTInfoTypeAnn $ TypeAnnExpr ann)] $
+                [ TypeEqnsEq 
+                    ( typePtoTypeVar ttypep
+                    , _TypeListF # 
+                        ( Just $ TypeAnnExpr ann
+                        , typePtoTypeVar $ tpp
+                        )
+                    )
+                ] 
+                <> map (TypeEqnsEq . (typePtoTypeVar tpp,) . typePtoTypeVar . uncurry annotateTypeTag)
+                    (zip ttypets (map fst ts))
+                <> concat tseqns
+
+        return 
+            ( _EList # 
+                ( (cxt, fromJust $ lookupInferredSeqTypeExpr ttype ttypemap)
+                , ts'
+                )
+            , [eqns]
+            )
+
+    f (EStringF cxt str) = do
+        ttype <- guse (envLcl % typeInfoEnvTypeTag)
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        let ann = _EString # (cxt, str) :: MplExpr MplRenamed
+            ttypep = annotateTypeTag ttype ann
+
+            eqns = 
+                [ TypeEqnsEq 
+                    ( typePtoTypeVar ttypep
+                    , _TypeListF # 
+                        ( Just $ TypeAnnExpr ann
+                        , _TypeCharF # (Just $ TypeAnnExpr ann)
+                        )
+                    )
+                ] 
+
+        return 
+            ( _EString # 
+                ( (cxt, fromJust $ lookupInferredSeqTypeExpr ttype ttypemap)
+                , str
+                )
+            , eqns
+            )
+
+    f (EUnitF cxt) = do
+        ttype <- guse (envLcl % typeInfoEnvTypeTag)
+        ttypemap <- guse (envLcl % typeInfoEnvMap)
+
+        let ann = _EUnit # cxt :: MplExpr MplRenamed
+            ttypep = annotateTypeTag ttype ann
+
+            eqns = 
+                [ TypeEqnsEq 
+                    ( typePtoTypeVar ttypep
+                    , _TypeUnitF # Just (TypeAnnExpr ann)
+                    )
+                ]
+
+        return
+            ( _EUnit # (cxt, fromJust $ lookupInferredSeqTypeExpr ttype ttypemap)
+            , eqns
+            )
+
+    {- end of built in types -}
 
     f (EIfF cxt mcond mthenc melsec) = do
         ttype <- guse (envLcl % typeInfoEnvTypeTag)

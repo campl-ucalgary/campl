@@ -13,10 +13,12 @@
 :set -XDeriveTraversable 
 :set -XFlexibleContexts
 :set -XPartialTypeSignatures
+:set -XOverloadedStrings
 :set prompt "> "
 
 import Optics
 import Optics.State.Operators
+import System.Process
 import Control.Monad.State
 import Control.Monad.Writer
 import Control.Monad.Reader
@@ -33,10 +35,26 @@ import Control.Applicative
 import Data.Bool
 import Data.Function
 import Data.Foldable
+import Data.IORef
+import Control.Concurrent hiding yield
+import Control.Concurrent.Async
+import Control.Exception
+import System.Process
 
 import qualified Data.Map as Map
 import Data.Map (Map )
 import qualified Data.Set as Set
 import Data.Set (Set)
+
+import Pipes
+import Pipes.Core
+import qualified Pipes.Prelude as P
+-- import Pipes.Network.TCP
+import Pipes.Binary
+import qualified Pipes.Attoparsec as P
+import qualified Pipes.Parse as P
+
+import qualified Data.Attoparsec.ByteString.Char8 as A
+import qualified Data.ByteString.Char8 as B
 
 :set -interactive-print=Text.Pretty.Simple.pPrint

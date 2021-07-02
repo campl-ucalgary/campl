@@ -23,15 +23,28 @@ dependencies:
 - base >= 4.7 && < 5
 - optics
 - transformers
+- bytestring
 - mtl
 - stm
 - pretty
 - pretty-show
 - async
-- warp
-- wai
+- network
+- pipes
+- pipes-attoparsec
+- pipes-parse
+- attoparsec
 - containers
 - array
+- process
+
+# maybe consider using: to get rid of the liftIO so we can use an MTL representation
+# https://hackage.haskell.org/package/exceptions
+
+# - warp
+# - http-types
+# - wai
+# - binary
 
 library:
   source-dirs: src
@@ -57,3 +70,6 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - MPLMACH
+    - QuickCheck
+    - HUnit
+    - hspec

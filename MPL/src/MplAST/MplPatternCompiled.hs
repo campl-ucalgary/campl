@@ -105,8 +105,12 @@ type instance XPInt MplPatternCompiledCase = Void
 type instance XPBool MplPatternCompiledCase = Void
 type instance XPChar MplPatternCompiledCase = Void
 type instance XPList MplPatternCompiledCase = Void
-type instance XPListCons MplPatternCompiledCase =Void
+type instance XPListCons MplPatternCompiledCase = Void
 
+
+type instance XPSimpleListCons MplPatternCompiledCase = XMplType MplTypeChecked
+type instance XPSimpleListEmpty MplPatternCompiledCase = XMplType MplTypeChecked
+type instance XPSimpleUnit MplPatternCompiledCase = XMplType MplTypeChecked
 ---------------------------
 
 type instance XECall MplPatternCompiled = XECall MplTypeChecked
@@ -139,7 +143,7 @@ type instance XEUnfoldSubPhrase MplPatternCompiled =
     -- (MplTypePhrase MplPatternCompiled (SeqObjTag CodataDefnTag), XMplType MplPatternCompiled)
 -- type instance XESwitch MplPatternCompiled = XMplType MplPatternCompiled
 type instance XESwitch MplPatternCompiled = Void
-type instance XEIllegalInstr MplPatternCompiled = ()
+type instance XEIllegalInstr MplPatternCompiled = XMplType MplTypeChecked
 
 -- Pattern instances..
 type instance XMplPattern MplPatternCompiled = MplPattern MplPatternCompiled
@@ -162,7 +166,11 @@ type instance XPInt MplPatternCompiled = Void
 type instance XPBool MplPatternCompiled = Void
 type instance XPChar MplPatternCompiled = Void
 type instance XPList MplPatternCompiled = Void
-type instance XPListCons MplPatternCompiled =Void
+type instance XPListCons MplPatternCompiled = Void
+
+type instance XPSimpleListCons MplPatternCompiled = Void
+type instance XPSimpleListEmpty MplPatternCompiled = Void
+type instance XPSimpleUnit MplPatternCompiled = Void
 
 -- Process Command
 type instance XMplCmd MplPatternCompiled = MplCmd MplPatternCompiled
@@ -179,7 +187,6 @@ type instance XCFork MplPatternCompiled = KeyWordNameOcc
 type instance XCId MplPatternCompiled = KeyWordNameOcc
 type instance XCIdNeg MplPatternCompiled = KeyWordNameOcc
 type instance XCRace MplPatternCompiled = KeyWordNameOcc
-type instance XCPlug MplPatternCompiled = Void
 type instance XCPlugs MplPatternCompiled = 
     ( KeyWordNameOcc
     , [(IdP MplPatternCompiled, XMplType MplPatternCompiled)])
@@ -235,7 +242,7 @@ type instance XXType MplPatternCompiled = XXType MplTypeChecked
 type instance XTypeIntF MplPatternCompiled = XTypeIntF MplTypeChecked
 type instance XTypeCharF MplPatternCompiled = XTypeCharF MplTypeChecked
 type instance XTypeDoubleF MplPatternCompiled = XTypeDoubleF MplTypeChecked
-type instance XTypeStringF MplPatternCompiled = XTypeStringF MplTypeChecked
+-- type instance XTypeStringF MplPatternCompiled = XTypeStringF MplTypeChecked
 type instance XTypeUnitF MplPatternCompiled = XTypeUnitF MplTypeChecked
 type instance XTypeBoolF MplPatternCompiled = XTypeBoolF MplTypeChecked
 type instance XTypeListF MplPatternCompiled = XTypeListF MplTypeChecked

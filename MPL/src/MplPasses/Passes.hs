@@ -61,6 +61,8 @@ import Data.List
 
 import MplPasses.PassesErrors
 
+import qualified Text.Pretty.Simple
+
 import Debug.Trace
 
 {- This module conglomerates all the passes together and runs them all at
@@ -91,8 +93,8 @@ runPasses MplPassesEnv{mplPassesEnvUniqueSupply = supply, mplPassesTopLevel = to
     -- <=< fmap tracePprint . runTypeCheck' (toplvl, lrs) 
     <=< runTypeCheck' (toplvl, lrs) 
 
-    <=< fmap tracePprint . runRename' (toplvl, ls)
-    -- <=< runRename' (toplvl, ls)
+    -- <=< fmap tracePprint . runRename' (toplvl, ls)
+    <=< runRename' (toplvl, ls)
 
     <=< runParse' 
 
@@ -110,34 +112,28 @@ runPassesTester ::
 runPassesTester str = do
     env <- mplPassesEnv
     case runPasses env str of
-        Right v -> putStrLn $ pprint (Proxy :: Proxy MplRenamed) v
+        Right v -> do
+            -- Text.Pretty.Simple.pPrint v
+            putStrLn $ pprint (Proxy :: Proxy MplRenamed) v
         Left v -> putStrLn $ show $ vsep $ map pprintMplPassesErrors v
 
 fresher = [r|
 
 
--- TODO: This does fromJust for some reason.. I think oconcurrent types are being
--- put in the symbol table even though they are technically not valid for some reason
+data List(A) -> S =
+    Cons :: A,S -> S
+    Nil ::  -> S
 
-protocol OnlyGet ( | A ) => P =
-    JustGet   :: Get (A| P) => P 
-    -- CloseJG   :: TopBot    => P  
+fun huh =
+    Cons(1,Cons(2,Cons(3,Nil))) -> 0
+    Cons(a,b) -> a
+    _ -> 3
 
-proc startChat = 
-  | cco => d -> do 
-    hput JustGet on d
-    close d
-    halt cco
-
-{-
-data
-    Fk(A) -> P =
-        Fk :: Get( A | P) -> P
-fun a =
-    b -> Fk(b)
--}
-
-
+fun huh =
+    [1,2,3] -> 0
+    a:b -> a
+    n -> 3
+        
 |]
 
 freshhuh = [r|

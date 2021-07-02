@@ -216,11 +216,28 @@ parseBnfcExpr (B.LET_EXPR stmts expr) = do
     f (B.LET_EXPR_PHRASE n) = parseBnfcStmt n
 
 -- TODO
-parseBnfcExpr (B.INFIXR0_EXPR a colon b) = error "not implemented instr"
-parseBnfcExpr (B.INFIXL1_EXPR a op b) = error "not implemented instr"
-parseBnfcExpr (B.INFIXL2_EXPR a op b) = error "not implemented instr"
-parseBnfcExpr (B.INFIXL3_EXPR a op b) = error "not implemented instr"
-parseBnfcExpr (B.INFIXL4_EXPR a op b) = error "not implemented instr"
+parseBnfcExpr (B.INFIXR0_EXPR a colon b) = do
+    ~[a', b']<- traverseTryEach parseBnfcExpr [a,b]
+    return $ _EPOps # ((), PrimitiveColon, a', b')
+    
+parseBnfcExpr (B.INFIXL1_EXPR a op b) = 
+    error $ "not implemented instr" ++ show op
+parseBnfcExpr (B.INFIXL2_EXPR a op b) = 
+    error $ "not implemented instr" ++ show op
+parseBnfcExpr (B.INFIXL3_EXPR a (B.Infixl3op (pos, op)) b) = do
+    ~[a', b'] <- traverseTryEach parseBnfcExpr [a,b]
+    case op of
+        "==" -> return $ _EPOps #  ((), PrimitiveEq, a',b') 
+        "/=" -> return $ _EPOps #  ((), PrimitiveNeq, a',b') 
+        "<"  -> return $ _EPOps #  ((), PrimitiveLt, a',b') 
+        ">"  -> return $ _EPOps #  ((), PrimitiveGt, a',b') 
+        "<=" -> return $ _EPOps #  ((), PrimitiveLeq, a',b') 
+        ">=" -> return $ _EPOps #  ((), PrimitiveGeq, a',b') 
+        _ -> error $ "not implemented" ++ op
+
+parseBnfcExpr (B.INFIXL4_EXPR a op b) = 
+    error $ "not implemented instr" ++ show op
+
 parseBnfcExpr (B.INFIXL5_EXPR a (B.Infixl5op (pos, op)) b) = do
     ~[a', b']<- traverseTryEach parseBnfcExpr [a,b]
     case op of
@@ -234,8 +251,10 @@ parseBnfcExpr (B.INFIXL6_EXPR a (B.Infixl6op (pos,op)) b) = do
         "/" -> return $ _EPOps #  ((), PrimitiveDiv, a',b') 
         _ -> error $ "not implemented: " ++ op
 
-parseBnfcExpr (B.INFIXR7_EXPR a op b) = error "not implemented instr"
-parseBnfcExpr (B.INFIXL8_EXPR a op b) = error "not implemented instr"
+parseBnfcExpr (B.INFIXR7_EXPR a op b) = 
+    error $ "not implemented instr" ++ show op
+parseBnfcExpr (B.INFIXL8_EXPR a op b) =
+    error $ "not implemented instr" ++ show op
 
 parseBnfcExpr (B.VAR_EXPR v) = return $ review _EVar ((), toTermIdentP v)
 parseBnfcExpr (B.INT_EXPR v) = 

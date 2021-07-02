@@ -1,5 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE StandaloneDeriving #-}
 module MplAsmPasses.Compile.Stack where
 
 import Optics
@@ -29,15 +31,20 @@ data MplAsmCompileSt x = MplAsmCompileSt
 
 data MplAsmCompileStUniqs = MplAsmCompileStUniqs 
     { _uniqLocalChan :: LocalChan
-    -- | recall that service channels are negative.
-    , _uniqServiceChan :: LocalChan
+    -- | recall that service channels are negative. We use
+    -- even numbers to denote input service channels
+    , _uniqInputServiceChan :: LocalChan
+    -- | recall that service channels are negative. We use
+    -- odd numbers to denote output service channels (odd and output)
+    , _uniqOutputServiceChan :: LocalChan
+
     , _uniqCallIx :: CallIx
     }
 
 data MplAsmCompileStSymTabs x = MplAsmCompileStSymTabs 
-    { _symTabFuns :: Map (IdP x) (CallIx, Int)
+    { _symTabFuns :: Map (IdP x) (CallIx, [IdP x])
         -- ^ function name --> (function id,number of args)
-    , _symTabProcs :: Map (IdP x) (CallIx, (Int, [LocalChan], [LocalChan]))
+    , _symTabProcs :: Map (IdP x) (CallIx, ([IdP x], [LocalChan], [LocalChan]))
         -- ^ function name --> (function id,(number of seq args, inchs, outchs))
 
     , _symTabData :: Map (IdP x)  (Map (IdP x) (CaseIx, Int))
@@ -49,6 +56,8 @@ data MplAsmCompileStSymTabs x = MplAsmCompileStSymTabs
     , _symTabCoprotocol :: Map (IdP x) (Map (IdP x) HCaseIx)
         -- ^ coprotocol name --> hcaseix
     }
+
+deriving instance Show (IdP x) => Show (MplAsmCompileStSymTabs x)
 
 
 $(makeLenses ''MplAsmCompileSt )
@@ -73,7 +82,9 @@ initMplAsmCompileSt = MplAsmCompileSt
 
     , _uniqCounters = MplAsmCompileStUniqs 
         { _uniqLocalChan = coerce (0 :: Int)
-        , _uniqServiceChan = coerce (-10 :: Int)
+        -- , _uniqServiceChan = coerce (-10 :: Int)
+        , _uniqInputServiceChan  = coerce (-2 :: Int)
+        , _uniqOutputServiceChan  = coerce (-1 :: Int)
         , _uniqCallIx = coerce (0 :: Int)
         }
     , _symTab = initMplAsmCompileStSymTabs 

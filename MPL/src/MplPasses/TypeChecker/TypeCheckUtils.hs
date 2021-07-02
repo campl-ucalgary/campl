@@ -213,15 +213,12 @@ higherOrderCheck notscoped tp
             TypeDoubleF _cxt -> return $ Just $ TypeDoubleF Nothing
             TypeCharF _cxt -> return $ Just $ TypeCharF Nothing
             TypeBoolF _cxt -> return $ Just $ TypeBoolF Nothing
-
-            {-
-            TypeCharF _ -> undefined
-            TypeStringF _ -> undefined
-            TypeUnitF _ -> undefined
-            TypeListF _  _ ->  undefined
-            TypeTupleF _  _ ->  undefined
-            TypeConcArrF _ _ _ _ ->  undefined
-            -}
+            
+            {- built in primitives -}
+            TypeUnitF _cxt -> return $ Just $ TypeUnitF Nothing
+            TypeListF _cxt rst -> do
+                rst' <- snd rst
+                return $ fmap (TypeListF Nothing) rst'
 
             TypeTupleF _cxt (t0, t1,ts) -> do
                 t0' <- snd t0

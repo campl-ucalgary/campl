@@ -54,8 +54,11 @@ dumpOptShowOptions dumpopt = case dumpopt of
 
 data Flag
     = Inp FilePath
-    | Out FilePath
     | Dump DumpOpt DumpOutput
+
+    | RunMplMach
+    | MachHostName String
+    | MachPort String
   deriving (Show, Eq)
 
 dump :: DumpOpt -> Maybe FilePath -> Flag
@@ -79,9 +82,9 @@ instance Show GetOptsException where
         ]
 instance Exception GetOptsException where
 
--- | gets the options from the command line arguments
-getOpts :: IO ([Flag], FilePath)
-getOpts = getArgs >>= \args -> case GetOpt.getOpt GetOpt.RequireOrder options args of
+-- | gets the options from a list of the command line arguments
+getOpts :: [String] -> IO ([Flag], FilePath)
+getOpts args = case GetOpt.getOpt GetOpt.RequireOrder options args of
     -- (flags, nonoptions@[_], []) -> return (flags, nonoptions)
     (flags, [nonoptions], []) -> return (flags, nonoptions)
     (_, _, errs) -> 
@@ -96,8 +99,34 @@ getOpts = getArgs >>= \args -> case GetOpt.getOpt GetOpt.RequireOrder options ar
     header = "Usage: mpl [OPTIONS ...] FILE"
 
     options :: [GetOpt.OptDescr Flag]
-    options = 
-        map mkDdump allDumpOpts
+    options = map mkDdump allDumpOpts ++
+        [ GetOpt.Option 
+            ['r']
+            ["run"]
+            ( GetOpt.NoArg RunMplMach )
+            "run the abstract machine with the provided program"
+        {-
+        , GetOpt.Option
+            ['h']
+            ["hostname"]
+            ( GetOpt.ReqArg 
+                (\hn -> MachHostName hn 
+                "localhost"
+                )
+                "hostname used for the machine internally"
+            )
+        , GetOpt.Option
+            ['p']
+            ["port"]
+            ( GetOpt.ReqArg 
+                (\hn -> MachPort hn 
+                "5000"
+                )
+                "port number used for the machine internally"
+            )
+        -}
+        ]
+
       where
         mkDdump dmpopt = GetOpt.Option 
             []

@@ -54,6 +54,9 @@ newtype LeqI = LeqI ((Int, Int), String)
 newtype EqI = EqI ((Int, Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
+newtype EqB = EqB ((Int, Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
 newtype LeqC = LeqC ((Int, Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
@@ -100,6 +103,9 @@ newtype Put = Put ((Int, Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype Hput = Hput ((Int, Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+newtype Shput = Shput ((Int, Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype Hcase = Hcase ((Int, Int), String)
@@ -215,6 +221,7 @@ data Coms = Prog [Com]
 
 data Com
     = AC_ASSIGN PIdent Com
+    | AC_STORE Store PIdent
     | AC_LOAD Load PIdent
     | AC_RET Ret
     | AC_CALL_FUN Call PIdent [PIdent]
@@ -228,6 +235,7 @@ data Com
     | AC_APPEND Append
     | AC_BOOL CBool BBool
     | AC_UNSTRING Unstring
+    | AC_EQB EqB
     | AC_LEQ LeqI
     | AC_EQI EqI
     | AC_LEQC LeqC
@@ -253,6 +261,7 @@ data Com
     | AC_GET Get PIdent PIdent
     | AC_PUT Put PIdent PIdent
     | AC_HPUT Hput UIdent UIdent PIdent
+    | AC_SHPUT Shput UIdent PIdent
     | AC_HCASE Hcase PIdent [LabelledComs]
     | AC_SPLIT Split PIdent PIdent PIdent
     | AC_FORK Fork PIdent PIdent [PIdent] Coms PIdent [PIdent] Coms

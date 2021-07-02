@@ -85,7 +85,6 @@ type instance XCFork MplCmdFreeVars = KeyWordNameOcc
 type instance XCId MplCmdFreeVars = KeyWordNameOcc
 type instance XCIdNeg MplCmdFreeVars = KeyWordNameOcc
 type instance XCRace MplCmdFreeVars = KeyWordNameOcc
-type instance XCPlug MplCmdFreeVars = Void
 type instance XCPlugs MplCmdFreeVars = (KeyWordNameOcc, (ContextInfo, [IdP MplCmdFreeVars]))
     -- plug command, plug scoped bound variables.
 type instance XCCase MplCmdFreeVars = KeyWordNameOcc

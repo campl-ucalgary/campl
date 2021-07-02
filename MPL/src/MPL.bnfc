@@ -59,10 +59,8 @@ position token ChId {"|=|"} ;
 
 position token Case {"case"} ;
 
--- old version without hashtag
--- position token UIdent (upper (letter | digit | '_')*) ;
-position token UIdent (('#'upper | upper) (letter | digit | '_')*) ;
-position token PIdent letter (letter | digit | '_' | '\'')* ;
+position token UIdent (upper (letter | digit | '_')*) ;
+position token PIdent (letter | '_') (letter | digit | '_' | '\'')* ;
 position token UPIdent (letter | upper) (letter | digit | '_' | '\'')* ;
 
 

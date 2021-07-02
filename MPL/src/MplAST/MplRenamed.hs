@@ -178,6 +178,10 @@ type instance XPChar MplRenamed = Location
 type instance XPList MplRenamed = Location
 type instance XPListCons MplRenamed = Location
 
+type instance XPSimpleListCons MplRenamed = Void
+type instance XPSimpleListEmpty MplRenamed = Void
+type instance XPSimpleUnit MplRenamed = Void
+
 -- Process Command
 type instance XMplCmd MplRenamed = MplCmd MplRenamed
 type instance XCRun MplRenamed = ()
@@ -192,7 +196,6 @@ type instance XCFork MplRenamed = KeyWordNameOcc
 type instance XCId MplRenamed = KeyWordNameOcc
 type instance XCIdNeg MplRenamed = KeyWordNameOcc
 type instance XCRace MplRenamed = KeyWordNameOcc
-type instance XCPlug MplRenamed = Void
 type instance XCPlugs MplRenamed = (KeyWordNameOcc, [IdP MplRenamed])
                                                     -- these are the new plugged channels.
                                                     -- Note that these do not have a polarity 
@@ -251,7 +254,7 @@ type instance XXType MplRenamed = Void
 type instance XTypeIntF MplRenamed = NameOcc
 type instance XTypeCharF MplRenamed = NameOcc
 type instance XTypeDoubleF MplRenamed = NameOcc
-type instance XTypeStringF MplRenamed = NameOcc
+-- type instance XTypeStringF MplRenamed = NameOcc
 type instance XTypeUnitF MplRenamed = NameOcc
 type instance XTypeBoolF MplRenamed = NameOcc
 type instance XTypeListF MplRenamed = NameOcc

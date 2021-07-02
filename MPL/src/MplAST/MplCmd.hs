@@ -58,7 +58,6 @@ type family XCFork x
 type family XCId x
 type family XCIdNeg x
 type family XCRace x
-type family XCPlug x
 type family XCPlugs x
 type family XCCase x
 type family XCCasePattern x
@@ -100,7 +99,6 @@ type ForallProcessCommand (c :: Type -> Constraint) x =
     , c (XCId x)
     , c (XCIdNeg x)
     , c (XCRace x)
-    , c (XCPlug x)
     , c (XCPlugs x)
     , c (XCCase x)
     , c (XCCasePattern x)
@@ -163,7 +161,6 @@ data MplCmd x =
         (NonEmpty (ChP x, NonEmpty (MplCmd x)))
         -- { _cRaces :: NonEmpty (chident, ProcessCommands pattern letdef typedef seqcalleddef conccalleddef ident chident) }
 
-    | CPlug !(XCPlug x) (CPlugPhrase x, CPlugPhrase x)
     | CPlugs !(XCPlugs x) (CPlugPhrase x, CPlugPhrase x, [CPlugPhrase x])
         {-
         -- | plugged together

@@ -65,6 +65,7 @@ _PrimitiveOperatorParser = prism' embed match
         , ("/", PrimitiveDiv)
         , ("%", PrimitiveMod)
         , ("^", PrimitiveExp)
+        , (":", PrimitiveColon)
         ]
 
     embed n = fst . fromJust $ find ((n==) . snd) tmp
@@ -72,8 +73,8 @@ _PrimitiveOperatorParser = prism' embed match
     match n = snd <$> find ((n==) . fst) tmp
 
     
-data PrimitiveOperators =
-    PrimitiveAdd
+data PrimitiveOperators 
+    = PrimitiveAdd
     | PrimitiveSub
     | PrimitiveMul
     | PrimitiveDiv
@@ -85,6 +86,9 @@ data PrimitiveOperators =
     | PrimitiveLeq
     | PrimitiveGt
     | PrimitiveGeq
+
+    -- |this is list cons
+    | PrimitiveColon
   deriving (Show, Read, Eq, Data, Generic)
 
 _BuiltInOperatorParser :: Prism' String BuiltInOperators
@@ -95,17 +99,15 @@ _BuiltInOperatorParser = prism' embed match
         , ("&&", InternalAnd)
         , ("++", InternalAppend)
         , ("!!", InternalIndex)
-        , (":", InternalListCons)
         ]
 
     embed n = fst . fromJust $ find ((n==) . snd) tmp
 
     match n = snd <$> find ((n==) . fst) tmp
 
-data BuiltInOperators = 
-    InternalOr
+data BuiltInOperators 
+    = InternalOr
     | InternalAnd
     | InternalAppend
     | InternalIndex
-    | InternalListCons
   deriving (Show, Read, Eq, Data, Generic)

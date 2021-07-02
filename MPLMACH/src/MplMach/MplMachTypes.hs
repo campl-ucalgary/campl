@@ -31,13 +31,24 @@ import System.IO.Unsafe
 
 {- | A channel manager queue is an 'TVar' to a queue (well a 'Seq') of 'QInstr' -}
 -- newtype ChMQueue = ChMQueue (TVar (TQueue QInstr))
-newtype ChMQueue = ChMQueue (TVar (TQueue QInstr))
+-- newtype ChMQueue = ChMQueue (TVar (TQueue QInstr))
+
+data ChMQueueChain 
+    = CCons (TVar ChMQueueChain)
+    | CNil (TQueue QInstr)
+
+data ChMQueue = ChMQueue 
+    { _chMId :: Int
+    , _chMQueueChainRef :: TVar ChMQueueChain
+    }
 
 instance Show ChMQueue where
-    show _ = "ChMQueue _"
+    -- show _ = "ChMQueue _"
+    show chm = "ChMQueue " ++ show (_chMId chm)
 
 {- | helpful little debug function to essentially get a snap shot of the queue 
 a given point of time -}
+{-
 showChMQueue :: 
     ChMQueue ->
     IO _ 
@@ -46,7 +57,7 @@ showChMQueue (ChMQueue tvar) = atomically $ do
     res <- flushTQueue q
     for (reverse res) (unGetTQueue q)
     return res
-
+-}
     {-
     q <- readTVar tvar
     res <- tryPeekTQueue q
@@ -61,6 +72,7 @@ data ChMQueues = ChMQueues
     { _chMOutputQueue :: ChMQueue
     , _chMInputQueue :: ChMQueue
     }
+  deriving Show
 
 {- | A local channel is simply an index in the translation. See 'Stec' below. -}
 newtype LocalChan = LocalChan Int
@@ -75,9 +87,12 @@ newtype ServiceCh = ServiceCh Int
  -      - (head :<| q, head':<| q')  denotes how we will parse through these.
  -}
 newtype GlobalChan = GlobalChan ChMQueues
+  deriving Show
 
+{-
 instance Show GlobalChan where
     show _ = "GlobalChan _"
+-}
 
 {- | This data keeps track of the polarity of the channel. This is necessary for 
  - the channel to know which part of the queue it should put its commands on. -}
@@ -112,6 +127,7 @@ data TranslationLkup
   deriving Show
 
 
+{-
 showTranslationLkup :: 
     TranslationLkup -> 
     IO _
@@ -136,6 +152,7 @@ showTranslationLkup lkup = do
   where
     act = _activeQueue lkup 
     oth = _otherQueue lkup 
+-}
 
 
 -- function / process
@@ -231,12 +248,14 @@ data ISeq
     | IOrBool
     | IAndBool
     | INotBool
+    | IEqBool
     -- | if then [Instr] else [Instr]
     | IIf [Instr] [Instr]
 
     -- Tests if two Vals are equal or less than or equal to
     | IEqInt
     | ILeqInt
+    | ILtInt
 
     | IEqChar
     | ILeqChar
@@ -314,11 +333,24 @@ data QInstr
     | QRace Stec
   deriving Show
 
+{- | returns true if the instruction will make the process suspend -}
+isSuspendingQInstr ::
+    QInstr -> 
+    Bool
+isSuspendingQInstr = \case
+    QGet _ -> True
+    QFork _ _ -> True
+    QHCase _ _ -> True
+    _ -> False
+
 
 {- | a service instruction -}
 data SInstr 
     = SHGetChar
     | SHPutChar
+
+    | SHGetString
+    | SHPutString
 
     | SHGetInt
     | SHPutInt
@@ -326,11 +358,20 @@ data SInstr
     | SHClose
   deriving Show
 
-{- | (-10) or less than are generic service channels -}
-isTermServiceCh :: 
+{- | Negative chs are service channels -}
+isServiceCh :: 
     LocalChan ->
     Bool
-isTermServiceCh = (<= -1) . coerce @LocalChan @Int
+isServiceCh = (<= -1) . coerce @LocalChan @Int
+
+{- | Negative chs are service channels -}
+isInputServiceCh :: 
+    LocalChan ->
+    Bool
+isInputServiceCh n = even n' && n' <= -1
+  where
+    n' = coerce @LocalChan @Int n 
+
 
 -- * Template haskell
 $(makeClassyPrisms ''Val)
@@ -342,6 +383,9 @@ $(makeLenses ''ChMQueues)
 $(makeLenses ''TranslationLkup)
 $(makePrisms ''TranslationLkup)
 $(makeClassy ''MplMachSuperCombinators)
+$(makeLenses ''ChMQueue)
+$(makePrisms ''ChMQueueChain)
+
 
 instance AsISeq Instr where
     _ISeq = _SeqInstr
