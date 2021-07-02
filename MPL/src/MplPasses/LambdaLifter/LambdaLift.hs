@@ -350,12 +350,21 @@ collectFreeVarsExpr = cata go
         EVarF _ v -> Set.singleton v
         ECaseF _ caseon patts -> (caseon `Set.union` foldMap snd patts) `Set.difference` foldMap (f . fst) patts
           where
+            f :: MplPattern MplPatternCompiledCase -> Set IdentT
             f = \case
-                PSimpleConstructor _ _ args -> Set.fromList $ map fst args
-                PSimpleListCons _ l r -> Set.fromList $ [l, r]
-                PSimpleListEmpty _ -> mempty
-                PSimpleUnit _ -> mempty
+                    PSimpleConstructor _ _ args -> Set.fromList $ map fst args
+                    PSimpleListCons _ l r -> Set.fromList $ [l, r]
+                    PSimpleListEmpty _ -> mempty
+                    PSimpleUnit _ -> mempty
+
+
+        ERecordF _ records -> foldMapOf (folded % _3) (\(patts, acc) -> acc `Set.difference` foldMap (Set.singleton . getPattVarIdent) patts) records
+        -- ERecordF _ records -> foldMapOf (folded % _3) (\(patts, acc) -> acc `Set.difference` foldMap collectBoundVariablesFromPattern patts) records
+
+        -- _ :: NonEmpty (MplTypePhrase MplTypeChecked ('SeqObjTag 'CodataDefnTag), IdentT, ([MplPattern MplPatternCompiled], Set IdentT)) -> Set IdentT
+
         res -> fold res
+    
 
 {- | Gets all the functions called in an expression (note this DOES NOT recurse through the let bindings) -}
 collectCallsExpr :: 

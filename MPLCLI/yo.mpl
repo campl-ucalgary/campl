@@ -49,21 +49,15 @@ fun reverse :: [A] -> [A] =
     lst -> let 
 -}
 
-data Nat -> S =
-    Succ :: S -> S
-    Zero ::   -> S
-
--- less than or equal to for natural numbers. 
-fun natLe :: Nat,Nat -> Bool =
-    Zero, _ -> True
-    Succ(_), Zero -> False
-    Succ(a0), Succ(a1) -> natLe(a0,a1)
-
-fun showBool :: Bool -> [Char] =
-    True -> "True"
-    False -> "False"
 
 
+fun append :: [A],[A] -> [A] =
+    s:ss, ts -> s : append(ss,ts)
+    [], ts -> ts
+
+fun concat :: [[A]] -> [A] =
+    [] -> []
+    s:ss -> append(s, concat(ss))
 
 coprotocol S => Console =
     ConsolePut :: S => Get( [Char] | S) 
@@ -73,7 +67,8 @@ coprotocol S => Console =
 proc run :: | Console => =
     | _console => -> do
         hput ConsolePut on _console
-        put showBool(natLe(Succ(Zero),Succ(Zero))) on _console
+        put append("a", "b") on _console
+
         hput ConsoleClose on _console
         halt _console
 

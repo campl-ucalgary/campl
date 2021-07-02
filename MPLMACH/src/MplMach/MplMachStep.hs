@@ -138,6 +138,7 @@ seqStep k stec = case steccode of
             stec & code !~ (recs Arr.! i)
                  & environment !~ e'
                  & environment %!~ (reverse args ++)
+                 & stack !~ s'
                  & stack %!~ cons (VClos c e)
           where
             (args, s') = splitAt n s
@@ -198,6 +199,10 @@ seqStep k stec = case steccode of
                  & stack %!~ cons (VBool $ n < m)
 
         (IEqBool, e, VBool n : VBool m : s) -> pure $ Just $
+            stec & code !~ c
+                 & stack !~ s
+                 & stack %!~ cons (VBool $ n == m)
+        (IEqChar, e, VChar n : VChar m : s) -> pure $ Just $
             stec & code !~ c
                  & stack !~ s
                  & stack %!~ cons (VBool $ n == m)
@@ -493,7 +498,7 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
             -- chlkup = t Map.! ch
             Just chlkup = Map.lookup ch t
 
-        (s, t, e, IRun tmapping callix ) -> do
+        (s, t, e, IRun tmapping callix) -> do
             instrs <- gviews supercombinators (Arr.! callix)
             -- let t' = Map.map (\lch -> t Map.! lch) $ coerce tmapping
             let t' = Map.map (\lch -> fromJust $ Map.lookup lch t) $ coerce tmapping

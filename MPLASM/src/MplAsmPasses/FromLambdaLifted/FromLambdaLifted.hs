@@ -226,7 +226,7 @@ mplAssembleStmt stmt = fmap (filter filtercond) $ sequenceA
                         ( 
                             view (typePhraseName % to toAsmIdP) 
                             -- recall that the type phrase from has type ([Types], Types)
-                            &&& view (typePhraseFrom % _1 % to (succ . genericLength) )
+                            &&& view (typePhraseFrom % _1 % to genericLength )
                         ) 
                 )
 
@@ -382,6 +382,7 @@ mplAssembleExpr = para go
                     TypeBuiltIn (TypeIntF _) -> pure [Asm.CEqInt ()]
                     TypeBuiltIn (TypeBoolF _) -> pure [Asm.CEqBool ()]
                     TypeBuiltIn (TypeCharF _) -> pure [Asm.CEqChar ()]
+                    _ -> error "illegal use of eq instruction on unsupported type (TODO: make this error message better). "
                 _ -> error $ "assembling of operation is not implemented yet " ++ show op
         
             
@@ -527,6 +528,7 @@ mplAssembleExpr = para go
                     , map (\(PVar _ p) -> toAsmIdP p) patts
                     , 
                     )
+                $ fmap (++ [Asm.CRet ()])
                     coms
                 
             return [Asm.CRecord () $ NE.toList seqcoms]

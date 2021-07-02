@@ -285,6 +285,7 @@ mplAsmComToInstr = \case
         ~(Just ix) <- lookupVarStack v
         return $ [_IAccess # ix]
     CRet _ -> return [_IRet # ()]
+    {-
     CCall _ fname args -> do
         ~(Just (funid, fargs)) <- lookupFun fname
         tell $ bool [_IllegalFunCall # (fname, length fargs, length args)] [] $ length args == length fargs
@@ -292,6 +293,18 @@ mplAsmComToInstr = \case
             ~(Just ix) <- lookupVarStack v
             varStack %= (fv:)
             return [_IAccess # ix, _IStore # ()]
+
+        -- return $ concatMap (\ix -> [_IAccess # ix, _IStore # ()]) ixs' ++ [_ICall # funid]
+        return $ accesses ++ [_ICall # funid]
+        -- TODO: Calling is broken
+    -}
+    CCall _ fname args -> do
+        ~(Just (funid, fargs)) <- lookupFun fname
+        tell $ bool [_IllegalFunCall # (fname, length fargs, length args)] [] $ length args == length fargs
+        accesses <- fmap concat $ for (zip fargs args) $ \(fv, v) -> do  
+            ~(Just ix) <- lookupVarStack v
+            varStack %= (fv:)
+            return [_IAccess # ix]
 
         -- return $ concatMap (\ix -> [_IAccess # ix, _IStore # ()]) ixs' ++ [_ICall # funid]
         return $ accesses ++ [_ICall # funid]

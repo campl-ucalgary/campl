@@ -16,5 +16,6 @@ spec = do
     collectAndRunTests "test/cases/tupleproj"
     collectAndRunTests "test/cases/list"
     collectAndRunTests "test/cases/data"
+    collectAndRunTests "test/cases/codata"
     
 
