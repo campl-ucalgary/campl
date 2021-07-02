@@ -64,10 +64,13 @@ coprotocol S => Console =
     ConsoleGet :: S => Put( [Char] | S) 
     ConsoleClose :: S => TopBot 
 
+fun conswrapper :: A,[A] -> [A] =
+    s,ss -> s:ss
+
 proc run :: | Console => =
     | _console => -> do
         hput ConsolePut on _console
-        put append("a", "b") on _console
+        put concat(["a","b","c"]) on _console
 
         hput ConsoleClose on _console
         halt _console

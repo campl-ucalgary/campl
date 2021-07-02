@@ -285,29 +285,16 @@ mplAsmComToInstr = \case
         ~(Just ix) <- lookupVarStack v
         return $ [_IAccess # ix]
     CRet _ -> return [_IRet # ()]
-    {-
     CCall _ fname args -> do
         ~(Just (funid, fargs)) <- lookupFun fname
         tell $ bool [_IllegalFunCall # (fname, length fargs, length args)] [] $ length args == length fargs
-        accesses <- fmap concat $ for (zip fargs args) $ \(fv, v) -> do  
+        accesses <- localMplAsmCompileSt $ fmap concat $ for (zip fargs args) $ \(fv, v) -> do  
             ~(Just ix) <- lookupVarStack v
             varStack %= (fv:)
             return [_IAccess # ix, _IStore # ()]
 
         -- return $ concatMap (\ix -> [_IAccess # ix, _IStore # ()]) ixs' ++ [_ICall # funid]
-        return $ accesses ++ [_ICall # funid]
-        -- TODO: Calling is broken
-    -}
-    CCall _ fname args -> do
-        ~(Just (funid, fargs)) <- lookupFun fname
-        tell $ bool [_IllegalFunCall # (fname, length fargs, length args)] [] $ length args == length fargs
-        accesses <- fmap concat $ for (zip fargs args) $ \(fv, v) -> do  
-            ~(Just ix) <- lookupVarStack v
-            varStack %= (fv:)
-            return [_IAccess # ix]
-
-        -- return $ concatMap (\ix -> [_IAccess # ix, _IStore # ()]) ixs' ++ [_ICall # funid]
-        return $ accesses ++ [_ICall # funid]
+        return $ accesses ++ [_ICall # (funid, length fargs)]
         -- TODO: Calling is broken
 
     CInt _ n  -> return [_IConst # (VInt n)]
@@ -540,13 +527,13 @@ mplAsmComToInstr = \case
             outstranslations = zip callouts (map snd outssids)
             translationmapping = instranslations ++ outstranslations 
 
-        accesses <- fmap concat $ for (zip pargs seqs) $ \(fv, v) -> do  
+        accesses <- localMplAsmCompileSt $ fmap concat $ for (zip pargs seqs) $ \(fv, v) -> do  
             ~(Just ix) <- lookupVarStack v
             varStack %= (fv:)
             return [_IAccess # ix, _IStore # ()]
 
         -- return $ map (review _IAccess) ixseqs' ++ [_IRun # (translationmapping, callid, numargs)]
-        return $ accesses ++ [_IRun # (coerce $ Map.fromList translationmapping, callid)]
+        return $ accesses ++ [_IRun # (coerce $ Map.fromList translationmapping, callid, length seqs)]
 
     -- TODO: Technically, should do some polarity checking here
     CId _ (lch, rch) -> do

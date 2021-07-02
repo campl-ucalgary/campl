@@ -69,7 +69,7 @@ mplMachSteps = go . Just
 
                 putMVar mvar ()
             -}
-            -- traceM $ PrettyShow.ppShow stec
+            traceM $ PrettyShow.ppShow stec
             stec' <- seqStep (concStep (liftIO . throwIO . ppShowIllegalStep)) stec 
             go stec'
         Nothing -> return ()
@@ -100,12 +100,16 @@ seqStep k stec = case steccode of
         (IAccess n, e, s) -> pure $ Just $
             stec & code !~ c
                  & stack %!~ cons (e !! n)
-        {- Call(c'):c, e, s --> c', e, clos(c,e):s -}
-        (ICall cix, e, s) -> do
+        {- Call(c'):c, e, s --> c', e, clos(c,e):s [NOT LONGER DOES THIS]-}
+        {- Call(c'):c, e_1... e_n,e', s --> c', e_1...e_n, clos(c,e'):s -}
+        (ICall cix n, e, s) -> do
             c' <- gviews supercombinators $ (Arr.! cix)
             return $ Just $ 
                 stec & code !~ c'
-                    & stack %!~ cons (VClos c e)
+                     & environment !~ args
+                     & stack %!~ cons (VClos c e')
+          where
+            (args, e') = splitAt n e
 
         {- Ret:c, e, v:clos(c',e'):s ---> c', e', v:s -}
         (IRet, e , v : VClos c' e': s) -> pure $ Just $
@@ -498,7 +502,7 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
             -- chlkup = t Map.! ch
             Just chlkup = Map.lookup ch t
 
-        (s, t, e, IRun tmapping callix) -> do
+        (s, t, e, IRun tmapping callix n) -> do
             instrs <- gviews supercombinators (Arr.! callix)
             -- let t' = Map.map (\lch -> t Map.! lch) $ coerce tmapping
             let t' = Map.map (\lch -> fromJust $ Map.lookup lch t) $ coerce tmapping
@@ -506,7 +510,10 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
             -- liftIO $ threadDelay 100000
             return $ Just $ stec 
                 & translation !~ t'
+                & environment !~ args
                 & code !~ instrs
+          where
+            (args, _e') = splitAt n e
 
         (s, t, e, IHPut ch hcaseix) -> do
             fetchAndWriteChMQueue (chlkup ^. activeQueue) $ QHPut hcaseix

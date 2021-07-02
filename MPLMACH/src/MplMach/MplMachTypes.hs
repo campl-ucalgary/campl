@@ -213,7 +213,7 @@ data IConc
 
 
     -- | Translation mappings, FunctionID and number of arguments to call with this function..
-    | IRun LocalChanToLocalChanMapping CallIx -- Word
+    | IRun LocalChanToLocalChanMapping CallIx Int
 
     | IHPut LocalChan HCaseIx
 
@@ -232,8 +232,9 @@ data ISeq
     -- | access the n'th element in the stack
     | IAccess Int
     | IRet
-    -- | Call function CallIx 
-    | ICall CallIx
+    -- | Call function CallIx, and number of things in the enironment to keep
+    -- (the arugments)
+    | ICall CallIx Int
 
     | IConst Val
 
