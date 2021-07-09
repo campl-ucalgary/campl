@@ -85,7 +85,10 @@ $(makeClassy ''ChIdentT)
 $(makePrisms ''ChIdentT)
 
 instance Eq ChIdentT where
-    a == b = a ^. chIdentR == b ^. chIdentR
+    (==) = (==) `on` view chIdentR 
+
+instance Ord ChIdentT where
+    (<=) = (<=) `on` view chIdentR 
 
 instance HasChIdentR ChIdentT where
     chIdentR = chIdentTChIdentR 

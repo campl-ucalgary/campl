@@ -761,8 +761,21 @@ packageUniversalElim vs pkg = traverseOf packageSubs linearize pkg >>= flip (fol
                     | l `elem` foralls && r' `notElem` foralls = coalesce (r', TypeVar rcxt l) rst >>= g
                     | r' `elem` foralls && l `notElem` foralls = g ((r', (TypeVar rcxt l)):rst)
                     | otherwise = throwerr 
+
+                {- Some awkardness with negation... unforunately, I guess the
+                 - type isn't really unique anymore.. So if we have something
+                 - of a negation type, and we are trying to do a forall match
+                 - of the type, then there must be another instance of the
+                 - single negation somewhere else. 
+                 -
+                 - Otherwise, if it really is the last negaiton with no other
+                 - instance of the negation, then it should not unify... 
+                -}
+                g [(l, r@(TypeBuiltIn (TypeNegF _ _)))] = throwerr
+                g ((l, r@(TypeBuiltIn (TypeNegF _ _))):rst) = coalesce (l, r) rst >>= g
+
                 g ((l, r):rst)
-                    | l `elem` foralls = throwerr 
+                    | l `elem` foralls = throwerr
                     | otherwise = g rst
 
             (match vtp tp `catchError` const 
@@ -824,7 +837,7 @@ pprintTypeUnificationError = go
             [ pretty "Could not match user provided type with inferred type. The given type was"
             , codeblock
                 $ pprintParsed given
-            , pretty "and this could not be match with the inferred type"
+            , pretty "and this could not be matched with the inferred type"
             , codeblock
                 $ pprintParsed inferred
             ]

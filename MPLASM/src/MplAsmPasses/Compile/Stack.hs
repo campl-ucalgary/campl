@@ -28,6 +28,7 @@ data MplAsmCompileSt x = MplAsmCompileSt
 
     , _symTab :: MplAsmCompileStSymTabs x
     }
+deriving instance Show (IdP x) => Show (MplAsmCompileSt x)
 
 data MplAsmCompileStUniqs = MplAsmCompileStUniqs 
     { _uniqLocalChan :: LocalChan
@@ -40,6 +41,7 @@ data MplAsmCompileStUniqs = MplAsmCompileStUniqs
 
     , _uniqCallIx :: CallIx
     }
+  deriving Show 
 
 data MplAsmCompileStSymTabs x = MplAsmCompileStSymTabs 
     { _symTabFuns :: Map (IdP x) (CallIx, [IdP x])
@@ -66,10 +68,12 @@ $(makeLenses ''MplAsmCompileStSymTabs)
 
 localMplAsmCompileSt ::
     ( MonadState (MplAsmCompileSt x) m ) =>
+    (MplAsmCompileSt x -> MplAsmCompileSt x) ->
     m a ->
     m a 
-localMplAsmCompileSt ma = do
+localMplAsmCompileSt f ma = do
     oldst <- guse equality
+    modify f
     a <- ma
     nst <- guse equality
     equality .= set uniqCounters (nst ^. uniqCounters) oldst

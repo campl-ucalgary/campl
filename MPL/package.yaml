@@ -53,7 +53,7 @@ library:
   source-dirs: src
 
 executables:
-  mpl:
+  mpl-front-end:
     main:                Main.hs
     source-dirs:         app
     ghc-options:

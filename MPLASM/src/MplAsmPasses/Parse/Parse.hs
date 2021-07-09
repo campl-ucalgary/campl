@@ -252,15 +252,15 @@ mplAsmParseCom = go
                 , (toLocatedName ch1, map toLocatedName withs1, coms1')
                 )
 
-        B.AC_PLUG keyword plugs withs0 coms0 withs1 coms1 -> do
+        B.AC_PLUG keyword plugs withsins0 withsouts0 coms0 withsins1 withsouts1 coms1 -> do
             coms0' <- mplAsmParseComs coms0
             coms1' <- mplAsmParseComs coms1
 
             return $ CPlug 
                 (toRowCol keyword)
                 (map toLocatedName plugs)
-                ( (map toLocatedName withs0, coms0')
-                , (map toLocatedName withs1, coms1')
+                ( ((map toLocatedName withsins0, map toLocatedName withsouts0), coms0')
+                , ((map toLocatedName withsins1, map toLocatedName withsouts1), coms1')
                 )
         B.AC_RUN keyword proc seqs ins outs -> 
             return $ CRun 

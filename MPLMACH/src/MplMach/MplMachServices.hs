@@ -66,6 +66,8 @@ serviceManager ::
 serviceManager s = forever $ gview equality >>= \env -> liftIO $ do
     (s', _) <- accept s
     forkFinally (flip runMplMach env $ serviceClient s') $ \err -> close s' >> case err of
+        -- oops, shoudln't use 'forever' here, when it is AsyncCancelled, should probably
+        -- just stop recursing.
         Right () -> return ()
         Left e -> case fromException e of
             Just AsyncCancelled -> return ()
@@ -78,6 +80,7 @@ serviceClient  ::
     Socket ->
     MplMach r ()
 serviceClient s = gview equality >>= \env -> do
+    -- error "what"
     ~(Just egch, pbts) <- P.runStateT (PA.parse pServiceCh) (recvPipe s) 
     svmp <- liftIO $ env ^. serviceMap % to readIORef 
     case egch of

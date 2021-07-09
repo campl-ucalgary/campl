@@ -1,10 +1,15 @@
 {-# LANGUAGE Strict #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-module MplMach.MplMachStep where
+module MplMach.MplMachStep 
+    ( mplMachSteps
+    , mplMachOpenChs
+    ) 
+    where
 
 import Optics
 import Data.Coerce
@@ -17,12 +22,16 @@ import Data.Foldable
 import Data.Traversable
 import Data.IORef
 import Data.Maybe
+import Data.List
 
 import Data.Sequence (Seq (..))
 import qualified Data.Sequence as Sequence
 
 import Data.Map.Strict (Map (..))
 import qualified Data.Map.Strict as Map
+
+import Data.Set (Set (..))
+import qualified Data.Set as Set
 
 import MplMach.MplMachTypes
 import MplMach.MplMachStack
@@ -40,8 +49,6 @@ import qualified Text.Show.Pretty as PrettyShow
 
 import System.Process
 
-
-
 {- | runs the MplMach from start to finish -}
 mplMachSteps :: 
     Stec ->
@@ -53,6 +60,7 @@ mplMachSteps = go . Just
         Just stec -> seqStep (concStep (liftIO . throwIO . ppShowIllegalStep)) stec 
             >>= go
         -}
+
         Just stec -> do
             {-
             mvar <- gview stdLock
@@ -69,9 +77,13 @@ mplMachSteps = go . Just
 
                 putMVar mvar ()
             -}
-            traceM $ PrettyShow.ppShow stec
-            stec' <- seqStep (concStep (liftIO . throwIO . ppShowIllegalStep)) stec 
+            -- traceM $ PrettyShow.ppShow stec
+            stec' <- seqStep k stec 
             go stec'
+          where
+            k = concStep  k'
+            k' = liftIO . throwIO . ppShowIllegalStep
+
         Nothing -> return ()
 
 {- | Executes a sequential step, and if all matches fails, exectutes the 
@@ -92,17 +104,17 @@ seqStep k stec = case steccode of
     [] -> pure Nothing
     SeqInstr instr : c -> case (instr, stecenv, stecstack) of
         {- Store:c, e, v:s ---> c, v:e, s -}
-        (IStore, e, v:s) -> pure $ Just $
+        (IStore, e, v:s) -> {-# SCC "IStore" #-} pure $ Just $
             stec & code !~ c
                  & environment %!~ cons v
                  & stack !~ s
         {- Access(n):c, e, s ---> c, e, e[n]:s -}
-        (IAccess n, e, s) -> pure $ Just $
+        (IAccess n, e, s) -> {-# SCC "IAccess" #-} pure $ Just $
             stec & code !~ c
-                 & stack %!~ cons (e !! n)
+                 & stack %!~ cons (fromJust $ e ^? element n)
         {- Call(c'):c, e, s --> c', e, clos(c,e):s [NOT LONGER DOES THIS]-}
         {- Call(c'):c, e_1... e_n,e', s --> c', e_1...e_n, clos(c,e'):s -}
-        (ICall cix n, e, s) -> do
+        (ICall cix n, e, s) -> {-# SCC "ICall" #-} do
             c' <- gviews supercombinators $ (Arr.! cix)
             return $ Just $ 
                 stec & code !~ c'
@@ -112,13 +124,13 @@ seqStep k stec = case steccode of
             (args, e') = splitAt n e
 
         {- Ret:c, e, v:clos(c',e'):s ---> c', e', v:s -}
-        (IRet, e , v : VClos c' e': s) -> pure $ Just $
+        (IRet, e , v : VClos c' e': s) -> {-# SCC "IRet" #-} pure $ Just $
             stec & code !~ c'
                  & environment !~ e'
                  & stack !~ cons v s
 
         {- Cons(i,n):c, e, v_1:...:v_n:s --> c,e,cons(i,[v_1,...,v_n]):s-}
-        (ICons i n, e, s) -> pure $ Just $
+        (ICons i n, e, s) -> {-# SCC "ICons" #-} pure $ Just $
             stec & code !~ c
                  & stack !~ s'
                  & stack %!~ cons (VCons i args) 
@@ -126,19 +138,19 @@ seqStep k stec = case steccode of
             (args, s') = splitAt n s
 
         {- Case(c_1,...,c_n):c, e: Cons(i,[v_1,...,v_n]):s ---> c_i, v_1:...:v_n:e, clo(c,e):s) -}
-        (ICase cases, e, VCons i vs : s) -> pure $ Just $
+        (ICase cases, e, VCons i vs : s) -> {-# SCC "ICase" #-} pure $ Just $
             stec & code !~ (cases Arr.! i)
                  & environment %!~ (vs++)
                  & stack !~ s
                  & stack %!~ cons (VClos c e) 
 
         {- Rec(c_1,...c_n):c, e, s ---> c, e, rec([c_1,..,c_n], e):s -}
-        (IRec recs, e, s) -> pure $ Just $
+        (IRec recs, e, s) -> {-# SCC "IRec" #-} pure $ Just $
             stec & code !~ c
                  & stack %!~ cons (VRec recs e) 
 
         {- Dest(i, n) : c, e , rec([c_1...c_n,e'):v_n:...:v_1:s ---> c_i, v_1...v_n:e', clo(c,e):s -}
-        (IDest i n, e, VRec recs e' : s) -> pure $ Just $
+        (IDest i n, e, VRec recs e' : s) -> {-# SCC "IDest" #-} pure $ Just $
             stec & code !~ (recs Arr.! i)
                  & environment !~ e'
                  & environment %!~ (reverse args ++)
@@ -149,22 +161,22 @@ seqStep k stec = case steccode of
 
         {- IIf(c1,c2) :c, e, True:s --> c1, e, s -}
         {- IIf(c1,c2) :c, e, False:s --> c2, e, s -}
-        (IIf c1 c2, e, VBool True : s) -> pure $ Just $
+        (IIf c1 c2, e, VBool True : s) -> {-# SCC "IIf" #-} pure $ Just $
             stec & code !~ c1
                  & stack !~ s
                  & stack %!~ cons (VClos c e)
-        (IIf c1 c2, e, VBool False : s) -> pure $ Just $
+        (IIf c1 c2, e, VBool False : s) -> {-# SCC "IIf" #-} pure $ Just $
             stec & code !~ c2
                  & stack !~ s
                  & stack %!~ cons (VClos c e)
 
         {- Const(v) :c, e, s --> c, e, v : s -}
-        (IConst v, e, s) -> pure $ Just $
+        (IConst v, e, s) -> {-# SCC "IConst" #-} pure $ Just $
             stec & code !~ c
                  & stack %!~ cons v
 
         {- built in operations -}
-        (ITuple n, e, s) -> pure $ Just $
+        (ITuple n, e, s) -> {-# SCC "ITuple" #-} pure $ Just $
             stec & code !~ c
                  & stack !~ s'
                  & stack %!~ cons 
@@ -172,41 +184,41 @@ seqStep k stec = case steccode of
           where
             (tp, s') = splitAt n s
 
-        (ITupleElem n, e, VTuple tuplearr : s) -> pure $ Just $
+        (ITupleElem n, e, VTuple tuplearr : s) -> {-# SCC "ITupleElem" #-} pure $ Just $
             stec & code !~ c
                  & stack !~ s
                  & stack %!~ cons (tuplearr Arr.! n)
 
-        (IAddInt, e, VInt n : VInt m : s) -> pure $ Just $
+        (IAddInt, e, VInt n : VInt m : s) -> {-# SCC "IAddInt" #-} pure $ Just $
             stec & code !~ c
                  & stack !~ s
                  & stack %!~ cons (VInt $ n + m)
-        (ISubInt, e, VInt n : VInt m : s) -> pure $ Just $
+        (ISubInt, e, VInt n : VInt m : s) -> {-# SCC "ISubInt" #-} pure $ Just $
             stec & code !~ c
                  & stack !~ s
                  & stack %!~ cons (VInt $ n - m)
-        (IMulInt, e, VInt n : VInt m : s) -> pure $ Just $
+        (IMulInt, e, VInt n : VInt m : s) -> {-# SCC "IMulInt" #-} pure $ Just $
             stec & code !~ c
                  & stack !~ s
                  & stack %!~ cons (VInt $ n * m)
-        (IEqInt, e, VInt n : VInt m : s) -> pure $ Just $
+        (IEqInt, e, VInt n : VInt m : s) -> {-# SCC "IEqInt" #-} pure $ Just $
             stec & code !~ c
                  & stack !~ s
                  & stack %!~ cons (VBool $ n == m)
-        (ILeqInt, e, VInt n : VInt m : s) -> pure $ Just $
+        (ILeqInt, e, VInt n : VInt m : s) -> {-# SCC "ILeqInt" #-} pure $ Just $
             stec & code !~ c
                  & stack !~ s
                  & stack %!~ cons (VBool $ n <= m)
-        (ILtInt, e, VInt n : VInt m : s) -> pure $ Just $
+        (ILtInt, e, VInt n : VInt m : s) -> {-# SCC "ILtInt" #-} pure $ Just $
             stec & code !~ c
                  & stack !~ s
                  & stack %!~ cons (VBool $ n < m)
 
-        (IEqBool, e, VBool n : VBool m : s) -> pure $ Just $
+        (IEqBool, e, VBool n : VBool m : s) -> {-# SCC "IEqBool" #-} pure $ Just $
             stec & code !~ c
                  & stack !~ s
                  & stack %!~ cons (VBool $ n == m)
-        (IEqChar, e, VChar n : VChar m : s) -> pure $ Just $
+        (IEqChar, e, VChar n : VChar m : s) -> {-# SCC "IEqChar" #-} pure $ Just $
             stec & code !~ c
                  & stack !~ s
                  & stack %!~ cons (VBool $ n == m)
@@ -355,9 +367,127 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
             fetchAndWriteChMQueue (lchlkup ^. activeQueue) $ QId (translationLkupToGlobalChan rchlkup)
 
             -- the channel manager action
-            liftIO $ atomically $ do
+            {- Okay, the new way... Essentially, there table isn't completely right -- and
+            we're a little bit ``too'' specific and we just execute id if we can go either way....
+            
+            I think the 2.* instructions can be moved to a seperate neg command entirely...
+            I don't think these should be all in the IId commmand and there in fact needs
+            to be some seperation between the two commands.
+            -}
+            _ <- liftIO $ atomically $ do
                 -- traceTranslationLkupWithHeader "idl" lchlkup
                 -- traceTranslationLkupWithHeader "idr" rchlkup
+                (lchmlastptr, lchmqueue) <- readChMQueueWithLastPtr (lchlkup ^. activeQueue)
+                peekTQueue lchmqueue >>= \case
+                    QId rgch -> readTQueue lchmqueue >> case lchlkup of
+                        {- the idea is as follows.
+                            Given:
+                                (b, q | [id b = a]) , (a, [] | q')
+                            Set:
+
+                                1. [] to point to q
+
+                                2. the pointer after removing the head of [id b = a]
+                                    to point to q' (why do we do this? this is to
+                                    update the "global translation" manager so all
+                                    other references to "b" now reference "a".  
+
+                            Alternatively, given
+                            Given:
+                                (b, [] | id b = a : q) , (a, q' | [])
+                            Set:
+
+                                2.1. [] to point to q' (on the right)
+
+                                2.2. the pointer after removing the head of [id b = a]
+                                    to point to q (why do we do this? this is to
+                                    update the "global translation" manager so all
+                                    other references to "b" now reference "a".  
+                            -}
+                        InputLkup linqueue loutqueue -> do
+                            -- This does 1.
+                            (routlstptr, routqueue) <- rgch ^. coerced 
+                                % chMOutputQueue 
+                                % to readChMQueueWithLastPtr 
+                            isempty <- isEmptyTQueue routqueue 
+
+                            if isempty
+                                then do 
+                                    writeTVar routlstptr (CCons (loutqueue ^. chMQueueChainRef)) 
+                                    -- This does 2. 
+                                    writeTVar lchmlastptr (CCons (rgch ^. coerced % chMInputQueue % chMQueueChainRef))
+                                else do 
+                                    -- this does 2.1
+                                    (rinlstptr, rinqueue) <- rgch ^. coerced 
+                                        % chMInputQueue 
+                                        % to readChMQueueWithLastPtr 
+                                    isEmptyTQueue rinqueue >>= check
+                                    writeTVar rinlstptr (CCons (linqueue ^. chMQueueChainRef))
+
+                                    -- 2.2.
+                                    (loutlstptr, loutqueue) <- loutqueue ^. to readChMQueueWithLastPtr
+                                    isEmptyTQueue loutqueue >>= check
+                                    writeTVar loutlstptr (CCons (rgch ^. coerced % chMOutputQueue % chMQueueChainRef))
+
+
+                        {- the idea is as follows (compeltely similar to above.
+                            Given:
+                                (b, [id b = a] | q ) , (a, q'  | [])
+                            Set:
+
+                                1. the pointer after removing the head of [id b = a]
+                                    to point to q'
+
+                                2. [] to point to q
+
+                            Mostly duplciated code from previous case...
+
+
+                            Alternatively
+                            Given:
+                                (b, id b = a:q | [] ) , (a, []  | q')
+                            Set:
+
+                                2.1. (left null to q')
+
+                                2.2. (right null [] to point to q)
+                            -}
+                        OutputLkup loutqueue linqueue -> do
+                            -- This does 2.
+                            (rinlstptr, rinqueue) <- rgch ^. coerced 
+                                % chMInputQueue 
+                                % to readChMQueueWithLastPtr 
+                            isempty <- isEmptyTQueue rinqueue 
+                            if isempty
+                                then do
+                                    writeTVar rinlstptr (CCons (linqueue ^. chMQueueChainRef))
+                                    -- This does 1. 
+                                    writeTVar lchmlastptr (CCons 
+                                        (rgch ^. coerced % chMOutputQueue % chMQueueChainRef))
+                                else do
+                                    -- 2.1.
+                                    (linlstptr, linqueue) <- linqueue ^. to readChMQueueWithLastPtr
+                                    isEmptyTQueue linqueue >>= check
+                                    writeTVar linlstptr (CCons (rgch ^. coerced % chMInputQueue % chMQueueChainRef))
+
+                                    -- 2.2. 
+                                    -- this does 2.1
+                                    (routlstptr, routqueue) <- rgch ^. coerced 
+                                        % chMOutputQueue 
+                                        % to readChMQueueWithLastPtr 
+                                    isEmptyTQueue routqueue >>= check
+                                    writeTVar routlstptr (CCons (loutqueue ^. chMQueueChainRef))
+
+
+                            
+                    _ -> retry
+            
+
+            -- N.B. this is the old method...
+            {-
+            liftIO $ atomically $ do
+                -- traceTranslationLkupWithHeader "idl" lchlkup
+                traceTranslationLkupWithHeader "idr" rchlkup
                 (lchmlastptr, lchmqueue) <- readChMQueueWithLastPtr (lchlkup ^. activeQueue)
                 peekTQueue lchmqueue >>= \case
                     QId rgch -> readTQueue lchmqueue >> case lchlkup of
@@ -441,6 +571,7 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
                             writeTVar rinlstptr (CCons (linqueue ^. chMQueueChainRef))
                             
                     _ -> retry
+                -}
 
             return Nothing
 
@@ -449,7 +580,7 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
             Just lchlkup = Map.lookup lch t 
             -- rchlkup = t Map.! rch
             Just rchlkup = Map.lookup rch t 
-
+        {-
         (s, t, e, IPlug chs ((chs0, instrs0), (chs1, instrs1))) -> do
             -- this is essentially the channel manager actions
             -- lchsgchs <- for chs $ \ch -> (\ch -> fmap (ch,) newGlobalChan) chs
@@ -478,6 +609,57 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
                         )
                 t0 = Map.restrictKeys t chs0 <> t0n
                 t1 = Map.restrictKeys t chs1 <> t1n
+
+                stec0 = stec 
+                    & stack !~ []
+                    & translation !~ t0
+                    & code !~ instrs0
+
+                stec1 = stec 
+                    & stack !~ []
+                    & translation !~ t1
+                    & code !~ instrs1
+
+            liftIO $ concurrently_ 
+                (mplMachSteps' stec0) 
+                (mplMachSteps' stec1) 
+
+            return Nothing
+        -}
+        (s, t, e, IPlug chs (((chsins0, chsouts0), instrs0), ((chsins1, chsouts1), instrs1))) -> do
+            -- this is essentially the channel manager actions
+            -- lchsgchs <- for chs $ \ch -> (\ch -> fmap (ch,) newGlobalChan) chs
+            -- Okay this is kinda stupid 
+            -- Also, _svs /SHOULD/ always be empty list..
+            (lchsgchs, _svs) <- mplMachOpenChs chs
+
+
+            let 
+                -- the setter for new translations 
+                tn ins outs (lch, gch)
+                    | lch `Set.member` outs = (lch, outqueue)
+                    | lch `Set.member` ins  = (lch, inqueue)
+                    | otherwise = error "bad plug command"
+                  where
+                    outqueue = OutputLkup 
+                        { _activeQueue = gch ^. coerced % chMOutputQueue
+                        , _otherQueue = gch ^. coerced % chMInputQueue
+                        }
+                    inqueue = InputLkup 
+                        { _activeQueue = gch ^. coerced % chMInputQueue 
+                        , _otherQueue = gch ^. coerced % chMOutputQueue
+                        }
+                
+
+                -- new translations for t0 (recall the first phrase should be 
+                -- all output polarity) N.B. this is changed os we have expicity polarity passed in..
+                t0n = Map.fromList ( lchsgchs & mapped %~ tn chsins0 chsouts0 )
+                -- new translations for t1 (recall the second phrase should be 
+                -- all input polarity) N.B. this is changed os we have expicity polarity passed in..
+                t1n = Map.fromList ( lchsgchs & mapped %~ tn chsins1 chsouts1 )
+
+                t0 = Map.restrictKeys t (chsins0 <> chsouts0) <> t0n
+                t1 = Map.restrictKeys t (chsins1 <> chsouts1) <> t1n
 
                 stec0 = stec 
                     & stack !~ []
@@ -715,3 +897,5 @@ mplMachOpenChs chs = fmap (second catMaybes . unzip) $ for chs $ \ch -> do
             return Nothing
 
     return ((ch, gch), ioact)
+
+

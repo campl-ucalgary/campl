@@ -135,7 +135,7 @@ type instance XPSimpleUnit MplLambdaLifted = Void
 
 -- Process Command
 type instance XMplCmd MplLambdaLifted = MplCmd MplLambdaLifted
-type instance XCRun MplLambdaLifted = XCRun MplTypeChecked
+type instance XCRun MplLambdaLifted = XCRun MplPatternCompiled
 type instance XCClose MplLambdaLifted = KeyWordNameOcc
 type instance XCHalt MplLambdaLifted = KeyWordNameOcc
 type instance XCGet MplLambdaLifted = KeyWordNameOcc

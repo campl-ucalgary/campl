@@ -17,5 +17,7 @@ spec = do
     collectAndRunTests "test/cases/list"
     collectAndRunTests "test/cases/data"
     collectAndRunTests "test/cases/codata"
+    collectAndRunTests "test/cases/funcall"
+    collectAndRunTests "test/cases/simpleconc"
     
 

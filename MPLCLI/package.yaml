@@ -45,6 +45,7 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -O2
     dependencies:
     - MPLCLI
 
@@ -66,3 +67,21 @@ tests:
     # answer
     - silently
     - parsec
+
+benchmarks:
+  MPLCLI-bench:
+    main:                Bench.hs
+    source-dirs:         bench
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -O2
+    dependencies:
+    - MPLCLI
+    - criterion
+    - template-haskell
+    - parsec
+    - containers
+    - deepseq
+    - silently

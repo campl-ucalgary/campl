@@ -196,7 +196,7 @@ AC_SHPUT  .Com ::= Shput UIdent "on" PIdent   ;
 AC_HCASE  .Com ::= Hcase PIdent "of"  "{" [LabelledComs] "}"  ; 
 AC_SPLIT  .Com ::= Split PIdent "into" PIdent PIdent    ;
 AC_FORK   .Com ::= Fork PIdent "as" "{" PIdent "with" [PIdent] ":" Coms ";" PIdent "with" [PIdent] ":" Coms "}" ;
-AC_PLUG   .Com ::= Plug [PIdent]  "as" "{" "with" "[" [PIdent] "]" ":" Coms ";" "with" "[" [PIdent] "]" ":" Coms "}" ;
+AC_PLUG   .Com ::= Plug [PIdent]  "as" "{" "with" "[" [PIdent] "|" [PIdent] "]" ":" Coms ";" "with" "[" [PIdent] "|" [PIdent] "]" ":" Coms "}" ;
 AC_RUN    .Com ::= Run PIdent "(" [PIdent] "|" [PIdent] "=>" [PIdent] ")" ;
 AC_ID     .Com ::= PIdent Ch_Id PIdent ;
 

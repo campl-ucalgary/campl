@@ -37,6 +37,7 @@ import Data.Maybe
 import Data.List
 import Data.Monoid
 import Data.Either
+import Data.Coerce
 
 
 import MplPasses.PatternCompiler.PatternCompileErrors
@@ -59,6 +60,9 @@ import Data.Bool
 
 import Debug.Trace
 import Data.Proxy
+
+import Data.Set (Set)
+import qualified Data.Set as Set
 
 import Unsafe.Coerce
 
@@ -100,17 +104,21 @@ patternCompileStmt ::
     PatternCompile (MplStmt MplTypeChecked) (MplStmt MplPatternCompiled) 
 patternCompileStmt stmt = do
     wheres' <- traverse patternCompileStmt wheres
-    defns' <- traverse patternCompileDefn defns
+    defns' <- fmap (NE.fromList . concat) $ traverse patternCompileDefn defns
     return $ MplStmt defns' wheres'
   where
     wheres = stmt ^. stmtWhereBindings
     defns = stmt ^. stmtDefns
 
+{- | 'patternCompileDefn'. Pattern compiles definitions.. why does this return a list of definitions?  
+this is because when pattern compiling a 'ProcessDefn', we can generate more process definitions when
+pattern compiling 'CCase' efficiently.
+-}
 patternCompileDefn :: 
-    PatternCompile (MplDefn MplTypeChecked) (MplDefn MplPatternCompiled)
-patternCompileDefn (ObjectDefn obj) = fmap ObjectDefn $ patternCompileObj obj
-patternCompileDefn (FunctionDefn fun) = fmap FunctionDefn $ patternCompileFunDefn fun
-patternCompileDefn (ProcessDefn proc) = fmap ProcessDefn $ patternCompileProcessDefn proc
+    PatternCompile (MplDefn MplTypeChecked) [MplDefn MplPatternCompiled]
+patternCompileDefn (ObjectDefn obj) = fmap (pure . ObjectDefn) $ patternCompileObj obj
+patternCompileDefn (FunctionDefn fun) = fmap (pure . FunctionDefn) $ patternCompileFunDefn fun
+patternCompileDefn (ProcessDefn proc) = fmap (map ProcessDefn) $ patternCompileProcessDefn proc
 
 -- | patternCompileObj.  This is essentially the identity function to juggle some types around.
 -- TODO: I guess I should probabaly write out the translation instead of just using 'unsafeCoerce'
@@ -147,7 +155,49 @@ patternCompileExpr = cata go
             tell $ bool [_NonExhaustiveECasePatt # ()] [] exhstchk
 
             ~([PVar _ u], nbdy) <- patternCompileSeqPatPhrases $ caseslst'
-            return $ substituteVarIdentByExpr (u, expr') nbdy
+            {- We essentially ``let float'' this so that later when we compile this
+             - we only compute this expression once instead of duplciating 
+             - computation....
+             - The old way of doing:
+             - @
+             - return $ substituteVarIdentByExpr (u, expr') nbdy
+             - @
+             - duplicated the computation! Very bad! Could turn linear algorithms 
+             - into exponential time.
+            -}
+            {- This idea was slightly better, but requires doing some more work later
+             - down the pipeline to get it to properly memoize the results.
+            @
+            let utp = getExprType expr'
+                letfloated = MplStmt (letdefn :| []) []
+                letdefn = FunctionDefn $ MplFunction u ([], [], utp) (([], expr') :| [])
+
+            return 
+                $ ELet () (letfloated :| []) 
+                $ substituteVarIdentByExpr (u, ECall utp u []) nbdy
+            @
+            -}
+            {- But, we're gonna go with a ``continuation passing style'' sorta thing --
+             - we pass everything to a function which continues what to do next.. This will
+             - for sure make sure we evaluate this.
+             -
+             - NB. there is a performance bug with the 'CCase' -- since there aren't let
+             - bindings in do blocks, doing this same transformation is impossible. 
+             - We would have to essentially end it with a ``Run'' to continue everything
+             - where we left off
+             -}
+            casef <- freshCaseFunIdP
+
+            let letfloated = MplStmt (letdefn :| []) []
+                letdefn = FunctionDefn $ MplFunction 
+                    casef 
+                    ([], [getExprType expr'], getExprType nbdy) 
+                    (([PVar (getExprType expr') u], nbdy) :| [])
+
+            return 
+                $ ELet () (letfloated :| []) 
+                $ ECall (getExprType nbdy) casef [expr']
+                -- substituteVarIdentByExpr (u, ECall (getExprType nbdy) u []) nbdy
 
         EObjCallF ann ident exprs -> EObjCall ann ident <$> sequenceA exprs
         -- TODO: we need to check if creating records is exhaustive..
@@ -201,21 +251,24 @@ patternCompileFunDefn (MplFunction funName funTp funDefn) = do
     (patts, pattexpr) <- patternCompileSeqPatPhrases funDefn'
     return $ MplFunction funName funTp $ (patts, pattexpr)  :| []
 
--- | Pattern compiles a process definition
+-- | Pattern compiles a process definition.
 patternCompileProcessDefn ::
-    PatternCompile (XProcessDefn MplTypeChecked) (XProcessDefn MplPatternCompiled)
+    PatternCompile (XProcessDefn MplTypeChecked) [XProcessDefn MplPatternCompiled]
 patternCompileProcessDefn (MplProcess procName procTp procDefn) = do
-    cmds@(cmd :| rstcmds) <- traverseOf (traversed % _2) patternCompileCmds procDefn 
-        :: _ (NonEmpty (([MplPattern MplTypeChecked], [ChIdentT], [ChIdentT]), NonEmpty (MplCmd MplPatternCompiled)))
+    (ndefns, cmds@(cmd0 :| rstcmds)) <- fmap (first (reverse . concat) . NE.unzip) $ for procDefn $ \((seqs, ins, outs), cmds) -> do
+         -- cmds' <- localEnvSt (set envLcl (coerce (foldMap collectPattVars seqs, ins, outs))) $ patternCompileCmds cmds
+         (ndefns, cmds') <- localEnvSt (set envLcl ((foldMap collectPattVars seqs, ins, outs))) $ patternCompileCmds cmds
+         return (ndefns, ((seqs, ins, outs), cmds'))
+
     -- we need to rescope all the channels to use the same variable names...
-    let cmds0ins = view (_1 % _2)  cmd
-        cmds0outs = view (_1 % _3) cmd
+    let cmds0ins = view (_1 % _2)  cmd0
+        cmds0outs = view (_1 % _3) cmd0
         rescope ((patts, ins, outs), cmdblk) =  
             let subTo chs chs' blk = foldr (\sub -> fmap (substituteCh sub)) blk (zip chs chs')
             in subTo outs cmds0outs $ subTo ins cmds0ins cmdblk
         rstcmds' = fmap rescope rstcmds
 
-        cmds' = view _2 cmd :| rstcmds'
+        cmds' = view _2 cmd0 :| rstcmds'
 
         patts = fmap (view (_1 % _1)) procDefn
 
@@ -224,22 +277,64 @@ patternCompileProcessDefn (MplProcess procName procTp procDefn) = do
 
     (npatts, ncmds) <- patternCompileConcPatPhrases $ NE.zip patts cmds'
 
-    return $ MplProcess procName procTp $ ((npatts, cmds0ins, cmds0outs), ncmds) :| []
+    return $ ndefns ++ [MplProcess procName procTp $ ((npatts, cmds0ins, cmds0outs), ncmds) :| []]
 
+{- | 'patternCompileCmds'
+Mostly should be straightforard.. some strangeness
+
+    - We need to dynamically recompute all variables in scope (sequential varaibles and channels)
+        so we can create a continuation to run if we have a 'CCase'
+
+    - Why do we need to do this? Because we want to be able to memoize the case scrutinee of a CCase
+        and unfortunately, in a by value machine, we don't have any way to do explicit sharing of 
+        terms aside from passing it as an argument to a process... Moreover, this sorta plays
+        nicely with the rest of the pipeline...
+-}
 patternCompileCmds :: 
     PatternCompile 
         (NonEmpty (MplCmd MplTypeChecked)) 
-        (NonEmpty (MplCmd MplPatternCompiled))
-patternCompileCmds = fmap NE.fromList . go . NE.toList
+        ([XProcessDefn MplPatternCompiled], NonEmpty (MplCmd MplPatternCompiled))
+patternCompileCmds = fmap (second NE.fromList) . go . NE.toList
   where
-    go :: PatternCompile [MplCmd MplTypeChecked] [MplCmd MplPatternCompiled]
-    go [] = pure []
+    go :: PatternCompile [MplCmd MplTypeChecked] ([XProcessDefn MplPatternCompiled], [MplCmd MplPatternCompiled])
+    go [] = pure mempty
     go (cmd:cmds) = case cmd of
-        CRun ann idp seqs ins outs -> do
+        CRun ann idp seqs ins outs -> assert (null cmds) $ do
             seqs' <- traverse patternCompileExpr seqs
-            (CRun ann idp seqs' ins outs:) <$> go cmds
-        CClose ann chp -> (CClose ann chp:) <$> go cmds
-        CHalt ann chp -> (CHalt ann chp:) <$> go cmds
+            -- second (CRun ann idp seqs' ins outs:) <$> go cmds
+            return (mempty, [CRun () idp seqs' ins outs])
+            -- @CRun@ should be the lsat command, so no need to do @go cmds@
+        CClose ann chp -> deleteChFromContext chp >> second (CClose ann chp:) <$> go cmds
+        CHalt ann chp -> assert (null cmds) $ deleteChFromContext chp >> return (mempty, [CHalt ann chp]) 
+        -- cmds should be the lsat command
+        -- CHalt ann chp ->  deleteChFromContext chp >> second (CHalt ann chp:) <$> go cmds
+
+        {- Old version that had the following strategy: 
+         
+                - pattern compile the get
+                
+                - replace all uses of the pattern by casing on the normal variable from
+                    the pattern compiled version.
+            So, this would duplciate a lot of the pattern mathcing work.. although, this was quite
+            inexpesnive (for sure since it is just patter matching).
+            Actually, just kidding we do this still anyways... 
+
+            N.B. A better way to do this:
+                
+                - restructure 
+                @
+                    get <Patt> on ch
+                @
+                to
+                @
+                    get u on ch
+                    case u of
+                        <Patt> -> ...
+                @
+                
+                - Then, reuse the rest of the pattern compilation pipeline 
+        -}
+        {-
         CGet ann patt chp -> do
             let exhstchk = patternCompileExhaustiveCheck ([patt] :| [])
             tell $ bool [ _NonExhaustiveGet # ann ] [] exhstchk 
@@ -255,36 +350,109 @@ patternCompileCmds = fmap NE.fromList . go . NE.toList
                 traverseMplExpr k cmd
 
             return $ CGet ann upatt chp : cmds''
+        -}
+        {- special case when we just have a variable pattern for get..  WHy is this here? Well if it's
+            just a variable, there's no need to memoize the result at all.. moreover, we would have to
+            trivailly re-pattern compile evrything to ensure that the variable is substituted out; hence, this
+            is faster for both the compiler and the final code generated.
+        -}
+        CGet ann (PVar utp u) chp -> assert (not $ null cmds) $ do
+            deleteChFromContext chp
+            insertChInContext chp
+
+            let upatt = _PVar # (utp, u) :: MplPattern MplPatternCompiled
+            second (CGet ann upatt chp:) <$> go cmds
+
+        -- get should NOT be the last command for sure..
+        CGet ann patt chp -> assert (not $ null cmds) $ do
+            deleteChFromContext chp
+            insertChInContext chp
+
+            let exhstchk = patternCompileExhaustiveCheck ([patt] :| [])
+            tell $ bool [ _NonExhaustiveGet # ann ] [] exhstchk 
+            u <- freshUIdP
+            let utp = getPattType patt
+                uexpr = _EVar # (utp, u) :: MplExpr MplPatternCompiled
+                upatt = _PVar # (utp, u) :: MplPattern MplPatternCompiled
+
+            -- technically using the annotation from CGet is wrong, but
+            -- we already check that this is exhaustive from just immediately above.
+            -- Actually, techincayll, this will produce two errors.. 
+            -- N.B. Investigate this bug and fix it a little more... 
+            second (CGet ann upatt chp:) <$> go [CCase ann (_EVar # (utp, u)) ((patt, NE.fromList cmds) :| []) ]
 
 
         CPut ann expr chp -> do
+            deleteChFromContext chp
+            insertChInContext chp
             expr' <- patternCompileExpr expr
-            (CPut ann expr' chp:) <$> go cmds
-        CHCase ann chp phrases -> do
-            phrases' <- traverseOf (traversed % _3) patternCompileCmds phrases
+            second (CPut ann expr' chp:) <$> go cmds
+
+        CHCase ann chp phrases -> assert (null cmds) $ do
+            -- phrases' <-  traverseOf (traversed % _3) patternCompileCmds phrases
+            (ndefns, phrases') <- fmap (first concat . NE.unzip) $ for phrases $ \(ann, cts, cmds) -> do
+                (ndefns, cmds') <- localEnvSt id $ patternCompileCmds cmds
+                return (ndefns, (ann,cts,cmds'))
+                
+                -- traverseOf (traversed % _3) patternCompileCmds phrases
             -- TODO: should do some exhaustiveness checking? 
-            (CHCase ann chp phrases':) <$> go cmds
 
-        CHPut ann idp chp -> 
-            (CHPut ann idp chp:) <$> go cmds
+            return (ndefns, [CHCase ann chp phrases'])
+            -- second (CHCase ann chp phrases':) <$> go cmds
+            -- 'CHCase' should be the last command, so no need to do @go cmds@.
 
-        CSplit ann chp chs ->
-            (CSplit ann chp chs:) <$> go cmds
+        CHPut ann idp chp -> deleteChFromContext chp
+            >> insertChInContext chp
+            >> second (CHPut ann idp chp:) <$> go cmds
+
+        CSplit ann chp chs -> deleteChFromContext chp
+            >> traverseOf each insertChInContext chs
+            >> second (CSplit ann chp chs:) <$> go cmds
             
-        CFork ann chp phrases -> do
+        CFork ann chp phrases -> assert (null cmds) $ do
+            ((ndefns0, phrase0), (ndefns1, phrase1)) <- forOf each phrases $ \(forkon, withs, cmds) -> do
+                let modenv = over envLcl 
+                        $ over _3 (filter (`elem`withs))
+                        . over _2 (filter (`elem`withs))
+                        . (case forkon ^. polarity of Input -> over _2 (forkon:) ; Output -> over _3 (forkon:))
+                (ndefns, cmds') <- localEnvSt modenv $ patternCompileCmds cmds
+                return (ndefns, (forkon, withs, cmds'))
+
+            return (ndefns0 ++ ndefns1, [CFork ann chp (phrase0, phrase1)])
+            -- (CFork ann chp phrases':) <$> go cmds
+            {-
             phrases' <- traverseOf (each % _3) patternCompileCmds phrases
             (CFork ann chp phrases':) <$> go cmds
+            -}
             
-        CId ann chs -> (CId ann chs:) <$> go cmds
-        CIdNeg ann chs -> (CIdNeg ann chs:) <$> go cmds
+        CId ann chs -> assert (null cmds) $ return (mempty, [CId ann chs])
+        -- CId ann chs ->  return (CId ann chs:) <$> go cmds
 
-        CRace ann races -> do
+        CIdNeg ann chs -> assert (null cmds) $ return (mempty, [CIdNeg ann chs]) 
+
+
+        CRace ann races -> assert (null cmds) $ do
+            forOf (traversed % _1) races $ \ch -> deleteChFromContext ch >> insertChInContext ch
+            (ndefns, races') <- fmap (first concat . NE.unzip) $ for races $ \(ch, cmds) -> do
+                (ndefns, cmds') <- localEnvSt id $ patternCompileCmds cmds
+                return (ndefns, (ch, cmds'))
+            return (ndefns, [CRace ann races'])
+            {-
             races' <- traverseOf (traversed % _2 ) patternCompileCmds races
             -- (CRace ann races':) <$> go cmds
             return $ [CRace ann races']
             -- @go cmds@ should be empy here
+            -}
 
         -- CPlug !(XCPlug x) (CPlugPhrase x, CPlugPhrase x)
+        CPlugs ann (phrase0, phrase1, phrases) -> assert (null cmds) $ do
+            ~(ndefns, phrase0':phrase1':phrases') <- fmap (first concat . unzip) $ for (phrase0:phrase1:phrases) $ \(ann, (inpwiths, outwiths), cmds) -> do
+                let envmod = over envLcl $ set _2 inpwiths . set _3 outwiths
+                (ndefns, cmds') <- localEnvSt envmod $ patternCompileCmds cmds
+                return (ndefns, (ann, (inpwiths, outwiths), cmds'))
+            return (ndefns, [CPlugs ann (phrase0', phrase1', phrases')])
+
+        {-
         CPlugs ann (phrase0, phrase1, phrases) -> do
             ~(phrase0':phrase1':phrases') <- 
                 traverseOf (traversed % _3) patternCompileCmds 
@@ -293,7 +461,85 @@ patternCompileCmds = fmap NE.fromList . go . NE.toList
             return $ [CPlugs ann (phrase0', phrase1', phrases')]
             -- return $ (CPlugs ann (phrase0', phrase1', phrases'):) <$>  go cmds
             -- @go cmds@ should always be empty here
+        -}
 
+        {- The idea is as follows.
+            
+            - Given
+                @
+                ...
+                case <EXPR> of
+                    Patt0(..) -> ...
+                    Patt1(..) -> ...
+                    Patt2(..) -> ...
+                        ...
+                    PattN(..) -> ...
+                @
+                where we let @seqs@, @ins@, @outs@ denote the context of 
+                sequential variables, input channels, and output channels currently
+                in scope at the @case <EXPR> of@ line.
+            - Transform this to
+                @
+                run casep(seqs, <EXPR> | ins => outs )
+                @
+                where we define
+                @
+                proc casep =
+                    seqs, Patt0(..) | ins => outs -> ...
+                    seqs, Patt1(..) | ins => outs -> ...
+                    seqs, Patt2(..) | ins => outs -> ...
+                        ...
+                    seqs, PattN(..) | ins => outs -> ...
+                @
+                and pattern compile casep appropriately..... (although in the code below, we
+                pattern compile first, then construct casep process) 
+
+            Honestly, a bit awkard, but this gets around the fact that there is no lambda
+            lifting for processes, so we essentially ``do it ourselves'' here.
+
+            Also, recall we do this since it forces the memoization of the result of the case
+            expression -- regardless of the fact it is a tuple, data, or codata.... since a
+            case really only evaluates it if it is data... 
+        -}
+        CCase ann expr pattscmds -> assert (null cmds) $ do
+            expr' <- patternCompileExpr expr
+            (ndefns, pattscmds') <- fmap (first concat . NE.unzip) $ for pattscmds $ \(patt, cmds) -> do
+                (ndefns, cmds') <- localEnvSt id $ patternCompileCmds cmds
+                -- we have '[patt]' since when we later pattern compile it, we need a list of patterns.
+                -- Indeed, we can only have one pattern.
+                return (ndefns, ([patt], cmds'))
+
+            tell $ bool [ _NonExhaustiveCCasePatt  # () ] [] $ 
+                patternCompileExhaustiveCheck $ fmap (view _1) pattscmds'
+
+            ~([PVar _ u], ncmds) <- localEnvSt id $ patternCompileConcPatPhrases pattscmds'
+
+            -- building the new run function
+            (seqs, ins, outs) <- guse envLcl
+            casep <- freshCaseProcIdP
+            let pfloated = MplProcess
+                    casep
+                    ( [] -- N.B. Should probably rescope the type variables here..
+                    , map (\(PVar ann _) -> ann) seqs ++ [getExprType expr']
+                    , map (view chIdentTType) ins
+                    , map (view chIdentTType) outs
+                    )
+                    (((seqs ++ [PVar (getExprType expr') u], ins, outs), ncmds) :| [])
+
+            -- TODO: Okay, refactor this so we don't retain the call information anymore
+            -- this is useless and never used later.. then we can remove this error call..
+            return 
+                ( ndefns ++ [pfloated]
+                , 
+                    [ CRun 
+                        ()
+                        casep 
+                        (map (\(PVar ann v) -> EVar ann v) seqs ++ [expr'])
+                        ins 
+                        outs
+                    ]
+                )
+        {-
         CCase ann expr pattscmds -> do
             expr' <- patternCompileExpr expr
             pattscmds' <- fmap (over (mapped % _1) pure) $ traverseOf (traversed % _2) patternCompileCmds pattscmds
@@ -306,7 +552,9 @@ patternCompileCmds = fmap NE.fromList . go . NE.toList
             -- (NE.toList ncmds' <>) <$> go cmds
             return $ NE.toList ncmds' 
             -- @go cmds@ should always be empty list here
+        -}
 
+        {-
         CSwitch ann switches -> do
             traverseOf (traversed % _2) patternCompileCmds switches
                 >>= traverseOf (traversed % _1) patternCompileExpr
@@ -315,9 +563,32 @@ patternCompileCmds = fmap NE.fromList . go . NE.toList
             -- @go cmds@ should always be empty list here
           where
             f (bexpr, thenc) acceq = pure $ CIf () bexpr thenc acceq
+        -}
+        CSwitch ann switches -> assert (null cmds) $ do
+            (ndefns, switches') <- fmap (first concat . NE.unzip) $ for switches $ \(switchon, cmds) -> do
+                switchon' <- patternCompileExpr switchon
+                (ndefns, cmds') <- localEnvSt id $ patternCompileCmds cmds
+                return (ndefns, (switchon', cmds'))
 
+            switches'' <- patternCompileExhaustiveCSwitchCheck switches'
+
+            return (ndefns, NE.toList . foldr f (pure $ _CIllegalInstr # ()) $ switches'')
+          where
+            f (bexpr, thenc) acceq = pure $ CIf () bexpr thenc acceq
+
+        {-
         CIf ann cond cthen celse -> 
             fmap pure $ CIf () <$> patternCompileExpr cond <*> patternCompileCmds cthen <*> patternCompileCmds celse
+            -- @go cmds@ should always be empty list here
+        -}
+
+        CIf ann cond cthen celse -> assert (null cmds) $ do
+            cond' <- patternCompileExpr cond
+            (ndefns0, cthen') <- localEnvSt id $ patternCompileCmds cthen
+            (ndefns1, celse') <- localEnvSt id $ patternCompileCmds celse
+            return (ndefns0 ++ ndefns1, [CIf () cond' cthen' celse']) 
+            undefined
+            -- fmap pure $ CIf () <$> patternCompileExpr cond <*> patternCompileCmds cthen <*> patternCompileCmds celse
             -- @go cmds@ should always be empty list here
 
 {-

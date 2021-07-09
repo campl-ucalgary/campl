@@ -8,7 +8,10 @@ import MplMach.MplMachStack
 import Data.List 
 import Data.Functor.Identity
 
+{- TODO: Never got around to implementing this... -}
+
 {- | this is a list of the unfolded sequential steps -}
+{-
 unfoldedSeqSteps :: 
     Stec ->
     MplMach MplMachSuperCombinators [Stec]
@@ -19,11 +22,14 @@ unfoldedSeqSteps stec = (stec:) <$> go stec
         case res of 
             Just stec' -> (stec' :) <$> go stec'
             Nothing -> return []
+        -}
 
 spec :: Spec
 spec = do
+    {-
     describe "seqStep" $ do
         it "removes leading and trailing whitespace" $ do
             id "a" `shouldBe` "a"
             -- strip "\t  foo bar\n" `shouldBe` "foo bar"
+    -}
     return ()

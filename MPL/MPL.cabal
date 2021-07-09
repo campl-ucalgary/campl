@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 876793704eeff43246e34127bd90988e684da6f4415f51b80f07b6effd2774ea
+-- hash: 080c69e66c9f50a0c3462497949b548621a536eb8cd28eefec9f1eaab0adb9ba
 
 name:           MPL
 version:        0.1.0.0
@@ -121,7 +121,7 @@ library
     , unordered-containers
   default-language: Haskell2010
 
-executable mpl
+executable mpl-front-end
   main-is: Main.hs
   other-modules:
       Paths_MPL

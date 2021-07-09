@@ -59,7 +59,6 @@ collectAndRunTests fp = describe fp
 
 
 -- | trivial type wrapper for Parsec
-type MplCliSolutionParser = Parsec String ()
 
 {- | `pSolution` will parse the solution out of the comment of an mpl file.
 Explicitly, we expect (and parse)

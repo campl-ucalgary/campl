@@ -1,6 +1,8 @@
 {-
 a
 b
+b
+a
 -}
 codata S -> MyTuple(A,B)  =
     P0 ::  S -> A
@@ -17,6 +19,12 @@ proc run :: | Console => =
         put P0( ( P0 := -> "a", P1 := -> "b" ) ) on _console
         hput ConsolePut on _console
         put P1( ( P0 := -> "a", P1 := -> "b" ) ) on _console
+
+        hput ConsolePut on _console
+        put P0( ( P1 := -> "a", P0 := -> "b" ) ) on _console
+        hput ConsolePut on _console
+        put P1( ( P1 := -> "a", P0 := -> "b" ) ) on _console
+
 
         hput ConsoleClose on _console
         halt _console

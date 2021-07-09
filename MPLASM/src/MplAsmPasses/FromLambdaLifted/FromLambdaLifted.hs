@@ -30,6 +30,7 @@ import qualified MplAsmPasses.PassesErrorsPprint as Asm
 import MplAsmPasses.FromLambdaLifted.FromLambdaLiftedUtil
 import MplAsmPasses.FromLambdaLifted.FromLambdaLiftedAST
 import MplAsmPasses.FromLambdaLifted.FromLambdaLiftedErrors 
+import MplAsmPasses.FromLambdaLifted.FromLambdaLiftedStack
 
 -- Prelude
 import Control.Arrow
@@ -67,8 +68,15 @@ mplAssembleProg ::
     Either [e] (Asm.MplAsmProg MplAsmFromLambdaLifted)
 -- we assert that there are nothing in the where bindings (which shouldn't be the case 
 -- from lambda lifting)
+{-
 mplAssembleProg uniq prog = assert (all (null . view stmtWhereBindings) prog') 
     $ (\case 
+            (asmprog, []) -> Right asmprog
+            (_, errs) -> Left errs 
+        )
+-}
+mplAssembleProg uniq prog = 
+    (\case 
             (asmprog, []) -> Right asmprog
             (_, errs) -> Left errs 
         )
@@ -77,8 +85,23 @@ mplAssembleProg uniq prog = assert (all (null . view stmtWhereBindings) prog')
     $ mplasmprog
     -- fmap Asm.MplAsmProg (evalState (fmap concat $ traverse mplAssembleStmt stmts) s0) (fmap assemblemain maybemain)
   where 
+    -- first, we move the where bindings just above the function.. this is so we don't get 
+    -- weird where bindings overriding the bottom most main function.
     prog' :: [MplStmt MplLambdaLifted]
-    prog' = coerce prog
+    prog' = map f (coerce prog :: [MplStmt MplLambdaLifted])
+      where
+        f :: MplStmt MplLambdaLifted -> MplStmt MplLambdaLifted
+        f stmt = stmt
+            & stmtWhereBindings .~ mempty
+            & stmtDefns %~ NE.fromList . ((foldMapOf (stmtWhereBindings % folded) g stmt)++) . NE.toList
+
+        g :: MplStmt MplLambdaLifted -> [MplDefn MplLambdaLifted]
+        g stmt = NE.toList (stmt ^. stmtDefns) ++ foldMapOf (stmtWhereBindings % folded) g stmt
+
+        {-
+        (NE.fromList (foldMapOf (stmtDefns % folded) runLambdaLiftDefn stmt))
+        (stmt ^..  stmtWhereBindings % folded % to runlambdaLiftStmt)
+        -}
 
     mplasmprog :: 
         ( HasUniqueSupply s
@@ -507,6 +530,12 @@ mplAssembleExpr = para go
         EUnitF _ -> return [Asm.CConstructor () (Asm.TypeAndSpec uNIT_INTERNAL__ uNIT_INTERNAL__) []]
 
         ECallF _ callid (fmap snd -> args) -> do
+        {-
+        ECallF _ callid (fargs) -> do
+            _ callid
+            _ fargs
+            let args = fmap snd fargs
+        -}
             (argscmds, argsids) <- fmap unzip $ for args $ \arg -> do
                 e <- freshTmpName
                 arg' <- arg 
@@ -675,6 +704,15 @@ mplAssembleCmd = cata go
                         TypeBuiltIn (TypeTopBotF _) -> 
                             return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
                     {-
+                    Output -> case fromtp of
+                        TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeIntF _)) _ ) -> 
+                            return [ Asm.CSHPut () Asm.SHGetInt (toAsmIdP ch) ]
+                        TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeIntF _)) _ ) -> 
+                            return [ Asm.CSHPut () Asm.SHPutInt (toAsmIdP ch) ]
+                        TypeBuiltIn (TypeTopBotF _) -> 
+                            return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
+                    -}
+                    {-
                     Output -> case phr ^. nameStr of
                         "IntTerminalGet" -> return [ Asm.CSHPut () Asm.SHGetInt (toAsmIdP ch) ]
                         "IntTerminalPut" -> return [ Asm.CSHPut () Asm.SHPutInt (toAsmIdP ch) ]
@@ -816,7 +854,7 @@ mplAssemblePlugs ::
     m (Asm.MplAsmComs MplAsmFromLambdaLifted)
 mplAssemblePlugs plugged = 
     {- sort so that we have the input to 'goOutput' has the first element with a plugged OUTPUT channel -}
-    goOutput plugged . moveStartingPlugPhraseToHead
+    goOutput [] plugged . moveStartingPlugPhraseToHead
   where
     {- moves the starting plug first -}
     moveStartingPlugPhraseToHead = 
@@ -835,30 +873,32 @@ mplAssemblePlugs plugged =
     numberOfPlugged pluggeds = length . filter ((`elem`pluggeds) . view identR)
     
     -- assumes that the head of the input list has an plugged OUTPUT channel
-    goOutput pluggeds lst = case lst of
+    goOutput pluggedinscope pluggeds lst = case lst of
         [outplg] -> fmap concat $ sequenceOf traversed (outplg ^. _3)
         outplg:rst -> do
-            let topwiths = collectUsedChannels (pluggedof ++ pluggeds) [outplg]
-                botwiths = collectUsedChannels (pluggedof ++ pluggeds) rst
+            let topwiths = collectUsedChannels (pluggedinscope ++ pluggedof) [outplg]
+                botwiths = collectUsedChannels (pluggedinscope ++ pluggedof) rst
                 pluggedof = outplg ^. _2 % to (usedPlugsOf pluggeds)
 
             topcmds <- fmap concat $ sequenceOf traversed (outplg ^. _3)
-            botcmds <- goInp (pluggeds \\ pluggedof) $ moveIntersectWithInputs pluggedof rst
+            botcmds <- goInp (pluggedinscope ++ pluggedof) (pluggeds \\ pluggedof) $ moveIntersectWithInputs pluggedof rst
 
             return [Asm.CPlug () (map toAsmIdP pluggedof) ((topwiths, topcmds), (botwiths, botcmds)) ]
 
         -- this case is impossible 
         [] -> return []
 
-    goInp pluggeds lst  = case lst of
+    goInp pluggedinscope pluggeds lst  = case lst of
         [inpplg] -> fmap concat $ sequenceOf traversed (inpplg ^. _3)
         inpplg:rst -> do
-            let topwiths = collectUsedChannels (pluggedof ++ pluggeds) [inpplg]
-                botwiths = collectUsedChannels (pluggedof ++ pluggeds) rst
+            -- _ inpplg
+            let topwiths = collectUsedChannels (pluggedinscope ++ pluggedof) [inpplg]
+                botwiths = collectUsedChannels (pluggedinscope ++ pluggedof) rst
                 pluggedof = inpplg ^. _2 % to (usedPlugsOf pluggeds)
 
             topcmds <- fmap concat $ sequenceOf traversed (inpplg ^. _3)
-            botcmds <- goInp (pluggeds \\ pluggedof) $ moveIntersectWithOutputs pluggedof rst
+            botcmds <- goInp (pluggedinscope ++ pluggedof) (pluggeds \\ pluggedof) $ moveIntersectWithOutputs pluggedof rst
+
 
             return [Asm.CPlug () (map toAsmIdP pluggedof) ((topwiths, topcmds), (botwiths, botcmds))]
             
@@ -874,12 +914,20 @@ mplAssemblePlugs plugged =
         -- | the plugged context in the current phrase
         [IdentT] ->
         [(XCPlugPhrase MplLambdaLifted, ([ChP MplLambdaLifted], [ChP MplLambdaLifted]), NonEmpty (m [Asm.MplAsmCom MplAsmFromLambdaLifted]))] -> 
-        [Asm.IdP MplAsmFromLambdaLifted]
+        ([Asm.IdP MplAsmFromLambdaLifted], [Asm.IdP MplAsmFromLambdaLifted])
+    {-
     collectUsedChannels usedplugged = 
         map toAsmIdP 
         . filter (`notElem` usedplugged) 
         . map (view identR)
         . toListOf (folded % _2 % each % folded)
+    -}
+    collectUsedChannels usedplugged = foldMapOf (folded % _2) (over each f)
+      where
+        f = map toAsmIdP 
+            -- . filter (`elem` usedplugged) 
+            . filter (\v -> if v `elem` plugged then v `elem` usedplugged else True) 
+            . map (view identR)
 
     -- computes the channels which are actually plugged in some channels
     usedPlugsOf ::

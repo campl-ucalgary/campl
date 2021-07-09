@@ -174,7 +174,8 @@ type instance XPSimpleUnit MplPatternCompiled = Void
 
 -- Process Command
 type instance XMplCmd MplPatternCompiled = MplCmd MplPatternCompiled
-type instance XCRun MplPatternCompiled = XCRun MplTypeChecked
+    -- don't really need this annotation information
+type instance XCRun MplPatternCompiled = ()
 type instance XCClose MplPatternCompiled = KeyWordNameOcc
 type instance XCHalt MplPatternCompiled = KeyWordNameOcc
 type instance XCGet MplPatternCompiled = KeyWordNameOcc

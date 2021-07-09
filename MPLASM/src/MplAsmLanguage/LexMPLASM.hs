@@ -4,11 +4,17 @@
 
 {-# OPTIONS -fno-warn-incomplete-patterns #-}
 {-# OPTIONS_GHC -w #-}
+
+{-# LANGUAGE PatternSynonyms #-}
+
 module MplAsmLanguage.LexMPLASM where
 
+import Prelude
+
 import qualified Data.Bits
-import Data.Word (Word8)
-import Data.Char (ord)
+import Data.Char     (ord)
+import Data.Function (on)
+import Data.Word     (Word8)
 
 #if __GLASGOW_HASKELL__ >= 603
 #include "ghcconfig.h"
@@ -45557,97 +45563,123 @@ alex_actions = array (0 :: Int, 161)
   , (0,alex_action_55)
   ]
 
-{-# LINE 145 "LexMPLASM.x" #-}
+{-# LINE 259 "LexMPLASM.x" #-}
 
+-- | Create a token with position.
+tok :: (String -> Tok) -> (Posn -> String -> Token)
+tok f p = PT p . f
 
-tok :: (Posn -> String -> Token) -> (Posn -> String -> Token)
-tok f p s = f p s
+-- | Token without position.
+data Tok
+  = TK {-# UNPACK #-} !TokSymbol  -- ^ Reserved word or symbol.
+  | TL !String                    -- ^ String literal.
+  | TI !String                    -- ^ Integer literal.
+  | TV !String                    -- ^ Identifier.
+  | TD !String                    -- ^ Float literal.
+  | TC !String                    -- ^ Character literal.
+  | T_Store !String
+  | T_Load !String
+  | T_Ret !String
+  | T_Call !String
+  | T_CInt !String
+  | T_CChar !String
+  | T_CBool !String
+  | T_CString !String
+  | T_ToStr !String
+  | T_ToInt !String
+  | T_And !String
+  | T_Or !String
+  | T_Append !String
+  | T_Unstring !String
+  | T_LeqI !String
+  | T_EqI !String
+  | T_EqB !String
+  | T_LeqC !String
+  | T_EqC !String
+  | T_Leqs !String
+  | T_Eqs !String
+  | T_ConcatS !String
+  | T_Add !String
+  | T_Subtract !String
+  | T_Mul !String
+  | T_Quot !String
+  | T_Rem !String
+  | T_Case !String
+  | T_If !String
+  | T_Rec !String
+  | T_Get !String
+  | T_Put !String
+  | T_Hput !String
+  | T_Shput !String
+  | T_Hcase !String
+  | T_Split !String
+  | T_Fork !String
+  | T_Plug !String
+  | T_Run !String
+  | T_Race !String
+  | T_Close !String
+  | T_Halt !String
+  | T_Ch_Id !String
+  | T_Main_run !String
+  | T_BBool !String
+  | T_Character !String
+  | T_UIdent !String
+  | T_PIdent !String
+  | T_PInteger !String
+  | T_IIdent !String
+  deriving (Eq, Show, Ord)
 
-data Tok =
-   TS !String !Int    -- reserved words and symbols
- | TL !String         -- string literals
- | TI !String         -- integer literals
- | TV !String         -- identifiers
- | TD !String         -- double precision float literals
- | TC !String         -- character literals
- | T_Store !String
- | T_Load !String
- | T_Ret !String
- | T_Call !String
- | T_CInt !String
- | T_CChar !String
- | T_CBool !String
- | T_CString !String
- | T_ToStr !String
- | T_ToInt !String
- | T_And !String
- | T_Or !String
- | T_Append !String
- | T_Unstring !String
- | T_LeqI !String
- | T_EqI !String
- | T_EqB !String
- | T_LeqC !String
- | T_EqC !String
- | T_Leqs !String
- | T_Eqs !String
- | T_ConcatS !String
- | T_Add !String
- | T_Subtract !String
- | T_Mul !String
- | T_Quot !String
- | T_Rem !String
- | T_Case !String
- | T_If !String
- | T_Rec !String
- | T_Get !String
- | T_Put !String
- | T_Hput !String
- | T_Shput !String
- | T_Hcase !String
- | T_Split !String
- | T_Fork !String
- | T_Plug !String
- | T_Run !String
- | T_Race !String
- | T_Close !String
- | T_Halt !String
- | T_Ch_Id !String
- | T_Main_run !String
- | T_BBool !String
- | T_Character !String
- | T_UIdent !String
- | T_PIdent !String
- | T_PInteger !String
- | T_IIdent !String
+-- | Smart constructor for 'Tok' for the sake of backwards compatibility.
+pattern TS :: String -> Int -> Tok
+pattern TS t i = TK (TokSymbol t i)
 
- deriving (Eq,Show,Ord)
+-- | Keyword or symbol tokens have a unique ID.
+data TokSymbol = TokSymbol
+  { tsText :: String
+      -- ^ Keyword or symbol text.
+  , tsID   :: !Int
+      -- ^ Unique ID.
+  } deriving (Show)
 
-data Token =
-   PT  Posn Tok
- | Err Posn
-  deriving (Eq,Show,Ord)
+-- | Keyword/symbol equality is determined by the unique ID.
+instance Eq  TokSymbol where (==)    = (==)    `on` tsID
 
+-- | Keyword/symbol ordering is determined by the unique ID.
+instance Ord TokSymbol where compare = compare `on` tsID
+
+-- | Token with position.
+data Token
+  = PT  Posn Tok
+  | Err Posn
+  deriving (Eq, Show, Ord)
+
+-- | Pretty print a position.
 printPosn :: Posn -> String
 printPosn (Pn _ l c) = "line " ++ show l ++ ", column " ++ show c
 
+-- | Pretty print the position of the first token in the list.
 tokenPos :: [Token] -> String
 tokenPos (t:_) = printPosn (tokenPosn t)
-tokenPos [] = "end of file"
+tokenPos []    = "end of file"
 
+-- | Get the position of a token.
 tokenPosn :: Token -> Posn
 tokenPosn (PT p _) = p
-tokenPosn (Err p) = p
+tokenPosn (Err p)  = p
 
+-- | Get line and column of a token.
 tokenLineCol :: Token -> (Int, Int)
 tokenLineCol = posLineCol . tokenPosn
 
+-- | Get line and column of a position.
 posLineCol :: Posn -> (Int, Int)
 posLineCol (Pn _ l c) = (l,c)
 
+-- | Convert a token into "position token" form.
 mkPosToken :: Token -> ((Int, Int), String)
-mkPosToken t@(PT p _) = (posLineCol p, tokenText t)
+mkPosToken t = (tokenLineCol t, tokenText t)
 
+-- | Convert a token to its text.
 tokenText :: Token -> String
 tokenText t = case t of
   PT _ (TS s _) -> s
@@ -45708,24 +45740,52 @@ tokenText t = case t of
   PT _ (T_PInteger s) -> s
   PT _ (T_IIdent s) -> s
 
+-- | Convert a token to a string.
 prToken :: Token -> String
 prToken t = tokenText t
 
-data BTree = N | B String Tok BTree BTree deriving (Show)
+-- | Finite map from text to token organized as binary search tree.
+data BTree
+  = N -- ^ Nil (leaf).
+  | B String Tok BTree BTree
+      -- ^ Binary node.
+  deriving (Show)
 
+-- | Convert potential keyword into token or use fallback conversion.
 eitherResIdent :: (String -> Tok) -> String -> Tok
 eitherResIdent tv s = treeFind resWords
   where
   treeFind N = tv s
-  treeFind (B a t left right) | s < a  = treeFind left
-                              | s > a  = treeFind right
-                              | s == a = t
+  treeFind (B a t left right) =
+    case compare s a of
+      LT -> treeFind left
+      GT -> treeFind right
+      EQ -> t
 
+-- | The keywords and symbols of the language organized as binary search tree.
 resWords :: BTree
-resWords = b ";" 16 (b "%protocols" 8 (b "%destructors" 4 (b "%constructors" 2 (b "#" 1 N N) (b "%coprotocols" 3 N N)) (b "%include" 6 (b "%functions" 5 N N) (b "%processes" 7 N N))) (b "->" 12 (b ")" 10 (b "(" 9 N N) (b "," 11 N N)) (b ":" 14 (b "." 13 N N) (b ":=" 15 N N)))) (b "of" 24 (b "]" 20 (b "=>" 18 (b "=" 17 N N) (b "[" 19 N N)) (b "else" 22 (b "as" 21 N N) (b "into" 23 N N))) (b "{" 28 (b "then" 26 (b "on" 25 N N) (b "with" 27 N N)) (b "}" 30 (b "|" 29 N N) N)))
-   where b s n = let bs = s
-                 in  B bs (TS bs n)
+resWords =
+  b ";" 16
+    (b "%protocols" 8
+       (b "%destructors" 4
+          (b "%constructors" 2 (b "#" 1 N N) (b "%coprotocols" 3 N N))
+          (b "%include" 6 (b "%functions" 5 N N) (b "%processes" 7 N N)))
+       (b "->" 12
+          (b ")" 10 (b "(" 9 N N) (b "," 11 N N))
+          (b ":" 14 (b "." 13 N N) (b ":=" 15 N N))))
+    (b "of" 24
+       (b "]" 20
+          (b "=>" 18 (b "=" 17 N N) (b "[" 19 N N))
+          (b "else" 22 (b "as" 21 N N) (b "into" 23 N N)))
+       (b "{" 28
+          (b "then" 26 (b "on" 25 N N) (b "with" 27 N N))
+          (b "}" 30 (b "|" 29 N N) N)))
+  where
+  b s n = B bs (TS bs n)
+    where
+    bs = s
 
+-- | Unquote string literal.
 unescapeInitTail :: String -> String
 unescapeInitTail = id . unesc . tail . id
   where
@@ -45735,9 +45795,9 @@ unescapeInitTail = id . unesc . tail . id
     '\\':'t':cs  -> '\t' : unesc cs
     '\\':'r':cs  -> '\r' : unesc cs
     '\\':'f':cs  -> '\f' : unesc cs
-    '"':[]    -> []
-    c:cs      -> c : unesc cs
-    _         -> []
+    '"':[]       -> []
+    c:cs         -> c : unesc cs
+    _            -> []
 
 -------------------------------------------------------------------
 -- Alex wrapper code.
@@ -45745,7 +45805,7 @@ unescapeInitTail = id . unesc . tail . id
 -------------------------------------------------------------------
 
 data Posn = Pn !Int !Int !Int
-      deriving (Eq, Show,Ord)
+  deriving (Eq, Show, Ord)
 
 alexStartPos :: Posn
 alexStartPos = Pn 0 1 1
@@ -45789,7 +45849,7 @@ alexInputPrevChar (p, c, bs, s) = c
 -- | Encode a Haskell String to a list of Word8 values, in UTF8 format.
 utf8Encode :: Char -> [Word8]
 utf8Encode = map fromIntegral . go . ord
- where
+  where
   go oc
    | oc <= 0x7f       = [oc]
 
@@ -45807,60 +45867,60 @@ utf8Encode = map fromIntegral . go . ord
                         , 0x80 + oc Data.Bits..&. 0x3f
                         ]
 
-alex_action_3 =  tok (\p s -> PT p (eitherResIdent TV s)) 
-alex_action_4 =  tok (\p s -> PT p (eitherResIdent T_Store s)) 
-alex_action_5 =  tok (\p s -> PT p (eitherResIdent T_Load s)) 
-alex_action_6 =  tok (\p s -> PT p (eitherResIdent T_Ret s)) 
-alex_action_7 =  tok (\p s -> PT p (eitherResIdent T_Call s)) 
-alex_action_8 =  tok (\p s -> PT p (eitherResIdent T_CInt s)) 
-alex_action_9 =  tok (\p s -> PT p (eitherResIdent T_CChar s)) 
-alex_action_10 =  tok (\p s -> PT p (eitherResIdent T_CBool s)) 
-alex_action_11 =  tok (\p s -> PT p (eitherResIdent T_CString s)) 
-alex_action_12 =  tok (\p s -> PT p (eitherResIdent T_ToStr s)) 
-alex_action_13 =  tok (\p s -> PT p (eitherResIdent T_ToInt s)) 
-alex_action_14 =  tok (\p s -> PT p (eitherResIdent T_And s)) 
-alex_action_15 =  tok (\p s -> PT p (eitherResIdent T_Or s)) 
-alex_action_16 =  tok (\p s -> PT p (eitherResIdent T_Append s)) 
-alex_action_17 =  tok (\p s -> PT p (eitherResIdent T_Unstring s)) 
-alex_action_18 =  tok (\p s -> PT p (eitherResIdent T_LeqI s)) 
-alex_action_19 =  tok (\p s -> PT p (eitherResIdent T_EqI s)) 
-alex_action_20 =  tok (\p s -> PT p (eitherResIdent T_EqB s)) 
-alex_action_21 =  tok (\p s -> PT p (eitherResIdent T_LeqC s)) 
-alex_action_22 =  tok (\p s -> PT p (eitherResIdent T_EqC s)) 
-alex_action_23 =  tok (\p s -> PT p (eitherResIdent T_Leqs s)) 
-alex_action_24 =  tok (\p s -> PT p (eitherResIdent T_Eqs s)) 
-alex_action_25 =  tok (\p s -> PT p (eitherResIdent T_ConcatS s)) 
-alex_action_26 =  tok (\p s -> PT p (eitherResIdent T_Add s)) 
-alex_action_27 =  tok (\p s -> PT p (eitherResIdent T_Subtract s)) 
-alex_action_28 =  tok (\p s -> PT p (eitherResIdent T_Mul s)) 
-alex_action_29 =  tok (\p s -> PT p (eitherResIdent T_Quot s)) 
-alex_action_30 =  tok (\p s -> PT p (eitherResIdent T_Rem s)) 
-alex_action_31 =  tok (\p s -> PT p (eitherResIdent T_Case s)) 
-alex_action_32 =  tok (\p s -> PT p (eitherResIdent T_If s)) 
-alex_action_33 =  tok (\p s -> PT p (eitherResIdent T_Rec s)) 
-alex_action_34 =  tok (\p s -> PT p (eitherResIdent T_Get s)) 
-alex_action_35 =  tok (\p s -> PT p (eitherResIdent T_Put s)) 
-alex_action_36 =  tok (\p s -> PT p (eitherResIdent T_Hput s)) 
-alex_action_37 =  tok (\p s -> PT p (eitherResIdent T_Shput s)) 
-alex_action_38 =  tok (\p s -> PT p (eitherResIdent T_Hcase s)) 
-alex_action_39 =  tok (\p s -> PT p (eitherResIdent T_Split s)) 
-alex_action_40 =  tok (\p s -> PT p (eitherResIdent T_Fork s)) 
-alex_action_41 =  tok (\p s -> PT p (eitherResIdent T_Plug s)) 
-alex_action_42 =  tok (\p s -> PT p (eitherResIdent T_Run s)) 
-alex_action_43 =  tok (\p s -> PT p (eitherResIdent T_Race s)) 
-alex_action_44 =  tok (\p s -> PT p (eitherResIdent T_Close s)) 
-alex_action_45 =  tok (\p s -> PT p (eitherResIdent T_Halt s)) 
-alex_action_46 =  tok (\p s -> PT p (eitherResIdent T_Ch_Id s)) 
-alex_action_47 =  tok (\p s -> PT p (eitherResIdent T_Main_run s)) 
-alex_action_48 =  tok (\p s -> PT p (eitherResIdent T_BBool s)) 
-alex_action_49 =  tok (\p s -> PT p (eitherResIdent T_Character s)) 
-alex_action_50 =  tok (\p s -> PT p (eitherResIdent T_UIdent s)) 
-alex_action_51 =  tok (\p s -> PT p (eitherResIdent T_PIdent s)) 
-alex_action_52 =  tok (\p s -> PT p (eitherResIdent T_PInteger s)) 
-alex_action_53 =  tok (\p s -> PT p (eitherResIdent T_IIdent s)) 
-alex_action_54 =  tok (\p s -> PT p (eitherResIdent TV s)) 
-alex_action_55 =  tok (\p s -> PT p (TL $ unescapeInitTail s)) 
-alex_action_56 =  tok (\p s -> PT p (TI s))    
+alex_action_3 =  tok (eitherResIdent TV) 
+alex_action_4 =  tok (eitherResIdent T_Store) 
+alex_action_5 =  tok (eitherResIdent T_Load) 
+alex_action_6 =  tok (eitherResIdent T_Ret) 
+alex_action_7 =  tok (eitherResIdent T_Call) 
+alex_action_8 =  tok (eitherResIdent T_CInt) 
+alex_action_9 =  tok (eitherResIdent T_CChar) 
+alex_action_10 =  tok (eitherResIdent T_CBool) 
+alex_action_11 =  tok (eitherResIdent T_CString) 
+alex_action_12 =  tok (eitherResIdent T_ToStr) 
+alex_action_13 =  tok (eitherResIdent T_ToInt) 
+alex_action_14 =  tok (eitherResIdent T_And) 
+alex_action_15 =  tok (eitherResIdent T_Or) 
+alex_action_16 =  tok (eitherResIdent T_Append) 
+alex_action_17 =  tok (eitherResIdent T_Unstring) 
+alex_action_18 =  tok (eitherResIdent T_LeqI) 
+alex_action_19 =  tok (eitherResIdent T_EqI) 
+alex_action_20 =  tok (eitherResIdent T_EqB) 
+alex_action_21 =  tok (eitherResIdent T_LeqC) 
+alex_action_22 =  tok (eitherResIdent T_EqC) 
+alex_action_23 =  tok (eitherResIdent T_Leqs) 
+alex_action_24 =  tok (eitherResIdent T_Eqs) 
+alex_action_25 =  tok (eitherResIdent T_ConcatS) 
+alex_action_26 =  tok (eitherResIdent T_Add) 
+alex_action_27 =  tok (eitherResIdent T_Subtract) 
+alex_action_28 =  tok (eitherResIdent T_Mul) 
+alex_action_29 =  tok (eitherResIdent T_Quot) 
+alex_action_30 =  tok (eitherResIdent T_Rem) 
+alex_action_31 =  tok (eitherResIdent T_Case) 
+alex_action_32 =  tok (eitherResIdent T_If) 
+alex_action_33 =  tok (eitherResIdent T_Rec) 
+alex_action_34 =  tok (eitherResIdent T_Get) 
+alex_action_35 =  tok (eitherResIdent T_Put) 
+alex_action_36 =  tok (eitherResIdent T_Hput) 
+alex_action_37 =  tok (eitherResIdent T_Shput) 
+alex_action_38 =  tok (eitherResIdent T_Hcase) 
+alex_action_39 =  tok (eitherResIdent T_Split) 
+alex_action_40 =  tok (eitherResIdent T_Fork) 
+alex_action_41 =  tok (eitherResIdent T_Plug) 
+alex_action_42 =  tok (eitherResIdent T_Run) 
+alex_action_43 =  tok (eitherResIdent T_Race) 
+alex_action_44 =  tok (eitherResIdent T_Close) 
+alex_action_45 =  tok (eitherResIdent T_Halt) 
+alex_action_46 =  tok (eitherResIdent T_Ch_Id) 
+alex_action_47 =  tok (eitherResIdent T_Main_run) 
+alex_action_48 =  tok (eitherResIdent T_BBool) 
+alex_action_49 =  tok (eitherResIdent T_Character) 
+alex_action_50 =  tok (eitherResIdent T_UIdent) 
+alex_action_51 =  tok (eitherResIdent T_PIdent) 
+alex_action_52 =  tok (eitherResIdent T_PInteger) 
+alex_action_53 =  tok (eitherResIdent T_IIdent) 
+alex_action_54 =  tok (eitherResIdent TV) 
+alex_action_55 =  tok (TL . unescapeInitTail) 
+alex_action_56 =  tok TI 
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 -- -----------------------------------------------------------------------------
 -- ALEX TEMPLATE

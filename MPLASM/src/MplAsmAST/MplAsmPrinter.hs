@@ -174,6 +174,11 @@ mplAsmComToBnfcCom = cata go
         CEqCharF _ -> 
             B.AC_EQC bnfcKeyword
 
+        -- TODO: properly add this in the bnfc grammer and don't use the same instruction
+        CLtIntF _ -> B.AC_LEQ bnfcKeyword
+        CLeqIntF _ -> B.AC_LEQ bnfcKeyword
+        CLeqCharF _ -> B.AC_LEQ bnfcKeyword
+
         CAddF _ -> B.AC_ADD bnfcKeyword
         CSubF _ -> B.AC_SUB bnfcKeyword
         CMulF _ -> B.AC_MUL bnfcKeyword
@@ -248,14 +253,20 @@ mplAsmComToBnfcCom = cata go
                 (toBnfcIdent ch1) 
                     (map toBnfcIdent ch1withs) 
                     (B.Prog cmds1)
-        CPlugF _ plugs ((withs0, cmds0), (withs1, cmds1)) ->
+
+        {- bit of a hack to show the input and output.. probably honestly best to modify the grammar -}
+        CPlugF _ plugs (((withsins0, withsouts0), cmds0), ((withsins1, withsouts1), cmds1)) ->
             B.AC_PLUG 
                 bnfcKeyword
                 (map toBnfcIdent plugs)
-                (map toBnfcIdent withs0)
-                    (B.Prog cmds0)
-                (map toBnfcIdent withs1)
-                    (B.Prog cmds1)
+
+                    (map toBnfcIdent withsins0) 
+                    (map toBnfcIdent withsouts0)
+                        (B.Prog cmds0)
+
+                    (map toBnfcIdent withsins1) 
+                    (map toBnfcIdent withsouts1)
+                        (B.Prog cmds1)
 
         CRunF _ runner (seqs, ins, outs) -> 
             B.AC_RUN 
@@ -385,3 +396,6 @@ instance BnfcKeyword B.CBool where
 
 instance BnfcKeyword B.Shput where
     bnfcKeyword = B.Shput (invalidPosition, "shput")
+
+instance BnfcKeyword B.LeqI where
+    bnfcKeyword = B.LeqI (invalidPosition, "leq")

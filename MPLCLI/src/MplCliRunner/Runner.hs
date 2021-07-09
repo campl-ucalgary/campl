@@ -62,14 +62,25 @@ cliRunner args = getOpts args >>= execMplCli cliRunPipeline . review _MplCliEnv
 
 -- | runs the front end passes
 cliRunPipeline :: MplCli ()
-cliRunPipeline = do
+cliRunPipeline = 
+    join (gviews mplCliInpFile (liftIO . readFile))
+        >>= cliRunPipelineInputProg 
+
+
+-- | really runs the front end passes, but accepts the entire input program
+-- as input (doesn't read the file) -- this is useful for the bencmakring.
+cliRunPipelineInputProg :: 
+    -- | input program
+    String -> 
+    -- | all done.
+    MplCli ()
+cliRunPipelineInputProg inp = do
     flags <- gview mplCliFlags 
 
     Passes.MplPassesEnv
         { Passes.mplPassesEnvUniqueSupply = supply
         , Passes.mplPassesTopLevel = toplvl } <- liftIO Passes.mplPassesEnv
     let ~(s0:s1:s2:s3:_) = uniqueSupplies supply
-    inp <- join $ gviews mplCliInpFile (liftIO . readFile)
 
     -- parsed
     parsed <- liftEither 
@@ -187,6 +198,7 @@ cliRunPipeline = do
             )
         $ Asm.mplAsmProgToInitMachState assembled
 
+
     {-
     liftIO $ do
         pPrint supercombs
@@ -199,5 +211,3 @@ cliRunPipeline = do
         MplMach.mplMachRunnner env mainf
 
     return ()
-
-

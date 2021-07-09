@@ -53,10 +53,10 @@ runLambdaLiftProg ::
     MplProg MplLambdaLifted
 runLambdaLiftProg (MplProg prog) = MplProg $ map runlambdaLiftStmt prog
 
+{- | lambda lifts the statements (note that where bindings are not moved to the top level) -}
 runlambdaLiftStmt ::
     MplStmt MplPatternCompiled ->
     MplStmt MplLambdaLifted
-    -- [MplDefn MplLambdaLifted]
 runlambdaLiftStmt stmt = MplStmt
     (NE.fromList (foldMapOf (stmtDefns % folded) runLambdaLiftDefn stmt))
     (stmt ^..  stmtWhereBindings % folded % to runlambdaLiftStmt)
@@ -280,14 +280,26 @@ callGraphFixedPoint = until (uncurry (==) <<< go &&& id) go
         - bound variables 
         - free variables 
         - called functions
-Note: this does NOT recurse.
+N.B. this does NOT recurse.
+
+Strange remark about the bound variables and free variables..
+Technically, when writing 
+@
+f a = case a of
+    b:c -> Just(let f' = b : c in f')
+    [] -> Nothing
+@
+after alpha renaming (which we did a really long time ago), 
+@b,c@ are *bound variables* for f (but NOT f')... This may seem a 
+bit strange, but if we don't do this, we get ``extra'' parameters for 
+@f@ which are undesired.
  -}
 callGraphFunDefn :: XFunctionDefn MplPatternCompiled -> CallGraph
 -- we assert that the body should be null from compilation of pattern matching
 callGraphFunDefn (MplFunction funName funTp ((patts, expr) :| bdy)) = assert (null bdy) $ 
     Map.singleton funName (args,  vars `Set.difference` args, calls) 
   where
-    args = Set.fromList $ fmap getPattVarIdent patts 
+    args = Set.fromList (fmap getPattVarIdent patts) <> collectBoundVarsExpr expr
     vars = collectFreeVarsExpr expr
     calls = collectCallsExpr expr
 
@@ -360,9 +372,38 @@ collectFreeVarsExpr = cata go
 
         ERecordF _ records -> foldMapOf (folded % _3) (\(patts, acc) -> acc `Set.difference` foldMap (Set.singleton . getPattVarIdent) patts) records
         -- ERecordF _ records -> foldMapOf (folded % _3) (\(patts, acc) -> acc `Set.difference` foldMap collectBoundVariablesFromPattern patts) records
+        res -> fold res
 
-        -- _ :: NonEmpty (MplTypePhrase MplTypeChecked ('SeqObjTag 'CodataDefnTag), IdentT, ([MplPattern MplPatternCompiled], Set IdentT)) -> Set IdentT
+{- | collects all the bound variables in an expression (note this does NOT recurse through the let bindings).. Indeed,
+Extra bound variables will come from case statements or recrods e.g.
+@
+case banana of
+    a:b -> ...
+    [] -> ...
+@
+will have bound variables @a,b@.
 
+N.B. lots of duplciated code from 'collectFreeVarsExpr' and this -- fix this later...
+-}
+collectBoundVarsExpr :: 
+    MplExpr MplPatternCompiled -> 
+    BoundArgs
+collectBoundVarsExpr = cata go
+  where
+    go :: MplExprF MplPatternCompiled FreeArgs -> FreeArgs
+    go = \case
+        EVarF _ v -> mempty
+        ECaseF _ caseon patts -> (caseon `Set.union` foldMap snd patts) `Set.union` foldMap (f . fst) patts
+          where
+            f :: MplPattern MplPatternCompiledCase -> Set IdentT
+            f = \case
+                PSimpleConstructor _ _ args -> Set.fromList $ map fst args
+                PSimpleListCons _ l r -> Set.fromList $ [l, r]
+                PSimpleListEmpty _ -> mempty
+                PSimpleUnit _ -> mempty
+
+        ERecordF _ records -> foldMapOf (folded % _3) (\(patts, acc) -> acc `Set.union` foldMap (Set.singleton . getPattVarIdent) patts) records
+        -- ERecordF _ records -> foldMapOf (folded % _3) (\(patts, acc) -> acc `Set.difference` foldMap collectBoundVariablesFromPattern patts) records
         res -> fold res
     
 

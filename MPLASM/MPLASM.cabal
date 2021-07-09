@@ -45,6 +45,7 @@ library
       MplAsmPasses.FromLambdaLifted.FromLambdaLifted
       MplAsmPasses.FromLambdaLifted.FromLambdaLiftedAST
       MplAsmPasses.FromLambdaLifted.FromLambdaLiftedErrors
+      MplAsmPasses.FromLambdaLifted.FromLambdaLiftedStack
       MplAsmPasses.FromLambdaLifted.FromLambdaLiftedUtil
       MplAsmPasses.Parse.BnfcParse
       MplAsmPasses.Parse.Parse

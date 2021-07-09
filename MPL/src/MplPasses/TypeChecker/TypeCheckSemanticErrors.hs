@@ -146,61 +146,7 @@ expectedInputPolarity ::
 expectedInputPolarity ch = maybeToList $ 
     _ExpectedPolarityButGot # (Input, ch) <$ ch ^? polarity % _Output
 
-
-
-{- | 'cutConditions' tests for the following conditions:
- -      (c1) at most 2 occurences of each variable, 
- -      (c2) each variable must be of opposite polarity in each of the plug phrases
- -      (c3) each variable must be in a different phrase
- -      (c4) phrases can be plugged along exactly one channel [the new composite plug that violates this will violate this condition (c5) cycles are not allowed]
- -}
- {- look for the thing -}
-cutConditions :: 
-    forall e. 
-    ( AsTypeCheckSemanticErrors e ) => 
-    -- | the channels which are plugged together
-    [IdentR]  ->
-    -- | the phrases provided in the plug 
-    [([ChIdentR], [ChIdentR])] ->
-    [e]
-cutConditions plugged plugphrases = 
-    c1c2 plugphrases <> concatMap c3 plugphrases
-  where
-    c1c2 = concatMap g . toListOf folded . flip execState Map.empty . traverse f 
-
-    -- create a map of: channel --> (occurences in input phrase, occurences in output phrase)
-    f :: ( MonadState (Map UniqueTag ([ChIdentR], [ChIdentR])) m ) => 
-        ([ChIdentR], [ChIdentR]) -> 
-        m ()
-    f (ins, outs) = do
-        for_ ins $ \ch -> at (ch ^. uniqueTag) %= Just . maybe ([ch], []) (over _1 (ch:))
-        for_ outs $ \ch -> at (ch ^. uniqueTag) %= Just . maybe ([], [ch]) (over _2 (ch:))
-
-    g :: ([ChIdentR], [ChIdentR]) -> [e]
-    g res = fold 
-        [ c1 res
-        -- for (c2), we should really should only check if the plugged variables have opposite polarity..
-        -- The other variables, have a fixed polarity as given by the argument declarations
-        , c2 $ 
-            (filter ((`elem`plugged) . view chIdentRIdentR) *** filter ((`elem`plugged) . view chIdentRIdentR)) 
-            res
-        ]
-    
-    c1 inputsoutputs 
-        | uncurry (+) (over each length inputsoutputs) > 2 =
-            [ _ExpectedAtMostTwoOccurencesOfAChannelInAPlugPhraseButGot # uncurry (<>) inputsoutputs ]
-        | otherwise = [] 
-
-    c2 (as@(_:_:_), []) = [ _ExpectedVariablesToBeOfOppositePolarityInAPlugPhraseButGot # as ]
-    c2 ([], bs@(_:_:_)) = [ _ExpectedVariablesToBeOfOppositePolarityInAPlugPhraseButGot # bs ]
-    c2 _ = []
-
-    c3 phrase@(ins, outs) = 
-        let common = ins `intersect` outs
-        in bool [_ExpectedVariablesToBeInADifferentPlugPhraseButGotIn # (common, phrase)]
-            [] $ null common
-
-
+{- Some data types for cycle testing? -}
 type FocusedPhraseMap = 
     ( Map UniqueTag (ChIdentR, [([ChIdentR], [ChIdentR])])
     , Map UniqueTag (ChIdentR, [([ChIdentR], [ChIdentR])]) 
@@ -334,3 +280,56 @@ cutCycles (start@(startins,startouts) :| phrases) = execWriter
             | p ch phrase = Just (phrase, phrases)
             -- ch `elem` uncurry (<>) phrase = Just (phrase, phrases)
             | otherwise = second (phrase:) <$> f phrases
+
+{- | 'cutConditions' tests for the following conditions:
+ -      (c1) at most 2 occurences of each variable, 
+ -      (c2) each variable must be of opposite polarity in each of the plug phrases
+ -      (c3) each variable must be in a different phrase
+ -      (c4) phrases can be plugged along exactly one channel 
+ -          [the new composite plug that violates this will violate this condition (c5) cycles are not allowed]
+ -}
+ {- look for the thing -}
+cutConditions :: 
+    forall e. 
+    ( AsTypeCheckSemanticErrors e ) => 
+    -- | the channels which are plugged together
+    [IdentR]  ->
+    -- | the phrases provided in the plug 
+    [([ChIdentR], [ChIdentR])] ->
+    [e]
+cutConditions plugged plugphrases = 
+    c1c2 plugphrases <> concatMap c3 plugphrases 
+  where
+    c1c2 = concatMap g . toListOf folded . flip execState Map.empty . traverse f 
+
+    -- create a map of: channel --> (occurences in input phrase, occurences in output phrase)
+    f :: ( MonadState (Map UniqueTag ([ChIdentR], [ChIdentR])) m ) => 
+        ([ChIdentR], [ChIdentR]) -> 
+        m ()
+    f (ins, outs) = do
+        for_ ins $ \ch -> at (ch ^. uniqueTag) %= Just . maybe ([ch], []) (over _1 (ch:))
+        for_ outs $ \ch -> at (ch ^. uniqueTag) %= Just . maybe ([], [ch]) (over _2 (ch:))
+
+    g :: ([ChIdentR], [ChIdentR]) -> [e]
+    g res = fold 
+        [ c1 res
+        -- for (c2), we should really should only check if the plugged variables have opposite polarity..
+        -- The other variables, have a fixed polarity as given by the argument declarations
+        , c2 $ 
+            (filter ((`elem`plugged) . view chIdentRIdentR) *** filter ((`elem`plugged) . view chIdentRIdentR)) 
+            res
+        ]
+    
+    c1 inputsoutputs 
+        | uncurry (+) (over each length inputsoutputs) > 2 =
+            [ _ExpectedAtMostTwoOccurencesOfAChannelInAPlugPhraseButGot # uncurry (<>) inputsoutputs ]
+        | otherwise = [] 
+
+    c2 (as@(_:_:_), []) = [ _ExpectedVariablesToBeOfOppositePolarityInAPlugPhraseButGot # as ]
+    c2 ([], bs@(_:_:_)) = [ _ExpectedVariablesToBeOfOppositePolarityInAPlugPhraseButGot # bs ]
+    c2 _ = []
+
+    c3 phrase@(ins, outs) = 
+        let common = ins `intersect` outs
+        in bool [_ExpectedVariablesToBeInADifferentPlugPhraseButGotIn # (common, phrase)]
+            [] $ null common

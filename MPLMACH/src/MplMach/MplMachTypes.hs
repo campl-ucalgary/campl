@@ -1,8 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE StrictData #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE StrictData #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-| This module all the data types for the abstract machine.
 -}
@@ -161,7 +161,7 @@ showTranslationLkup lkup = do
 data Stec = Stec 
     { _stack :: ![Val]
     -- | LocalChan --> (Polarity, ChMQueue). 
-    , _translation :: Translation
+    , _translation :: !Translation
     , _environment :: ![Val]
     , _code :: ![Instr]
     }
@@ -179,6 +179,7 @@ newtype TupleIx = TupleIx IxRep
   deriving (Show, Eq, Ord, Ix)
 
 -- we reserve some special indices for services..
+-- N.B. Long deprecated.. we now have specific instrucitons.. 
 {-
 pattern SGetHCaseIx = HCaseIx 0 
 pattern SPutHCaseIx = HCaseIx 1 
@@ -209,7 +210,7 @@ data IConc
     | IId LocalChan LocalChan
 
     -- We have [a1, .., a_n], and by convention (i.e., Prashant) we have (out channel, in channel)
-    | IPlug [LocalChan] ((Set LocalChan, [Instr]), (Set LocalChan, [Instr]))
+    | IPlug [LocalChan] (((Set LocalChan, Set LocalChan), [Instr]), ((Set LocalChan, Set LocalChan), [Instr]))
 
 
     -- | Translation mappings, FunctionID and number of arguments to call with this function..
@@ -282,14 +283,14 @@ data ISeq
 
 
 data Val 
-    = VClos [Instr] [Val]
-    | VInt Int
-    | VBool Bool
-    | VChar Char
-    | VTuple (Array TupleIx Val)
+    = VClos ![Instr] ![Val]
+    | VInt !Int
+    | VBool !Bool
+    | VChar !Char
+    | VTuple !(Array TupleIx Val)
 
-    | VCons CaseIx [Val]
-    | VRec (Array CaseIx [Instr]) [Val]
+    | VCons !CaseIx ![Val]
+    | VRec !(Array CaseIx [Instr]) [Val]
   deriving Show
 
 newtype MplMachSuperCombinators = MpMachSuperCombinators {
@@ -333,6 +334,10 @@ data QInstr
     -- all share one election object.
     | QRace Stec
   deriving Show
+
+qInstrStmShow :: QInstr -> STM String
+qInstrStmShow = undefined
+
 
 {- | returns true if the instruction will make the process suspend -}
 isSuspendingQInstr ::

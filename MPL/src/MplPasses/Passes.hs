@@ -118,22 +118,9 @@ runPassesTester str = do
         Left v -> putStrLn $ show $ vsep $ map pprintMplPassesErrors v
 
 fresher = [r|
+fun n5 :: -> A =
+    -> ()
 
-
-data List(A) -> S =
-    Cons :: A,S -> S
-    Nil ::  -> S
-
-fun huh =
-    Cons(1,Cons(2,Cons(3,Nil))) -> 0
-    Cons(a,b) -> a
-    _ -> 3
-
-fun huh =
-    [1,2,3] -> 0
-    a:b -> a
-    n -> 3
-        
 |]
 
 freshhuh = [r|

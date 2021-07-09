@@ -340,7 +340,7 @@ All other symbols are terminals.
   |  |  **|**  | //Hcase// //PIdent// ``of`` ``{`` //[LabelledComs]// ``}``
   |  |  **|**  | //Split// //PIdent// ``into`` //PIdent// //PIdent//
   |  |  **|**  | //Fork// //PIdent// ``as`` ``{`` //PIdent// ``with`` //[PIdent]// ``:`` //Coms// ``;`` //PIdent// ``with`` //[PIdent]// ``:`` //Coms// ``}``
-  |  |  **|**  | //Plug// //[PIdent]// ``as`` ``{`` ``with`` ``[`` //[PIdent]// ``]`` ``:`` //Coms// ``;`` ``with`` ``[`` //[PIdent]// ``]`` ``:`` //Coms// ``}``
+  |  |  **|**  | //Plug// //[PIdent]// ``as`` ``{`` ``with`` ``[`` //[PIdent]// ``|`` //[PIdent]// ``]`` ``:`` //Coms// ``;`` ``with`` ``[`` //[PIdent]// ``|`` //[PIdent]// ``]`` ``:`` //Coms// ``}``
   |  |  **|**  | //Run// //PIdent// ``(`` //[PIdent]// ``|`` //[PIdent]// ``=>`` //[PIdent]// ``)``
   |  |  **|**  | //PIdent// //Ch_Id// //PIdent//
   |  |  **|**  | //Race// ``{`` //[RACE_PHRASE]// ``}``

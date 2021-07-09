@@ -215,7 +215,6 @@ parseBnfcExpr (B.LET_EXPR stmts expr) = do
   where
     f (B.LET_EXPR_PHRASE n) = parseBnfcStmt n
 
--- TODO
 parseBnfcExpr (B.INFIXR0_EXPR a colon b) = do
     ~[a', b']<- traverseTryEach parseBnfcExpr [a,b]
     return $ _EPOps # ((), PrimitiveColon, a', b')

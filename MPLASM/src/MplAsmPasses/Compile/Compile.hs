@@ -47,6 +47,7 @@ import qualified Text.Show.Pretty as PrettyShow
 mplAsmProgToInitMachState ::
     ( Ord (IdP x) 
     , Show (IdP x)
+    , Show (IdP x)
     , AsCompileError err x 
     , HasName (IdP x)) =>
     -- | an assembly program
@@ -125,6 +126,7 @@ mplAsmProgToInitMachState prog = case runWriter res of
 mplAsmCollectStmtsInSymTab ::
     ( MonadState (MplAsmCompileSt x) m
     , Ord (IdP x)
+    , Show (IdP x)
     , HasName (IdP x)
     , AsCompileError err x
     , MonadWriter [err] m
@@ -217,6 +219,7 @@ appropriately modify the monadic context.  -}
 mplAsmCompileStmt ::
     ( MonadState (MplAsmCompileSt x) m
     , Ord (IdP x)
+    , Show (IdP x)
     , AsCompileError err x
     , MonadWriter [err] m) =>
     MplAsmStmt x ->
@@ -228,7 +231,7 @@ mplAsmCompileStmt stmt = case stmt of
     Destructors tpseqspecs -> return []
 
     Functions funs -> 
-        for funs $ \(fname, args, coms) -> localMplAsmCompileSt $ do
+        for funs $ \(fname, args, coms) -> localMplAsmCompileSt id $ do
             let overlapping = filter ((>1) . length) $ group $ sort $ args
             tell $ bool [_OverlappingDeclarations # overlapping] [] $ null overlapping 
 
@@ -239,7 +242,7 @@ mplAsmCompileStmt stmt = case stmt of
             return (funid, instrs)
 
     Processes procs -> 
-        for procs $ \(pname, (seqs, ins, outs), coms) -> localMplAsmCompileSt $ do
+        for procs $ \(pname, (seqs, ins, outs), coms) -> localMplAsmCompileSt id $ do
             let overlapping = filter ((>1) . length) $ group $ sort $ seqs ++ ins ++ outs
             tell $ bool [_OverlappingDeclarations # overlapping] [] $ null overlapping 
 
@@ -255,6 +258,7 @@ mplAsmCompileStmt stmt = case stmt of
 mplAsmComsToInstr ::
     ( MonadState (MplAsmCompileSt x) m
     , Ord (IdP x)
+    , Show (IdP x)
     , AsCompileError err x
     , MonadWriter [err] m
     ) =>
@@ -266,6 +270,7 @@ mplAsmComsToInstr = fmap concat . traverse mplAsmComToInstr
 mplAsmComToInstr ::
     ( MonadState (MplAsmCompileSt x) m
     , Ord (IdP x)
+    , Show (IdP x)
     , AsCompileError err x
     , MonadWriter [err] m
     ) =>
@@ -288,7 +293,7 @@ mplAsmComToInstr = \case
     CCall _ fname args -> do
         ~(Just (funid, fargs)) <- lookupFun fname
         tell $ bool [_IllegalFunCall # (fname, length fargs, length args)] [] $ length args == length fargs
-        accesses <- localMplAsmCompileSt $ fmap concat $ for (zip fargs args) $ \(fv, v) -> do  
+        accesses <- localMplAsmCompileSt id $ fmap concat $ for (zip fargs args) $ \(fv, v) -> do  
             ~(Just ix) <- lookupVarStack v
             varStack %= (fv:)
             return [_IAccess # ix, _IStore # ()]
@@ -338,7 +343,7 @@ mplAsmComToInstr = \case
                 $ map (view _1) labelledcoms
         tell $ bool [_NotAllSameCase # allsame] [] $ length allsame == 1
 
-        instrs <- for labelledcoms $ \(tpandspec, args, coms) -> localMplAsmCompileSt $ do
+        instrs <- for labelledcoms $ \(tpandspec, args, coms) -> localMplAsmCompileSt id $ do
             ~(Just (caseix, numargs)) <- lookupData tpandspec
             tell $ bool [_IllegalConstructorCall # (tpandspec, numargs, genericLength args)] [] $ genericLength args == numargs
             varStack %= (args<>)
@@ -356,18 +361,18 @@ mplAsmComToInstr = \case
         tell $ bool [_NotAllSameRecord # allsame] [] $ length allsame == 1
 
         -- duplicated above
-        instrs <- for labelledcoms $ \(tpandspec, args, coms) -> localMplAsmCompileSt $ do
+        instrs <- for labelledcoms $ \(tpandspec, args, coms) -> localMplAsmCompileSt id $ do
             ~(Just (caseix, numargs)) <- lookupCodata tpandspec
             tell $ bool [_IllegalDestructorCall # (tpandspec, numargs, genericLength args)] [] $ genericLength args == numargs
             varStack %= (args<>)
-            coms' <- localMplAsmCompileSt $ mplAsmComsToInstr coms
+            coms' <- localMplAsmCompileSt id $ mplAsmComsToInstr coms
             return (caseix, coms')
         return $ [_IRec # Arr.array (coerce @Int @CaseIx 0, coerce @Int @CaseIx $ length instrs - 1) instrs]
 
     CIf _ caseon thenc elsec -> do
         ~(Just caseonix) <- lookupVarStack caseon
-        thecinstrs <- localMplAsmCompileSt $ mplAsmComsToInstr thenc
-        elscinstrs <- localMplAsmCompileSt $ mplAsmComsToInstr elsec
+        thecinstrs <- localMplAsmCompileSt id $ mplAsmComsToInstr thenc
+        elscinstrs <- localMplAsmCompileSt id $ mplAsmComsToInstr elsec
         return $ [_IAccess # caseonix] ++ [_IIf # (thecinstrs, elscinstrs)]
 
     CTuple _ tuplelems -> do
@@ -416,6 +421,7 @@ mplAsmComToInstr = \case
             then case pol of
                 Input | Just sinstr <- maybeTermService sv -> return [ _ISHPut # (chid, sinstr) ]
                 Output | Just sinstr <- maybeTermService sv -> return [ _ISHPut # (chid, sinstr) ]
+                -- Output | Just sinstr <- maybeTermService sv -> return [ _ISHPut # (chid, sinstr) ]
 
                 _ -> tell [_IllegalServiceCall # (sv, ch)] >> return []
             else return []
@@ -434,7 +440,7 @@ mplAsmComToInstr = \case
         let Just (pol, chid) = lkup
         if isJust lkup
             then do
-                instrs <- for labelledconccoms $ \(tpandspec, coms) -> case pol of
+                instrs <- for labelledconccoms $ \(tpandspec, coms) -> localMplAsmCompileSt id $ case pol of
                     Input -> do
                         ~(Just hcaseix) <- lookupProtocol tpandspec
                         comsinstrs <- mplAsmComsToInstr coms
@@ -466,13 +472,13 @@ mplAsmComToInstr = \case
         ~(Just with1ids) <- fmap sequenceA $ traverse lookupCh with1 
 
         ch0id <- freshLocalChan
-        coms0instr <- localMplAsmCompileSt $ do
+        coms0instr <- localMplAsmCompileSt id $ do
             channelTranslations %= flip Map.restrictKeys (Set.fromList with0)
             channelTranslations % at ch0 ?= (pol, ch0id)
             mplAsmComsToInstr coms0
 
         ch1id <- freshLocalChan
-        coms1instr <- localMplAsmCompileSt $ do
+        coms1instr <- localMplAsmCompileSt id $ do
             channelTranslations %= flip Map.restrictKeys (Set.fromList with1)
             channelTranslations % at ch1 ?= (pol, ch1id)
             mplAsmComsToInstr coms1
@@ -483,19 +489,53 @@ mplAsmComToInstr = \case
     -- supply what polarity the plugged channels are, so we can't just ASSUME that
     -- the first one plug commands are output channels, then the next are input..
     -- this is WRONG and needs to be fixed in the future.
+    CPlug _ plugs (((withsins0, withsouts0), coms0), ((withsins1, withsouts1), coms1)) -> do
+        plugsids <- traverse (const freshLocalChan) plugs
+        let plugsandids = zip plugs plugsids
+            plugsandpolsids = Map.fromList $ map (second (Output,)) plugsandids
+            localPlugWiths = localMplAsmCompileSt (over channelTranslations (`Map.union` plugsandpolsids))
+
+        ~(Just withsins0ids) <- localPlugWiths $ fmap sequenceA $ traverse lookupCh $ withsins0 
+        ~(Just withsouts0ids) <- localPlugWiths $ fmap sequenceA $ traverse lookupCh $ withsouts0 
+        ~(Just withsins1ids) <- localPlugWiths $ fmap sequenceA $ traverse lookupCh $ withsins1 
+        ~(Just withsouts1ids) <- localPlugWiths $ fmap sequenceA $ traverse lookupCh $ withsouts1 
+
+
+        coms0instrs <- localMplAsmCompileSt id $ do
+            for plugsandids $ \(ch, chid) ->  do
+                -- channelTranslations %= flip Map.restrictKeys (Set.fromList with0)
+                channelTranslations % at ch ?= (Output, chid)
+            mplAsmComsToInstr coms0
+
+        coms1instrs <- localMplAsmCompileSt id $ do
+            for plugsandids $ \(ch, chid) ->  do
+                -- channelTranslations %= flip Map.restrictKeys (Set.fromList with1)
+                channelTranslations % at ch ?= (Input, chid)
+            mplAsmComsToInstr coms1
+
+        return 
+            [ _IPlug # 
+                ( plugsids, 
+                    ( ((Set.fromList $ map snd withsins0ids, Set.fromList $ map snd withsouts0ids), coms0instrs)
+                    , ((Set.fromList $ map snd withsins1ids, Set.fromList $ map snd withsouts1ids), coms1instrs)
+                    )
+                )
+            ]
+
+    {-
     CPlug _ plugs ((with0, coms0), (with1, coms1)) -> do
         plugsids <- traverse (const freshLocalChan) plugs
         ~(Just with0ids) <- fmap sequenceA $ traverse lookupCh with0 
         ~(Just with1ids) <- fmap sequenceA $ traverse lookupCh with1 
         let plugsandids = zip plugs plugsids
 
-        coms0instrs <- localMplAsmCompileSt $ do
+        coms0instrs <- localMplAsmCompileSt id $ do
             for plugsandids $ \(ch, chid) ->  do
                 -- channelTranslations %= flip Map.restrictKeys (Set.fromList with0)
                 channelTranslations % at ch ?= (Output, chid)
             mplAsmComsToInstr coms0
 
-        coms1instrs <- localMplAsmCompileSt $ do
+        coms1instrs <- localMplAsmCompileSt id $ do
             for plugsandids $ \(ch, chid) ->  do
                 -- channelTranslations %= flip Map.restrictKeys (Set.fromList with1)
                 channelTranslations % at ch ?= (Input, chid)
@@ -509,6 +549,7 @@ mplAsmComToInstr = \case
                     )
                 )
             ]
+    -}
 
     -- TODO: technically should do some polarity checks here, and need to check arity
     CRun _ callp (seqs, ins, outs) -> do
@@ -518,7 +559,10 @@ mplAsmComToInstr = \case
         ~(Just insids) <- fmap sequenceA $ traverse lookupCh ins 
         ~(Just outssids) <- fmap sequenceA $ traverse lookupCh outs 
 
-        ~(Just (callid, (pargs, callins, callouts))) <- lookupProc callp
+        -- ~(Just (callid, (pargs, callins, callouts))) <- lookupProc callp
+        proclkup <- lookupProc callp
+        let ~(Just (callid, (pargs, callins, callouts))) = proclkup
+
         -- let ixseqs' = reverse ixseqs
         let ixseqs' = ixseqs
             -- instranslations = map (Input,) $ zip callins (map snd insids)
@@ -527,13 +571,16 @@ mplAsmComToInstr = \case
             outstranslations = zip callouts (map snd outssids)
             translationmapping = instranslations ++ outstranslations 
 
-        accesses <- localMplAsmCompileSt $ fmap concat $ for (zip pargs seqs) $ \(fv, v) -> do  
-            ~(Just ix) <- lookupVarStack v
-            varStack %= (fv:)
-            return [_IAccess # ix, _IStore # ()]
+        if isJust proclkup
+            then do
+                accesses <- localMplAsmCompileSt id $ fmap concat $ for (zip pargs seqs) $ \(fv, v) -> do  
+                    ~(Just ix) <- lookupVarStack v
+                    varStack %= (fv:)
+                    return [_IAccess # ix, _IStore # ()]
 
-        -- return $ map (review _IAccess) ixseqs' ++ [_IRun # (translationmapping, callid, numargs)]
-        return $ accesses ++ [_IRun # (coerce $ Map.fromList translationmapping, callid, length seqs)]
+                -- return $ map (review _IAccess) ixseqs' ++ [_IRun # (translationmapping, callid, numargs)]
+                return $ accesses ++ [_IRun # (coerce $ Map.fromList translationmapping, callid, length seqs)]
+            else return []
 
     -- TODO: Technically, should do some polarity checking here
     CId _ (lch, rch) -> do
@@ -543,7 +590,7 @@ mplAsmComToInstr = \case
 
     -- TODO: should do some polarity checking and exhaustiveness checking here
     CRace _ phrases -> do
-        phrasesinstrs <- for phrases $ \(ch, coms) -> localMplAsmCompileSt $ do
+        phrasesinstrs <- for phrases $ \(ch, coms) -> localMplAsmCompileSt id $ do
             ~(Just (_pol, chid)) <- lookupCh ch
             instrs <- mplAsmComsToInstr coms
             return (chid, instrs)

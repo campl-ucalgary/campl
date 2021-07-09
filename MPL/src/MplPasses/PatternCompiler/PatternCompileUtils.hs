@@ -1,9 +1,13 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
@@ -27,15 +31,29 @@ import Control.Monad.Writer
 import Control.Monad.Reader
 import Control.Monad.Except
 
+import Data.List
 import Data.Coerce
-import Data.Functor.Foldable
+import Data.Functor.Foldable (cata)
+import Data.Foldable
 
 import MplPasses.PatternCompiler.PatternCompileErrors
 
 import Data.Functor.Identity
 
--- We really only need the unique supply
-type PatternCompileEnv = Env () ()
+{- | 
+We mainly just need the unique supply, but we also need the context of 
+variables in scope and channels in scope when compiling a process so we 
+can memoize the case scrutinee by passing it in as an argument to a process.
+-}
+
+type ProcessCompileContext = 
+     -- | sequentials, input channels, output channels
+     ( [MplPattern MplPatternCompiled]
+     , [ChP MplPatternCompiled]
+     , [ChP MplPatternCompiled]
+     )
+
+type PatternCompileEnv = Env () ProcessCompileContext
 
 type PatternCompile typechecked patterncompiled = 
     forall err m.
@@ -105,9 +123,6 @@ getDataPhraseTypeResult phrase =
         -- TODO
         [error "okay I need to give the type preservation some more thought TODO"]
 
-
-    
-
 -- | Gets the type of a pattern
 getPattType ::
     MplPattern MplTypeChecked -> 
@@ -143,14 +158,76 @@ getPattType = \case
     PListCons ann _ _ -> snd ann
     -}
 
+freshIdP ::
+    ( MonadState s m
+    , HasUniqueSupply s ) =>
+    String ->
+    m (IdP MplPatternCompiled)
+freshIdP str = do
+    uniq <- fmap uniqueFromSupply freshUniqueSupply
+    let ident = _IdentR # (_IdentP # (_NameOcc # (coerce str, invalidLocation), TermLevel), coerce uniq)
+    return ident
+
 -- | Creates a fresh IdP 
 freshUIdP :: 
     ( MonadState s m
     , HasUniqueSupply s ) =>
     m (IdP MplPatternCompiled)
-freshUIdP = do
-    uniq <- fmap uniqueFromSupply freshUniqueSupply
-    let ident = _IdentR # (_IdentP # (_NameOcc # (coerce "u", invalidLocation), TermLevel), coerce uniq)
-    return ident
+freshUIdP = freshIdP "u"
+
+-- | Creates a fresh IdP 
+freshCaseFunIdP :: 
+    ( MonadState s m
+    , HasUniqueSupply s ) =>
+    m (IdP MplPatternCompiled)
+freshCaseFunIdP = freshIdP "casef"
 
 
+-- | Creates a fresh IdP 
+freshCaseProcIdP :: 
+    ( MonadState s m
+    , HasUniqueSupply s ) =>
+    m (IdP MplPatternCompiled)
+freshCaseProcIdP = freshIdP "casep"
+
+
+{- | collects all the pattern variables from a pattern and automatically converts it 
+to an 'MplPatternCompiled'. This is useful for pattern compiling processes...
+-}
+collectPattVars :: 
+    MplPattern MplTypeChecked ->
+    [MplPattern MplPatternCompiled] 
+collectPattVars = cata go
+  where
+    go = \case 
+        PVarF ann v -> [PVar ann v]
+        n -> fold n
+
+{- | deletes a channel from the context. -}
+deleteChFromContext ::
+    PatternCompile 
+        ChIdentT 
+        ()
+deleteChFromContext ch = void $ envLcl %= go
+  where
+    go = case ch ^. polarity of 
+        Input  -> over (_2) (delete ch)
+        Output -> over (_3) (delete ch)
+
+{- | adds a channel from the context. -}
+insertChInContext ::
+    PatternCompile 
+        ChIdentT 
+        ()
+insertChInContext ch = void $ envLcl %= go
+  where
+    go = case ch ^. polarity of 
+        Input  -> over (_2) (ch:)
+        Output -> over (_3) (ch:)
+
+{- | adds a pattern in the context -}
+insertPattInContext ::
+    PatternCompile 
+        (MplPattern MplPatternCompiled)
+        ()
+insertPattInContext patt = void $ envLcl % _1 %= (patt:)

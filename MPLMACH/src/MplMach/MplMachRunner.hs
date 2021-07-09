@@ -21,6 +21,7 @@ import Control.Exception
 import Control.Monad.IO.Class
 
 import Control.Concurrent.Async
+import Control.Concurrent hiding (yield)
 
 import Control.Monad
 
@@ -71,6 +72,7 @@ mplMachRunnner env ((mainins, mainouts), instrs) = withSocketsDo $ flip runMplMa
             link svthd
             return svthd
 
+
         -- Set up the main function with the required translations 
         -- open up the channels used in the arguments of the main function
         (gmainins, insvs) <- mplMachOpenChs mainins
@@ -97,3 +99,4 @@ mplMachRunnner env ((mainins, mainouts), instrs) = withSocketsDo $ flip runMplMa
                 ) `finally` liftIO (cancel svthd)
 
         return ()
+

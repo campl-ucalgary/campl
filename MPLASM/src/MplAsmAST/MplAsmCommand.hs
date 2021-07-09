@@ -203,7 +203,7 @@ type LabelledMplSeqComs x = (TypeAndSpec x, [IdP x], MplAsmComs x)
 type LabelledMplConcComs x = (TypeAndSpec x, MplAsmComs x) 
 -- | @a with a0,a1 : coms @
 type ForkPhrase x = (IdP x, [IdP x], MplAsmComs x)
-type PlugPhrase x = ([IdP x], MplAsmComs x)
+type PlugPhrase x = (([IdP x], [IdP x]), MplAsmComs x)
 type RacePhrase x = (IdP x, MplAsmComs x)
 
 $(makePrisms ''MplAsmCom)

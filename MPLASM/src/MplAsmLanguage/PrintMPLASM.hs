@@ -1,8 +1,10 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 #if __GLASGOW_HASKELL__ <= 708
 {-# LANGUAGE OverlappingInstances #-}
 #endif
-{-# LANGUAGE FlexibleInstances #-}
+
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 
 -- | Pretty-printer for MplAsmLanguage.
@@ -10,8 +12,16 @@
 
 module MplAsmLanguage.PrintMPLASM where
 
+import Prelude
+  ( ($), (.)
+  , Bool(..), (==), (<)
+  , Int, Integer, Double, (+), (-), (*)
+  , String, (++)
+  , ShowS, showChar, showString
+  , all, elem, foldr, id, map, null, replicate, shows, span
+  )
+import Data.Char ( Char, isSpace )
 import qualified MplAsmLanguage.AbsMPLASM
-import Data.Char
 
 -- | The top-level printing method.
 
@@ -24,19 +34,48 @@ doc :: ShowS -> Doc
 doc = (:)
 
 render :: Doc -> String
-render d = rend 0 (map ($ "") $ d []) "" where
-  rend i ss = case ss of
-    "["      :ts -> showChar '[' . rend i ts
-    "("      :ts -> showChar '(' . rend i ts
-    "{"      :ts -> showChar '{' . new (i+1) . rend (i+1) ts
-    "}" : ";":ts -> new (i-1) . space "}" . showChar ';' . new (i-1) . rend (i-1) ts
-    "}"      :ts -> new (i-1) . showChar '}' . new (i-1) . rend (i-1) ts
-    [";"]        -> showChar ';'
-    ";"      :ts -> showChar ';' . new i . rend i ts
-    t  : ts@(p:_) | closingOrPunctuation p -> showString t . rend i ts
-    t        :ts -> space t . rend i ts
-    _            -> id
-  new i     = showChar '\n' . replicateS (2*i) (showChar ' ') . dropWhile isSpace
+render d = rend 0 False (map ($ "") $ d []) ""
+  where
+  rend
+    :: Int        -- ^ Indentation level.
+    -> Bool       -- ^ Pending indentation to be output before next character?
+    -> [String]
+    -> ShowS
+  rend i p = \case
+      "["      :ts -> char '[' . rend i False ts
+      "("      :ts -> char '(' . rend i False ts
+      "{"      :ts -> onNewLine i     p . showChar   '{'  . new (i+1) ts
+      "}" : ";":ts -> onNewLine (i-1) p . showString "};" . new (i-1) ts
+      "}"      :ts -> onNewLine (i-1) p . showChar   '}'  . new (i-1) ts
+      [";"]        -> char ';'
+      ";"      :ts -> char ';' . new i ts
+      t  : ts@(s:_) | closingOrPunctuation s
+                   -> pending . showString t . rend i False ts
+      t        :ts -> pending . space t      . rend i False ts
+      []           -> id
+    where
+    -- Output character after pending indentation.
+    char :: Char -> ShowS
+    char c = pending . showChar c
+
+    -- Output pending indentation.
+    pending :: ShowS
+    pending = if p then indent i else id
+
+  -- Indentation (spaces) for given indentation level.
+  indent :: Int -> ShowS
+  indent i = replicateS (2*i) (showChar ' ')
+
+  -- Continue rendering in new line with new indentation.
+  new :: Int -> [String] -> ShowS
+  new j ts = showChar '\n' . rend j True ts
+
+  -- Make sure we are on a fresh line.
+  onNewLine :: Int -> Bool -> ShowS
+  onNewLine i p = (if p then id else showChar '\n') . indent i
+
+  -- Separate given string from following text by a space (if needed).
+  space :: String -> ShowS
   space t s =
     case (all isSpace t', null spc, null rest) of
       (True , _   , True ) -> []              -- remove trailing space
@@ -70,23 +109,26 @@ replicateS n f = concatS (replicate n f)
 
 class Print a where
   prt :: Int -> a -> Doc
-  prtList :: Int -> [a] -> Doc
-  prtList i = concatD . map (prt i)
 
 instance {-# OVERLAPPABLE #-} Print a => Print [a] where
-  prt = prtList
+  prt i = concatD . map (prt i)
 
 instance Print Char where
-  prt _ s = doc (showChar '\'' . mkEsc '\'' s . showChar '\'')
-  prtList _ s = doc (showChar '"' . concatS (map (mkEsc '"') s) . showChar '"')
+  prt _ c = doc (showChar '\'' . mkEsc '\'' c . showChar '\'')
+
+instance Print String where
+  prt _ = printString
+
+printString :: String -> Doc
+printString s = doc (showChar '"' . concatS (map (mkEsc '"') s) . showChar '"')
 
 mkEsc :: Char -> Char -> ShowS
-mkEsc q s = case s of
-  _ | s == q -> showChar '\\' . showChar s
-  '\\'-> showString "\\\\"
+mkEsc q = \case
+  s | s == q -> showChar '\\' . showChar s
+  '\\' -> showString "\\\\"
   '\n' -> showString "\\n"
   '\t' -> showString "\\t"
-  _ -> showChar s
+  s -> showChar s
 
 prPrec :: Int -> Int -> Doc -> Doc
 prPrec i j = if j < i then parenth else id
@@ -98,164 +140,111 @@ instance Print Double where
   prt _ x = doc (shows x)
 
 instance Print MplAsmLanguage.AbsMPLASM.Store where
-  prt _ (MplAsmLanguage.AbsMPLASM.Store (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Store (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Load where
-  prt _ (MplAsmLanguage.AbsMPLASM.Load (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Load (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Ret where
-  prt _ (MplAsmLanguage.AbsMPLASM.Ret (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Ret (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Call where
-  prt _ (MplAsmLanguage.AbsMPLASM.Call (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Call (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.CInt where
-  prt _ (MplAsmLanguage.AbsMPLASM.CInt (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.CInt (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.CChar where
-  prt _ (MplAsmLanguage.AbsMPLASM.CChar (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.CChar (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.CBool where
-  prt _ (MplAsmLanguage.AbsMPLASM.CBool (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.CBool (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.CString where
-  prt _ (MplAsmLanguage.AbsMPLASM.CString (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.CString (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.ToStr where
-  prt _ (MplAsmLanguage.AbsMPLASM.ToStr (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.ToStr (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.ToInt where
-  prt _ (MplAsmLanguage.AbsMPLASM.ToInt (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.ToInt (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.And where
-  prt _ (MplAsmLanguage.AbsMPLASM.And (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.And (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Or where
-  prt _ (MplAsmLanguage.AbsMPLASM.Or (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Or (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Append where
-  prt _ (MplAsmLanguage.AbsMPLASM.Append (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Append (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Unstring where
-  prt _ (MplAsmLanguage.AbsMPLASM.Unstring (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Unstring (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.LeqI where
-  prt _ (MplAsmLanguage.AbsMPLASM.LeqI (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.LeqI (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.EqI where
-  prt _ (MplAsmLanguage.AbsMPLASM.EqI (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.EqI (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.EqB where
-  prt _ (MplAsmLanguage.AbsMPLASM.EqB (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.EqB (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.LeqC where
-  prt _ (MplAsmLanguage.AbsMPLASM.LeqC (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.LeqC (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.EqC where
-  prt _ (MplAsmLanguage.AbsMPLASM.EqC (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.EqC (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Leqs where
-  prt _ (MplAsmLanguage.AbsMPLASM.Leqs (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Leqs (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Eqs where
-  prt _ (MplAsmLanguage.AbsMPLASM.Eqs (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Eqs (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.ConcatS where
-  prt _ (MplAsmLanguage.AbsMPLASM.ConcatS (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.ConcatS (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Add where
-  prt _ (MplAsmLanguage.AbsMPLASM.Add (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Add (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Subtract where
-  prt _ (MplAsmLanguage.AbsMPLASM.Subtract (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Subtract (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Mul where
-  prt _ (MplAsmLanguage.AbsMPLASM.Mul (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Mul (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Quot where
-  prt _ (MplAsmLanguage.AbsMPLASM.Quot (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Quot (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Rem where
-  prt _ (MplAsmLanguage.AbsMPLASM.Rem (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Rem (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Case where
-  prt _ (MplAsmLanguage.AbsMPLASM.Case (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Case (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.If where
-  prt _ (MplAsmLanguage.AbsMPLASM.If (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.If (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Rec where
-  prt _ (MplAsmLanguage.AbsMPLASM.Rec (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Rec (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Get where
-  prt _ (MplAsmLanguage.AbsMPLASM.Get (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Get (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Put where
-  prt _ (MplAsmLanguage.AbsMPLASM.Put (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Put (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Hput where
-  prt _ (MplAsmLanguage.AbsMPLASM.Hput (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Hput (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Shput where
-  prt _ (MplAsmLanguage.AbsMPLASM.Shput (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Shput (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Hcase where
-  prt _ (MplAsmLanguage.AbsMPLASM.Hcase (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Hcase (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Split where
-  prt _ (MplAsmLanguage.AbsMPLASM.Split (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Split (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Fork where
-  prt _ (MplAsmLanguage.AbsMPLASM.Fork (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Fork (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Plug where
-  prt _ (MplAsmLanguage.AbsMPLASM.Plug (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Plug (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Run where
-  prt _ (MplAsmLanguage.AbsMPLASM.Run (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Run (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Race where
-  prt _ (MplAsmLanguage.AbsMPLASM.Race (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Race (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Close where
-  prt _ (MplAsmLanguage.AbsMPLASM.Close (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Close (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Halt where
-  prt _ (MplAsmLanguage.AbsMPLASM.Halt (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Halt (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Ch_Id where
-  prt _ (MplAsmLanguage.AbsMPLASM.Ch_Id (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Ch_Id (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Main_run where
-  prt _ (MplAsmLanguage.AbsMPLASM.Main_run (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Main_run (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.BBool where
-  prt _ (MplAsmLanguage.AbsMPLASM.BBool (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.BBool (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.Character where
-  prt _ (MplAsmLanguage.AbsMPLASM.Character (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.Character (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.UIdent where
-  prt _ (MplAsmLanguage.AbsMPLASM.UIdent (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.UIdent (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.PIdent where
-  prt _ (MplAsmLanguage.AbsMPLASM.PIdent (_,i)) = doc $ showString $ i
-  prtList _ [] = concatD []
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
-
+  prt _ (MplAsmLanguage.AbsMPLASM.PIdent (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.PInteger where
-  prt _ (MplAsmLanguage.AbsMPLASM.PInteger (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.PInteger (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.IIdent where
-  prt _ (MplAsmLanguage.AbsMPLASM.IIdent (_,i)) = doc $ showString $ i
-
+  prt _ (MplAsmLanguage.AbsMPLASM.IIdent (_,i)) = doc $ showString i
 instance Print MplAsmLanguage.AbsMPLASM.AMPLCODE where
-  prt i e = case e of
+  prt i = \case
     MplAsmLanguage.AbsMPLASM.AMPLCODE amplconstructss main -> prPrec i 0 (concatD [prt 0 amplconstructss, prt 0 main])
 
 instance Print MplAsmLanguage.AbsMPLASM.AmplConstructs where
-  prt i e = case e of
+  prt i = \case
     MplAsmLanguage.AbsMPLASM.IMPORT_CONSTRUCT import_ -> prPrec i 0 (concatD [prt 0 import_])
     MplAsmLanguage.AbsMPLASM.PROTOCOL_CONSTRUCT protocols -> prPrec i 0 (concatD [prt 0 protocols])
     MplAsmLanguage.AbsMPLASM.COPROTOCOL_CONSTRUCT coprotocols -> prPrec i 0 (concatD [prt 0 coprotocols])
@@ -263,122 +252,116 @@ instance Print MplAsmLanguage.AbsMPLASM.AmplConstructs where
     MplAsmLanguage.AbsMPLASM.DESTRUCTOR_CONSTRUCT destructors -> prPrec i 0 (concatD [prt 0 destructors])
     MplAsmLanguage.AbsMPLASM.PROCESSES_CONSTRUCT processes -> prPrec i 0 (concatD [prt 0 processes])
     MplAsmLanguage.AbsMPLASM.FUNCTIONS_CONSTRUCT functions -> prPrec i 0 (concatD [prt 0 functions])
-  prtList _ [] = concatD []
-  prtList _ (x:xs) = concatD [prt 0 x, prt 0 xs]
 
 instance Print [MplAsmLanguage.AbsMPLASM.AmplConstructs] where
-  prt = prtList
+  prt _ [] = concatD []
+  prt _ (x:xs) = concatD [prt 0 x, prt 0 xs]
 
 instance Print MplAsmLanguage.AbsMPLASM.ProtocolCoprotocolSpec where
-  prt i e = case e of
+  prt i = \case
     MplAsmLanguage.AbsMPLASM.PROTOCOL_COPROTOCOL_SPEC uident handles -> prPrec i 0 (concatD [prt 0 uident, doc (showString "="), doc (showString "{"), prt 0 handles, doc (showString "}")])
-  prtList _ [] = concatD []
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplAsmLanguage.AbsMPLASM.Handle where
-  prt i e = case e of
+  prt i = \case
     MplAsmLanguage.AbsMPLASM.HANDLE_NAME uident -> prPrec i 0 (concatD [prt 0 uident])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplAsmLanguage.AbsMPLASM.ProtocolCoprotocolSpec] where
-  prt = prtList
+  prt _ [] = concatD []
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplAsmLanguage.AbsMPLASM.Handle] where
-  prt = prtList
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplAsmLanguage.AbsMPLASM.Import where
-  prt i e = case e of
+  prt i = \case
     MplAsmLanguage.AbsMPLASM.IMPORT iident -> prPrec i 0 (concatD [doc (showString "%include"), prt 0 iident])
 
 instance Print MplAsmLanguage.AbsMPLASM.Constructors where
-  prt i e = case e of
+  prt i = \case
     MplAsmLanguage.AbsMPLASM.CONSTRUCTORS structorspecs -> prPrec i 0 (concatD [doc (showString "%constructors"), doc (showString ":"), doc (showString "{"), prt 0 structorspecs, doc (showString "}")])
 
 instance Print MplAsmLanguage.AbsMPLASM.Destructors where
-  prt i e = case e of
+  prt i = \case
     MplAsmLanguage.AbsMPLASM.DESTRUCTORS structorspecs -> prPrec i 0 (concatD [doc (showString "%destructors"), doc (showString ":"), doc (showString "{"), prt 0 structorspecs, doc (showString "}")])
 
 instance Print MplAsmLanguage.AbsMPLASM.StructorSpec where
-  prt i e = case e of
+  prt i = \case
     MplAsmLanguage.AbsMPLASM.STRUCT_SPEC uident structs -> prPrec i 0 (concatD [prt 0 uident, doc (showString "="), doc (showString "{"), prt 0 structs, doc (showString "}")])
-  prtList _ [] = concatD []
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplAsmLanguage.AbsMPLASM.Struct where
-  prt i e = case e of
+  prt i = \case
     MplAsmLanguage.AbsMPLASM.STRUCT uident pinteger -> prPrec i 0 (concatD [prt 0 uident, prt 0 pinteger])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplAsmLanguage.AbsMPLASM.StructorSpec] where
-  prt = prtList
+  prt _ [] = concatD []
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplAsmLanguage.AbsMPLASM.Struct] where
-  prt = prtList
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplAsmLanguage.AbsMPLASM.Protocols where
-  prt i e = case e of
+  prt i = \case
     MplAsmLanguage.AbsMPLASM.PROTOCOLS protocolcoprotocolspecs -> prPrec i 0 (concatD [doc (showString "%protocols"), doc (showString ":"), doc (showString "{"), prt 0 protocolcoprotocolspecs, doc (showString "}")])
 
 instance Print MplAsmLanguage.AbsMPLASM.Coprotocols where
-  prt i e = case e of
+  prt i = \case
     MplAsmLanguage.AbsMPLASM.COPROTOCOLS protocolcoprotocolspecs -> prPrec i 0 (concatD [doc (showString "%coprotocols"), doc (showString ":"), doc (showString "{"), prt 0 protocolcoprotocolspecs, doc (showString "}")])
 
 instance Print MplAsmLanguage.AbsMPLASM.Processes where
-  prt i e = case e of
+  prt i = \case
     MplAsmLanguage.AbsMPLASM.PROCESSES processesspecs -> prPrec i 0 (concatD [doc (showString "%processes"), doc (showString ":"), doc (showString "{"), prt 0 processesspecs, doc (showString "}")])
 
 instance Print [MplAsmLanguage.AbsMPLASM.ProcessesSpec] where
-  prt = prtList
+  prt _ [] = concatD []
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplAsmLanguage.AbsMPLASM.ProcessesSpec where
-  prt i e = case e of
+  prt i = \case
     MplAsmLanguage.AbsMPLASM.PROCESS_SPEC pident pidents1 pidents2 pidents3 coms -> prPrec i 0 (concatD [prt 0 pident, doc (showString "("), prt 0 pidents1, doc (showString "|"), prt 0 pidents2, doc (showString "=>"), prt 0 pidents3, doc (showString ")"), doc (showString "="), prt 0 coms])
-  prtList _ [] = concatD []
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplAsmLanguage.AbsMPLASM.PIdent] where
-  prt = prtList
+  prt _ [] = concatD []
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print MplAsmLanguage.AbsMPLASM.Functions where
-  prt i e = case e of
+  prt i = \case
     MplAsmLanguage.AbsMPLASM.FUNCTIONS functionsspecs -> prPrec i 0 (concatD [doc (showString "%functions"), doc (showString ":"), doc (showString "{"), prt 0 functionsspecs, doc (showString "}")])
 
 instance Print [MplAsmLanguage.AbsMPLASM.FunctionsSpec] where
-  prt = prtList
+  prt _ [] = concatD []
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplAsmLanguage.AbsMPLASM.FunctionsSpec where
-  prt i e = case e of
+  prt i = \case
     MplAsmLanguage.AbsMPLASM.FUNCTION_SPEC pident pidents coms -> prPrec i 0 (concatD [prt 0 pident, doc (showString "("), prt 0 pidents, doc (showString ")"), doc (showString "="), prt 0 coms])
-  prtList _ [] = concatD []
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplAsmLanguage.AbsMPLASM.Main where
-  prt i e = case e of
+  prt i = \case
     MplAsmLanguage.AbsMPLASM.MAIN mainrun mainchannels coms -> prPrec i 0 (concatD [prt 0 mainrun, prt 0 mainchannels, doc (showString ":"), prt 0 coms])
     MplAsmLanguage.AbsMPLASM.NO_MAIN -> prPrec i 0 (concatD [])
 
 instance Print MplAsmLanguage.AbsMPLASM.MainChannels where
-  prt i e = case e of
+  prt i = \case
     MplAsmLanguage.AbsMPLASM.MAIN_CHANNELS pidents1 pidents2 -> prPrec i 0 (concatD [doc (showString "("), doc (showString "|"), prt 0 pidents1, doc (showString "=>"), prt 0 pidents2, doc (showString ")")])
 
 instance Print MplAsmLanguage.AbsMPLASM.Coms where
-  prt i e = case e of
+  prt i = \case
     MplAsmLanguage.AbsMPLASM.Prog coms -> prPrec i 0 (concatD [doc (showString "{"), prt 0 coms, doc (showString "}")])
-  prtList _ [] = concatD []
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print [MplAsmLanguage.AbsMPLASM.Com] where
-  prt = prtList
+  prt _ [] = concatD []
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplAsmLanguage.AbsMPLASM.Com where
-  prt i e = case e of
+  prt i = \case
     MplAsmLanguage.AbsMPLASM.AC_ASSIGN pident com -> prPrec i 0 (concatD [prt 0 pident, doc (showString ":="), prt 0 com])
     MplAsmLanguage.AbsMPLASM.AC_STORE store pident -> prPrec i 0 (concatD [prt 0 store, prt 0 pident])
     MplAsmLanguage.AbsMPLASM.AC_LOAD load pident -> prPrec i 0 (concatD [prt 0 load, prt 0 pident])
@@ -386,7 +369,7 @@ instance Print MplAsmLanguage.AbsMPLASM.Com where
     MplAsmLanguage.AbsMPLASM.AC_CALL_FUN call pident pidents -> prPrec i 0 (concatD [prt 0 call, prt 0 pident, doc (showString "("), prt 0 pidents, doc (showString ")")])
     MplAsmLanguage.AbsMPLASM.AC_INT cint pinteger -> prPrec i 0 (concatD [prt 0 cint, prt 0 pinteger])
     MplAsmLanguage.AbsMPLASM.AC_CHAR cchar character -> prPrec i 0 (concatD [prt 0 cchar, prt 0 character])
-    MplAsmLanguage.AbsMPLASM.AC_STRING cstring str -> prPrec i 0 (concatD [prt 0 cstring, prt 0 str])
+    MplAsmLanguage.AbsMPLASM.AC_STRING cstring str -> prPrec i 0 (concatD [prt 0 cstring, printString str])
     MplAsmLanguage.AbsMPLASM.AC_TOSTR tostr -> prPrec i 0 (concatD [prt 0 tostr])
     MplAsmLanguage.AbsMPLASM.AC_TOINT toint -> prPrec i 0 (concatD [prt 0 toint])
     MplAsmLanguage.AbsMPLASM.AC_AND and -> prPrec i 0 (concatD [prt 0 and])
@@ -416,7 +399,7 @@ instance Print MplAsmLanguage.AbsMPLASM.Com where
     MplAsmLanguage.AbsMPLASM.AC_DEST_ARGS uident1 uident2 pidents pident -> prPrec i 0 (concatD [prt 0 uident1, doc (showString "."), prt 0 uident2, doc (showString "("), prt 0 pidents, doc (showString ")"), prt 0 pident])
     MplAsmLanguage.AbsMPLASM.AC_PROD pidents -> prPrec i 0 (concatD [doc (showString "("), prt 0 pidents, doc (showString ")")])
     MplAsmLanguage.AbsMPLASM.AC_PRODELEM pinteger pident -> prPrec i 0 (concatD [doc (showString "#"), prt 0 pinteger, doc (showString "("), prt 0 pident, doc (showString ")")])
-    MplAsmLanguage.AbsMPLASM.AC_EMSG str -> prPrec i 0 (concatD [prt 0 str])
+    MplAsmLanguage.AbsMPLASM.AC_EMSG str -> prPrec i 0 (concatD [printString str])
     MplAsmLanguage.AbsMPLASM.AC_GET get pident1 pident2 -> prPrec i 0 (concatD [prt 0 get, prt 0 pident1, doc (showString "on"), prt 0 pident2])
     MplAsmLanguage.AbsMPLASM.AC_PUT put pident1 pident2 -> prPrec i 0 (concatD [prt 0 put, prt 0 pident1, doc (showString "on"), prt 0 pident2])
     MplAsmLanguage.AbsMPLASM.AC_HPUT hput uident1 uident2 pident -> prPrec i 0 (concatD [prt 0 hput, prt 0 uident1, doc (showString "."), prt 0 uident2, doc (showString "on"), prt 0 pident])
@@ -424,37 +407,33 @@ instance Print MplAsmLanguage.AbsMPLASM.Com where
     MplAsmLanguage.AbsMPLASM.AC_HCASE hcase pident labelledcomss -> prPrec i 0 (concatD [prt 0 hcase, prt 0 pident, doc (showString "of"), doc (showString "{"), prt 0 labelledcomss, doc (showString "}")])
     MplAsmLanguage.AbsMPLASM.AC_SPLIT split pident1 pident2 pident3 -> prPrec i 0 (concatD [prt 0 split, prt 0 pident1, doc (showString "into"), prt 0 pident2, prt 0 pident3])
     MplAsmLanguage.AbsMPLASM.AC_FORK fork pident1 pident2 pidents1 coms1 pident3 pidents2 coms2 -> prPrec i 0 (concatD [prt 0 fork, prt 0 pident1, doc (showString "as"), doc (showString "{"), prt 0 pident2, doc (showString "with"), prt 0 pidents1, doc (showString ":"), prt 0 coms1, doc (showString ";"), prt 0 pident3, doc (showString "with"), prt 0 pidents2, doc (showString ":"), prt 0 coms2, doc (showString "}")])
-    MplAsmLanguage.AbsMPLASM.AC_PLUG plug pidents1 pidents2 coms1 pidents3 coms2 -> prPrec i 0 (concatD [prt 0 plug, prt 0 pidents1, doc (showString "as"), doc (showString "{"), doc (showString "with"), doc (showString "["), prt 0 pidents2, doc (showString "]"), doc (showString ":"), prt 0 coms1, doc (showString ";"), doc (showString "with"), doc (showString "["), prt 0 pidents3, doc (showString "]"), doc (showString ":"), prt 0 coms2, doc (showString "}")])
+    MplAsmLanguage.AbsMPLASM.AC_PLUG plug pidents1 pidents2 pidents3 coms1 pidents4 pidents5 coms2 -> prPrec i 0 (concatD [prt 0 plug, prt 0 pidents1, doc (showString "as"), doc (showString "{"), doc (showString "with"), doc (showString "["), prt 0 pidents2, doc (showString "|"), prt 0 pidents3, doc (showString "]"), doc (showString ":"), prt 0 coms1, doc (showString ";"), doc (showString "with"), doc (showString "["), prt 0 pidents4, doc (showString "|"), prt 0 pidents5, doc (showString "]"), doc (showString ":"), prt 0 coms2, doc (showString "}")])
     MplAsmLanguage.AbsMPLASM.AC_RUN run pident pidents1 pidents2 pidents3 -> prPrec i 0 (concatD [prt 0 run, prt 0 pident, doc (showString "("), prt 0 pidents1, doc (showString "|"), prt 0 pidents2, doc (showString "=>"), prt 0 pidents3, doc (showString ")")])
     MplAsmLanguage.AbsMPLASM.AC_ID pident1 chid pident2 -> prPrec i 0 (concatD [prt 0 pident1, prt 0 chid, prt 0 pident2])
     MplAsmLanguage.AbsMPLASM.AC_RACE race racephrases -> prPrec i 0 (concatD [prt 0 race, doc (showString "{"), prt 0 racephrases, doc (showString "}")])
     MplAsmLanguage.AbsMPLASM.AC_CLOSE close pident -> prPrec i 0 (concatD [prt 0 close, prt 0 pident])
     MplAsmLanguage.AbsMPLASM.AC_HALT halt pident -> prPrec i 0 (concatD [prt 0 halt, prt 0 pident])
-  prtList _ [] = concatD []
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplAsmLanguage.AbsMPLASM.LabelledComs where
-  prt i e = case e of
+  prt i = \case
     MplAsmLanguage.AbsMPLASM.AC_LABELLED_COMS_NO_ARGS uident1 uident2 coms -> prPrec i 0 (concatD [prt 0 uident1, doc (showString "."), prt 0 uident2, doc (showString ":"), prt 0 coms])
     MplAsmLanguage.AbsMPLASM.AC_LABELLED_COMS uident1 uident2 pidents coms -> prPrec i 0 (concatD [prt 0 uident1, doc (showString "."), prt 0 uident2, doc (showString "("), prt 0 pidents, doc (showString ")"), doc (showString ":"), prt 0 coms])
-  prtList _ [] = concatD []
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplAsmLanguage.AbsMPLASM.Coms] where
-  prt = prtList
+  prt _ [] = concatD []
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print [MplAsmLanguage.AbsMPLASM.LabelledComs] where
-  prt = prtList
+  prt _ [] = concatD []
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplAsmLanguage.AbsMPLASM.RACE_PHRASE where
-  prt i e = case e of
+  prt i = \case
     MplAsmLanguage.AbsMPLASM.AC_RACE_PHRASE pident coms -> prPrec i 0 (concatD [prt 0 pident, doc (showString "->"), prt 0 coms])
-  prtList _ [] = concatD []
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplAsmLanguage.AbsMPLASM.RACE_PHRASE] where
-  prt = prtList
-
+  prt _ [] = concatD []
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
