@@ -18,6 +18,7 @@ import Data.Traversable
 
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TVar
+import Control.Exception
 
 import Data.Map.Strict (Map (..))
 import qualified Data.Map.Strict as Map
@@ -28,6 +29,10 @@ import qualified Data.Set as Set
 import Control.Arrow
 
 import System.IO.Unsafe
+
+import MplMach.MplMachException
+
+import qualified Text.Show.Pretty as PrettyShow
 
 {- | A channel manager queue is an 'TVar' to a queue (well a 'Seq') of 'QInstr' -}
 -- newtype ChMQueue = ChMQueue (TVar (TQueue QInstr))
@@ -292,6 +297,39 @@ data Val
     | VCons !CaseIx ![Val]
     | VRec !(Array CaseIx [Instr]) [Val]
   deriving Show
+
+
+{- |
+N.B. Note we make some assumptoins as given in the
+assembler -- lists have 
+
+    - Cons as ix 0
+    - Empty as ix 1
+
+Unfortunately, this is a bit hard coded....
+-}
+strToVal :: String -> Val
+strToVal = foldr (\c acc -> VCons (CaseIx 0) [VChar c, acc]) (VCons (CaseIx 1) [])
+
+
+newtype IllegalString = IllegalString String 
+
+instance Show IllegalString where
+    show (IllegalString str) = "IllegalString: " ++ str
+instance Exception IllegalString where
+
+{- |
+This makes similar assumptions from 'strToVal'. Morever, this throws an 'IllegalString' error 
+if it cannot turn the value into a string (as given in the assumptions of 'strToVal').
+-}
+valToStr :: Val -> String
+valToStr val = go val
+  where
+    go (VCons _ [VChar c, acc]) =  c : go acc
+    go (VCons _ []) =  []
+    go bad = throw $ IllegalString $ PrettyShow.ppShow val
+    
+
 
 newtype MplMachSuperCombinators = MpMachSuperCombinators {
         _supercombinators :: Array CallIx [Instr]

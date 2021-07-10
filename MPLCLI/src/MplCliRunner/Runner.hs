@@ -54,7 +54,7 @@ import Data.Traversable
 import Data.Foldable
 
 -- for devugging
-import Text.Show.Pretty
+import qualified Text.Show.Pretty as PrettyShow 
 
 
 cliRunner :: [String] -> IO ()
@@ -204,6 +204,17 @@ cliRunPipelineInputProg inp = do
         pPrint supercombs
         pPrint mainf
     -}
+    for_ flags $ \case
+        Dump opt@AssembledAst dpoutput -> liftIO 
+            $ dumpOutput dpoutput 
+            $ intercalate "\n" 
+                [ intercalate " " ["-- dumped", dumpOptShowOptions opt, "output"]
+                , intercalate " " ["-- super combinators"]
+                , PrettyShow.ppShow supercombs
+                , intercalate " " ["-- main function"]
+                , PrettyShow.ppShow mainf
+                ]
+        _ -> return ()
 
     -- when the user actulllay wants to run the machien, actually run the machine
     when (has (folded % _RunMplMach) flags) $ liftIO $ do

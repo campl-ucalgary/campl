@@ -375,8 +375,8 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
             to be some seperation between the two commands.
             -}
             _ <- liftIO $ atomically $ do
-                -- traceTranslationLkupWithHeader "idl" lchlkup
-                -- traceTranslationLkupWithHeader "idr" rchlkup
+                traceTranslationLkupWithHeader "idl" lchlkup
+                traceTranslationLkupWithHeader "idr" rchlkup
                 (lchmlastptr, lchmqueue) <- readChMQueueWithLastPtr (lchlkup ^. activeQueue)
                 peekTQueue lchmqueue >>= \case
                     QId rgch -> readTQueue lchmqueue >> case lchlkup of
@@ -385,9 +385,9 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
                                 (b, q | [id b = a]) , (a, [] | q')
                             Set:
 
-                                1. [] to point to q
+                                1.1. [] to point to q
 
-                                2. the pointer after removing the head of [id b = a]
+                                1.2. the pointer after removing the head of [id b = a]
                                     to point to q' (why do we do this? this is to
                                     update the "global translation" manager so all
                                     other references to "b" now reference "a".  
@@ -405,16 +405,16 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
                                     other references to "b" now reference "a".  
                             -}
                         InputLkup linqueue loutqueue -> do
-                            -- This does 1.
+                            -- This does 1.1
                             (routlstptr, routqueue) <- rgch ^. coerced 
                                 % chMOutputQueue 
                                 % to readChMQueueWithLastPtr 
-                            isempty <- isEmptyTQueue routqueue 
+                            isempty <- (&&) <$> isEmptyTQueue routqueue <*> isEmptyTQueue lchmqueue
 
                             if isempty
                                 then do 
                                     writeTVar routlstptr (CCons (loutqueue ^. chMQueueChainRef)) 
-                                    -- This does 2. 
+                                    -- This does 1.2. 
                                     writeTVar lchmlastptr (CCons (rgch ^. coerced % chMInputQueue % chMQueueChainRef))
                                 else do 
                                     -- this does 2.1
@@ -435,10 +435,10 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
                                 (b, [id b = a] | q ) , (a, q'  | [])
                             Set:
 
-                                1. the pointer after removing the head of [id b = a]
+                                1.1. the pointer after removing the head of [id b = a]
                                     to point to q'
 
-                                2. [] to point to q
+                                1.2. [] to point to q
 
                             Mostly duplciated code from previous case...
 
@@ -453,15 +453,15 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
                                 2.2. (right null [] to point to q)
                             -}
                         OutputLkup loutqueue linqueue -> do
-                            -- This does 2.
+                            -- This does 1.2.
                             (rinlstptr, rinqueue) <- rgch ^. coerced 
                                 % chMInputQueue 
                                 % to readChMQueueWithLastPtr 
-                            isempty <- isEmptyTQueue rinqueue 
+                            isempty <- (&&) <$> isEmptyTQueue rinqueue <*> isEmptyTQueue lchmqueue
                             if isempty
                                 then do
                                     writeTVar rinlstptr (CCons (linqueue ^. chMQueueChainRef))
-                                    -- This does 1. 
+                                    -- This does 1.1. 
                                     writeTVar lchmlastptr (CCons 
                                         (rgch ^. coerced % chMOutputQueue % chMQueueChainRef))
                                 else do
@@ -689,7 +689,6 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
             -- let t' = Map.map (\lch -> t Map.! lch) $ coerce tmapping
             let t' = Map.map (\lch -> fromJust $ Map.lookup lch t) $ coerce tmapping
 
-            -- liftIO $ threadDelay 100000
             return $ Just $ stec 
                 & translation !~ t'
                 & environment !~ args

@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -918,6 +919,7 @@ pprintTypeUnificationError = go
         TypeAnnCmd cmd ->
             [ pretty "command"
             , codeblock $ pprintParsed cmd
+            , getcmdloc cmd
             ]
         TypeAnnExpr expr ->
             [ pretty "expression"
@@ -933,8 +935,33 @@ pprintTypeUnificationError = go
             , pretty "at" <+> ch ^. nameOccLocation % to loctodoc
             ]
 
-    loctodoc (Location (r,c)) = pretty "row"
+    getcmdloc :: MplCmd MplRenamed -> MplDoc
+    getcmdloc = (pretty "at"<+>) . \case
+        CGet ann _ _ -> ann ^. coerced @KeyWordNameOcc @NameOcc % nameOccLocation % to loctodoc
+        CPut ann _ _ -> ann ^. coerced @KeyWordNameOcc @NameOcc % nameOccLocation % to loctodoc
+
+        CClose ann _ -> ann ^. coerced @KeyWordNameOcc @NameOcc % nameOccLocation % to loctodoc
+        CHalt ann _ -> ann ^. coerced @KeyWordNameOcc @NameOcc % nameOccLocation % to loctodoc
+
+        CHPut ann _ _ -> ann ^. coerced @KeyWordNameOcc @NameOcc % nameOccLocation % to loctodoc
+        CHCase ann _ _ -> ann ^. coerced @KeyWordNameOcc @NameOcc % nameOccLocation % to loctodoc
+
+        CSplit ann _ _ -> ann ^. coerced @KeyWordNameOcc @NameOcc % nameOccLocation % to loctodoc
+        CFork ann _ _ -> ann ^. coerced @KeyWordNameOcc @NameOcc % nameOccLocation % to loctodoc
+
+        CId ann _ -> ann ^. coerced @KeyWordNameOcc @NameOcc % nameOccLocation % to loctodoc
+        CIdNeg ann _ -> ann ^. coerced @KeyWordNameOcc @NameOcc % nameOccLocation % to loctodoc
+
+        CCase ann _ _ -> ann ^. coerced @KeyWordNameOcc @NameOcc % nameOccLocation % to loctodoc
+
+        CRun _ idp _ _ _ -> idp ^. nameOccLocation % to loctodoc
+
+        CPlugs _ _ -> mempty
+        CRace _ _ -> mempty
+        CSwitch _ _ -> mempty
+        CIf ann _ _ _ -> ann ^. coerced @KeyWordNameOcc @NameOcc % nameOccLocation % to loctodoc
+
+    loctodoc (Location (r,c)) = pretty "line"
         <+> pretty r
         <+> pretty "and column"
         <+> pretty c
-

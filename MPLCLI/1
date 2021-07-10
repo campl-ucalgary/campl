@@ -1,0 +1,4502 @@
+xterm: cannot load font "-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso10646-1"
+xterm: cannot load font "-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso10646-1"
+----------------
+ihcase
+----------------
+ChMQueue 7
+act of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 100 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+ChMQueue 6
+oth of output
+[]
+----------------
+ihcase
+----------------
+ChMQueue 5
+act of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-7)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 2 , _otherQueue = ChMQueue 3 }
+              )
+            , ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 5 , _otherQueue = ChMQueue 4 }
+              )
+            , ( LocalChan 1
+              , OutputLkup
+                  { _activeQueue = ChMQueue 6 , _otherQueue = ChMQueue 7 }
+              )
+            ]
+      , _environment = []
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 0 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IHPut (LocalChan 1) (HCaseIx 1))
+           , ConcInstr (IGet (LocalChan 1))
+           , SeqInstr IStore
+           , ConcInstr (ISHPut (LocalChan (-7)) SHPutInt)
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan (-7)))
+           , ConcInstr (ISHPut (LocalChan (-7)) SHGetInt)
+           , ConcInstr (IGet (LocalChan (-7)))
+           , SeqInstr IStore
+           , ConcInstr (IHPut (LocalChan 1) (HCaseIx 0))
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 1))
+           , ConcInstr
+               (IFork
+                  (LocalChan 0)
+                  ( ( LocalChan 6
+                    , fromList [ LocalChan 1 ]
+                    , [ ConcInstr (IId (LocalChan 6) (LocalChan 1)) ]
+                    )
+                  , ( LocalChan 7
+                    , fromList [ LocalChan (-7) ]
+                    , [ ConcInstr (ISplit (LocalChan 7) ( LocalChan 8 , LocalChan 9 ))
+                      , ConcInstr
+                          (IPlug
+                             [ LocalChan 10 ]
+                             ( ( ( fromList [ LocalChan 9 ]
+                                 , fromList [ LocalChan (-7) , LocalChan 10 ]
+                                 )
+                               , [ ConcInstr
+                                     (IRun
+                                        (fromList
+                                           [ ( LocalChan (-7) , LocalChan (-7) )
+                                           , ( LocalChan 0 , LocalChan 9 )
+                                           , ( LocalChan 1 , LocalChan 10 )
+                                           ])
+                                        (CallIx 3)
+                                        0)
+                                 ]
+                               )
+                             , ( ( fromList [ LocalChan 8 , LocalChan 10 ] , fromList [] )
+                               , [ ConcInstr (IId (LocalChan 10) (LocalChan 8)) ]
+                               )
+                             ))
+                      ]
+                    )
+                  ))
+           ]
+         )
+       ])
+]
+ChMQueue 4
+oth of output
+[ QHPut (HCaseIx 0) ]
+----------------
+hput
+----------------
+ChMQueue 4
+act of output
+[]
+ChMQueue 5
+oth of input
+[]
+----------------
+split
+----------------
+ChMQueue 4
+act of output
+[ QSplit
+    (GlobalChan
+       ChMQueues
+         { _chMOutputQueue = ChMQueue 8 , _chMInputQueue = ChMQueue 9 })
+    (GlobalChan
+       ChMQueues
+         { _chMOutputQueue = ChMQueue 10 , _chMInputQueue = ChMQueue 11 })
+]
+ChMQueue 5
+oth of input
+[]
+----------------
+hput
+----------------
+ChMQueue 8
+act of output
+[ QHPut (HCaseIx 1) ]
+ChMQueue 9
+oth of input
+[]
+----------------
+hput
+----------------
+ChMQueue 6
+act of output
+[ QHPut (HCaseIx 1) ]
+ChMQueue 7
+oth of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 100 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+----------------
+ihcase
+----------------
+ChMQueue 7
+act of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 100 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+ChMQueue 6
+oth of output
+[ QHPut (HCaseIx 1) ]
+----------------
+get
+----------------
+ChMQueue 8
+act of output
+[ QHPut (HCaseIx 1)
+, QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-5)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 0 , _otherQueue = ChMQueue 1 }
+              )
+            , ( LocalChan 0
+              , OutputLkup
+                  { _activeQueue = ChMQueue 4 , _otherQueue = ChMQueue 5 }
+              )
+            , ( LocalChan 2
+              , OutputLkup
+                  { _activeQueue = ChMQueue 8 , _otherQueue = ChMQueue 9 }
+              )
+            , ( LocalChan 3
+              , OutputLkup
+                  { _activeQueue = ChMQueue 10 , _otherQueue = ChMQueue 11 }
+              )
+            ]
+      , _environment = []
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (ISHPut (LocalChan (-5)) SHPutInt)
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan (-5)))
+          , ConcInstr (ISHPut (LocalChan (-5)) SHGetInt)
+          , ConcInstr (IGet (LocalChan (-5)))
+          , SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 2) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 2))
+          , ConcInstr
+              (IFork
+                 (LocalChan 3)
+                 ( ( LocalChan 4
+                   , fromList [ LocalChan 2 ]
+                   , [ ConcInstr (IId (LocalChan 4) (LocalChan 2)) ]
+                   )
+                 , ( LocalChan 5
+                   , fromList [ LocalChan (-5) ]
+                   , [ ConcInstr
+                         (IRun
+                            (fromList
+                               [ ( LocalChan (-5) , LocalChan (-5) )
+                               , ( LocalChan 0 , LocalChan 5 )
+                               ])
+                            (CallIx 2)
+                            0)
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+ChMQueue 9
+oth of input
+[]
+----------------
+ihcase
+----------------
+ChMQueue 7
+act of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 100 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+ChMQueue 6
+oth of output
+[ QHPut (HCaseIx 1)
+, QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-7)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 2 , _otherQueue = ChMQueue 3 }
+              )
+            , ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 5 , _otherQueue = ChMQueue 4 }
+              )
+            , ( LocalChan 1
+              , OutputLkup
+                  { _activeQueue = ChMQueue 6 , _otherQueue = ChMQueue 7 }
+              )
+            ]
+      , _environment = []
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (ISHPut (LocalChan (-7)) SHPutInt)
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan (-7)))
+          , ConcInstr (ISHPut (LocalChan (-7)) SHGetInt)
+          , ConcInstr (IGet (LocalChan (-7)))
+          , SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 1) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 1))
+          , ConcInstr
+              (IFork
+                 (LocalChan 0)
+                 ( ( LocalChan 6
+                   , fromList [ LocalChan 1 ]
+                   , [ ConcInstr (IId (LocalChan 6) (LocalChan 1)) ]
+                   )
+                 , ( LocalChan 7
+                   , fromList [ LocalChan (-7) ]
+                   , [ ConcInstr (ISplit (LocalChan 7) ( LocalChan 8 , LocalChan 9 ))
+                     , ConcInstr
+                         (IPlug
+                            [ LocalChan 10 ]
+                            ( ( ( fromList [ LocalChan 9 ]
+                                , fromList [ LocalChan (-7) , LocalChan 10 ]
+                                )
+                              , [ ConcInstr
+                                    (IRun
+                                       (fromList
+                                          [ ( LocalChan (-7) , LocalChan (-7) )
+                                          , ( LocalChan 0 , LocalChan 9 )
+                                          , ( LocalChan 1 , LocalChan 10 )
+                                          ])
+                                       (CallIx 3)
+                                       0)
+                                ]
+                              )
+                            , ( ( fromList [ LocalChan 8 , LocalChan 10 ] , fromList [] )
+                              , [ ConcInstr (IId (LocalChan 10) (LocalChan 8)) ]
+                              )
+                            ))
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+----------------
+get
+----------------
+ChMQueue 6
+act of output
+[ QHPut (HCaseIx 1)
+, QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-7)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 2 , _otherQueue = ChMQueue 3 }
+              )
+            , ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 5 , _otherQueue = ChMQueue 4 }
+              )
+            , ( LocalChan 1
+              , OutputLkup
+                  { _activeQueue = ChMQueue 6 , _otherQueue = ChMQueue 7 }
+              )
+            ]
+      , _environment = []
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (ISHPut (LocalChan (-7)) SHPutInt)
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan (-7)))
+          , ConcInstr (ISHPut (LocalChan (-7)) SHGetInt)
+          , ConcInstr (IGet (LocalChan (-7)))
+          , SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 1) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 1))
+          , ConcInstr
+              (IFork
+                 (LocalChan 0)
+                 ( ( LocalChan 6
+                   , fromList [ LocalChan 1 ]
+                   , [ ConcInstr (IId (LocalChan 6) (LocalChan 1)) ]
+                   )
+                 , ( LocalChan 7
+                   , fromList [ LocalChan (-7) ]
+                   , [ ConcInstr (ISplit (LocalChan 7) ( LocalChan 8 , LocalChan 9 ))
+                     , ConcInstr
+                         (IPlug
+                            [ LocalChan 10 ]
+                            ( ( ( fromList [ LocalChan 9 ]
+                                , fromList [ LocalChan (-7) , LocalChan 10 ]
+                                )
+                              , [ ConcInstr
+                                    (IRun
+                                       (fromList
+                                          [ ( LocalChan (-7) , LocalChan (-7) )
+                                          , ( LocalChan 0 , LocalChan 9 )
+                                          , ( LocalChan 1 , LocalChan 10 )
+                                          ])
+                                       (CallIx 3)
+                                       0)
+                                ]
+                              )
+                            , ( ( fromList [ LocalChan 8 , LocalChan 10 ] , fromList [] )
+                              , [ ConcInstr (IId (LocalChan 10) (LocalChan 8)) ]
+                              )
+                            ))
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+ChMQueue 7
+oth of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 100 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+----------------
+put
+----------------
+ChMQueue 7
+act of input
+[ QPut (VInt 100) ]
+ChMQueue 6
+oth of output
+[ QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-7)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 2 , _otherQueue = ChMQueue 3 }
+              )
+            , ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 5 , _otherQueue = ChMQueue 4 }
+              )
+            , ( LocalChan 1
+              , OutputLkup
+                  { _activeQueue = ChMQueue 6 , _otherQueue = ChMQueue 7 }
+              )
+            ]
+      , _environment = []
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (ISHPut (LocalChan (-7)) SHPutInt)
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan (-7)))
+          , ConcInstr (ISHPut (LocalChan (-7)) SHGetInt)
+          , ConcInstr (IGet (LocalChan (-7)))
+          , SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 1) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 1))
+          , ConcInstr
+              (IFork
+                 (LocalChan 0)
+                 ( ( LocalChan 6
+                   , fromList [ LocalChan 1 ]
+                   , [ ConcInstr (IId (LocalChan 6) (LocalChan 1)) ]
+                   )
+                 , ( LocalChan 7
+                   , fromList [ LocalChan (-7) ]
+                   , [ ConcInstr (ISplit (LocalChan 7) ( LocalChan 8 , LocalChan 9 ))
+                     , ConcInstr
+                         (IPlug
+                            [ LocalChan 10 ]
+                            ( ( ( fromList [ LocalChan 9 ]
+                                , fromList [ LocalChan (-7) , LocalChan 10 ]
+                                )
+                              , [ ConcInstr
+                                    (IRun
+                                       (fromList
+                                          [ ( LocalChan (-7) , LocalChan (-7) )
+                                          , ( LocalChan 0 , LocalChan 9 )
+                                          , ( LocalChan 1 , LocalChan 10 )
+                                          ])
+                                       (CallIx 3)
+                                       0)
+                                ]
+                              )
+                            , ( ( fromList [ LocalChan 8 , LocalChan 10 ] , fromList [] )
+                              , [ ConcInstr (IId (LocalChan 10) (LocalChan 8)) ]
+                              )
+                            ))
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+----------------
+ihcase
+----------------
+ChMQueue 7
+act of input
+[ QPut (VInt 100)
+, QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 100 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+ChMQueue 6
+oth of output
+[ QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-7)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 2 , _otherQueue = ChMQueue 3 }
+              )
+            , ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 5 , _otherQueue = ChMQueue 4 }
+              )
+            , ( LocalChan 1
+              , OutputLkup
+                  { _activeQueue = ChMQueue 6 , _otherQueue = ChMQueue 7 }
+              )
+            ]
+      , _environment = []
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (ISHPut (LocalChan (-7)) SHPutInt)
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan (-7)))
+          , ConcInstr (ISHPut (LocalChan (-7)) SHGetInt)
+          , ConcInstr (IGet (LocalChan (-7)))
+          , SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 1) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 1))
+          , ConcInstr
+              (IFork
+                 (LocalChan 0)
+                 ( ( LocalChan 6
+                   , fromList [ LocalChan 1 ]
+                   , [ ConcInstr (IId (LocalChan 6) (LocalChan 1)) ]
+                   )
+                 , ( LocalChan 7
+                   , fromList [ LocalChan (-7) ]
+                   , [ ConcInstr (ISplit (LocalChan 7) ( LocalChan 8 , LocalChan 9 ))
+                     , ConcInstr
+                         (IPlug
+                            [ LocalChan 10 ]
+                            ( ( ( fromList [ LocalChan 9 ]
+                                , fromList [ LocalChan (-7) , LocalChan 10 ]
+                                )
+                              , [ ConcInstr
+                                    (IRun
+                                       (fromList
+                                          [ ( LocalChan (-7) , LocalChan (-7) )
+                                          , ( LocalChan 0 , LocalChan 9 )
+                                          , ( LocalChan 1 , LocalChan 10 )
+                                          ])
+                                       (CallIx 3)
+                                       0)
+                                ]
+                              )
+                            , ( ( fromList [ LocalChan 8 , LocalChan 10 ] , fromList [] )
+                              , [ ConcInstr (IId (LocalChan 10) (LocalChan 8)) ]
+                              )
+                            ))
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+----------------
+get
+----------------
+ChMQueue 6
+act of output
+[ QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-7)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 2 , _otherQueue = ChMQueue 3 }
+              )
+            , ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 5 , _otherQueue = ChMQueue 4 }
+              )
+            , ( LocalChan 1
+              , OutputLkup
+                  { _activeQueue = ChMQueue 6 , _otherQueue = ChMQueue 7 }
+              )
+            ]
+      , _environment = []
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (ISHPut (LocalChan (-7)) SHPutInt)
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan (-7)))
+          , ConcInstr (ISHPut (LocalChan (-7)) SHGetInt)
+          , ConcInstr (IGet (LocalChan (-7)))
+          , SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 1) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 1))
+          , ConcInstr
+              (IFork
+                 (LocalChan 0)
+                 ( ( LocalChan 6
+                   , fromList [ LocalChan 1 ]
+                   , [ ConcInstr (IId (LocalChan 6) (LocalChan 1)) ]
+                   )
+                 , ( LocalChan 7
+                   , fromList [ LocalChan (-7) ]
+                   , [ ConcInstr (ISplit (LocalChan 7) ( LocalChan 8 , LocalChan 9 ))
+                     , ConcInstr
+                         (IPlug
+                            [ LocalChan 10 ]
+                            ( ( ( fromList [ LocalChan 9 ]
+                                , fromList [ LocalChan (-7) , LocalChan 10 ]
+                                )
+                              , [ ConcInstr
+                                    (IRun
+                                       (fromList
+                                          [ ( LocalChan (-7) , LocalChan (-7) )
+                                          , ( LocalChan 0 , LocalChan 9 )
+                                          , ( LocalChan 1 , LocalChan 10 )
+                                          ])
+                                       (CallIx 3)
+                                       0)
+                                ]
+                              )
+                            , ( ( fromList [ LocalChan 8 , LocalChan 10 ] , fromList [] )
+                              , [ ConcInstr (IId (LocalChan 10) (LocalChan 8)) ]
+                              )
+                            ))
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+ChMQueue 7
+oth of input
+[ QPut (VInt 100)
+, QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 100 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+----------------
+put
+----------------
+ChMQueue 2
+act of output
+[ QSHPut SHPutInt , QPut (VInt 100) ]
+ChMQueue 3
+oth of input
+[]
+----------------
+put
+----------------
+ChMQueue 2
+act of output
+[]
+ChMQueue 3
+oth of input
+[]
+----------------
+ihcase
+----------------
+ChMQueue 7
+act of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 100 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+ChMQueue 6
+oth of output
+[]
+----------------
+get
+----------------
+ChMQueue 2
+act of output
+[ QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-7)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 2 , _otherQueue = ChMQueue 3 }
+              )
+            , ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 5 , _otherQueue = ChMQueue 4 }
+              )
+            , ( LocalChan 1
+              , OutputLkup
+                  { _activeQueue = ChMQueue 6 , _otherQueue = ChMQueue 7 }
+              )
+            ]
+      , _environment = [ VInt 100 , VInt 100 ]
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 1) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 1))
+          , ConcInstr
+              (IFork
+                 (LocalChan 0)
+                 ( ( LocalChan 6
+                   , fromList [ LocalChan 1 ]
+                   , [ ConcInstr (IId (LocalChan 6) (LocalChan 1)) ]
+                   )
+                 , ( LocalChan 7
+                   , fromList [ LocalChan (-7) ]
+                   , [ ConcInstr (ISplit (LocalChan 7) ( LocalChan 8 , LocalChan 9 ))
+                     , ConcInstr
+                         (IPlug
+                            [ LocalChan 10 ]
+                            ( ( ( fromList [ LocalChan 9 ]
+                                , fromList [ LocalChan (-7) , LocalChan 10 ]
+                                )
+                              , [ ConcInstr
+                                    (IRun
+                                       (fromList
+                                          [ ( LocalChan (-7) , LocalChan (-7) )
+                                          , ( LocalChan 0 , LocalChan 9 )
+                                          , ( LocalChan 1 , LocalChan 10 )
+                                          ])
+                                       (CallIx 3)
+                                       0)
+                                ]
+                              )
+                            , ( ( fromList [ LocalChan 8 , LocalChan 10 ] , fromList [] )
+                              , [ ConcInstr (IId (LocalChan 10) (LocalChan 8)) ]
+                              )
+                            ))
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+ChMQueue 3
+oth of input
+[]
+----------------
+get
+----------------
+ChMQueue 2
+act of output
+[ QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-7)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 2 , _otherQueue = ChMQueue 3 }
+              )
+            , ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 5 , _otherQueue = ChMQueue 4 }
+              )
+            , ( LocalChan 1
+              , OutputLkup
+                  { _activeQueue = ChMQueue 6 , _otherQueue = ChMQueue 7 }
+              )
+            ]
+      , _environment = [ VInt 100 , VInt 100 ]
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 1) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 1))
+          , ConcInstr
+              (IFork
+                 (LocalChan 0)
+                 ( ( LocalChan 6
+                   , fromList [ LocalChan 1 ]
+                   , [ ConcInstr (IId (LocalChan 6) (LocalChan 1)) ]
+                   )
+                 , ( LocalChan 7
+                   , fromList [ LocalChan (-7) ]
+                   , [ ConcInstr (ISplit (LocalChan 7) ( LocalChan 8 , LocalChan 9 ))
+                     , ConcInstr
+                         (IPlug
+                            [ LocalChan 10 ]
+                            ( ( ( fromList [ LocalChan 9 ]
+                                , fromList [ LocalChan (-7) , LocalChan 10 ]
+                                )
+                              , [ ConcInstr
+                                    (IRun
+                                       (fromList
+                                          [ ( LocalChan (-7) , LocalChan (-7) )
+                                          , ( LocalChan 0 , LocalChan 9 )
+                                          , ( LocalChan 1 , LocalChan 10 )
+                                          ])
+                                       (CallIx 3)
+                                       0)
+                                ]
+                              )
+                            , ( ( fromList [ LocalChan 8 , LocalChan 10 ] , fromList [] )
+                              , [ ConcInstr (IId (LocalChan 10) (LocalChan 8)) ]
+                              )
+                            ))
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+ChMQueue 3
+oth of input
+[ QPut (VInt 1) ]
+----------------
+hput
+----------------
+ChMQueue 6
+act of output
+[ QHPut (HCaseIx 0) ]
+ChMQueue 7
+oth of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 100 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+----------------
+put
+----------------
+ChMQueue 6
+act of output
+[ QHPut (HCaseIx 0) , QPut (VInt 1) ]
+ChMQueue 7
+oth of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 100 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+----------------
+ihcase
+----------------
+ChMQueue 7
+act of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 100 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+ChMQueue 6
+oth of output
+[ QHPut (HCaseIx 0) , QPut (VInt 1) ]
+----------------
+ihcase
+----------------
+ChMQueue 7
+act of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 100 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+ChMQueue 6
+oth of output
+[ QHPut (HCaseIx 0) , QPut (VInt 1) ]
+----------------
+fork
+----------------
+ChMQueue 5
+act of input
+[ QFork
+    ( LocalChan 6
+    , Stec
+        { _stack = []
+        , _translation =
+            fromList
+              [ ( LocalChan 1
+                , OutputLkup
+                    { _activeQueue = ChMQueue 6 , _otherQueue = ChMQueue 7 }
+                )
+              ]
+        , _environment = [ VInt 1 , VInt 1 , VInt 100 , VInt 100 ]
+        , _code = [ ConcInstr (IId (LocalChan 6) (LocalChan 1)) ]
+        }
+    )
+    ( LocalChan 7
+    , Stec
+        { _stack = []
+        , _translation =
+            fromList
+              [ ( LocalChan (-7)
+                , OutputLkup
+                    { _activeQueue = ChMQueue 2 , _otherQueue = ChMQueue 3 }
+                )
+              ]
+        , _environment = [ VInt 1 , VInt 1 , VInt 100 , VInt 100 ]
+        , _code =
+            [ ConcInstr (ISplit (LocalChan 7) ( LocalChan 8 , LocalChan 9 ))
+            , ConcInstr
+                (IPlug
+                   [ LocalChan 10 ]
+                   ( ( ( fromList [ LocalChan 9 ]
+                       , fromList [ LocalChan (-7) , LocalChan 10 ]
+                       )
+                     , [ ConcInstr
+                           (IRun
+                              (fromList
+                                 [ ( LocalChan (-7) , LocalChan (-7) )
+                                 , ( LocalChan 0 , LocalChan 9 )
+                                 , ( LocalChan 1 , LocalChan 10 )
+                                 ])
+                              (CallIx 3)
+                              0)
+                       ]
+                     )
+                   , ( ( fromList [ LocalChan 8 , LocalChan 10 ] , fromList [] )
+                     , [ ConcInstr (IId (LocalChan 10) (LocalChan 8)) ]
+                     )
+                   ))
+            ]
+        }
+    )
+]
+ChMQueue 4
+oth of output
+[ QSplit
+    (GlobalChan
+       ChMQueues
+         { _chMOutputQueue = ChMQueue 8 , _chMInputQueue = ChMQueue 9 })
+    (GlobalChan
+       ChMQueues
+         { _chMOutputQueue = ChMQueue 10 , _chMInputQueue = ChMQueue 11 })
+]
+----------------
+get
+----------------
+ChMQueue 7
+act of input
+[ QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 100 ]
+      , _code =
+          [ SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , ConcInstr
+              (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+          ]
+      }
+]
+ChMQueue 6
+oth of output
+[ QPut (VInt 1) ]
+----------------
+split
+----------------
+ChMQueue 11
+act of input
+[ QSplit
+    (GlobalChan
+       ChMQueues
+         { _chMOutputQueue = ChMQueue 12 , _chMInputQueue = ChMQueue 13 })
+    (GlobalChan
+       ChMQueues
+         { _chMOutputQueue = ChMQueue 14 , _chMInputQueue = ChMQueue 15 })
+]
+ChMQueue 10
+oth of output
+[]
+----------------
+idl
+----------------
+ChMQueue 17
+act of input
+[ QId
+    (GlobalChan
+       ChMQueues
+         { _chMOutputQueue = ChMQueue 12 , _chMInputQueue = ChMQueue 13 })
+]
+ChMQueue 16
+oth of output
+[]
+----------------
+idr
+----------------
+ChMQueue 13
+act of input
+[]
+ChMQueue 12
+oth of output
+[]
+----------------
+ihcase
+----------------
+ChMQueue 7
+act of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 1 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+ChMQueue 6
+oth of output
+[]
+----------------
+idl
+----------------
+ChMQueue 9
+act of input
+[ QId
+    (GlobalChan
+       ChMQueues
+         { _chMOutputQueue = ChMQueue 6 , _chMInputQueue = ChMQueue 7 })
+]
+ChMQueue 8
+oth of output
+[ QHPut (HCaseIx 1)
+, QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-5)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 0 , _otherQueue = ChMQueue 1 }
+              )
+            , ( LocalChan 0
+              , OutputLkup
+                  { _activeQueue = ChMQueue 4 , _otherQueue = ChMQueue 5 }
+              )
+            , ( LocalChan 2
+              , OutputLkup
+                  { _activeQueue = ChMQueue 8 , _otherQueue = ChMQueue 9 }
+              )
+            , ( LocalChan 3
+              , OutputLkup
+                  { _activeQueue = ChMQueue 10 , _otherQueue = ChMQueue 11 }
+              )
+            ]
+      , _environment = []
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (ISHPut (LocalChan (-5)) SHPutInt)
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan (-5)))
+          , ConcInstr (ISHPut (LocalChan (-5)) SHGetInt)
+          , ConcInstr (IGet (LocalChan (-5)))
+          , SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 2) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 2))
+          , ConcInstr
+              (IFork
+                 (LocalChan 3)
+                 ( ( LocalChan 4
+                   , fromList [ LocalChan 2 ]
+                   , [ ConcInstr (IId (LocalChan 4) (LocalChan 2)) ]
+                   )
+                 , ( LocalChan 5
+                   , fromList [ LocalChan (-5) ]
+                   , [ ConcInstr
+                         (IRun
+                            (fromList
+                               [ ( LocalChan (-5) , LocalChan (-5) )
+                               , ( LocalChan 0 , LocalChan 5 )
+                               ])
+                            (CallIx 2)
+                            0)
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+----------------
+get
+----------------
+ChMQueue 8
+act of output
+[ QHPut (HCaseIx 1)
+, QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-5)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 0 , _otherQueue = ChMQueue 1 }
+              )
+            , ( LocalChan 0
+              , OutputLkup
+                  { _activeQueue = ChMQueue 4 , _otherQueue = ChMQueue 5 }
+              )
+            , ( LocalChan 2
+              , OutputLkup
+                  { _activeQueue = ChMQueue 8 , _otherQueue = ChMQueue 9 }
+              )
+            , ( LocalChan 3
+              , OutputLkup
+                  { _activeQueue = ChMQueue 10 , _otherQueue = ChMQueue 11 }
+              )
+            ]
+      , _environment = []
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (ISHPut (LocalChan (-5)) SHPutInt)
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan (-5)))
+          , ConcInstr (ISHPut (LocalChan (-5)) SHGetInt)
+          , ConcInstr (IGet (LocalChan (-5)))
+          , SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 2) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 2))
+          , ConcInstr
+              (IFork
+                 (LocalChan 3)
+                 ( ( LocalChan 4
+                   , fromList [ LocalChan 2 ]
+                   , [ ConcInstr (IId (LocalChan 4) (LocalChan 2)) ]
+                   )
+                 , ( LocalChan 5
+                   , fromList [ LocalChan (-5) ]
+                   , [ ConcInstr
+                         (IRun
+                            (fromList
+                               [ ( LocalChan (-5) , LocalChan (-5) )
+                               , ( LocalChan 0 , LocalChan 5 )
+                               ])
+                            (CallIx 2)
+                            0)
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+ChMQueue 9
+oth of input
+[ QId
+    (GlobalChan
+       ChMQueues
+         { _chMOutputQueue = ChMQueue 6 , _chMInputQueue = ChMQueue 7 })
+]
+----------------
+idr
+----------------
+ChMQueue 6
+act of output
+[]
+ChMQueue 7
+oth of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 1 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+----------------
+ihcase
+----------------
+ChMQueue 15
+act of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-7)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 2 , _otherQueue = ChMQueue 3 }
+              )
+            , ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 15 , _otherQueue = ChMQueue 14 }
+              )
+            , ( LocalChan 1
+              , OutputLkup
+                  { _activeQueue = ChMQueue 16 , _otherQueue = ChMQueue 17 }
+              )
+            ]
+      , _environment = []
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 0 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IHPut (LocalChan 1) (HCaseIx 1))
+           , ConcInstr (IGet (LocalChan 1))
+           , SeqInstr IStore
+           , ConcInstr (ISHPut (LocalChan (-7)) SHPutInt)
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan (-7)))
+           , ConcInstr (ISHPut (LocalChan (-7)) SHGetInt)
+           , ConcInstr (IGet (LocalChan (-7)))
+           , SeqInstr IStore
+           , ConcInstr (IHPut (LocalChan 1) (HCaseIx 0))
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 1))
+           , ConcInstr
+               (IFork
+                  (LocalChan 0)
+                  ( ( LocalChan 6
+                    , fromList [ LocalChan 1 ]
+                    , [ ConcInstr (IId (LocalChan 6) (LocalChan 1)) ]
+                    )
+                  , ( LocalChan 7
+                    , fromList [ LocalChan (-7) ]
+                    , [ ConcInstr (ISplit (LocalChan 7) ( LocalChan 8 , LocalChan 9 ))
+                      , ConcInstr
+                          (IPlug
+                             [ LocalChan 10 ]
+                             ( ( ( fromList [ LocalChan 9 ]
+                                 , fromList [ LocalChan (-7) , LocalChan 10 ]
+                                 )
+                               , [ ConcInstr
+                                     (IRun
+                                        (fromList
+                                           [ ( LocalChan (-7) , LocalChan (-7) )
+                                           , ( LocalChan 0 , LocalChan 9 )
+                                           , ( LocalChan 1 , LocalChan 10 )
+                                           ])
+                                        (CallIx 3)
+                                        0)
+                                 ]
+                               )
+                             , ( ( fromList [ LocalChan 8 , LocalChan 10 ] , fromList [] )
+                               , [ ConcInstr (IId (LocalChan 10) (LocalChan 8)) ]
+                               )
+                             ))
+                      ]
+                    )
+                  ))
+           ]
+         )
+       ])
+]
+ChMQueue 14
+oth of output
+[]
+----------------
+get
+----------------
+ChMQueue 8
+act of output
+[ QHPut (HCaseIx 1)
+, QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-5)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 0 , _otherQueue = ChMQueue 1 }
+              )
+            , ( LocalChan 0
+              , OutputLkup
+                  { _activeQueue = ChMQueue 4 , _otherQueue = ChMQueue 5 }
+              )
+            , ( LocalChan 2
+              , OutputLkup
+                  { _activeQueue = ChMQueue 8 , _otherQueue = ChMQueue 9 }
+              )
+            , ( LocalChan 3
+              , OutputLkup
+                  { _activeQueue = ChMQueue 10 , _otherQueue = ChMQueue 11 }
+              )
+            ]
+      , _environment = []
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (ISHPut (LocalChan (-5)) SHPutInt)
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan (-5)))
+          , ConcInstr (ISHPut (LocalChan (-5)) SHGetInt)
+          , ConcInstr (IGet (LocalChan (-5)))
+          , SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 2) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 2))
+          , ConcInstr
+              (IFork
+                 (LocalChan 3)
+                 ( ( LocalChan 4
+                   , fromList [ LocalChan 2 ]
+                   , [ ConcInstr (IId (LocalChan 4) (LocalChan 2)) ]
+                   )
+                 , ( LocalChan 5
+                   , fromList [ LocalChan (-5) ]
+                   , [ ConcInstr
+                         (IRun
+                            (fromList
+                               [ ( LocalChan (-5) , LocalChan (-5) )
+                               , ( LocalChan 0 , LocalChan 5 )
+                               ])
+                            (CallIx 2)
+                            0)
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+ChMQueue 9
+oth of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 1 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+----------------
+ihcase
+----------------
+ChMQueue 7
+act of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 1 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+ChMQueue 6
+oth of output
+[ QHPut (HCaseIx 1)
+, QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-5)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 0 , _otherQueue = ChMQueue 1 }
+              )
+            , ( LocalChan 0
+              , OutputLkup
+                  { _activeQueue = ChMQueue 4 , _otherQueue = ChMQueue 5 }
+              )
+            , ( LocalChan 2
+              , OutputLkup
+                  { _activeQueue = ChMQueue 8 , _otherQueue = ChMQueue 9 }
+              )
+            , ( LocalChan 3
+              , OutputLkup
+                  { _activeQueue = ChMQueue 10 , _otherQueue = ChMQueue 11 }
+              )
+            ]
+      , _environment = []
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (ISHPut (LocalChan (-5)) SHPutInt)
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan (-5)))
+          , ConcInstr (ISHPut (LocalChan (-5)) SHGetInt)
+          , ConcInstr (IGet (LocalChan (-5)))
+          , SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 2) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 2))
+          , ConcInstr
+              (IFork
+                 (LocalChan 3)
+                 ( ( LocalChan 4
+                   , fromList [ LocalChan 2 ]
+                   , [ ConcInstr (IId (LocalChan 4) (LocalChan 2)) ]
+                   )
+                 , ( LocalChan 5
+                   , fromList [ LocalChan (-5) ]
+                   , [ ConcInstr
+                         (IRun
+                            (fromList
+                               [ ( LocalChan (-5) , LocalChan (-5) )
+                               , ( LocalChan 0 , LocalChan 5 )
+                               ])
+                            (CallIx 2)
+                            0)
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+----------------
+put
+----------------
+ChMQueue 7
+act of input
+[ QPut (VInt 1) ]
+ChMQueue 6
+oth of output
+[ QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-5)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 0 , _otherQueue = ChMQueue 1 }
+              )
+            , ( LocalChan 0
+              , OutputLkup
+                  { _activeQueue = ChMQueue 4 , _otherQueue = ChMQueue 5 }
+              )
+            , ( LocalChan 2
+              , OutputLkup
+                  { _activeQueue = ChMQueue 8 , _otherQueue = ChMQueue 9 }
+              )
+            , ( LocalChan 3
+              , OutputLkup
+                  { _activeQueue = ChMQueue 10 , _otherQueue = ChMQueue 11 }
+              )
+            ]
+      , _environment = []
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (ISHPut (LocalChan (-5)) SHPutInt)
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan (-5)))
+          , ConcInstr (ISHPut (LocalChan (-5)) SHGetInt)
+          , ConcInstr (IGet (LocalChan (-5)))
+          , SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 2) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 2))
+          , ConcInstr
+              (IFork
+                 (LocalChan 3)
+                 ( ( LocalChan 4
+                   , fromList [ LocalChan 2 ]
+                   , [ ConcInstr (IId (LocalChan 4) (LocalChan 2)) ]
+                   )
+                 , ( LocalChan 5
+                   , fromList [ LocalChan (-5) ]
+                   , [ ConcInstr
+                         (IRun
+                            (fromList
+                               [ ( LocalChan (-5) , LocalChan (-5) )
+                               , ( LocalChan 0 , LocalChan 5 )
+                               ])
+                            (CallIx 2)
+                            0)
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+----------------
+get
+----------------
+ChMQueue 8
+act of output
+[ QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-5)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 0 , _otherQueue = ChMQueue 1 }
+              )
+            , ( LocalChan 0
+              , OutputLkup
+                  { _activeQueue = ChMQueue 4 , _otherQueue = ChMQueue 5 }
+              )
+            , ( LocalChan 2
+              , OutputLkup
+                  { _activeQueue = ChMQueue 8 , _otherQueue = ChMQueue 9 }
+              )
+            , ( LocalChan 3
+              , OutputLkup
+                  { _activeQueue = ChMQueue 10 , _otherQueue = ChMQueue 11 }
+              )
+            ]
+      , _environment = []
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (ISHPut (LocalChan (-5)) SHPutInt)
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan (-5)))
+          , ConcInstr (ISHPut (LocalChan (-5)) SHGetInt)
+          , ConcInstr (IGet (LocalChan (-5)))
+          , SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 2) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 2))
+          , ConcInstr
+              (IFork
+                 (LocalChan 3)
+                 ( ( LocalChan 4
+                   , fromList [ LocalChan 2 ]
+                   , [ ConcInstr (IId (LocalChan 4) (LocalChan 2)) ]
+                   )
+                 , ( LocalChan 5
+                   , fromList [ LocalChan (-5) ]
+                   , [ ConcInstr
+                         (IRun
+                            (fromList
+                               [ ( LocalChan (-5) , LocalChan (-5) )
+                               , ( LocalChan 0 , LocalChan 5 )
+                               ])
+                            (CallIx 2)
+                            0)
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+ChMQueue 9
+oth of input
+[ QPut (VInt 1) ]
+----------------
+ihcase
+----------------
+ChMQueue 7
+act of input
+[ QPut (VInt 1)
+, QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 1 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+ChMQueue 6
+oth of output
+[ QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-5)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 0 , _otherQueue = ChMQueue 1 }
+              )
+            , ( LocalChan 0
+              , OutputLkup
+                  { _activeQueue = ChMQueue 4 , _otherQueue = ChMQueue 5 }
+              )
+            , ( LocalChan 2
+              , OutputLkup
+                  { _activeQueue = ChMQueue 8 , _otherQueue = ChMQueue 9 }
+              )
+            , ( LocalChan 3
+              , OutputLkup
+                  { _activeQueue = ChMQueue 10 , _otherQueue = ChMQueue 11 }
+              )
+            ]
+      , _environment = []
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (ISHPut (LocalChan (-5)) SHPutInt)
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan (-5)))
+          , ConcInstr (ISHPut (LocalChan (-5)) SHGetInt)
+          , ConcInstr (IGet (LocalChan (-5)))
+          , SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 2) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 2))
+          , ConcInstr
+              (IFork
+                 (LocalChan 3)
+                 ( ( LocalChan 4
+                   , fromList [ LocalChan 2 ]
+                   , [ ConcInstr (IId (LocalChan 4) (LocalChan 2)) ]
+                   )
+                 , ( LocalChan 5
+                   , fromList [ LocalChan (-5) ]
+                   , [ ConcInstr
+                         (IRun
+                            (fromList
+                               [ ( LocalChan (-5) , LocalChan (-5) )
+                               , ( LocalChan 0 , LocalChan 5 )
+                               ])
+                            (CallIx 2)
+                            0)
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+----------------
+get
+----------------
+ChMQueue 8
+act of output
+[ QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-5)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 0 , _otherQueue = ChMQueue 1 }
+              )
+            , ( LocalChan 0
+              , OutputLkup
+                  { _activeQueue = ChMQueue 4 , _otherQueue = ChMQueue 5 }
+              )
+            , ( LocalChan 2
+              , OutputLkup
+                  { _activeQueue = ChMQueue 8 , _otherQueue = ChMQueue 9 }
+              )
+            , ( LocalChan 3
+              , OutputLkup
+                  { _activeQueue = ChMQueue 10 , _otherQueue = ChMQueue 11 }
+              )
+            ]
+      , _environment = []
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (ISHPut (LocalChan (-5)) SHPutInt)
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan (-5)))
+          , ConcInstr (ISHPut (LocalChan (-5)) SHGetInt)
+          , ConcInstr (IGet (LocalChan (-5)))
+          , SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 2) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 2))
+          , ConcInstr
+              (IFork
+                 (LocalChan 3)
+                 ( ( LocalChan 4
+                   , fromList [ LocalChan 2 ]
+                   , [ ConcInstr (IId (LocalChan 4) (LocalChan 2)) ]
+                   )
+                 , ( LocalChan 5
+                   , fromList [ LocalChan (-5) ]
+                   , [ ConcInstr
+                         (IRun
+                            (fromList
+                               [ ( LocalChan (-5) , LocalChan (-5) )
+                               , ( LocalChan 0 , LocalChan 5 )
+                               ])
+                            (CallIx 2)
+                            0)
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+ChMQueue 9
+oth of input
+[ QPut (VInt 1)
+, QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 1 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+----------------
+put
+----------------
+ChMQueue 0
+act of output
+[ QSHPut SHPutInt , QPut (VInt 1) ]
+ChMQueue 1
+oth of input
+[]
+----------------
+put
+----------------
+ChMQueue 0
+act of output
+[]
+ChMQueue 1
+oth of input
+[]
+----------------
+ihcase
+----------------
+ChMQueue 7
+act of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 1 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+ChMQueue 6
+oth of output
+[]
+----------------
+get
+----------------
+ChMQueue 0
+act of output
+[ QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-5)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 0 , _otherQueue = ChMQueue 1 }
+              )
+            , ( LocalChan 0
+              , OutputLkup
+                  { _activeQueue = ChMQueue 4 , _otherQueue = ChMQueue 5 }
+              )
+            , ( LocalChan 2
+              , OutputLkup
+                  { _activeQueue = ChMQueue 8 , _otherQueue = ChMQueue 9 }
+              )
+            , ( LocalChan 3
+              , OutputLkup
+                  { _activeQueue = ChMQueue 10 , _otherQueue = ChMQueue 11 }
+              )
+            ]
+      , _environment = [ VInt 1 , VInt 1 ]
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 2) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 2))
+          , ConcInstr
+              (IFork
+                 (LocalChan 3)
+                 ( ( LocalChan 4
+                   , fromList [ LocalChan 2 ]
+                   , [ ConcInstr (IId (LocalChan 4) (LocalChan 2)) ]
+                   )
+                 , ( LocalChan 5
+                   , fromList [ LocalChan (-5) ]
+                   , [ ConcInstr
+                         (IRun
+                            (fromList
+                               [ ( LocalChan (-5) , LocalChan (-5) )
+                               , ( LocalChan 0 , LocalChan 5 )
+                               ])
+                            (CallIx 2)
+                            0)
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+ChMQueue 1
+oth of input
+[]
+----------------
+get
+----------------
+ChMQueue 0
+act of output
+[ QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-5)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 0 , _otherQueue = ChMQueue 1 }
+              )
+            , ( LocalChan 0
+              , OutputLkup
+                  { _activeQueue = ChMQueue 4 , _otherQueue = ChMQueue 5 }
+              )
+            , ( LocalChan 2
+              , OutputLkup
+                  { _activeQueue = ChMQueue 8 , _otherQueue = ChMQueue 9 }
+              )
+            , ( LocalChan 3
+              , OutputLkup
+                  { _activeQueue = ChMQueue 10 , _otherQueue = ChMQueue 11 }
+              )
+            ]
+      , _environment = [ VInt 1 , VInt 1 ]
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 2) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 2))
+          , ConcInstr
+              (IFork
+                 (LocalChan 3)
+                 ( ( LocalChan 4
+                   , fromList [ LocalChan 2 ]
+                   , [ ConcInstr (IId (LocalChan 4) (LocalChan 2)) ]
+                   )
+                 , ( LocalChan 5
+                   , fromList [ LocalChan (-5) ]
+                   , [ ConcInstr
+                         (IRun
+                            (fromList
+                               [ ( LocalChan (-5) , LocalChan (-5) )
+                               , ( LocalChan 0 , LocalChan 5 )
+                               ])
+                            (CallIx 2)
+                            0)
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+ChMQueue 1
+oth of input
+[ QPut (VInt 2) ]
+----------------
+hput
+----------------
+ChMQueue 8
+act of output
+[ QHPut (HCaseIx 0) ]
+ChMQueue 9
+oth of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 1 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+----------------
+ihcase
+----------------
+ChMQueue 7
+act of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 1 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+ChMQueue 6
+oth of output
+[ QHPut (HCaseIx 0) ]
+----------------
+put
+----------------
+ChMQueue 8
+act of output
+[ QHPut (HCaseIx 0) , QPut (VInt 2) ]
+ChMQueue 9
+oth of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 1 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+----------------
+ihcase
+----------------
+ChMQueue 7
+act of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 1 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+ChMQueue 6
+oth of output
+[ QHPut (HCaseIx 0) , QPut (VInt 2) ]
+----------------
+ihcase
+----------------
+ChMQueue 7
+act of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 1 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+ChMQueue 6
+oth of output
+[ QHPut (HCaseIx 0) , QPut (VInt 2) ]
+----------------
+fork
+----------------
+ChMQueue 10
+act of output
+[ QFork
+    ( LocalChan 4
+    , Stec
+        { _stack = []
+        , _translation =
+            fromList
+              [ ( LocalChan 2
+                , OutputLkup
+                    { _activeQueue = ChMQueue 8 , _otherQueue = ChMQueue 9 }
+                )
+              ]
+        , _environment = [ VInt 2 , VInt 2 , VInt 1 , VInt 1 ]
+        , _code = [ ConcInstr (IId (LocalChan 4) (LocalChan 2)) ]
+        }
+    )
+    ( LocalChan 5
+    , Stec
+        { _stack = []
+        , _translation =
+            fromList
+              [ ( LocalChan (-5)
+                , OutputLkup
+                    { _activeQueue = ChMQueue 0 , _otherQueue = ChMQueue 1 }
+                )
+              ]
+        , _environment = [ VInt 2 , VInt 2 , VInt 1 , VInt 1 ]
+        , _code =
+            [ ConcInstr
+                (IRun
+                   (fromList
+                      [ ( LocalChan (-5) , LocalChan (-5) )
+                      , ( LocalChan 0 , LocalChan 5 )
+                      ])
+                   (CallIx 2)
+                   0)
+            ]
+        }
+    )
+]
+ChMQueue 11
+oth of input
+[ QSplit
+    (GlobalChan
+       ChMQueues
+         { _chMOutputQueue = ChMQueue 12 , _chMInputQueue = ChMQueue 13 })
+    (GlobalChan
+       ChMQueues
+         { _chMOutputQueue = ChMQueue 14 , _chMInputQueue = ChMQueue 15 })
+]
+----------------
+idl
+----------------
+ChMQueue 12
+act of output
+[ QId
+    (GlobalChan
+       ChMQueues
+         { _chMOutputQueue = ChMQueue 8 , _chMInputQueue = ChMQueue 9 })
+]
+ChMQueue 13
+oth of input
+[]
+----------------
+get
+----------------
+ChMQueue 7
+act of input
+[ QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 1 ]
+      , _code =
+          [ SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , ConcInstr
+              (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+          ]
+      }
+]
+ChMQueue 6
+oth of output
+[ QPut (VInt 2) ]
+----------------
+idr
+----------------
+ChMQueue 8
+act of output
+[ QPut (VInt 2) ]
+ChMQueue 9
+oth of input
+[ QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 1 ]
+      , _code =
+          [ SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , ConcInstr
+              (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+          ]
+      }
+]
+----------------
+idl
+----------------
+ChMQueue 12
+act of output
+[ QId
+    (GlobalChan
+       ChMQueues
+         { _chMOutputQueue = ChMQueue 8 , _chMInputQueue = ChMQueue 9 })
+]
+ChMQueue 13
+oth of input
+[]
+----------------
+ihcase
+----------------
+ChMQueue 7
+act of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 2 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+ChMQueue 6
+oth of output
+[]
+----------------
+hput
+----------------
+ChMQueue 14
+act of output
+[ QHPut (HCaseIx 0) ]
+ChMQueue 15
+oth of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-7)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 2 , _otherQueue = ChMQueue 3 }
+              )
+            , ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 15 , _otherQueue = ChMQueue 14 }
+              )
+            , ( LocalChan 1
+              , OutputLkup
+                  { _activeQueue = ChMQueue 16 , _otherQueue = ChMQueue 17 }
+              )
+            ]
+      , _environment = []
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 0 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IHPut (LocalChan 1) (HCaseIx 1))
+           , ConcInstr (IGet (LocalChan 1))
+           , SeqInstr IStore
+           , ConcInstr (ISHPut (LocalChan (-7)) SHPutInt)
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan (-7)))
+           , ConcInstr (ISHPut (LocalChan (-7)) SHGetInt)
+           , ConcInstr (IGet (LocalChan (-7)))
+           , SeqInstr IStore
+           , ConcInstr (IHPut (LocalChan 1) (HCaseIx 0))
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 1))
+           , ConcInstr
+               (IFork
+                  (LocalChan 0)
+                  ( ( LocalChan 6
+                    , fromList [ LocalChan 1 ]
+                    , [ ConcInstr (IId (LocalChan 6) (LocalChan 1)) ]
+                    )
+                  , ( LocalChan 7
+                    , fromList [ LocalChan (-7) ]
+                    , [ ConcInstr (ISplit (LocalChan 7) ( LocalChan 8 , LocalChan 9 ))
+                      , ConcInstr
+                          (IPlug
+                             [ LocalChan 10 ]
+                             ( ( ( fromList [ LocalChan 9 ]
+                                 , fromList [ LocalChan (-7) , LocalChan 10 ]
+                                 )
+                               , [ ConcInstr
+                                     (IRun
+                                        (fromList
+                                           [ ( LocalChan (-7) , LocalChan (-7) )
+                                           , ( LocalChan 0 , LocalChan 9 )
+                                           , ( LocalChan 1 , LocalChan 10 )
+                                           ])
+                                        (CallIx 3)
+                                        0)
+                                 ]
+                               )
+                             , ( ( fromList [ LocalChan 8 , LocalChan 10 ] , fromList [] )
+                               , [ ConcInstr (IId (LocalChan 10) (LocalChan 8)) ]
+                               )
+                             ))
+                      ]
+                    )
+                  ))
+           ]
+         )
+       ])
+]
+----------------
+idr
+----------------
+ChMQueue 8
+act of output
+[]
+ChMQueue 9
+oth of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 2 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+----------------
+ihcase
+----------------
+ChMQueue 15
+act of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-7)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 2 , _otherQueue = ChMQueue 3 }
+              )
+            , ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 15 , _otherQueue = ChMQueue 14 }
+              )
+            , ( LocalChan 1
+              , OutputLkup
+                  { _activeQueue = ChMQueue 16 , _otherQueue = ChMQueue 17 }
+              )
+            ]
+      , _environment = []
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 0 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IHPut (LocalChan 1) (HCaseIx 1))
+           , ConcInstr (IGet (LocalChan 1))
+           , SeqInstr IStore
+           , ConcInstr (ISHPut (LocalChan (-7)) SHPutInt)
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan (-7)))
+           , ConcInstr (ISHPut (LocalChan (-7)) SHGetInt)
+           , ConcInstr (IGet (LocalChan (-7)))
+           , SeqInstr IStore
+           , ConcInstr (IHPut (LocalChan 1) (HCaseIx 0))
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 1))
+           , ConcInstr
+               (IFork
+                  (LocalChan 0)
+                  ( ( LocalChan 6
+                    , fromList [ LocalChan 1 ]
+                    , [ ConcInstr (IId (LocalChan 6) (LocalChan 1)) ]
+                    )
+                  , ( LocalChan 7
+                    , fromList [ LocalChan (-7) ]
+                    , [ ConcInstr (ISplit (LocalChan 7) ( LocalChan 8 , LocalChan 9 ))
+                      , ConcInstr
+                          (IPlug
+                             [ LocalChan 10 ]
+                             ( ( ( fromList [ LocalChan 9 ]
+                                 , fromList [ LocalChan (-7) , LocalChan 10 ]
+                                 )
+                               , [ ConcInstr
+                                     (IRun
+                                        (fromList
+                                           [ ( LocalChan (-7) , LocalChan (-7) )
+                                           , ( LocalChan 0 , LocalChan 9 )
+                                           , ( LocalChan 1 , LocalChan 10 )
+                                           ])
+                                        (CallIx 3)
+                                        0)
+                                 ]
+                               )
+                             , ( ( fromList [ LocalChan 8 , LocalChan 10 ] , fromList [] )
+                               , [ ConcInstr (IId (LocalChan 10) (LocalChan 8)) ]
+                               )
+                             ))
+                      ]
+                    )
+                  ))
+           ]
+         )
+       ])
+]
+ChMQueue 14
+oth of output
+[ QHPut (HCaseIx 0) ]
+----------------
+ihcase
+----------------
+ChMQueue 7
+act of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 2 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+ChMQueue 6
+oth of output
+[]
+----------------
+split
+----------------
+ChMQueue 14
+act of output
+[ QHPut (HCaseIx 0)
+, QSplit
+    (GlobalChan
+       ChMQueues
+         { _chMOutputQueue = ChMQueue 18 , _chMInputQueue = ChMQueue 19 })
+    (GlobalChan
+       ChMQueues
+         { _chMOutputQueue = ChMQueue 20 , _chMInputQueue = ChMQueue 21 })
+]
+ChMQueue 15
+oth of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-7)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 2 , _otherQueue = ChMQueue 3 }
+              )
+            , ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 15 , _otherQueue = ChMQueue 14 }
+              )
+            , ( LocalChan 1
+              , OutputLkup
+                  { _activeQueue = ChMQueue 16 , _otherQueue = ChMQueue 17 }
+              )
+            ]
+      , _environment = []
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 0 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IHPut (LocalChan 1) (HCaseIx 1))
+           , ConcInstr (IGet (LocalChan 1))
+           , SeqInstr IStore
+           , ConcInstr (ISHPut (LocalChan (-7)) SHPutInt)
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan (-7)))
+           , ConcInstr (ISHPut (LocalChan (-7)) SHGetInt)
+           , ConcInstr (IGet (LocalChan (-7)))
+           , SeqInstr IStore
+           , ConcInstr (IHPut (LocalChan 1) (HCaseIx 0))
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 1))
+           , ConcInstr
+               (IFork
+                  (LocalChan 0)
+                  ( ( LocalChan 6
+                    , fromList [ LocalChan 1 ]
+                    , [ ConcInstr (IId (LocalChan 6) (LocalChan 1)) ]
+                    )
+                  , ( LocalChan 7
+                    , fromList [ LocalChan (-7) ]
+                    , [ ConcInstr (ISplit (LocalChan 7) ( LocalChan 8 , LocalChan 9 ))
+                      , ConcInstr
+                          (IPlug
+                             [ LocalChan 10 ]
+                             ( ( ( fromList [ LocalChan 9 ]
+                                 , fromList [ LocalChan (-7) , LocalChan 10 ]
+                                 )
+                               , [ ConcInstr
+                                     (IRun
+                                        (fromList
+                                           [ ( LocalChan (-7) , LocalChan (-7) )
+                                           , ( LocalChan 0 , LocalChan 9 )
+                                           , ( LocalChan 1 , LocalChan 10 )
+                                           ])
+                                        (CallIx 3)
+                                        0)
+                                 ]
+                               )
+                             , ( ( fromList [ LocalChan 8 , LocalChan 10 ] , fromList [] )
+                               , [ ConcInstr (IId (LocalChan 10) (LocalChan 8)) ]
+                               )
+                             ))
+                      ]
+                    )
+                  ))
+           ]
+         )
+       ])
+]
+----------------
+hput
+----------------
+ChMQueue 18
+act of output
+[ QHPut (HCaseIx 1) ]
+ChMQueue 19
+oth of input
+[]
+----------------
+ihcase
+----------------
+ChMQueue 15
+act of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-7)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 2 , _otherQueue = ChMQueue 3 }
+              )
+            , ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 15 , _otherQueue = ChMQueue 14 }
+              )
+            , ( LocalChan 1
+              , OutputLkup
+                  { _activeQueue = ChMQueue 16 , _otherQueue = ChMQueue 17 }
+              )
+            ]
+      , _environment = []
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 0 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IHPut (LocalChan 1) (HCaseIx 1))
+           , ConcInstr (IGet (LocalChan 1))
+           , SeqInstr IStore
+           , ConcInstr (ISHPut (LocalChan (-7)) SHPutInt)
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan (-7)))
+           , ConcInstr (ISHPut (LocalChan (-7)) SHGetInt)
+           , ConcInstr (IGet (LocalChan (-7)))
+           , SeqInstr IStore
+           , ConcInstr (IHPut (LocalChan 1) (HCaseIx 0))
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 1))
+           , ConcInstr
+               (IFork
+                  (LocalChan 0)
+                  ( ( LocalChan 6
+                    , fromList [ LocalChan 1 ]
+                    , [ ConcInstr (IId (LocalChan 6) (LocalChan 1)) ]
+                    )
+                  , ( LocalChan 7
+                    , fromList [ LocalChan (-7) ]
+                    , [ ConcInstr (ISplit (LocalChan 7) ( LocalChan 8 , LocalChan 9 ))
+                      , ConcInstr
+                          (IPlug
+                             [ LocalChan 10 ]
+                             ( ( ( fromList [ LocalChan 9 ]
+                                 , fromList [ LocalChan (-7) , LocalChan 10 ]
+                                 )
+                               , [ ConcInstr
+                                     (IRun
+                                        (fromList
+                                           [ ( LocalChan (-7) , LocalChan (-7) )
+                                           , ( LocalChan 0 , LocalChan 9 )
+                                           , ( LocalChan 1 , LocalChan 10 )
+                                           ])
+                                        (CallIx 3)
+                                        0)
+                                 ]
+                               )
+                             , ( ( fromList [ LocalChan 8 , LocalChan 10 ] , fromList [] )
+                               , [ ConcInstr (IId (LocalChan 10) (LocalChan 8)) ]
+                               )
+                             ))
+                      ]
+                    )
+                  ))
+           ]
+         )
+       ])
+]
+ChMQueue 14
+oth of output
+[ QHPut (HCaseIx 0)
+, QSplit
+    (GlobalChan
+       ChMQueues
+         { _chMOutputQueue = ChMQueue 18 , _chMInputQueue = ChMQueue 19 })
+    (GlobalChan
+       ChMQueues
+         { _chMOutputQueue = ChMQueue 20 , _chMInputQueue = ChMQueue 21 })
+]
+----------------
+get
+----------------
+ChMQueue 18
+act of output
+[ QHPut (HCaseIx 1)
+, QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-5)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 0 , _otherQueue = ChMQueue 1 }
+              )
+            , ( LocalChan 0
+              , OutputLkup
+                  { _activeQueue = ChMQueue 14 , _otherQueue = ChMQueue 15 }
+              )
+            , ( LocalChan 2
+              , OutputLkup
+                  { _activeQueue = ChMQueue 18 , _otherQueue = ChMQueue 19 }
+              )
+            , ( LocalChan 3
+              , OutputLkup
+                  { _activeQueue = ChMQueue 20 , _otherQueue = ChMQueue 21 }
+              )
+            ]
+      , _environment = []
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (ISHPut (LocalChan (-5)) SHPutInt)
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan (-5)))
+          , ConcInstr (ISHPut (LocalChan (-5)) SHGetInt)
+          , ConcInstr (IGet (LocalChan (-5)))
+          , SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 2) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 2))
+          , ConcInstr
+              (IFork
+                 (LocalChan 3)
+                 ( ( LocalChan 4
+                   , fromList [ LocalChan 2 ]
+                   , [ ConcInstr (IId (LocalChan 4) (LocalChan 2)) ]
+                   )
+                 , ( LocalChan 5
+                   , fromList [ LocalChan (-5) ]
+                   , [ ConcInstr
+                         (IRun
+                            (fromList
+                               [ ( LocalChan (-5) , LocalChan (-5) )
+                               , ( LocalChan 0 , LocalChan 5 )
+                               ])
+                            (CallIx 2)
+                            0)
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+ChMQueue 19
+oth of input
+[]
+----------------
+ihcase
+----------------
+ChMQueue 15
+act of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-7)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 2 , _otherQueue = ChMQueue 3 }
+              )
+            , ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 15 , _otherQueue = ChMQueue 14 }
+              )
+            , ( LocalChan 1
+              , OutputLkup
+                  { _activeQueue = ChMQueue 16 , _otherQueue = ChMQueue 17 }
+              )
+            ]
+      , _environment = []
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 0 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IHPut (LocalChan 1) (HCaseIx 1))
+           , ConcInstr (IGet (LocalChan 1))
+           , SeqInstr IStore
+           , ConcInstr (ISHPut (LocalChan (-7)) SHPutInt)
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan (-7)))
+           , ConcInstr (ISHPut (LocalChan (-7)) SHGetInt)
+           , ConcInstr (IGet (LocalChan (-7)))
+           , SeqInstr IStore
+           , ConcInstr (IHPut (LocalChan 1) (HCaseIx 0))
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 1))
+           , ConcInstr
+               (IFork
+                  (LocalChan 0)
+                  ( ( LocalChan 6
+                    , fromList [ LocalChan 1 ]
+                    , [ ConcInstr (IId (LocalChan 6) (LocalChan 1)) ]
+                    )
+                  , ( LocalChan 7
+                    , fromList [ LocalChan (-7) ]
+                    , [ ConcInstr (ISplit (LocalChan 7) ( LocalChan 8 , LocalChan 9 ))
+                      , ConcInstr
+                          (IPlug
+                             [ LocalChan 10 ]
+                             ( ( ( fromList [ LocalChan 9 ]
+                                 , fromList [ LocalChan (-7) , LocalChan 10 ]
+                                 )
+                               , [ ConcInstr
+                                     (IRun
+                                        (fromList
+                                           [ ( LocalChan (-7) , LocalChan (-7) )
+                                           , ( LocalChan 0 , LocalChan 9 )
+                                           , ( LocalChan 1 , LocalChan 10 )
+                                           ])
+                                        (CallIx 3)
+                                        0)
+                                 ]
+                               )
+                             , ( ( fromList [ LocalChan 8 , LocalChan 10 ] , fromList [] )
+                               , [ ConcInstr (IId (LocalChan 10) (LocalChan 8)) ]
+                               )
+                             ))
+                      ]
+                    )
+                  ))
+           ]
+         )
+       ])
+]
+ChMQueue 14
+oth of output
+[ QHPut (HCaseIx 0)
+, QSplit
+    (GlobalChan
+       ChMQueues
+         { _chMOutputQueue = ChMQueue 18 , _chMInputQueue = ChMQueue 19 })
+    (GlobalChan
+       ChMQueues
+         { _chMOutputQueue = ChMQueue 20 , _chMInputQueue = ChMQueue 21 })
+]
+----------------
+hput
+----------------
+ChMQueue 16
+act of output
+[ QHPut (HCaseIx 1) ]
+ChMQueue 17
+oth of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 2 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+----------------
+ihcase
+----------------
+ChMQueue 7
+act of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 2 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+ChMQueue 6
+oth of output
+[ QHPut (HCaseIx 1) ]
+----------------
+get
+----------------
+ChMQueue 16
+act of output
+[ QHPut (HCaseIx 1)
+, QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-7)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 2 , _otherQueue = ChMQueue 3 }
+              )
+            , ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 15 , _otherQueue = ChMQueue 14 }
+              )
+            , ( LocalChan 1
+              , OutputLkup
+                  { _activeQueue = ChMQueue 16 , _otherQueue = ChMQueue 17 }
+              )
+            ]
+      , _environment = []
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (ISHPut (LocalChan (-7)) SHPutInt)
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan (-7)))
+          , ConcInstr (ISHPut (LocalChan (-7)) SHGetInt)
+          , ConcInstr (IGet (LocalChan (-7)))
+          , SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 1) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 1))
+          , ConcInstr
+              (IFork
+                 (LocalChan 0)
+                 ( ( LocalChan 6
+                   , fromList [ LocalChan 1 ]
+                   , [ ConcInstr (IId (LocalChan 6) (LocalChan 1)) ]
+                   )
+                 , ( LocalChan 7
+                   , fromList [ LocalChan (-7) ]
+                   , [ ConcInstr (ISplit (LocalChan 7) ( LocalChan 8 , LocalChan 9 ))
+                     , ConcInstr
+                         (IPlug
+                            [ LocalChan 10 ]
+                            ( ( ( fromList [ LocalChan 9 ]
+                                , fromList [ LocalChan (-7) , LocalChan 10 ]
+                                )
+                              , [ ConcInstr
+                                    (IRun
+                                       (fromList
+                                          [ ( LocalChan (-7) , LocalChan (-7) )
+                                          , ( LocalChan 0 , LocalChan 9 )
+                                          , ( LocalChan 1 , LocalChan 10 )
+                                          ])
+                                       (CallIx 3)
+                                       0)
+                                ]
+                              )
+                            , ( ( fromList [ LocalChan 8 , LocalChan 10 ] , fromList [] )
+                              , [ ConcInstr (IId (LocalChan 10) (LocalChan 8)) ]
+                              )
+                            ))
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+ChMQueue 17
+oth of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 2 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+----------------
+ihcase
+----------------
+ChMQueue 7
+act of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 2 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+ChMQueue 6
+oth of output
+[ QHPut (HCaseIx 1)
+, QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-7)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 2 , _otherQueue = ChMQueue 3 }
+              )
+            , ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 15 , _otherQueue = ChMQueue 14 }
+              )
+            , ( LocalChan 1
+              , OutputLkup
+                  { _activeQueue = ChMQueue 16 , _otherQueue = ChMQueue 17 }
+              )
+            ]
+      , _environment = []
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (ISHPut (LocalChan (-7)) SHPutInt)
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan (-7)))
+          , ConcInstr (ISHPut (LocalChan (-7)) SHGetInt)
+          , ConcInstr (IGet (LocalChan (-7)))
+          , SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 1) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 1))
+          , ConcInstr
+              (IFork
+                 (LocalChan 0)
+                 ( ( LocalChan 6
+                   , fromList [ LocalChan 1 ]
+                   , [ ConcInstr (IId (LocalChan 6) (LocalChan 1)) ]
+                   )
+                 , ( LocalChan 7
+                   , fromList [ LocalChan (-7) ]
+                   , [ ConcInstr (ISplit (LocalChan 7) ( LocalChan 8 , LocalChan 9 ))
+                     , ConcInstr
+                         (IPlug
+                            [ LocalChan 10 ]
+                            ( ( ( fromList [ LocalChan 9 ]
+                                , fromList [ LocalChan (-7) , LocalChan 10 ]
+                                )
+                              , [ ConcInstr
+                                    (IRun
+                                       (fromList
+                                          [ ( LocalChan (-7) , LocalChan (-7) )
+                                          , ( LocalChan 0 , LocalChan 9 )
+                                          , ( LocalChan 1 , LocalChan 10 )
+                                          ])
+                                       (CallIx 3)
+                                       0)
+                                ]
+                              )
+                            , ( ( fromList [ LocalChan 8 , LocalChan 10 ] , fromList [] )
+                              , [ ConcInstr (IId (LocalChan 10) (LocalChan 8)) ]
+                              )
+                            ))
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+----------------
+put
+----------------
+ChMQueue 7
+act of input
+[ QPut (VInt 2) ]
+ChMQueue 6
+oth of output
+[ QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-7)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 2 , _otherQueue = ChMQueue 3 }
+              )
+            , ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 15 , _otherQueue = ChMQueue 14 }
+              )
+            , ( LocalChan 1
+              , OutputLkup
+                  { _activeQueue = ChMQueue 16 , _otherQueue = ChMQueue 17 }
+              )
+            ]
+      , _environment = []
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (ISHPut (LocalChan (-7)) SHPutInt)
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan (-7)))
+          , ConcInstr (ISHPut (LocalChan (-7)) SHGetInt)
+          , ConcInstr (IGet (LocalChan (-7)))
+          , SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 1) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 1))
+          , ConcInstr
+              (IFork
+                 (LocalChan 0)
+                 ( ( LocalChan 6
+                   , fromList [ LocalChan 1 ]
+                   , [ ConcInstr (IId (LocalChan 6) (LocalChan 1)) ]
+                   )
+                 , ( LocalChan 7
+                   , fromList [ LocalChan (-7) ]
+                   , [ ConcInstr (ISplit (LocalChan 7) ( LocalChan 8 , LocalChan 9 ))
+                     , ConcInstr
+                         (IPlug
+                            [ LocalChan 10 ]
+                            ( ( ( fromList [ LocalChan 9 ]
+                                , fromList [ LocalChan (-7) , LocalChan 10 ]
+                                )
+                              , [ ConcInstr
+                                    (IRun
+                                       (fromList
+                                          [ ( LocalChan (-7) , LocalChan (-7) )
+                                          , ( LocalChan 0 , LocalChan 9 )
+                                          , ( LocalChan 1 , LocalChan 10 )
+                                          ])
+                                       (CallIx 3)
+                                       0)
+                                ]
+                              )
+                            , ( ( fromList [ LocalChan 8 , LocalChan 10 ] , fromList [] )
+                              , [ ConcInstr (IId (LocalChan 10) (LocalChan 8)) ]
+                              )
+                            ))
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+----------------
+get
+----------------
+ChMQueue 16
+act of output
+[ QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-7)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 2 , _otherQueue = ChMQueue 3 }
+              )
+            , ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 15 , _otherQueue = ChMQueue 14 }
+              )
+            , ( LocalChan 1
+              , OutputLkup
+                  { _activeQueue = ChMQueue 16 , _otherQueue = ChMQueue 17 }
+              )
+            ]
+      , _environment = []
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (ISHPut (LocalChan (-7)) SHPutInt)
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan (-7)))
+          , ConcInstr (ISHPut (LocalChan (-7)) SHGetInt)
+          , ConcInstr (IGet (LocalChan (-7)))
+          , SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 1) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 1))
+          , ConcInstr
+              (IFork
+                 (LocalChan 0)
+                 ( ( LocalChan 6
+                   , fromList [ LocalChan 1 ]
+                   , [ ConcInstr (IId (LocalChan 6) (LocalChan 1)) ]
+                   )
+                 , ( LocalChan 7
+                   , fromList [ LocalChan (-7) ]
+                   , [ ConcInstr (ISplit (LocalChan 7) ( LocalChan 8 , LocalChan 9 ))
+                     , ConcInstr
+                         (IPlug
+                            [ LocalChan 10 ]
+                            ( ( ( fromList [ LocalChan 9 ]
+                                , fromList [ LocalChan (-7) , LocalChan 10 ]
+                                )
+                              , [ ConcInstr
+                                    (IRun
+                                       (fromList
+                                          [ ( LocalChan (-7) , LocalChan (-7) )
+                                          , ( LocalChan 0 , LocalChan 9 )
+                                          , ( LocalChan 1 , LocalChan 10 )
+                                          ])
+                                       (CallIx 3)
+                                       0)
+                                ]
+                              )
+                            , ( ( fromList [ LocalChan 8 , LocalChan 10 ] , fromList [] )
+                              , [ ConcInstr (IId (LocalChan 10) (LocalChan 8)) ]
+                              )
+                            ))
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+ChMQueue 17
+oth of input
+[ QPut (VInt 2) ]
+----------------
+ihcase
+----------------
+ChMQueue 7
+act of input
+[ QPut (VInt 2)
+, QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 2 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+ChMQueue 6
+oth of output
+[ QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-7)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 2 , _otherQueue = ChMQueue 3 }
+              )
+            , ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 15 , _otherQueue = ChMQueue 14 }
+              )
+            , ( LocalChan 1
+              , OutputLkup
+                  { _activeQueue = ChMQueue 16 , _otherQueue = ChMQueue 17 }
+              )
+            ]
+      , _environment = []
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (ISHPut (LocalChan (-7)) SHPutInt)
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan (-7)))
+          , ConcInstr (ISHPut (LocalChan (-7)) SHGetInt)
+          , ConcInstr (IGet (LocalChan (-7)))
+          , SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 1) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 1))
+          , ConcInstr
+              (IFork
+                 (LocalChan 0)
+                 ( ( LocalChan 6
+                   , fromList [ LocalChan 1 ]
+                   , [ ConcInstr (IId (LocalChan 6) (LocalChan 1)) ]
+                   )
+                 , ( LocalChan 7
+                   , fromList [ LocalChan (-7) ]
+                   , [ ConcInstr (ISplit (LocalChan 7) ( LocalChan 8 , LocalChan 9 ))
+                     , ConcInstr
+                         (IPlug
+                            [ LocalChan 10 ]
+                            ( ( ( fromList [ LocalChan 9 ]
+                                , fromList [ LocalChan (-7) , LocalChan 10 ]
+                                )
+                              , [ ConcInstr
+                                    (IRun
+                                       (fromList
+                                          [ ( LocalChan (-7) , LocalChan (-7) )
+                                          , ( LocalChan 0 , LocalChan 9 )
+                                          , ( LocalChan 1 , LocalChan 10 )
+                                          ])
+                                       (CallIx 3)
+                                       0)
+                                ]
+                              )
+                            , ( ( fromList [ LocalChan 8 , LocalChan 10 ] , fromList [] )
+                              , [ ConcInstr (IId (LocalChan 10) (LocalChan 8)) ]
+                              )
+                            ))
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+----------------
+get
+----------------
+ChMQueue 16
+act of output
+[ QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-7)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 2 , _otherQueue = ChMQueue 3 }
+              )
+            , ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 15 , _otherQueue = ChMQueue 14 }
+              )
+            , ( LocalChan 1
+              , OutputLkup
+                  { _activeQueue = ChMQueue 16 , _otherQueue = ChMQueue 17 }
+              )
+            ]
+      , _environment = []
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (ISHPut (LocalChan (-7)) SHPutInt)
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan (-7)))
+          , ConcInstr (ISHPut (LocalChan (-7)) SHGetInt)
+          , ConcInstr (IGet (LocalChan (-7)))
+          , SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 1) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 1))
+          , ConcInstr
+              (IFork
+                 (LocalChan 0)
+                 ( ( LocalChan 6
+                   , fromList [ LocalChan 1 ]
+                   , [ ConcInstr (IId (LocalChan 6) (LocalChan 1)) ]
+                   )
+                 , ( LocalChan 7
+                   , fromList [ LocalChan (-7) ]
+                   , [ ConcInstr (ISplit (LocalChan 7) ( LocalChan 8 , LocalChan 9 ))
+                     , ConcInstr
+                         (IPlug
+                            [ LocalChan 10 ]
+                            ( ( ( fromList [ LocalChan 9 ]
+                                , fromList [ LocalChan (-7) , LocalChan 10 ]
+                                )
+                              , [ ConcInstr
+                                    (IRun
+                                       (fromList
+                                          [ ( LocalChan (-7) , LocalChan (-7) )
+                                          , ( LocalChan 0 , LocalChan 9 )
+                                          , ( LocalChan 1 , LocalChan 10 )
+                                          ])
+                                       (CallIx 3)
+                                       0)
+                                ]
+                              )
+                            , ( ( fromList [ LocalChan 8 , LocalChan 10 ] , fromList [] )
+                              , [ ConcInstr (IId (LocalChan 10) (LocalChan 8)) ]
+                              )
+                            ))
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+ChMQueue 17
+oth of input
+[ QPut (VInt 2)
+, QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 2 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+----------------
+put
+----------------
+ChMQueue 2
+act of output
+[ QSHPut SHPutInt , QPut (VInt 2) ]
+ChMQueue 3
+oth of input
+[]
+----------------
+ihcase
+----------------
+ChMQueue 7
+act of input
+[ QHCase
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 7 , _otherQueue = ChMQueue 6 }
+              )
+            ]
+      , _environment = [ VInt 2 ]
+      , _code = []
+      }
+    (array
+       ( HCaseIx 0 , HCaseIx 2 )
+       [ ( HCaseIx 0
+         , [ ConcInstr (IGet (LocalChan 0))
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 1
+         , [ SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , ConcInstr (IPut (LocalChan 0))
+           , SeqInstr (IAccess 1)
+           , SeqInstr IStore
+           , SeqInstr (IAccess 0)
+           , SeqInstr IStore
+           , ConcInstr
+               (IRun (fromList [ ( LocalChan 0 , LocalChan 0 ) ]) (CallIx 1) 1)
+           ]
+         )
+       , ( HCaseIx 2 , [ ConcInstr (IHalt (LocalChan 0)) ] )
+       ])
+]
+ChMQueue 6
+oth of output
+[]
+----------------
+get
+----------------
+ChMQueue 2
+act of output
+[ QGet
+    Stec
+      { _stack = []
+      , _translation =
+          fromList
+            [ ( LocalChan (-7)
+              , OutputLkup
+                  { _activeQueue = ChMQueue 2 , _otherQueue = ChMQueue 3 }
+              )
+            , ( LocalChan 0
+              , InputLkup
+                  { _activeQueue = ChMQueue 15 , _otherQueue = ChMQueue 14 }
+              )
+            , ( LocalChan 1
+              , OutputLkup
+                  { _activeQueue = ChMQueue 16 , _otherQueue = ChMQueue 17 }
+              )
+            ]
+      , _environment = [ VInt 2 , VInt 2 ]
+      , _code =
+          [ SeqInstr IStore
+          , ConcInstr (IHPut (LocalChan 1) (HCaseIx 0))
+          , SeqInstr (IAccess 0)
+          , SeqInstr IStore
+          , SeqInstr (IAccess 0)
+          , ConcInstr (IPut (LocalChan 1))
+          , ConcInstr
+              (IFork
+                 (LocalChan 0)
+                 ( ( LocalChan 6
+                   , fromList [ LocalChan 1 ]
+                   , [ ConcInstr (IId (LocalChan 6) (LocalChan 1)) ]
+                   )
+                 , ( LocalChan 7
+                   , fromList [ LocalChan (-7) ]
+                   , [ ConcInstr (ISplit (LocalChan 7) ( LocalChan 8 , LocalChan 9 ))
+                     , ConcInstr
+                         (IPlug
+                            [ LocalChan 10 ]
+                            ( ( ( fromList [ LocalChan 9 ]
+                                , fromList [ LocalChan (-7) , LocalChan 10 ]
+                                )
+                              , [ ConcInstr
+                                    (IRun
+                                       (fromList
+                                          [ ( LocalChan (-7) , LocalChan (-7) )
+                                          , ( LocalChan 0 , LocalChan 9 )
+                                          , ( LocalChan 1 , LocalChan 10 )
+                                          ])
+                                       (CallIx 3)
+                                       0)
+                                ]
+                              )
+                            , ( ( fromList [ LocalChan 8 , LocalChan 10 ] , fromList [] )
+                              , [ ConcInstr (IId (LocalChan 10) (LocalChan 8)) ]
+                              )
+                            ))
+                     ]
+                   )
+                 ))
+          ]
+      }
+]
+ChMQueue 3
+oth of input
+[]

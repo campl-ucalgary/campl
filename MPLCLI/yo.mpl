@@ -294,3 +294,38 @@ proc run =
             p1(|           ch0  => ch1 )
             p2(| _console, ch1  =>     )
 -}
+
+
+{-
+protocol InfGetPut => S =
+    InfGetPut :: Get([Char] | S) => S
+
+coprotocol S => Console =
+    ConsolePut :: S => Get( [Char] | S) 
+    ConsoleGet :: S => Put( [Char] | S) 
+    ConsoleClose :: S => TopBot 
+
+proc infgetput :: Char, [Char] |InfGetPut => =
+    tocons, str | ch  => -> hcase ch of 
+        InfGetPut -> case tocons:str of
+            res -> do
+                put res on ch
+                infgetput(tocons, res | ch => )
+        
+
+proc p0 :: | Console => InfGetPut = 
+    | _console => ch -> do
+        hput InfGetPut on ch
+        get n on ch
+
+        hput ConsolePut on _console
+
+        p0( | _console => ch )
+
+
+proc run =
+    | _console => ->  do
+        plug 
+            infgetput('a', "" | ch => )
+            p0( | _console => ch  )
+-}

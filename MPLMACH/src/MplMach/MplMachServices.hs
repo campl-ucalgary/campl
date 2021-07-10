@@ -48,12 +48,16 @@ import Debug.Trace
 data SNInstr
     = SNInt Int
     | SNChar Char
+    | SNString String
 
     | SNGetInt
     | SNPutInt 
 
     | SNGetChar
     | SNPutChar
+
+    | SNGetString
+    | SNPutString
 
     | SNClose
   deriving Show
@@ -188,9 +192,12 @@ recvPipe s = go
 
     * Chars the first byte of the reply is ";"
 
+    * Strings the first byte of the reply is "?", then the length (as an int), then the string.
+
     * Errors the first byte of the reply is "-" 
 
     * Simple strings the first byte of the reply is "+" followed by a string that cannot contain (CRLF)
+        (this is used for sending commands e.g. a close comand)
 
     * We do not support parsing any other values (unclear with how to do this anyways).
 
@@ -199,12 +206,17 @@ recvPipe s = go
 pVal :: A.Parser Val
 pVal = undefined
 
+{-| ":<SOMEINT>\r\n" -}
 pSNInt :: A.Parser Int
 pSNInt = A.char ':' *> A.signed A.decimal <* A.endOfLine
 
 {-| ";<SOMECHAR>\r\n" -}
 pSNChar :: A.Parser Char
 pSNChar = A.char ';' *> A.anyChar <* A.endOfLine
+
+{-| ";<SOMESTRING>\r\n" -}
+pSNString :: A.Parser Char
+pSNString = A.char '?' *> A.anyChar <* A.endOfLine
 
 
 pSNCmd :: A.Parser SNInstr
@@ -288,20 +300,3 @@ serviceThread chlkup = loop
                 loop
 
             SHClose -> return ()
-
-    -- N.B. Note we make some assumptoins as given in the
-    -- assembler -- lists have 
-    --
-    --      - Cons as ix 0
-    --      - Empty as ix 1
-    --
-    -- Unfortunately, this is a bit hard coded....
-    strToVal = foldr 
-        (\c acc -> VCons (CaseIx 0) [VChar c, acc]) 
-        (VCons (CaseIx 1) [])
-
-    valToStr (VCons _ [VChar c, acc]) =  c : valToStr acc
-    valToStr (VCons _ []) =  []
-    valToStr bad = error $ "bad string: " ++ PrettyShow.ppShow bad
-    
-

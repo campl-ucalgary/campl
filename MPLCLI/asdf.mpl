@@ -280,3 +280,103 @@ proc run :: | => IntTerminal , IntTerminal =
             p1(| => passer, _inpterm0)
             p2(| passer => _inpterm1, mem)
             memory(100 | mem => )
+
+{-
+protocol IntTerminal => C =
+    IntTerminalGet :: Get(Int | C) => C
+    IntTerminalPut :: Put(Int | C) => C
+    IntTerminalClose :: TopBot => C
+
+-- infinite memory cell 
+protocol Mem(M|) => S =
+    MemPut :: Put(M|S) => S
+    MemGet :: Get(M|S) => S
+    MemCls :: TopBot => S
+
+protocol Passer(|P) => S =
+    Passer :: P (+) (Neg(P) (*) S) => S
+
+protocol InfGetPut => S =
+    InfGet :: Get(Int | S) => S
+    InfPut :: Put(Int | S) => S
+
+
+proc infgetput :: Int | InfGetPut => IntTerminal =
+    n | ch  => _intterm -> hcase ch of 
+        InfGet -> case n + 2 of
+            res -> do
+                put res on ch
+                infgetput(res | ch => _intterm)
+        InfPut -> do
+            get nn on ch
+
+            hput IntTerminalPut on _intterm
+            put nn on _intterm
+
+
+            infgetput(nn | ch => _intterm )
+
+proc memory :: A | Mem(A|) => =
+    x | ch => -> do
+        hcase ch of
+            MemPut -> do
+                get y on ch
+                memory(y | ch => )
+            MemGet -> do
+                put x on ch
+                memory(x | ch => )
+            MemCls -> do
+                halt ch
+
+proc p1 :: | => Passer(|Mem(Int|)), InfGetPut = 
+    | => passer, infgetch -> do
+        hput Passer on passer
+        split passer into mm,nmpp
+        hput MemGet on mm 
+        get y on mm
+
+        hput InfPut on infgetch
+        put y on infgetch
+        hput InfGet on infgetch
+        get x on infgetch
+
+        hput MemPut on mm
+        put x on mm
+        fork nmpp as
+            nm with mm -> nm |=| neg mm
+            pp with infgetch -> p1(| => pp, infgetch)
+
+proc p2 :: | Passer(| Mem(Int|)) => InfGetPut, Mem(Int|) =
+    | passer => infgetch, mem -> do
+        hcase passer of
+            Passer -> do
+                hput MemGet on mem
+                get y on mem
+
+                hput InfPut on infgetch
+                put y on infgetch
+
+                hput InfGet on infgetch
+                get x on infgetch
+
+                hput MemPut on mem
+                put x on mem
+                fork passer as
+                    mm with mem -> do
+                        mm |=| mem
+                    nmpp with infgetch -> do
+                        split nmpp into nm, pp
+                        plug
+                            p2( | pp => infgetch,z)
+                            z,nm => -> z |=| neg nm
+
+
+proc run =
+    | => _intterm0, _intterm1-> do
+        plug 
+            infgetput(0 | infget0 => _intterm0)
+            infgetput(1 | infget1 => _intterm1)
+            p1(| => passer, infget0)
+            p2(| passer => infget1, mem)
+            memory(100 | mem => )
+-}

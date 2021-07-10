@@ -105,17 +105,17 @@ instance PprintMplPassesErrors MplPassesErrors where
       where
         go :: MplPassesErrors -> [MplDoc]
         go (MplBnfcErrors (B.BnfcParseError err)) = 
-            [ indent' $ pretty err ] 
+            wrap $ pretty err
         go (MplParseErrors err) = 
-            [ indent' $ P.pprintParseErrors err ]
+            wrap $ P.pprintParseErrors err 
         go (MplRenameErrors err) = 
-            [ indent' $ R.pprintRenameErrors err ]
+            wrap $ R.pprintRenameErrors err
         go (MplTypeCheckErrors err) = 
-            [ indent' $ T.pprintTypeCheckErrors err ]
+            wrap $ T.pprintTypeCheckErrors err 
         go (MplPatternCompilationErrors err) = 
-            [ indent' $ PC.pprintPatternCompileErrors err ]
+            wrap $ PC.pprintPatternCompileErrors err 
 
-        indent' = indent 4
+        wrap n = [ pretty "●" <> indent 2 n]
 
 instance PprintMplPassesErrors a => PprintMplPassesErrors [a] where
     pprintMplPassesErrors = vsep . map pprintMplPassesErrors

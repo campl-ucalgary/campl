@@ -35,6 +35,7 @@ data DumpOpt
     | PatternCompiled
     | LambdaLifted
     | Assembled
+    | AssembledAst
   deriving (Show, Eq, Enum)
 
 -- | List of all dump options.
@@ -51,6 +52,7 @@ dumpOptShowOptions dumpopt = case dumpopt of
     PatternCompiled -> "pattern-compiled"
     LambdaLifted -> "lambda-lifted"
     Assembled -> "assembled"
+    AssembledAst -> "assembled-ast"
 
 data Flag
     = Inp FilePath
