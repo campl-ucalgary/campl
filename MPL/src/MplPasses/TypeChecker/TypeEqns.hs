@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE BangPatterns #-}
@@ -43,7 +44,7 @@ import Control.Monad.Reader
 import Control.Monad.Except
 import Control.Monad
 
-import Control.Arrow
+import Control.Arrow hiding ((<+>))
 
 import Data.Functor.Foldable.TH
 import Data.Functor.Foldable (Base, cata, embed)
@@ -256,10 +257,10 @@ matchCont ty0 ty1 k = f ty0 ty1
     -- The idea is that @Neg(x)@ (where @x@ is a variable) matched against
     -- anything is is potentially a match, since @x@ could be potentially
     -- substituted for something like @x = Neg(y)@.
-    f (TypeBuiltIn (TypeNegF cxt0 (TypeVar _ a))) b =
-        fmap pure $ mkValidSub a $ TypeBuiltIn $ TypeNegF cxt0 b
-    f a (TypeBuiltIn (TypeNegF cxt1 (TypeVar _ b))) =
-        fmap pure $ mkValidSub b $ TypeBuiltIn $ TypeNegF cxt1 a
+    -- TODO: If it is x = Neg(y), we need to make this x = Neg(y) and NOT 
+    -- change this to y = Neg(x).
+    f (TypeBuiltIn (TypeNegF cxt0 (TypeVar _ a))) b = fmap pure $ mkValidSub a $ TypeBuiltIn $ TypeNegF cxt0 b
+    f a (TypeBuiltIn (TypeNegF cxt1 (TypeVar _ b))) = fmap pure $ mkValidSub b $ TypeBuiltIn $ TypeNegF cxt1 a
 
     f type0@(TypeSeqWithArgs _cxt0 a args) type1@(TypeSeqWithArgs _cxt1 b brgs) 
         | a == b && length args == length brgs =
@@ -819,11 +820,14 @@ pprintTypeUnificationError = go
     go ty = case ty of 
         TypeMatchFailure tp0 tp1 -> fold
             [ pretty "Match failure with types"
-            , codeblock
-                $ pprintParsed tp0
+            , codeblock $ pprintParsed tp0
             , pretty "and"
-            , codeblock
-                $ pprintParsed tp1
+            , codeblock $ pprintParsed tp1
+
+            , pretty "arising from" 
+                <+> anninfo tp0
+                <+> pretty "and"
+                <+> anninfo tp1
             ]
         TypeOccursCheck tpp tp0 -> fold
             [ pretty "Occurs check failure with"
@@ -832,6 +836,9 @@ pprintTypeUnificationError = go
             , pretty "and"
             , codeblock
                 $ pprintParsed tp0
+
+            , pretty "arising from" 
+                <+> anninfo tp0
             ]
         TypeForallMatchFailure given inferred -> fold
             [ pretty "Could not match user provided type with inferred type. The given type was"
@@ -840,4 +847,94 @@ pprintTypeUnificationError = go
             , pretty "and this could not be matched with the inferred type"
             , codeblock
                 $ pprintParsed inferred
+
+            , pretty "arising from" 
+                <+> anninfo given
+                <+> pretty "and"
+                <+> anninfo inferred
             ]
+
+    anninfo :: MplType MplTypeSub -> MplDoc
+    anninfo = unwraploc . \case
+        TypeVar cxt _ -> fmap anntodoc cxt
+        TypeWithNoArgs cxt _ -> fmap anntodoc $ fst cxt
+        TypeSeqWithArgs cxt _ _ -> fmap anntodoc $ fst cxt
+        TypeConcWithArgs cxt _ _ -> fmap anntodoc $ fst cxt
+        TypeBuiltIn res -> case res of
+            TypeIntF cxt -> fmap anntodoc cxt
+            TypeCharF cxt -> fmap anntodoc cxt
+            TypeDoubleF cxt -> fmap anntodoc cxt
+
+            TypeGetF cxt _ _ -> fmap anntodoc cxt
+            TypePutF cxt _ _ -> fmap anntodoc cxt
+            TypeTensorF cxt _ _ -> fmap anntodoc cxt
+            TypeParF cxt _ _ -> fmap anntodoc cxt
+            TypeNegF cxt _ -> fmap anntodoc cxt
+            TypeTopBotF cxt -> fmap anntodoc cxt
+
+            TypeUnitF cxt -> fmap anntodoc cxt
+            TypeBoolF cxt -> fmap anntodoc cxt
+            TypeListF cxt _ -> fmap anntodoc cxt
+            TypeTupleF cxt _ -> fmap anntodoc cxt
+
+            TypeSeqArrF cxt _ _ -> fmap anntodoc cxt
+            TypeConcArrF cxt _ _ _ -> fmap anntodoc cxt
+
+      where
+        unwraploc = fromMaybe nolocationinfo 
+
+    nolocationinfo = pretty "<no annotation information>"
+
+    {-
+    annchtodoc :: TypeChAnn -> MplDoc
+    annchtodoc = \case 
+        TypeChAnnNameOcc nameocc -> nameocc ^. nameStr % to (pretty . pprintParsed) <+> pretty "at" <+> nameocc ^. nameOccLocation % to loctodoc 
+        TypeChAnnCmd cmd -> fold
+            [ pretty "the following command"
+            , codeblock $ pprintParsed cmd
+            ]   
+    -}
+
+    anntodoc :: TypeAnn -> MplDoc
+    anntodoc = fold . \case
+        TypeAnnFun fun -> 
+            [ pretty "function"
+            , codeblock $ fun ^. funName % to pprintParsed 
+            , pretty "at" <+> fun ^. funName % nameOccLocation % to loctodoc 
+            ]
+        TypeAnnProc proc -> 
+            [ pretty "process"
+            , codeblock $ proc ^. procName % to pprintParsed 
+            , pretty "at" <+> proc ^. procName % nameOccLocation % to loctodoc 
+            ]
+        TypeAnnProcPhrase phrase ->
+            [ pretty "process phrase"
+            , codeblock $ pprintParsed phrase
+            ]
+        TypeAnnFunPhrase phrase ->
+            [ pretty "function phrase"
+            , codeblock $ pprintParsed phrase
+            ]
+        TypeAnnCmd cmd ->
+            [ pretty "command"
+            , codeblock $ pprintParsed cmd
+            ]
+        TypeAnnExpr expr ->
+            [ pretty "expression"
+            , codeblock $ pprintParsed expr
+            ]
+        TypeAnnPatt patt ->
+            [ pretty "pattern"
+            , codeblock $ pprintParsed patt
+            ]
+        TypeAnnCh ch ->
+            [ pretty "channel"
+            , codeblock $ pprintParsed ch
+            , pretty "at" <+> ch ^. nameOccLocation % to loctodoc
+            ]
+
+    loctodoc (Location (r,c)) = pretty "row"
+        <+> pretty r
+        <+> pretty "and column"
+        <+> pretty c
+

@@ -54,7 +54,6 @@ $(makePrisms ''IdentR)
 instance Eq IdentR where
     a == b = a ^. identRUniqueTag == b ^. identRUniqueTag
 
-
 instance Ord IdentR where
     a <= b = a ^. identRUniqueTag <= b ^. identRUniqueTag
 
@@ -73,6 +72,10 @@ instance HasLocation IdentR where
 instance HasNamespace IdentR where
     namespace = identP % namespace
 
+
+instance HasNameOcc IdentR where
+    nameOcc = identRIdentP % identPNameOcc 
+
 data ChIdentR = ChIdentR {
     _chIdentRIdentR :: IdentR
     , _chIdentRPolarity :: Polarity
@@ -89,6 +92,9 @@ instance Ord ChIdentR where
 
 instance HasIdentR ChIdentR where
     identR = chIdentRIdentR
+
+instance HasNameOcc ChIdentR where
+    nameOcc = identR % nameOcc
 
 instance HasPolarity ChIdentR where
     polarity = chIdentRPolarity

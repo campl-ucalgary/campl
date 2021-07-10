@@ -56,13 +56,13 @@ type instance IdP MplTypeSub = IdP MplTypeChecked
 type instance TypeP MplTypeSub = TypeIdentT
 
 type instance XMplType MplTypeSub = MplType MplTypeChecked
-type instance XTypeSeqWithArgs MplTypeSub = ((), MplSeqObjDefn MplTypeCheckedClause )
+type instance XTypeSeqWithArgs MplTypeSub = (Maybe TypeAnn, MplSeqObjDefn MplTypeCheckedClause )
 type instance XTypeSeqVarWithArgs MplTypeSub = Void
-type instance XTypeConcWithArgs MplTypeSub = ((), MplConcObjDefn MplTypeCheckedClause )
+type instance XTypeConcWithArgs MplTypeSub = (Maybe TypeAnn, MplConcObjDefn MplTypeCheckedClause )
 type instance XTypeConcVarWithArgs  MplTypeSub = Void
 
 type instance XTypeVar MplTypeSub = Maybe TypeAnn
-type instance XTypeWithNoArgs MplTypeSub = MplObjectDefn MplTypeCheckedClause
+type instance XTypeWithNoArgs MplTypeSub = (Maybe TypeAnn, MplObjectDefn MplTypeCheckedClause)
 type instance XXType MplTypeSub = Void
 type instance XTypeIntF MplTypeSub = Maybe TypeAnn
 type instance XTypeDoubleF MplTypeSub = Maybe TypeAnn
@@ -71,14 +71,14 @@ type instance XTypeCharF MplTypeSub = Maybe TypeAnn
 type instance XTypeUnitF MplTypeSub = Maybe TypeAnn
 type instance XTypeBoolF MplTypeSub = Maybe TypeAnn
 type instance XTypeListF MplTypeSub = Maybe TypeAnn
-type instance XTypeTupleF MplTypeSub = Maybe NameOcc
+type instance XTypeTupleF MplTypeSub = Maybe TypeAnn
 
-type instance XTypeGet MplTypeSub = TypeChAnn
-type instance XTypePut MplTypeSub = TypeChAnn
-type instance XTypeTensor MplTypeSub = TypeChAnn
-type instance XTypePar MplTypeSub = TypeChAnn
-type instance XTypeTopBot MplTypeSub = TypeChAnn
-type instance XTypeNeg MplTypeSub = TypeChAnn
+type instance XTypeGet MplTypeSub = Maybe TypeAnn
+type instance XTypePut MplTypeSub = Maybe TypeAnn
+type instance XTypeTensor MplTypeSub = Maybe TypeAnn
+type instance XTypePar MplTypeSub = Maybe TypeAnn
+type instance XTypeTopBot MplTypeSub = Maybe TypeAnn
+type instance XTypeNeg MplTypeSub = Maybe TypeAnn
 type instance XTypeSeqArrF MplTypeSub = 
     Maybe TypeAnn -- Maybe ([MplPattern MplRenamed], MplExpr MplRenamed)
 type instance XTypeConcArrF MplTypeSub = 
@@ -107,8 +107,8 @@ freshInstantiateArrEnv = do
 
 runInstantiateArrType :: 
     State InstantiateArrEnv a -> InstantiateArrEnv -> ([TypeP MplTypeSub], a)
-runInstantiateArrType act = 
-    first (toListOf (instantiateArrEnvInstantiated % folded)) 
+runInstantiateArrType act 
+    = first (toListOf (instantiateArrEnvInstantiated % folded)) 
     . swap 
     . runState act 
 
@@ -158,9 +158,9 @@ instance TypeP MplTypeChecked ~ tp => InstantiateArrType ([tp], [MplType MplType
         return $ 
             _TypeConcArrF # 
                 ( ann 
-                , fromJust (traverse (instantiateTypeWithSubs subs) seqs)
-                , fromJust (traverse (instantiateTypeWithSubs subs) ins)
-                , fromJust (traverse (instantiateTypeWithSubs subs) outs)
+                , fromJust (traverse (instantiateTypeWithSubs ann subs) seqs)
+                , fromJust (traverse (instantiateTypeWithSubs ann subs) ins)
+                , fromJust (traverse (instantiateTypeWithSubs ann subs) outs)
                 )
 
 instance InstantiateArrType (MplType MplTypeSub) where
@@ -171,7 +171,7 @@ instance TypeP MplTypeChecked ~ tp => InstantiateArrType ([tp], [MplType MplType
         updateInstantiated tpvars
         subs <- getInstantiatedSubs
         -- TODO: this actually will not preserve the annotation information here...
-        return $ fromJust $ instantiateTypeWithSubs subs to
+        return $ fromJust $ instantiateTypeWithSubs ann subs to
         
     instantiateArrType ann (tpvars, froms, to) = do
         updateInstantiated tpvars
@@ -179,8 +179,8 @@ instance TypeP MplTypeChecked ~ tp => InstantiateArrType ([tp], [MplType MplType
         return $ 
             _TypeSeqArrF # 
                 ( ann
-                , NE.fromList $ fromJust $ traverse (instantiateTypeWithSubs subs) froms
-                , fromJust $ instantiateTypeWithSubs subs to
+                , NE.fromList $ fromJust $ traverse (instantiateTypeWithSubs ann subs) froms
+                , fromJust $ instantiateTypeWithSubs ann subs to
                 )
 
 instance TypeP MplTypeChecked ~ tp => InstantiateArrType ([tp], ([MplType MplTypeChecked], MplType MplTypeChecked), MplType MplTypeChecked) where
@@ -188,41 +188,42 @@ instance TypeP MplTypeChecked ~ tp => InstantiateArrType ([tp], ([MplType MplTyp
         instantiateArrType ann (tpvars, froms ++[st], to)
 
 instantiateTypeWithSubs ::
+    Maybe TypeAnn -> 
     [(TypeP MplTypeChecked, MplType MplTypeSub)] ->
     MplType MplTypeChecked ->
     Maybe (MplType MplTypeSub)
-instantiateTypeWithSubs sublist = cata f
+instantiateTypeWithSubs ann sublist = cata f
   where
     f :: Base (MplType MplTypeChecked) 
         (Maybe (MplType MplTypeSub)) -> Maybe (MplType MplTypeSub)
     f (TypeVarF cxt typep) = return $ fromMaybe 
         -- TODO: I can't really remember how to annotate types rn
         -- but perhaps it would be better to give an annotation here.
-        (TypeVar Nothing
+        (TypeVar ann
             (TypeIdentT (TypeTag $ typep ^. uniqueTag) 
             $ TypeIdentTInfoTypeVar typep)
         )
         (lookup typep sublist)
-    f (TypeWithNoArgsF cxt id) = return $ TypeWithNoArgs cxt id
+    f (TypeWithNoArgsF cxt id) = return $ TypeWithNoArgs (ann, cxt) id
     f (TypeSeqWithArgsF cxt id args) =
-        TypeSeqWithArgs (mempty, cxt) id <$> sequenceA args 
+        TypeSeqWithArgs (ann, cxt) id <$> sequenceA args 
     f (TypeConcWithArgsF cxt id args) =
-        TypeConcWithArgs (mempty, cxt) id <$> traverseOf each sequenceA args 
+        TypeConcWithArgs (ann, cxt) id <$> traverseOf each sequenceA args 
     f (TypeBuiltInF rst) = case rst of
         -- TODO: we can preserve some error information here.
-        TypeIntF cxt -> return $ _TypeIntF # Nothing
-        TypeDoubleF cxt -> return $ _TypeDoubleF # Nothing
-        TypeCharF cxt -> return $ _TypeCharF # Nothing
-        TypeBoolF cxt -> return $ _TypeBoolF # Nothing
-        TypeUnitF cxt -> return $ _TypeUnitF # Nothing
+        TypeIntF cxt -> return $ _TypeIntF # ann
+        TypeDoubleF cxt -> return $ _TypeDoubleF # ann
+        TypeCharF cxt -> return $ _TypeCharF # ann
+        TypeBoolF cxt -> return $ _TypeBoolF # ann
+        TypeUnitF cxt -> return $ _TypeUnitF # ann
         TypeListF cxt rst -> do
             rst' <- rst
-            return $ _TypeListF # (Nothing, rst')
+            return $ _TypeListF # (ann, rst')
 
 
         TypeTupleF cxt (t0,t1,ts) -> do
             ~(t0':t1':ts') <- sequenceA $ t0:t1:ts
-            return $ _TypeTupleF # (cxt, (t0',t1',ts'))
+            return $ _TypeTupleF # (ann, (t0',t1',ts'))
 
         TypeGetF cxt seq conc -> do
             seq' <- seq
@@ -250,7 +251,8 @@ instantiateTypeWithSubs sublist = cata f
         TypeTopBotF cxt -> 
             return $ _TypeTopBotF # annotate cxt
       where
-        annotate cxt = fromMaybe (_TypeChAnnEmpty # ()) $ review _TypeChAnnNameOcc <$> cxt
+        -- normally, we don't care about the annotaiotn nomrally provided.. it should be replaced
+        annotate cxt = ann -- review _TypeChAnnNameOcc <$> cxt
 
     -- f (TypeBuiltInF rst) = TypeBuiltIn . embedBuiltInTypes <$> sequenceA rst 
 
@@ -367,10 +369,6 @@ instance AnnotateTypeTagToTypeP TypeT where
       where
         ann = _TypeIdentTInfoTypeVar # tpt
 
-instance AnnotateTypeTagToTypeP () where
-    annotateTypeTag tag tpt =  _TypeIdentT # (tag, ann)
-      where
-        ann =  _TypeIdentTInfoTypeAnn % _TypeAnnEmpty # tpt
 
 
 -- the two lists should be the same size

@@ -200,7 +200,7 @@ higherOrderCheck notscoped tp
     f :: Base (MplType MplTypeSub) (MplType MplTypeSub, _ (Maybe (MplType MplTypeChecked))) ->
         (_ (Maybe (MplType MplTypeChecked)))
     f  (TypeVarF cxt n) = return $ Just $ TypeVar Nothing (typeIdentTToTypeT n)
-    f  (TypeWithNoArgsF cxt n) = return $ Just $ TypeWithNoArgs cxt n
+    f  (TypeWithNoArgsF cxt n) = return $ Just $ TypeWithNoArgs (snd cxt) n
     f  (TypeSeqWithArgsF cxt n args) = do
         args' <- traverse snd args
         return $ TypeSeqWithArgs (snd cxt) n <$> sequenceA args'
@@ -231,7 +231,8 @@ higherOrderCheck notscoped tp
                     <*> sequenceA ts'
 
             TypeTopBotF cxt -> return $ _Just % _TypeTopBotF # 
-                (cxt ^? _TypeChAnnNameOcc)
+                Nothing
+                -- (cxt ^? _TypeChAnnNameOcc)
 
             TypeGetF cxt (_, seq) (_, conc) -> do
                 seq' <- seq
@@ -239,7 +240,8 @@ higherOrderCheck notscoped tp
                 return $ do
                     seq'' <- seq'
                     conc'' <- conc'
-                    return $ _TypeGetF # (cxt ^? _TypeChAnnNameOcc, seq'', conc'')
+                    -- return $ _TypeGetF # (cxt ^? _TypeChAnnNameOcc, seq'', conc'')
+                    return $ _TypeGetF # (Nothing, seq'', conc'')
             -- duplicatedcode..
             TypePutF cxt (_, seq) (_, conc) -> do
                 seq' <- seq
@@ -247,7 +249,8 @@ higherOrderCheck notscoped tp
                 return $ do
                     seq'' <- seq'
                     conc'' <- conc'
-                    return $ _TypePutF # (cxt ^? _TypeChAnnNameOcc, seq'', conc'')
+                    -- return $ _TypePutF # (cxt ^? _TypeChAnnNameOcc, seq'', conc'')
+                    return $ _TypePutF # (Nothing, seq'', conc'')
 
             TypeTensorF cxt (_, a) (_, b) -> do
                 a' <- a
@@ -255,14 +258,16 @@ higherOrderCheck notscoped tp
                 return $ do
                     a'' <- a'
                     b'' <- b'
-                    return $ _TypeTensorF # (cxt ^? _TypeChAnnNameOcc, a'', b'')
+                    -- return $ _TypeTensorF # (cxt ^? _TypeChAnnNameOcc, a'', b'')
+                    return $ _TypeTensorF # (Nothing, a'', b'')
             TypeParF cxt (_, a) (_, b) -> do
                 a' <- a
                 b' <- b
                 return $ do
                     a'' <- a'
                     b'' <- b'
-                    return $ _TypeParF # (cxt ^? _TypeChAnnNameOcc, a'', b'')
+                    -- return $ _TypeParF # (cxt ^? _TypeChAnnNameOcc, a'', b'')
+                    return $ _TypeParF # (Nothing, a'', b'')
 
             TypeSeqArrF cxt froms to -> do
                 tell [ _IllegalHigherOrderFunction # (fmap fst froms, fst to) ]
@@ -272,17 +277,17 @@ higherOrderCheck notscoped tp
                 tp' <- tp
                 return $ do
                     tp'' <- tp'
-                    return $ _TypeNegF # (cxt ^? _TypeChAnnNameOcc, tp'') 
+                    -- return $ _TypeNegF # (cxt ^? _TypeChAnnNameOcc, tp'') 
+                    return $ _TypeNegF # (Nothing, tp'') 
 
 
 class MkTypeSubSeqArr t where
-    mkTypeSubSeqArr :: t -> MplType MplTypeSub
+    mkTypeSubSeqArr :: Maybe TypeAnn -> t -> MplType MplTypeSub
 
 instance MkTypeSubSeqArr ([MplType MplTypeSub], MplType MplTypeSub) where
-    mkTypeSubSeqArr ([], to) = to
-    mkTypeSubSeqArr (froms, to) = _TypeSeqArrF # 
-        (Nothing, NE.fromList froms, to)
+    mkTypeSubSeqArr ann ([], to) = to
+    mkTypeSubSeqArr ann (froms, to) = _TypeSeqArrF # 
+        (ann, NE.fromList froms, to)
 
 instance MkTypeSubSeqArr ([TypeIdentT], TypeIdentT) where
-    mkTypeSubSeqArr (froms, to) = mkTypeSubSeqArr 
-        (map typePtoTypeVar froms, typePtoTypeVar to)
+    mkTypeSubSeqArr ann (froms, to) = mkTypeSubSeqArr ann (map typePtoTypeVar froms, typePtoTypeVar to)

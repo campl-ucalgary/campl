@@ -353,7 +353,7 @@ typeCheckFunBody bdy@(patts, expr) = do
         eqn = TypeEqnsExist (ttypepexpr:ttypeppatts) $
                 [ TypeEqnsEq 
                     ( typePtoTypeVar ttypep
-                    , mkTypeSubSeqArr 
+                    , mkTypeSubSeqArr (_Just % _TypeAnnFunPhrase # bdy)
                         ( map typePtoTypeVar ttypeppatts
                         , typePtoTypeVar ttypepexpr )
                     )
@@ -580,7 +580,7 @@ typeCheckExpr = para f
                 [ TypeEqnsEq 
                     ( typePtoTypeVar ttypep
                     , _TypeTupleF # 
-                        ( _Just % _NameOcc # (tupleName (2 + length ts), cxt)
+                        ( _Just % _TypeAnnExpr # tuplexpr
                         , 
                             ( typePtoTypeVar ttypept0
                             , typePtoTypeVar ttypept1
@@ -843,11 +843,11 @@ typeCheckExpr = para f
                     let (freevars, froms, to) = fromJust $ lkuptp ^? _SymDataPhrase % originalType 
                     subs <- updateInstantiatedAndGetSubs freevars
                        
-                    return ( fromJust $ traverse (instantiateTypeWithSubs subs) froms
-                           , fromJust $ instantiateTypeWithSubs subs to
+                    return ( fromJust $ traverse (instantiateTypeWithSubs (_Just % _TypeAnnExpr # foldexpr) subs) froms
+                           , fromJust $ instantiateTypeWithSubs (_Just % _TypeAnnExpr # foldexpr) subs to
                            , seqdef ^. typePhraseExt % Optics.to 
                                 ( fromJust 
-                                . instantiateTypeWithSubs subs
+                                . instantiateTypeWithSubs (_Just % _TypeAnnExpr # foldexpr) subs
                                 . typeClauseToMplType 
                                 )
                            )
@@ -877,8 +877,8 @@ typeCheckExpr = para f
                         -- as the clause of the first fold phrase....
                         , TypeEqnsEq (typePtoTypeVar ttypepfoldon,  ttypeclause) 
                         , TypeEqnsEq 
-                            ( mkTypeSubSeqArr (map typePtoTypeVar ttypeppatts, typePtoTypeVar ttypepexpr)  
-                            , mkTypeSubSeqArr (ttypepfroms, ttypestvar)  
+                            ( mkTypeSubSeqArr (_Just % _TypeAnnExpr # foldexpr) (map typePtoTypeVar ttypeppatts, typePtoTypeVar ttypepexpr)  
+                            , mkTypeSubSeqArr (_Just % _TypeAnnExpr # foldexpr) (ttypepfroms, ttypestvar)  
                             )
                         ] 
                         <> expreqns
@@ -905,8 +905,8 @@ typeCheckExpr = para f
                             let (freevars, froms, to) = fromJust $ lkuptp ^? _SymDataPhrase % originalType 
                             subs <- updateInstantiatedAndGetSubs freevars
                                
-                            return ( fromJust $ traverse (instantiateTypeWithSubs subs) froms
-                                   , fromJust $ instantiateTypeWithSubs subs to)
+                            return ( fromJust $ traverse (instantiateTypeWithSubs (_Just % _TypeAnnExpr # foldexpr) subs) froms
+                                   , fromJust $ instantiateTypeWithSubs (_Just % _TypeAnnExpr # foldexpr) subs to)
 
                         (ttypepatts, (patts', pattseqns)) <- lift 
                             $ fmap (second unzip <<< unzip) 
@@ -920,8 +920,8 @@ typeCheckExpr = para f
                             phraseeqn = TypeEqnsExist (ttypepexpr : ttypeppatts) $ 
                                 -- patterns should match the type of constructor without 
                                 [ TypeEqnsEq 
-                                    ( mkTypeSubSeqArr (map typePtoTypeVar ttypeppatts, typePtoTypeVar ttypepexpr)  
-                                    , mkTypeSubSeqArr (ttypepfroms, ttypestvar)  
+                                    ( mkTypeSubSeqArr (_Just % _TypeAnnExpr # foldexpr) (map typePtoTypeVar ttypeppatts, typePtoTypeVar ttypepexpr)  
+                                    , mkTypeSubSeqArr (_Just % _TypeAnnExpr # foldexpr) (ttypepfroms, ttypestvar)  
                                     )
                                 ] 
                                 <> expreqns
@@ -980,7 +980,7 @@ typeCheckExpr = para f
                 let ttypepunfoldonpatt = annotateTypeTag ttypeunfoldonpatt unfoldonpatt
 
                 ttypesubphrase <- freshTypeTag
-                let ttypepsubphrase = annotateTypeTag ttypesubphrase ()
+                let ttypepsubphrase = annotateTypeTag ttypesubphrase unfoldexpr
 
                 -- need to compute the reachable phrases..
                 ~seqdef <- lift 
@@ -1017,12 +1017,12 @@ typeCheckExpr = para f
                         let (freevars, (froms, st), to) = fromJust $ lkuptp ^? _SymCodataPhrase % originalType 
                         subs <- updateInstantiatedAndGetSubs freevars
                            
-                        return ( fromJust $ traverse (instantiateTypeWithSubs subs) froms
-                               , fromJust $ instantiateTypeWithSubs subs st
-                               , fromJust $ instantiateTypeWithSubs subs to
+                        return ( fromJust $ traverse (instantiateTypeWithSubs (_Just % _TypeAnnExpr # unfoldexpr) subs) froms
+                               , fromJust $ instantiateTypeWithSubs (_Just % _TypeAnnExpr # unfoldexpr) subs st
+                               , fromJust $ instantiateTypeWithSubs (_Just % _TypeAnnExpr # unfoldexpr) subs to
                                , seqdef ^. typePhraseExt % Optics.to 
                                     ( fromJust 
-                                    . instantiateTypeWithSubs subs
+                                    . instantiateTypeWithSubs (_Just % _TypeAnnExpr # unfoldexpr) subs
                                     . typeClauseToMplType 
                                     )
                                )
@@ -1048,8 +1048,8 @@ typeCheckExpr = para f
                             , TypeEqnsEq (typePtoTypeVar ttypepunfoldonpatt, typePtoTypeVar ttypepunfoldonexpr) 
                             -- of course, we need the patternsand the expression sto match
                             , TypeEqnsEq 
-                                ( mkTypeSubSeqArr (map typePtoTypeVar ttypeppatts, typePtoTypeVar ttypepexpr)  
-                                , mkTypeSubSeqArr (ttypepfroms, ttypeto)  
+                                ( mkTypeSubSeqArr (_Just % _TypeAnnExpr # unfoldexpr) (map typePtoTypeVar ttypeppatts, typePtoTypeVar ttypepexpr)  
+                                , mkTypeSubSeqArr (_Just % _TypeAnnExpr # unfoldexpr) (ttypepfroms, ttypeto)  
                                 )
                             -- Think of this subphrase like case.. Each of these 
                             -- expressions must be the same..
@@ -1074,7 +1074,7 @@ typeCheckExpr = para f
                         let ttypepunfoldonpatt = annotateTypeTag ttypeunfoldonpatt unfoldonpatt
 
                         ttypesubphrase <- freshTypeTag
-                        let ttypepsubphrase = annotateTypeTag ttypesubphrase ()
+                        let ttypepsubphrase = annotateTypeTag ttypesubphrase unfoldexpr
                         
                         (phrasesubphrases', phrasesubphraseseqns) <- fmap NE.unzip $ for phrasesubphrases $ \(cxt, ident, patts, (expr, mexpr)) -> do
                             ~(SymEntry lkuptp seqdef) <- lift $ fmap fromJust 
@@ -1093,12 +1093,12 @@ typeCheckExpr = para f
                                 let (freevars, (froms, st), to) = fromJust $ lkuptp ^? _SymCodataPhrase % originalType 
                                 subs <- updateInstantiatedAndGetSubs freevars
                                    
-                                return ( fromJust $ traverse (instantiateTypeWithSubs subs) froms
-                                       , fromJust $ instantiateTypeWithSubs subs st
-                                       , fromJust $ instantiateTypeWithSubs subs to
+                                return ( fromJust $ traverse (instantiateTypeWithSubs (_Just % _TypeAnnExpr # expr) subs) froms
+                                       , fromJust $ instantiateTypeWithSubs (_Just % _TypeAnnExpr # expr) subs st
+                                       , fromJust $ instantiateTypeWithSubs (_Just % _TypeAnnExpr # expr) subs to
                                        , seqdef ^. typePhraseExt % Optics.to 
                                             ( fromJust 
-                                            . instantiateTypeWithSubs subs
+                                            . instantiateTypeWithSubs (_Just % _TypeAnnExpr # expr) subs
                                             . typeClauseToMplType 
                                             )
                                        )
@@ -1118,8 +1118,8 @@ typeCheckExpr = para f
                                     [ TypeEqnsEq (typePtoTypeVar ttypepunfoldonpatt, ttypestvar) 
                                     -- of course, we need the patternsand the expression sto match
                                     , TypeEqnsEq 
-                                        ( mkTypeSubSeqArr (map typePtoTypeVar ttypeppatts, typePtoTypeVar ttypepexpr)  
-                                        , mkTypeSubSeqArr (ttypepfroms, ttypeto)  
+                                        ( mkTypeSubSeqArr (_Just % _TypeAnnExpr # unfoldexpr) (map typePtoTypeVar ttypeppatts, typePtoTypeVar ttypepexpr)  
+                                        , mkTypeSubSeqArr (_Just % _TypeAnnExpr # unfoldexpr) (ttypepfroms, ttypeto)  
                                         )
                                     -- Think of this subphrase like case.. Each of these 
                                     -- expressions must be the same..
@@ -1222,7 +1222,7 @@ typeCheckExpr = para f
 
             eqns = TypeEqnsExist (ttypesphrase ++ ttypepargs) $
                 [ TypeEqnsEq 
-                    ( mkTypeSubSeqArr (map typePtoTypeVar ttypepargs, typePtoTypeVar ttypep)  
+                    ( mkTypeSubSeqArr (_Just % _TypeAnnExpr # expr) (map typePtoTypeVar ttypepargs, typePtoTypeVar ttypep)  
                     , lkuptp') 
                 ] <> concat argseqns
 
@@ -1249,7 +1249,9 @@ typeCheckExpr = para f
         let expr = _ECall # (cxt, ident, map fst args) :: MplExpr MplRenamed
 
             ttypep = annotateTypeTag ttype expr
-            ttypepargs = annotateTypeTags ttypeargs $ map fst args
+            -- ttypepargs = annotateTypeTags ttypeargs $ map fst args
+            -- changed annotaiotn information
+            ttypepargs = annotateTypeTags ttypeargs $ repeat expr
 
             ann = _Just % _TypeAnnExpr # expr
             ~(ttypesphrase, lkuptp') = (`runInstantiateArrType`arrenv)
@@ -1258,7 +1260,7 @@ typeCheckExpr = para f
 
             eqns = TypeEqnsExist (ttypesphrase ++ ttypepargs) $
                 [ TypeEqnsEq 
-                    ( mkTypeSubSeqArr (map typePtoTypeVar ttypepargs, typePtoTypeVar ttypep)  
+                    ( mkTypeSubSeqArr (_Just % _TypeAnnExpr # expr) (map typePtoTypeVar ttypepargs, typePtoTypeVar ttypep)  
                     , lkuptp') 
                 ] 
                 <> concat argseqns
@@ -1327,7 +1329,7 @@ typeCheckExpr = para f
                     ttypepphrase <- instantiateArrType 
                         {- TODO, probably should include some sort of annotation
                         - information here... e.g. (_Just % TypeAnnPatt seqdef) -}
-                        Nothing 
+                        (_Just % _TypeAnnExpr # expr)
                         $ fromJust $ lkuptp ^? _SymCodataPhrase 
                                 % noStateVarsType 
                                 % to (over _2 fst)
@@ -1336,7 +1338,7 @@ typeCheckExpr = para f
                         ( ttypepphrase
                         , seqdef ^. typePhraseExt % to 
                             ( fromJust 
-                            . instantiateTypeWithSubs subs
+                            . instantiateTypeWithSubs (_Just % _TypeAnnExpr # expr) subs
                             . typeClauseToMplType 
                             )
                         )
@@ -1348,7 +1350,7 @@ typeCheckExpr = para f
                         -- must match the type phrase given in 
                         -- the clause
                         [ TypeEqnsEq 
-                            ( mkTypeSubSeqArr (ttypeppatts, ttypepexpr) 
+                            ( mkTypeSubSeqArr (_Just % _TypeAnnExpr # expr) (ttypeppatts, ttypepexpr) 
                             , ttypepphrase)
                         -- the type of this whole expression is the
                         -- same as the end result type
@@ -1473,7 +1475,7 @@ typeCheckCmd ::
     TypeCheck
         (MplCmd MplRenamed)
         (MplCmd MplTypeChecked, [TypeEqns MplTypeSub])
-typeCheckCmd cmd = case cmd of 
+typeCheckCmd cmd = let cmdann = _Just % _TypeAnnCmd # cmd in case cmd of 
     CRun cxt ident seqs ins outs -> do
         ttypemap <- guse (envLcl % typeInfoEnvMap)
 
@@ -1482,7 +1484,7 @@ typeCheckCmd cmd = case cmd of
         arrenv <- freshInstantiateArrEnv
         let (ttypepargs, ttypeproc) = (`runInstantiateArrType` arrenv) 
                 $ fromJust 
-                $ tp ^? _SymConcCallType % to (instantiateArrType (_Just % _TypeAnnProcCall # procc))
+                $ tp ^? _SymConcCallType % to (instantiateArrType (_Just % _TypeAnnCmd # cmd))
 
         ttypesins <- zoom (envLcl % typeInfoSymTab) $ traverse lookupSymCh ins 
 
@@ -1502,9 +1504,15 @@ typeCheckCmd cmd = case cmd of
             for_ ins $ \ch -> symTabCh % at (ch ^. uniqueTag) .= Nothing
             for_ outs $ \ch -> symTabCh % at (ch ^. uniqueTag) .= Nothing
 
+        {-
         let ttypespins = annotateTypeTags (map (view symEntryType) ttypesins) ins
             ttypespouts = annotateTypeTags (map (view symEntryType) ttypesouts) outs
             ttypespseqs = annotateTypeTags ttypeseqs seqs
+            -- changed annotaiotn information
+        -}
+        let ttypespins = annotateTypeTags (map (view symEntryType) ttypesins) $ repeat cmd
+            ttypespouts = annotateTypeTags (map (view symEntryType) ttypesouts) $ repeat cmd
+            ttypespseqs = annotateTypeTags ttypeseqs $ repeat cmd
 
             eqns = TypeEqnsExist (ttypepargs <> ttypespseqs <> ttypespins <> ttypespouts) $
                     -- match the given types with the actual type of the process
@@ -1547,12 +1555,12 @@ typeCheckCmd cmd = case cmd of
 
         let ch' = _ChIdentT # (ch, fromJust $ lookupInferredSeqTypeExpr ttypech ttypemap )
 
-            ttypepch = annotateTypeTag ttypech ch
+            ttypepch = annotateTypeTag ttypech cmd
             eqns = 
                 [ -- the type is top bot..
                 TypeEqnsEq
                     ( typePtoTypeVar ttypepch
-                    , _TypeTopBotF # _TypeChAnnCmd # cmd )
+                    , _TypeTopBotF # _Just % _TypeAnnCmd # cmd )
                 ]
 
         return (_CClose # (cxt, ch'), eqns)
@@ -1571,7 +1579,7 @@ typeCheckCmd cmd = case cmd of
             eqns = 
                 [ TypeEqnsEq
                     ( typePtoTypeVar ttypepch
-                    , _TypeTopBotF # _TypeChAnnCmd # cmd )
+                    , _TypeTopBotF # _Just % _TypeAnnCmd # cmd )
                 -- the type is top bot..
                 ]
 
@@ -1597,11 +1605,11 @@ typeCheckCmd cmd = case cmd of
                     ( typePtoTypeVar ttypepch
                     , inputOutput (ch ^. polarity) 
                         (_TypePutF # 
-                            ( _TypeChAnnCmd # cmd
+                            ( _Just % _TypeAnnCmd # cmd
                             , typePtoTypeVar ttypeppatt
                             , typePtoTypeVar ttypepch'))
                         (_TypeGetF # 
-                            ( _TypeChAnnCmd # cmd
+                            ( _Just % _TypeAnnCmd # cmd
                             , typePtoTypeVar ttypeppatt
                             , typePtoTypeVar ttypepch'))
                     )
@@ -1631,11 +1639,11 @@ typeCheckCmd cmd = case cmd of
                     ( typePtoTypeVar ttypepch
                     , inputOutput (ch ^. polarity) 
                         (_TypeGetF # 
-                            ( _TypeChAnnCmd # cmd
+                            ( _Just % _TypeAnnCmd # cmd
                             , typePtoTypeVar ttypepexpr
                             , typePtoTypeVar ttypepch'))
                         (_TypePutF # 
-                            ( _TypeChAnnCmd # cmd
+                            ( _Just % _TypeAnnCmd # cmd
                             , typePtoTypeVar ttypepexpr
                             , typePtoTypeVar ttypepch'))
                     )
@@ -1689,15 +1697,15 @@ typeCheckCmd cmd = case cmd of
                     (cmds', cmdseqns) <- typeCheckCmds cmds
                     return (ttypech', (cmds', cmdseqns))
 
-                let ttypepunwrapped = fromJust $ instantiateTypeWithSubs subs $ unwrappedtp
+                let ttypepunwrapped = fromJust $ instantiateTypeWithSubs cmdann subs $ unwrappedtp
                     ttypepclause = fromJust $ case def of
                         ProtocolDefn phrase -> 
                             phrase ^. typePhraseExt
-                                % to ( instantiateTypeWithSubs subs 
+                                % to ( instantiateTypeWithSubs cmdann subs 
                                      . typeClauseToMplType)
                         CoprotocolDefn phrase -> 
                             phrase ^. typePhraseExt
-                                % to ( instantiateTypeWithSubs subs 
+                                % to ( instantiateTypeWithSubs cmdann subs 
                                      . typeClauseToMplType)
                     ttypepch' = annotateTypeTag ttypech' ch
                     eqns = TypeEqnsExist [ttypepch'] $
@@ -1755,10 +1763,10 @@ typeCheckCmd cmd = case cmd of
                 return 
                     ( fromJust $ case def of
                         ProtocolDefn phrase -> 
-                            phrase ^. typePhraseExt % to ( instantiateTypeWithSubs subs . typeClauseToMplType )
+                            phrase ^. typePhraseExt % to ( instantiateTypeWithSubs cmdann subs . typeClauseToMplType )
                         CoprotocolDefn phrase -> 
-                            phrase ^. typePhraseExt % to ( instantiateTypeWithSubs subs . typeClauseToMplType )
-                    , fromJust $ instantiateTypeWithSubs subs $ unwrappedtp)
+                            phrase ^. typePhraseExt % to ( instantiateTypeWithSubs cmdann subs . typeClauseToMplType )
+                    , fromJust $ instantiateTypeWithSubs cmdann subs $ unwrappedtp)
             eqn = TypeEqnsExist ([ttypepch'] <> ttypepargs) $
                     [ TypeEqnsEq
                         ( typePtoTypeVar ttypepch
@@ -1792,14 +1800,14 @@ typeCheckCmd cmd = case cmd of
                     [ TypeEqnsEq 
                         ( typePtoTypeVar ttypepch
                         , inputOutput (ch ^. polarity)
-                            (_TypeTensorF # 
-                                ( _TypeChAnnCmd # cmd
+                            ( _TypeTensorF # 
+                                ( _Just % _TypeAnnCmd # cmd
                                 , typePtoTypeVar ttypepch0
                                 , typePtoTypeVar ttypepch1
                                 ) 
                             )
                             (_TypeParF # 
-                                ( _TypeChAnnCmd # cmd
+                                ( _Just % _TypeAnnCmd # cmd
                                 , typePtoTypeVar ttypepch0
                                 , typePtoTypeVar ttypepch1
                                 ) 
@@ -1879,13 +1887,13 @@ typeCheckCmd cmd = case cmd of
                         ( typePtoTypeVar ttypepch
                         , inputOutput (ch ^. polarity)
                             (_TypeParF # 
-                                ( _TypeChAnnCmd # cmd
+                                ( _Just % _TypeAnnCmd # cmd
                                 , typePtoTypeVar ttypepch0
                                 , typePtoTypeVar ttypepch1
                                 ) 
                             )
                             (_TypeTensorF # 
-                                ( _TypeChAnnCmd # cmd
+                                ( _Just % _TypeAnnCmd # cmd
                                 , typePtoTypeVar ttypepch0
                                 , typePtoTypeVar ttypepch1
                                 ) 
@@ -1950,7 +1958,7 @@ typeCheckCmd cmd = case cmd of
             eqns = 
                 [ TypeEqnsEq 
                     ( typePtoTypeVar ttypepch0
-                    , _TypeNegF # (_TypeChAnnCmd # cmd, typePtoTypeVar ttypepch1))
+                    , _TypeNegF # (_Just % _TypeAnnCmd # cmd, typePtoTypeVar ttypepch1))
                 ] 
 
         envLcl % typeInfoSymTab % symTabCh % at (ch0 ^. uniqueTag) .= Nothing
@@ -2020,12 +2028,12 @@ typeCheckCmd cmd = case cmd of
                         ( typePtoTypeVar ttypepch 
                         , inputOutput (ch ^. polarity)
                             (_TypePutF # 
-                                ( _TypeChAnnCmd # cmd
+                                ( _Just % _TypeAnnCmd # cmd
                                 , typePtoTypeVar ttypepchgetseq
                                 , typePtoTypeVar ttypepchgetconc
                                 ))
                             (_TypeGetF # 
-                                ( _TypeChAnnCmd # cmd
+                                ( _Just % _TypeAnnCmd # cmd
                                 , typePtoTypeVar ttypepchgetseq
                                 , typePtoTypeVar ttypepchgetconc
                                 ))
@@ -2091,12 +2099,12 @@ typeCheckCmd cmd = case cmd of
                 $ unzip 
                 $ flip concatMap plugs 
                 $ \ch -> 
-                    let f (h :| hs) = (:) (annotateTypeTag h (), []) 
+                    let f (h :| hs) = (:) (annotateTypeTag h cmd, []) 
                             $ map (\(prev, curr) -> 
-                                    ( annotateTypeTag curr ()
+                                    ( annotateTypeTag curr cmd
                                     , [ TypeEqnsEq 
-                                        ( typePtoTypeVar $ annotateTypeTag prev ()
-                                        , typePtoTypeVar $ annotateTypeTag curr ()) ]
+                                        ( typePtoTypeVar $ annotateTypeTag prev cmd
+                                        , typePtoTypeVar $ annotateTypeTag curr cmd) ]
                                     ) 
                                 ) 
                             $ zip (h:hs) hs

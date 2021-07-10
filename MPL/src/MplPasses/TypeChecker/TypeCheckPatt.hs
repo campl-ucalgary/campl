@@ -96,7 +96,7 @@ typeCheckPattern = para f
                 eqns = TypeEqnsExist (ttypesphrase ++ ttypeppatts) $
                         [ TypeEqnsEq 
                             ( lkuptp'
-                            , mkTypeSubSeqArr (ttypeppatts, ttypep)
+                            , mkTypeSubSeqArr (_Just % _TypeAnnPatt # patt) (ttypeppatts, ttypep)
                             ) 
                         ]
                         -- CHANGED FROM STABLE EQN
@@ -162,7 +162,7 @@ typeCheckPattern = para f
                         ttypepphrases <- instantiateArrType
                             {- TODO, probably should include some sort of annotation
                             - information here... e.g. (_Just % TypeAnnPatt seqdef) -}
-                            Nothing
+                            (_Just % _TypeAnnPatt # patt)
                             $ fromJust $ lkuptp ^? _SymCodataPhrase
                                 % noStateVarsType
                                 % to (over _2 (view _1))
@@ -171,7 +171,7 @@ typeCheckPattern = para f
                             ( ttypepphrases
                             , seqdef ^. typePhraseExt % to 
                                 ( fromJust 
-                                . instantiateTypeWithSubs subs 
+                                . instantiateTypeWithSubs (_Just % _TypeAnnPatt # patt) subs 
                                 . typeClauseToMplType )
                             )
                     let ttypeppatt = annotateTypeTag ttypepatt patt
@@ -377,15 +377,15 @@ typeCheckPattern = para f
                     [ TypeEqnsEq 
                         ( typePtoTypeVar ttypep
                         , _TypeTupleF # 
-                            ( _Just % _NameOcc # (tupleName (2 + length ts), cxt)
+                            ( Just ann
                             , 
-                                ( TypeVar Nothing 
+                                ( TypeVar (Just ann) 
                                     $ annotateTypeTag ttypet0 
                                     $ fst t0
-                                , TypeVar Nothing 
+                                , TypeVar (Just ann)
                                     $ annotateTypeTag ttypet1 
                                     $ fst t1
-                                , map (TypeVar Nothing . uncurry annotateTypeTag) 
+                                , map (TypeVar (Just ann) . uncurry annotateTypeTag) 
                                     $ zip ttypests (map fst ts)
                                 )
                             )

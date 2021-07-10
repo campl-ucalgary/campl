@@ -996,6 +996,28 @@ instance
 instance MplPrintConstraints x y => PPrint (MplExpr x) y where
     pprint proxy = B.printTree . mplExprToBnfc proxy
 
+instance 
+    ( MplPattToBnfc t1 y
+    , PPrint a1 y
+    , PPrint a2 y
+    , MplCmdToBnfc t2 y) =>
+    PPrint (([t1], [a1], [a2]), NonEmpty t2) y where
+    pprint proxy ((patts, ins, outs), cmds) = 
+        B.printTree 
+            $ B.PROCESS_PHRASE 
+
+                (map (mplPattToBnfc proxy) patts) 
+                (map (toBnfcIdent proxy) ins) 
+                (map (toBnfcIdent proxy) outs) 
+                $ mplCmdsToBnfc proxy cmds
+
+instance 
+    ( MplPattToBnfc t y
+    , MplExprToBnfc b' y
+    ) => PPrint ([t], b') y where
+    pprint proxy body = B.printTree  
+        $ (uncurry B.PATTERN_TO_EXPR <<< map (mplPattToBnfc proxy) *** mplExprToBnfc proxy) body
+
 
 {- | Wrapper function for 'pprint' specialized to 'MplParsed'. This is used most frequently when reprinting the AST to users -}
 pprintParsed :: ( PPrint a MplParsed ) => a -> String

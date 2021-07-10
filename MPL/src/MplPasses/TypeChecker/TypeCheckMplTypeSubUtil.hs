@@ -32,23 +32,16 @@ instance Eq TypeIdentT where
 instance Ord TypeIdentT where
     a <= b = _typeIdentTUniqueTag a <= _typeIdentTUniqueTag b
 
-data TypeChAnn =
-    TypeChAnnNameOcc NameOcc
+data TypeChAnn 
+    = TypeChAnnNameOcc NameOcc
     | TypeChAnnCmd (MplCmd MplRenamed)
-    -- Change this in the future! We have a 
-    -- few problems... When we go from 
-    -- MplType MplTypeSub --> MplType MplTypeChecked
-    -- we lose the annotation information if it
-    -- is an inferred type from a variable....
-    -- So this acts as the ``Nothing" in the Maybe
-    | TypeChAnnEmpty
   deriving Show
 
 
 
-data TypeAnn = 
+data TypeAnn 
     -- Function
-    TypeAnnFun (MplFunction MplRenamed)
+    = TypeAnnFun (MplFunction MplRenamed)
     -- Process
     | TypeAnnProc (MplProcess MplRenamed)
 
@@ -56,12 +49,6 @@ data TypeAnn =
         (([MplPattern MplRenamed], [ChIdentR], [ChIdentR]), NonEmpty (MplCmd MplRenamed) )
     | TypeAnnFunPhrase 
         ([MplPattern MplRenamed], MplExpr MplRenamed)
-
-    -- | Note that TypeAnnFunCall / TypeAnnProcCall may or may not exist
-    -- if they did not compile properly...
-    | TypeAnnFunCall (MplFunction MplTypeChecked)
-    -- Process
-    | TypeAnnProcCall (MplProcess MplTypeChecked)
 
     -- Command
     | TypeAnnCmd (MplCmd MplRenamed)
@@ -74,13 +61,11 @@ data TypeAnn =
     -- Type channel..
     | TypeAnnCh ChIdentR
 
-    -- Maybe
-    | TypeAnnEmpty
   deriving Show
 
-data TypeIdentTInfo = 
+data TypeIdentTInfo 
     -- type variable..
-    TypeIdentTInfoTypeVar (TypeP MplTypeChecked)
+    = TypeIdentTInfoTypeVar (TypeP MplTypeChecked)
     | TypeIdentTInfoTypeAnn TypeAnn
   deriving Show
 

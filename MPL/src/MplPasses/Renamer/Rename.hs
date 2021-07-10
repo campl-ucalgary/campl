@@ -487,7 +487,7 @@ renameCmd = f
                     $ traverse (flip lookupCh symtab) cxt1'
             cxt2'' = zipWith tagIdentPToChIdentRWithSymEntry cxt2' 
                     $ fromJust
-                    $ traverse (flip lookupCh symtab) $ traceShowId cxt2'
+                    $ traverse (flip lookupCh symtab) $ cxt2'
             -- TODO: Currently, if there is a user provided context and a variable out of 
             -- scope, this will simply just ignore it... change this so that it really checks
             -- it, by providing the information of whether it was user supplied so we know whether
