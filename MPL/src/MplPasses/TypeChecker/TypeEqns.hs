@@ -246,10 +246,8 @@ matchCont ::
 matchCont ty0 ty1 k = f ty0 ty1
   where
     -- need to simplify double negations first.
-    f (TypeBuiltIn (TypeNegF _ (TypeBuiltIn (TypeNegF _ a)))) b 
-        = f a b
-    f a (TypeBuiltIn (TypeNegF _ (TypeBuiltIn (TypeNegF _ b)))) 
-        = f a b
+    f (TypeBuiltIn (TypeNegF _ (TypeBuiltIn (TypeNegF _ a)))) b = f a b
+    f a (TypeBuiltIn (TypeNegF _ (TypeBuiltIn (TypeNegF _ b)))) = f a b
 
     f (TypeVar cxt0 a) b = fmap pure $ mkValidSub a b
     f a (TypeVar cxt1 b) = fmap pure $ mkValidSub b a

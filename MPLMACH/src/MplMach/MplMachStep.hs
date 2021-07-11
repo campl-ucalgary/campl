@@ -374,6 +374,7 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
             I don't think these should be all in the IId commmand and there in fact needs
             to be some seperation between the two commands.
             -}
+            {-
             _ <- liftIO $ atomically $ do
                 traceTranslationLkupWithHeader "idl" lchlkup
                 traceTranslationLkupWithHeader "idr" rchlkup
@@ -481,13 +482,12 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
 
                             
                     _ -> retry
-            
+            -}
 
             -- N.B. this is the old method...
-            {-
             liftIO $ atomically $ do
                 -- traceTranslationLkupWithHeader "idl" lchlkup
-                traceTranslationLkupWithHeader "idr" rchlkup
+                -- traceTranslationLkupWithHeader "idr" rchlkup
                 (lchmlastptr, lchmqueue) <- readChMQueueWithLastPtr (lchlkup ^. activeQueue)
                 peekTQueue lchmqueue >>= \case
                     QId rgch -> readTQueue lchmqueue >> case lchlkup of
@@ -571,7 +571,6 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
                             writeTVar rinlstptr (CCons (linqueue ^. chMQueueChainRef))
                             
                     _ -> retry
-                -}
 
             return Nothing
 

@@ -250,7 +250,7 @@ proc p1 :: | => Passer(|Mem(Int|)), IntTerminal =
         hput MemPut on mm
         put x on mm
         fork nmpp as
-            nm with mm -> nm |=| neg mm
+            nm with mm -> mm |=| neg nm
             pp with _inp -> p1(| => pp, _inp)
 
 proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
@@ -287,6 +287,7 @@ protocol IntTerminal => C =
     IntTerminalPut :: Put(Int | C) => C
     IntTerminalClose :: TopBot => C
 
+{-
 -- infinite memory cell 
 protocol Mem(M|) => S =
     MemPut :: Put(M|S) => S
