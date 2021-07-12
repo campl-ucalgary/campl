@@ -1,0 +1,5781 @@
+\documentclass{article}
+\usepackage{amsmath,amssymb,amsfonts,amsthm}
+\usepackage{mathtools}
+\usepackage{enumitem}
+\usepackage{fancyvrb} 
+
+\DeclareMathOperator{\dom}{dom}
+\DeclareMathOperator{\codom}{codom}
+\DeclareMathOperator{\ran}{ran}
+\DeclareMathOperator{\id}{id}
+\DeclareMathOperator{\alt}{\bangle{|}}
+\DeclareMathOperator{\fail}{fail}
+
+\newcommand{\bcurly}[1]{\{ #1 \}}
+\newcommand{\bangle}[1]{\langle #1 \rangle}
+\newcommand{\qequal}{\stackrel{?}{=}}
+
+\theoremstyle{plain}% default
+\newtheorem{thm}{Theorem}[section]
+\newtheorem{lem}[thm]{Lemma}
+\newtheorem{prop}[thm]{Proposition}
+\newtheorem*{cor}{Corollary}
+\theoremstyle{definition}
+\newtheorem{defn}{Definition}[section]
+\newtheorem{nota}{Notation}[section]
+\newtheorem{exmpl}{Example}[section]
+\newtheorem{exer}[exmpl]{Exercise}
+\theoremstyle{remark}
+\newtheorem*{rmk}{Remark}
+\newtheorem*{note}{Note}
+\newtheorem{case}{Case}
+
+\title{I (probably very likely) made a goof in MPL}
+\author{Jared Pon}
+
+\begin{document}
+\maketitle 
+\section{More tracing}
+Recall the code is as follows.
+\begin{verbatim}
+protocol IntTerminal => C =
+    IntTerminalGet :: Get(Int | C) => C
+    IntTerminalPut :: Put(Int | C) => C
+    IntTerminalClose :: TopBot => C
+
+protocol Mem(M|) => S =
+    MemPut :: Put(M|S) => S
+    MemGet :: Get(M|S) => S
+    MemCls :: TopBot => S
+
+protocol Passer(|P) => S =
+    Passer :: P (+) (Neg(P) (*) S) => S
+
+proc memory :: A | Mem(A|) => =
+    x | ch => -> do
+        hcase ch of
+            MemPut -> do
+                get y on ch
+                memory(y | ch => )
+            MemGet -> do
+                put x on ch
+                memory(x | ch => )
+            MemCls -> do
+                halt ch
+
+proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+    | => passer, inp -> do
+        hput Passer on passer
+        split passer into mm,nmpp
+        hput MemGet on mm 
+        get y on mm
+        hput IntTerminalPut on inp
+        put y on inp
+        hput IntTerminalGet on inp
+        get x on inp
+        hput MemPut on mm
+        put x on mm
+        fork nmpp as
+            nm with mm -> mm |=| neg nm 
+            pp with inp -> p1(| => pp, inp)
+
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer => inp, mem -> do
+        hcase passer of
+            Passer -> do
+                hput MemGet on mem
+                get y on mem
+                hput IntTerminalPut on inp
+                put y on inp
+                hput IntTerminalGet on inp
+                get x on inp
+                hput MemPut on mem
+                put x on mem
+                fork passer as
+                    mm with mem -> do
+                        mm |=| mem
+                    nmpp with inp -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => inp,z)
+                            z,nm => -> z |=| neg nm
+
+proc run :: | => IntTerminal , IntTerminal =
+    | => _inpterm0, _inpterm1 -> do
+        plug 
+            p1(| => passer, _inpterm0)
+            p2(| passer => _inpterm1, mem)
+            memory(100 | mem => )
+\end{verbatim}
+
+First, we execute \verb|run| and open up the service channels.
+So, the entire system state is:
+
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+
+-- Running processes:
+proc run :: | => IntTerminal , IntTerminal =
+    | => _inpterm0, _inpterm1 -> do
+        plug 
+            p1(| => passer, _inpterm0)
+            p2(| passer => _inpterm1, mem)
+            memory(100 | mem => )
+\end{verbatim}
+Then, we open up the channels in the ``plug'' command in \verb|run|
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+)
+
+( mem,
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+
+-- Running processes:
+proc run :: | => IntTerminal , IntTerminal =
+    | => _inpterm0, _inpterm1 -> do
+        plug 
+            p1(| => passer, _inpterm0)
+            p2(| passer => _inpterm1, mem)
+            memory(100 | mem => )
+\end{verbatim}
+
+and we then may execute \verb|p1,p2,memory| as given by the ``plug'' command (note that the \verb|run| process may terminate now), so we put these all in the running processes (and 
+    substitute their arguments as appropriate).
+
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+
+( passer,
+    []
+    |
+    []
+)
+
+( mem,
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+
+-- Running processes:
+proc memory :: A | Mem(A|) => =
+    100 | mem => -> do
+        hcase mem of
+            MemPut -> do
+                get y on mem
+                memory(y | mem => )
+            MemGet -> do
+                put 100 on mem
+                memory(100 | mem => )
+            MemCls -> do
+                halt mem
+
+proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+    | => passer, _inpterm0 -> do
+        hput Passer on passer
+        split passer into mm,nmpp
+        hput MemGet on mm 
+        get y on mm
+        hput IntTerminalPut on _inpterm0
+        put y on _inpterm0
+        hput IntTerminalGet on _inpterm0
+        get x on _inpterm0
+        hput MemPut on mm
+        put x on mm
+        fork nmpp as
+            nm with mm -> mm |=| neg nm 
+            pp with _inpterm0 -> p1(| => pp, _inpterm0)
+
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer => _inpterm1, mem -> do
+        hcase passer of
+            Passer -> do
+                hput MemGet on mem
+                get y on mem
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on mem
+                put x on mem
+                fork passer as
+                    mm with mem -> do
+                        mm |=| mem
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+\end{verbatim}
+Now, we execute \verb|memory|. Indeed, we see that it simply will suspend itself on the input polarity queue of \verb|mem ---> mem|.
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+)
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 100 on mem
+                    memory(100 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+
+-- Running processes:
+
+proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+    | => passer, _inpterm0 -> do
+        hput Passer on passer
+        split passer into mm,nmpp
+        hput MemGet on mm 
+        get y on mm
+        hput IntTerminalPut on _inpterm0
+        put y on _inpterm0
+        hput IntTerminalGet on _inpterm0
+        get x on _inpterm0
+        hput MemPut on mm
+        put x on mm
+        fork nmpp as
+            nm with mm -> mm |=| neg nm 
+            pp with _inpterm0 -> p1(| => pp, _inpterm0)
+
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer => _inpterm1, mem -> do
+        hcase passer of
+            Passer -> do
+                hput MemGet on mem
+                get y on mem
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on mem
+                put x on mem
+                fork passer as
+                    mm with mem -> do
+                        mm |=| mem
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+\end{verbatim}
+Now, we execute a step for \verb|p1|.
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            hput Passer on passer
+    |
+    []
+)
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 100 on mem
+                    memory(100 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+
+-- Running processes:
+
+proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+    | => passer, _inpterm0 -> do
+        split passer into mm,nmpp
+        hput MemGet on mm 
+        get y on mm
+        hput IntTerminalPut on _inpterm0
+        put y on _inpterm0
+        hput IntTerminalGet on _inpterm0
+        get x on _inpterm0
+        hput MemPut on mm
+        put x on mm
+        fork nmpp as
+            nm with mm -> mm |=| neg nm 
+            pp with _inpterm0 -> p1(| => pp, _inpterm0)
+
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer => _inpterm1, mem -> do
+        hcase passer of
+            Passer -> do
+                hput MemGet on mem
+                get y on mem
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on mem
+                put x on mem
+                fork passer as
+                    mm with mem -> do
+                        mm |=| mem
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+\end{verbatim}
+Another step for \verb|p1| (note that ``split'' opens up two new channels),
+    and \verb|mm| and \verb|nmpp| are both of output polarity 
+    (they inherit the polarity from the ``split'' command)
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            hput Passer on passer
+    |
+    []
+)
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 100 on mem
+                    memory(100 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    []
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+
+proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+    | => passer, _inpterm0, mm, nmpp -> do
+        hput MemGet on mm 
+        get y on mm
+        hput IntTerminalPut on _inpterm0
+        put y on _inpterm0
+        hput IntTerminalGet on _inpterm0
+        get x on _inpterm0
+        hput MemPut on mm
+        put x on mm
+        fork nmpp as
+            nm with mm -> mm |=| neg nm 
+            pp with _inpterm0 -> p1(| => pp, _inpterm0)
+
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer => _inpterm1, mem -> do
+        hcase passer of
+            Passer -> do
+                hput MemGet on mem
+                get y on mem
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on mem
+                put x on mem
+                fork passer as
+                    mm with mem -> do
+                        mm |=| mem
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+\end{verbatim}
+Another step for \verb|p1|.
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            hput Passer on passer
+    |
+    []
+)
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 100 on mem
+                    memory(100 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+
+proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+    | => passer, _inpterm0, mm, nmpp -> do
+        get y on mm
+        hput IntTerminalPut on _inpterm0
+        put y on _inpterm0
+        hput IntTerminalGet on _inpterm0
+        get x on _inpterm0
+        hput MemPut on mm
+        put x on mm
+        fork nmpp as
+            nm with mm -> mm |=| neg nm 
+            pp with _inpterm0 -> p1(| => pp, _inpterm0)
+
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer => _inpterm1, mem -> do
+        hcase passer of
+            Passer -> do
+                hput MemGet on mem
+                get y on mem
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on mem
+                put x on mem
+                fork passer as
+                    mm with mem -> do
+                        mm |=| mem
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+\end{verbatim}
+Another step for \verb|p1| (note that the ``get'' command suspends \verb|p1|).
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            hput Passer on passer
+    |
+    []
+)
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 100 on mem
+                    memory(100 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer => _inpterm1, mem -> do
+        hcase passer of
+            Passer -> do
+                hput MemGet on mem
+                get y on mem
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on mem
+                put x on mem
+                fork passer as
+                    mm with mem -> do
+                        mm |=| mem
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+\end{verbatim}
+Now, we can only execute a step for \verb|p2|, so let's do that.
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            hput Passer on passer
+    |
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            hcase passer of
+                Passer -> do
+                    hput MemGet on mem
+                    get y on mem
+                    hput IntTerminalPut on _inpterm1
+                    put y on _inpterm1
+                    hput IntTerminalGet on _inpterm1
+                    get x on _inpterm1
+                    hput MemPut on mem
+                    put x on mem
+                    fork passer as
+                        mm with mem -> do
+                            mm |=| mem
+                        nmpp with _inpterm1 -> do
+                            split nmpp into nm,pp
+                            plug
+                                p2( | pp => _inpterm1,z)
+                                z,nm => -> z |=| neg nm
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 100 on mem
+                    memory(100 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+\end{verbatim}
+Now, we can execute a channel manager step on \verb|passer|, and note that
+    \verb|p2| may resume execution now.
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 100 on mem
+                    memory(100 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer => _inpterm1, mem -> do
+        hput MemGet on mem
+        get y on mem
+        hput IntTerminalPut on _inpterm1
+        put y on _inpterm1
+        hput IntTerminalGet on _inpterm1
+        get x on _inpterm1
+        hput MemPut on mem
+        put x on mem
+        fork passer as
+            mm with mem -> do
+                mm |=| mem
+            nmpp with _inpterm1 -> do
+                split nmpp into nm,pp
+                plug
+                    p2( | pp => _inpterm1,z)
+                    z,nm => -> z |=| neg nm
+\end{verbatim}
+A step for \verb|p2|.
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    |
+    []
+    )
+
+( mem,
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            hput MemGet on mem
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 100 on mem
+                    memory(100 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer => _inpterm1, mem -> do
+        get y on mem
+        hput IntTerminalPut on _inpterm1
+        put y on _inpterm1
+        hput IntTerminalGet on _inpterm1
+        get x on _inpterm1
+        hput MemPut on mem
+        put x on mem
+        fork passer as
+            mm with mem -> do
+                mm |=| mem
+            nmpp with _inpterm1 -> do
+                split nmpp into nm,pp
+                plug
+                    p2( | pp => _inpterm1,z)
+                    z,nm => -> z |=| neg nm
+\end{verbatim}
+Now, on the channel \verb|mem|, we may execute a step there and resume execution of \verb|memory|
+    while sleeping \verb|p2|.
+
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    []
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer => _inpterm1, mem -> do
+        get y on mem
+        hput IntTerminalPut on _inpterm1
+        put y on _inpterm1
+        hput IntTerminalGet on _inpterm1
+        get x on _inpterm1
+        hput MemPut on mem
+        put x on mem
+        fork passer as
+            mm with mem -> do
+                mm |=| mem
+            nmpp with _inpterm1 -> do
+                split nmpp into nm,pp
+                plug
+                    p2( | pp => _inpterm1,z)
+                    z,nm => -> z |=| neg nm
+
+proc memory :: A | Mem(A|) => =
+    100 | mem => -> do
+        put 100 on mem
+        memory(100 | mem => )
+\end{verbatim}
+
+Another step for \verb|memory|
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            put 100 on mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer => _inpterm1, mem -> do
+        get y on mem
+        hput IntTerminalPut on _inpterm1
+        put y on _inpterm1
+        hput IntTerminalGet on _inpterm1
+        get x on _inpterm1
+        hput MemPut on mem
+        put x on mem
+        fork passer as
+            mm with mem -> do
+                mm |=| mem
+            nmpp with _inpterm1 -> do
+                split nmpp into nm,pp
+                plug
+                    p2( | pp => _inpterm1,z)
+                    z,nm => -> z |=| neg nm
+
+proc memory :: A | Mem(A|) => =
+    100 | mem => -> do
+        memory(100 | mem => )
+\end{verbatim}
+
+Another step for \verb|memory| which is simply a recursive call (so we substitute 
+    arguments as necessary).
+    
+
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            put 100 on mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer => _inpterm1, mem -> do
+        get y on mem
+        hput IntTerminalPut on _inpterm1
+        put y on _inpterm1
+        hput IntTerminalGet on _inpterm1
+        get x on _inpterm1
+        hput MemPut on mem
+        put x on mem
+        fork passer as
+            mm with mem -> do
+                mm |=| mem
+            nmpp with _inpterm1 -> do
+                split nmpp into nm,pp
+                plug
+                    p2( | pp => _inpterm1,z)
+                    z,nm => -> z |=| neg nm
+
+proc memory :: A | Mem(A|) => =
+    100 | mem => -> do
+        hcase mem of
+            MemPut -> do
+                get y on mem
+                memory(y | mem => )
+            MemGet -> do
+                put 100 on mem
+                memory(100 | mem => )
+            MemCls -> do
+                halt mem
+\end{verbatim}
+Another step for \verb|memory| where we see that \verb|memory| suspends itself on the input polarity
+    queue of the channel \verb|mem|.
+
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            put 100 on mem
+    ;
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 100 on mem
+                    memory(100 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer => _inpterm1, mem -> do
+        get y on mem
+        hput IntTerminalPut on _inpterm1
+        put y on _inpterm1
+        hput IntTerminalGet on _inpterm1
+        get x on _inpterm1
+        hput MemPut on mem
+        put x on mem
+        fork passer as
+            mm with mem -> do
+                mm |=| mem
+            nmpp with _inpterm1 -> do
+                split nmpp into nm,pp
+                plug
+                    p2( | pp => _inpterm1,z)
+                    z,nm => -> z |=| neg nm
+
+\end{verbatim}
+
+A step for \verb|p2| (no other choice), where we see that it suspends itself on the output polarity of channel \verb|mem|.
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 100 on mem
+                    memory(100 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+
+\end{verbatim}
+
+Execute a step for the channel \verb|mem|, and substitute arguments appropriately.
+Note that \verb|p2| may resume.
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 100 on mem
+                    memory(100 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer => _inpterm1, mem -> do
+        hput IntTerminalPut on _inpterm1
+        put 100 on _inpterm1
+        hput IntTerminalGet on _inpterm1
+        get x on _inpterm1
+        hput MemPut on mem
+        put x on mem
+        fork passer as
+            mm with mem -> do
+                mm |=| mem
+            nmpp with _inpterm1 -> do
+                split nmpp into nm,pp
+                plug
+                    p2( | pp => _inpterm1,z)
+                    z,nm => -> z |=| neg nm
+
+\end{verbatim}
+\section{Boring service channel steps for \verb|p2| }
+A step for \verb|p2| (boring service channel step).
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            hput IntTerminalPut on _inpterm1
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 100 on mem
+                    memory(100 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer => _inpterm1, mem -> do
+        put 100 on _inpterm1
+        hput IntTerminalGet on _inpterm1
+        get x on _inpterm1
+        hput MemPut on mem
+        put x on mem
+        fork passer as
+            mm with mem -> do
+                mm |=| mem
+            nmpp with _inpterm1 -> do
+                split nmpp into nm,pp
+                plug
+                    p2( | pp => _inpterm1,z)
+                    z,nm => -> z |=| neg nm
+
+\end{verbatim}
+Another step for \verb|p2| (boring service channel step)
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            put 100 on _inpterm1
+    ;
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            hput IntTerminalPut on _inpterm1
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 100 on mem
+                    memory(100 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer => _inpterm1, mem -> do
+        hput IntTerminalGet on _inpterm1
+        get x on _inpterm1
+        hput MemPut on mem
+        put x on mem
+        fork passer as
+            mm with mem -> do
+                mm |=| mem
+            nmpp with _inpterm1 -> do
+                split nmpp into nm,pp
+                plug
+                    p2( | pp => _inpterm1,z)
+                    z,nm => -> z |=| neg nm
+
+\end{verbatim}
+Another step for \verb|p2| (boring service channel step)
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            hput IntTerminalGet on _inpterm1
+    ;
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            put 100 on _inpterm1
+    ;
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            hput IntTerminalPut on _inpterm1
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 100 on mem
+                    memory(100 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer => _inpterm1, mem -> do
+        get x on _inpterm1
+        hput MemPut on mem
+        put x on mem
+        fork passer as
+            mm with mem -> do
+                mm |=| mem
+            nmpp with _inpterm1 -> do
+                split nmpp into nm,pp
+                plug
+                    p2( | pp => _inpterm1,z)
+                    z,nm => -> z |=| neg nm
+
+\end{verbatim}
+Another step for \verb|p2| (boring service channel step)
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            get x on _inpterm1
+            hput MemPut on mem
+            put x on mem
+            fork passer as
+                mm with mem -> do
+                    mm |=| mem
+                nmpp with _inpterm1 -> do
+                    split nmpp into nm,pp
+                    plug
+                        p2( | pp => _inpterm1,z)
+                        z,nm => -> z |=| neg nm
+    ;
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            hput IntTerminalGet on _inpterm1
+    ;
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            put 100 on _inpterm1
+    ;
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            hput IntTerminalPut on _inpterm1
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 100 on mem
+                    memory(100 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+\end{verbatim}
+Then, we assume the service channel executes and lets say it puts \verb|1| on the system.
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            get x on _inpterm1
+            hput MemPut on mem
+            put x on mem
+            fork passer as
+                mm with mem -> do
+                    mm |=| mem
+                nmpp with _inpterm1 -> do
+                    split nmpp into nm,pp
+                    plug
+                        p2( | pp => _inpterm1,z)
+                        z,nm => -> z |=| neg nm
+    |
+    put 1 on mem
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 100 on mem
+                    memory(100 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+\end{verbatim}
+
+\section{End of boring service channel \verb|p2| }
+So, \verb|p2| may resume to do some interesting things (of course, we substitute the argument as appropriate).
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 100 on mem
+                    memory(100 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer => _inpterm1, mem -> do
+        hput MemPut on mem
+        put 1 on mem
+        fork passer as
+            mm with mem -> do
+                mm |=| mem
+            nmpp with _inpterm1 -> do
+                split nmpp into nm,pp
+                plug
+                    p2( | pp => _inpterm1,z)
+                    z,nm => -> z |=| neg nm
+\end{verbatim}
+Another step for \verb|p2|
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    |
+    []
+    )
+
+( mem,
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            hput MemPut on mem
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 100 on mem
+                    memory(100 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer => _inpterm1, mem -> do
+        put 1 on mem
+        fork passer as
+            mm with mem -> do
+                mm |=| mem
+            nmpp with _inpterm1 -> do
+                split nmpp into nm,pp
+                plug
+                    p2( | pp => _inpterm1,z)
+                    z,nm => -> z |=| neg nm
+\end{verbatim}
+Another step for \verb|p2|
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    |
+    []
+    )
+
+( mem,
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            put 1 on mem
+    ;
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            hput MemPut on mem
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 100 on mem
+                    memory(100 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer => _inpterm1, mem -> do
+        fork passer as
+            mm with mem -> do
+                mm |=| mem
+            nmpp with _inpterm1 -> do
+                split nmpp into nm,pp
+                plug
+                    p2( | pp => _inpterm1,z)
+                    z,nm => -> z |=| neg nm
+\end{verbatim}
+Another step for \verb|p2|, where we note that \verb|p2| suspends itself on 
+    the input polarity of the channel \verb|passer|.
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    |
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            fork passer as
+                mm with mem -> do
+                    mm |=| mem
+                nmpp with _inpterm1 -> do
+                    split nmpp into nm,pp
+                    plug
+                        p2( | pp => _inpterm1,z)
+                        z,nm => -> z |=| neg nm
+    )
+
+( mem,
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            put 1 on mem
+    ;
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            hput MemPut on mem
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 100 on mem
+                    memory(100 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+\end{verbatim}
+Now, we let the channel \verb|mem| continue, so the process \verb|memory| may continue.
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    |
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            fork passer as
+                mm with mem -> do
+                    mm |=| mem
+                nmpp with _inpterm1 -> do
+                    split nmpp into nm,pp
+                    plug
+                        p2( | pp => _inpterm1,z)
+                        z,nm => -> z |=| neg nm
+    )
+
+( mem,
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            put 1 on mem
+    |
+    []
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+proc memory :: A | Mem(A|) => =
+    100 | mem => -> do
+        get y on mem
+        memory(y | mem => )
+\end{verbatim}
+
+Another step for \verb|memory|.
+
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    |
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            fork passer as
+                mm with mem -> do
+                    mm |=| mem
+                nmpp with _inpterm1 -> do
+                    split nmpp into nm,pp
+                    plug
+                        p2( | pp => _inpterm1,z)
+                        z,nm => -> z |=| neg nm
+    )
+
+( mem,
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            put 1 on mem
+    |
+    proc memory :: A | Mem(A|) => =
+        100 | mem => -> do
+            get y on mem
+            memory(y | mem => )
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+\end{verbatim}
+
+Another step for the channel \verb|mem|, and continute \verb|memory|.
+
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    |
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            fork passer as
+                mm with mem -> do
+                    mm |=| mem
+                nmpp with _inpterm1 -> do
+                    split nmpp into nm,pp
+                    plug
+                        p2( | pp => _inpterm1,z)
+                        z,nm => -> z |=| neg nm
+    )
+
+( mem,
+    []
+    |
+    []
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+proc memory :: A | Mem(A|) => =
+    100 | mem => -> do
+        memory(1 | mem => )
+\end{verbatim}
+Another step for \verb|memory| (recursive call, substitute arguments).
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    |
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            fork passer as
+                mm with mem -> do
+                    mm |=| mem
+                nmpp with _inpterm1 -> do
+                    split nmpp into nm,pp
+                    plug
+                        p2( | pp => _inpterm1,z)
+                        z,nm => -> z |=| neg nm
+    )
+
+( mem,
+    []
+    |
+    []
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+proc memory :: A | Mem(A|) => =
+    1 | mem => -> do
+        hcase mem of
+            MemPut -> do
+                get y on mem
+                memory(y | mem => )
+            MemGet -> do
+                put 1 on mem
+                memory(1 | mem => )
+            MemCls -> do
+                halt mem
+\end{verbatim}
+Another step for \verb|memory|
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0 -> do
+            split passer into mm,nmpp 
+    |
+    proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer => _inpterm1, mem -> do
+            fork passer as
+                mm with mem -> do
+                    mm |=| mem
+                nmpp with _inpterm1 -> do
+                    split nmpp into nm,pp
+                    plug
+                        p2( | pp => _inpterm1,z)
+                        z,nm => -> z |=| neg nm
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        1 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 1 on mem
+                    memory(1 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+\end{verbatim}
+Now, we execute a step on the channel \verb|passer|.
+So, the process \verb|p2| may continue, and we note that
+    \verb|mm,nmpp| are of input polarity for \verb|p2|.
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        1 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 1 on mem
+                    memory(1 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+proc p2_top :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer, mm  => mem -> do
+        mm |=| mem
+proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer,nmpp  => _inpterm1, mem -> do
+        nmpp with _inpterm1 -> do
+            split nmpp into nm,pp
+            plug
+                p2( | pp => _inpterm1,z)
+                z,nm => -> z |=| neg nm
+\end{verbatim}
+Now, we execute \verb|p2_top|. 
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        1 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 1 on mem
+                    memory(1 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    proc p2_top :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer, mm  => mem -> do
+            mm |=| mem
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+
+-- Running processes:
+proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer,nmpp  => _inpterm1, mem -> do
+        split nmpp into nm,pp
+        plug
+            p2( | pp => _inpterm1,z)
+            z,nm => -> z |=| neg nm
+\end{verbatim}
+Now, we execute a step for \verb|p2_bot|, where we note that the
+    ``split'' command opens new channels \verb|nm,pp| which are added to
+    the translation of \verb|p2_bot| (and are of input polariy since \verb|nmpp| is of input polarity).
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        1 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 1 on mem
+                    memory(1 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    proc p2_top :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer, mm  => mem -> do
+            mm |=| mem
+)
+
+( nmpp
+    []
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer,nmpp,nm,pp => _inpterm1, mem -> do
+        plug
+            p2( | pp => _inpterm1,z)
+            z,nm => -> z |=| neg nm
+\end{verbatim}
+We execute another step for \verb|p2_bot|.
+Note that this is a ``plug'' command, so we first open a new channel \verb|z|
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        1 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 1 on mem
+                    memory(1 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    proc p2_top :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer, mm  => mem -> do
+            mm |=| mem
+)
+
+( nmpp
+    []
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer,nmpp,nm,pp => _inpterm1, mem -> do
+        plug
+            p2( | pp => _inpterm1,z)
+            z,nm => -> z |=| neg nm
+\end{verbatim}
+Now, we do another step for \verb|p2_bot| which includes actually running the processes in the plug command
+    (substituting arguments as needed, and creating a new process \verb|p2_bot_bot| for the bottom plug phrase).
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        1 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 1 on mem
+                    memory(1 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( mm
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    proc p2_top :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer, mm  => mem -> do
+            mm |=| mem
+)
+
+( nmpp
+    []
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mm
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+\end{verbatim}
+Now, let's pause the execution of \verb|p2|, and execute the id comand on \verb|mm| which connects it to \verb|mem|
+    (note we update the global translations as well)
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            get y on mm
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mm
+            put x on mm
+            fork nmpp as
+                nm with mm -> mm |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mm, nmpp -> do
+            hput MemGet on mm 
+    |
+    proc memory :: A | Mem(A|) => =
+        1 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 1 on mem
+                    memory(1 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( nmpp
+    []
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+\end{verbatim}
+Now, to simplify things a bit, we're just gonna apply the substitution from the global translation
+    i.e., we replace all \verb|mm| with \verb|mem|, so there's a little less book keeping to do in this trace
+        (note: this does NOT include the \verb|mm| in \verb|p2|, since that \verb|mm| is scoped differently and will
+        open a new channel from some other split).
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            get y on mem
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mem
+            put x on mem
+            fork nmpp as
+                nm with mem -> mem |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            hput MemGet on mem 
+    |
+    proc memory :: A | Mem(A|) => =
+        1 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 1 on mem
+                    memory(1 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( nmpp
+    []
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+\end{verbatim}
+Now, we execute a step on the channel \verb|mem|, so \verb|memory| may resume.
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            get y on mem
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mem
+            put x on mem
+            fork nmpp as
+                nm with mem -> mem |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    |
+    []
+)
+
+( nmpp
+    []
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+
+proc memory :: A | Mem(A|) => =
+    1 | mem => -> do
+        put 1 on mem
+        memory(1 | mem => )
+\end{verbatim}
+Continue a step for \verb|memory|.
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            get y on mem
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mem
+            put x on mem
+            fork nmpp as
+                nm with mem -> mem |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    |
+    proc memory :: A | Mem(A|) => =
+        1 | mem => -> do
+            put 1 on mem
+)
+
+( nmpp
+    []
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+
+proc memory :: A | Mem(A|) => =
+    1 | mem => -> do
+        memory(1 | mem => )
+\end{verbatim}
+Another step for \verb|memory| (substitue agumetns as needed since it is a ``run'' call).
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            get y on mem
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mem
+            put x on mem
+            fork nmpp as
+                nm with mem -> mem |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    |
+    proc memory :: A | Mem(A|) => =
+        1 | mem => -> do
+            put 1 on mem
+)
+
+( nmpp
+    []
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+
+proc memory :: A | Mem(A|) => =
+    1 | mem => -> do
+        hcase mem of
+            MemPut -> do
+                get y on mem
+                memory(y | mem => )
+            MemGet -> do
+                put 1 on mem
+                memory(1 | mem => )
+            MemCls -> do
+                halt mem
+
+\end{verbatim}
+
+Another step for \verb|memory| (suspends on \verb|mem| again).
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            get y on mem
+            hput IntTerminalPut on _inpterm0
+            put y on _inpterm0
+            hput IntTerminalGet on _inpterm0
+            get x on _inpterm0
+            hput MemPut on mem
+            put x on mem
+            fork nmpp as
+                nm with mem -> mem |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    |
+    proc memory :: A | Mem(A|) => =
+        1 | mem => -> do
+            put 1 on mem
+    ;
+    proc memory :: A | Mem(A|) => =
+        1 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 1 on mem
+                    memory(1 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( nmpp
+    []
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+
+\end{verbatim}
+Execute the channel \verb|mem|, so \verb|p1| may resume (substitue arguments as needed).
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        1 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 1 on mem
+                    memory(1 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( nmpp
+    []
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+
+proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+    | => passer, _inpterm0, mem, nmpp -> do
+        get 1 on mem
+        hput IntTerminalPut on _inpterm0
+        put 1 on _inpterm0
+        hput IntTerminalGet on _inpterm0
+        get x on _inpterm0
+        hput MemPut on mem
+        put x on mem
+        fork nmpp as
+            nm with mem -> mem |=| neg nm 
+            pp with _inpterm0 -> p1(| => pp, _inpterm0)
+\end{verbatim}
+
+\section{boring \verb|p1| service step}
+Step \verb|p1| (boring service step).
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            hput IntTerminalPut on _inpterm0
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        1 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 1 on mem
+                    memory(1 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( nmpp
+    []
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+
+proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+    | => passer, _inpterm0, mem, nmpp -> do
+        put 1 on _inpterm0
+        hput IntTerminalGet on _inpterm0
+        get x on _inpterm0
+        hput MemPut on mem
+        put x on mem
+        fork nmpp as
+            nm with mem -> mem |=| neg nm 
+            pp with _inpterm0 -> p1(| => pp, _inpterm0)
+\end{verbatim}
+
+Step \verb|p1| (boring service step).
+
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            put 1 on _inpterm0
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            hput IntTerminalPut on _inpterm0
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        1 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 1 on mem
+                    memory(1 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( nmpp
+    []
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+
+proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+    | => passer, _inpterm0, mem, nmpp -> do
+        hput IntTerminalGet on _inpterm0
+        get x on _inpterm0
+        hput MemPut on mem
+        put x on mem
+        fork nmpp as
+            nm with mem -> mem |=| neg nm 
+            pp with _inpterm0 -> p1(| => pp, _inpterm0)
+\end{verbatim}
+
+Step \verb|p1| (boring service step).
+
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            hput IntTerminalGet on _inpterm0
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            put 1 on _inpterm0
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            hput IntTerminalPut on _inpterm0
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        1 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 1 on mem
+                    memory(1 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( nmpp
+    []
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+
+proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+    | => passer, _inpterm0, mem, nmpp -> do
+        get x on _inpterm0
+        hput MemPut on mem
+        put x on mem
+        fork nmpp as
+            nm with mem -> mem |=| neg nm 
+            pp with _inpterm0 -> p1(| => pp, _inpterm0)
+\end{verbatim}
+
+Step \verb|p1| (boring service step).
+
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            get x on _inpterm0
+            hput MemPut on mem
+            put x on mem
+            fork nmpp as
+                nm with mem -> mem |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            hput IntTerminalGet on _inpterm0
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            put 1 on _inpterm0
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            hput IntTerminalPut on _inpterm0
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        1 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 1 on mem
+                    memory(1 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( nmpp
+    []
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+
+\end{verbatim}
+Again, doesn't really matter what the service does, we just assume that \verb|2| is inputted, so 
+    eventually \verb|p1| may resume and we substitue the arguments as needed
+
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        1 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 1 on mem
+                    memory(1 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( nmpp
+    []
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+
+proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+    | => passer, _inpterm0, mem, nmpp -> do
+        hput MemPut on mem
+        put 2 on mem
+        fork nmpp as
+            nm with mem -> mem |=| neg nm 
+            pp with _inpterm0 -> p1(| => pp, _inpterm0)
+
+\end{verbatim}
+\section{endof boring service step}
+So, we execute \verb|p1| again.
+
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            hput MemPut on mem
+    |
+    proc memory :: A | Mem(A|) => =
+        1 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 1 on mem
+                    memory(1 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( nmpp
+    []
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+
+proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+    | => passer, _inpterm0, mem, nmpp -> do
+        put 2 on mem
+        fork nmpp as
+            nm with mem -> mem |=| neg nm 
+            pp with _inpterm0 -> p1(| => pp, _inpterm0)
+
+\end{verbatim}
+So, we execute \verb|p1| again.
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            put 2 on mem
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            hput MemPut on mem
+    |
+    proc memory :: A | Mem(A|) => =
+        1 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 1 on mem
+                    memory(1 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( nmpp
+    []
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+
+proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+    | => passer, _inpterm0, mem, nmpp -> do
+        fork nmpp as
+            nm with mem -> mem |=| neg nm 
+            pp with _inpterm0 -> p1(| => pp, _inpterm0)
+
+\end{verbatim}
+So, we execute \verb|p1| again where it suspends since it uses the ``fork'' instruction
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            put 2 on mem
+    ;
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            hput MemPut on mem
+    |
+    proc memory :: A | Mem(A|) => =
+        1 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 1 on mem
+                    memory(1 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( nmpp
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            fork nmpp as
+                nm with mem -> mem |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+
+\end{verbatim}
+Now, looking at the channel \verb|mem|, execute that so the process \verb|memory| may continue.
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            put 2 on mem
+    |
+    []
+)
+
+( nmpp
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            fork nmpp as
+                nm with mem -> mem |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+
+proc memory :: A | Mem(A|) => =
+    1 | mem => -> do
+        get y on mem
+        memory(y | mem => )
+\end{verbatim}
+Now, step \verb|memory| again.
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            put 2 on mem
+    |
+    proc memory :: A | Mem(A|) => =
+        1 | mem => -> do
+            get y on mem
+            memory(y | mem => )
+)
+
+( nmpp
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            fork nmpp as
+                nm with mem -> mem |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+
+\end{verbatim}
+Do a step on the channel \verb|mem|, so \verb|memory| may resume.
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    []
+)
+
+( nmpp
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            fork nmpp as
+                nm with mem -> mem |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+
+proc memory :: A | Mem(A|) => =
+    1 | mem => -> do
+        memory(2 | mem => )
+
+\end{verbatim}
+
+Step the process \verb|memory| again, substituting arguments as needed.
+
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    []
+)
+
+( nmpp
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            fork nmpp as
+                nm with mem -> mem |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+
+proc memory :: A | Mem(A|) => =
+    2 | mem => -> do
+        hcase mem of
+            MemPut -> do
+                get y on mem
+                memory(y | mem => )
+            MemGet -> do
+                put 2 on mem
+                memory(2 | mem => )
+            MemCls -> do
+                halt mem
+
+\end{verbatim}
+
+Step the process \verb|memory| again, where it suspends itself on \verb|mem|.
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        2 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 2 on mem
+                    memory(2 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( nmpp
+    proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp -> do
+            fork nmpp as
+                nm with mem -> mem |=| neg nm 
+                pp with _inpterm0 -> p1(| => pp, _inpterm0)
+    |
+    proc p2_bot :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+        | passer,nmpp  => _inpterm1, mem -> do
+            split nmpp into nm,pp
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+
+\end{verbatim}
+Now, looking at the channel \verb|nmpp|, we may execute a step there.
+Note we name the top fork phrase \verb|p1_top| and the bottom \verb|p1_bot|.
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    []
+    |
+    proc memory :: A | Mem(A|) => =
+        2 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 2 on mem
+                    memory(2 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+
+proc p1_top :: | => Passer(|Mem(Int|)), IntTerminal = 
+    | => passer, _inpterm0, mem, nmpp, nm -> do
+        mem |=| neg nm 
+
+proc p1_bot :: | => Passer(|Mem(Int|)), IntTerminal = 
+    | => passer, _inpterm0, mem, nmpp, nm,pp -> do
+        p1(| => pp, _inpterm0)
+
+\end{verbatim}
+Now, we step \verb|p1_top| -- recalling that ``neg'' is the same as id.
+\textbf{resuming of problem number 1 -- the first negation that is executed}
+(observe that in strictly following the rules, the input of \verb|mem| should be empty for the ``neg''
+    on \verb|nm| to execute, but it will never be empty.)
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    proc p1_top :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp, nm -> do
+            mem |=| neg nm 
+    |
+    proc memory :: A | Mem(A|) => =
+        2 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 2 on mem
+                    memory(2 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    []
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p2_bot_bot =
+    z,nm => -> z |=| neg nm
+
+proc p1_bot :: | => Passer(|Mem(Int|)), IntTerminal = 
+    | => passer, _inpterm0, mem, nmpp, nm,pp -> do
+        p1(| => pp, _inpterm0)
+\end{verbatim}
+Step \verb|p2_bot_bot|.
+\begin{verbatim}
+-- Channel manager
+( _inpterm0,  
+    []
+    |
+    []
+)
+
+( _inpterm1,  
+    []
+    |
+    []
+)
+( passer,
+    []
+    |
+    []
+    )
+
+( mem,
+    proc p1_top :: | => Passer(|Mem(Int|)), IntTerminal = 
+        | => passer, _inpterm0, mem, nmpp, nm -> do
+            mem |=| neg nm 
+    |
+    proc memory :: A | Mem(A|) => =
+        2 | mem => -> do
+            hcase mem of
+                MemPut -> do
+                    get y on mem
+                    memory(y | mem => )
+                MemGet -> do
+                    put 2 on mem
+                    memory(2 | mem => )
+                MemCls -> do
+                    halt mem
+)
+
+( nmpp
+    []
+    |
+    []
+)
+
+( nm
+    []
+    |
+    []
+)
+
+( pp
+    []
+    |
+    []
+)
+
+( z
+    []
+    |
+    proc p2_bot_bot =
+        z,nm => -> z |=| neg nm
+)
+
+-- Global translation
+_inpterm0 ---> _inpterm0 
+_inpterm1 ---> _inpterm1 
+passer    ---> passer 
+mem       ---> mem
+mm        ---> mem
+nmpp      ---> nmpp
+nm        ---> nm
+pp        ---> pp
+
+-- Running processes:
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | pp => _inpterm1, z -> do
+        hcase pp of
+            Passer -> do
+                hput MemGet on z
+                get y on z
+                hput IntTerminalPut on _inpterm1
+                put y on _inpterm1
+                hput IntTerminalGet on _inpterm1
+                get x on _inpterm1
+                hput MemPut on z
+                put x on z
+                fork pp as
+                    mm with z -> do
+                        mm |=| z
+                    nmpp with _inpterm1 -> do
+                        split nmpp into nm,pp
+                        plug
+                            p2( | pp => _inpterm1,z)
+                            z,nm => -> z |=| neg nm
+
+proc p1_bot :: | => Passer(|Mem(Int|)), IntTerminal = 
+    | => passer, _inpterm0, mem, nmpp, nm,pp -> do
+        p1(| => pp, _inpterm0)
+\end{verbatim}
+This clearly (probably) works so much truth in this, frankly haven't seen so much truth in my entire life.
+
+\end{document}

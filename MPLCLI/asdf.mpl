@@ -282,6 +282,28 @@ proc run :: | => IntTerminal , IntTerminal =
             memory(100 | mem => )
 
 {-
+proc testing =
+    | => ch -> do
+        put 3 on ch
+        put 3 on ch
+        put 3 on ch
+        put 3 on ch
+        split ch into ch0,ch1
+        close ch0
+        halt ch1
+    | => ch -> do
+        put 3 on ch
+        put 3 on ch
+        put 3 on ch
+        put 3 on ch
+        fork ch as
+            ch0 -> do
+                get n on ch0
+                halt ch0
+            ch1 -> do
+                halt ch1
+-}
+{-
 protocol IntTerminal => C =
     IntTerminalGet :: Get(Int | C) => C
     IntTerminalPut :: Put(Int | C) => C

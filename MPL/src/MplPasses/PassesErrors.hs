@@ -115,7 +115,7 @@ instance PprintMplPassesErrors MplPassesErrors where
         go (MplPatternCompilationErrors err) = 
             wrap $ PC.pprintPatternCompileErrors err 
 
-        wrap n = [ pretty "●" <> indent 2 n]
+        wrap n = [ indent 1 (pretty "•") <> indent 2 n]
 
 instance PprintMplPassesErrors a => PprintMplPassesErrors [a] where
     pprintMplPassesErrors = vsep . map pprintMplPassesErrors

@@ -1685,8 +1685,9 @@ typeCheckCmd cmd = let cmdann = _Just % _TypeAnnCmd # cmd in case cmd of
                                 % to 
                                     ( review 
                                     _HCaseExpectedOutputPolarityChToHaveCoprotocolButGotProtocol 
-                                     . (ch,))
-                                     )
+                                    . (ch,)
+                                    )
+                        )
 
                 let (ttypeargs, unwrappedtp) = fromJust $ clauselkuptp ^? _SymConcPhrase 
 
