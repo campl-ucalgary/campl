@@ -755,6 +755,13 @@ patternCompileExhaustiveCheck = and . fmap go . transpose . NE.toList
             & mapped %~ view _2
             & mapped %~ \(a,b,c) -> a:b:c
 
+{- | Compiles out string patterns to a lists of characters -}
+removeStringPatt ::
+    MplPattern MplTypeChecked -> 
+    MplPattern MplTypeChecked  
+removeStringPatt = \case
+    PString ann str -> PList ann (map (PChar ann) str)
+    n -> n
 
 {- | Pattern compiles a pattern phrase i.e., this will pattern compile something like
 @
@@ -782,7 +789,8 @@ patternCompileSeqPatPhrases pattphrases =
         let usandtp = zipWith (curry (second getPattType)) us (fst . NE.head $ pattphrases) 
             (patts :: [MplPattern MplPatternCompiled]) = fmap (review _PVar . swap) usandtp
 
-        pattexpr <- go (map VarSub usandtp) (NE.toList pattphrases) (EIllegalInstr restp) 
+        -- we need to remove the string patterns to allow efficient compilation of strings
+        pattexpr <- go (map VarSub usandtp) (fmap (first (map removeStringPatt)) $ NE.toList pattphrases) (EIllegalInstr restp) 
 
         return (patts, pattexpr)  
   where
@@ -851,16 +859,11 @@ patternCompileSeqPatPhrases pattphrases =
                 match :: MplPattern MplTypeChecked -> Maybe 
                     (Either 
                         ((Location, MplType MplTypeChecked), MplPattern MplTypeChecked, MplPattern MplTypeChecked)
-                        (
-                        Either
-                            ((Location, MplType MplTypeChecked), [MplPattern MplTypeChecked])
-                            ((Location, MplType MplTypeChecked), String)
-                        )
+                        ((Location, MplType MplTypeChecked), [MplPattern MplTypeChecked])
                     )
                 match = \case 
                     PListCons cxt a b -> Just $ Left (cxt,a,b)
-                    PList cxt lst -> Just $ Right $ Left (cxt, lst)
-                    PString cxt str -> Just $ Right $ Right (cxt, str)
+                    PList cxt lst -> Just $ Right (cxt, lst)
                     _ -> Nothing
 
                 f :: NonEmpty _ -> m (MplExpr MplPatternCompiled)
@@ -872,12 +875,15 @@ patternCompileSeqPatPhrases pattphrases =
                         g acc (lstpatt, patttail) = case lstpatt of
                             Left (ann, l, r) -> first ((patttail & _1 %~ ([l, r]<>)):) acc
                             -- regular list
-                            Right (Left (ann, l:r)) -> first ((patttail & _1 %~ ([l, PList ann r]<>)):) acc
-                            Right (Left (ann, [])) -> second (patttail:) acc 
+                            Right (ann, l:r) -> 
+                                first ((patttail & _1 %~ ([l, PList ann r]<>)):) acc
+                            Right (ann, []) -> second (patttail:) acc 
+                            {-
                             -- string
-                            Right (Right (ann, [])) -> second (patttail:) acc 
                             Right (Right (ann, l:r)) -> 
                                 first ((patttail & _1 %~ ([PChar ann l, PList ann $ map (PChar ann) r]<>)):) acc
+                            Right (Right (ann, [])) -> second (patttail:) acc 
+                            -}
 
                     -- get the type of the list.. this is a bit of a mess just by design of the 
                     -- language
@@ -1224,7 +1230,7 @@ patternCompileConcPatPhrases pattphrases =
         let usandtp = zipWith (curry (second getPattType)) us (fst . NE.head $ pattphrases) 
             (patts :: [MplPattern MplPatternCompiled]) = fmap (review _PVar . swap) usandtp
 
-        pattexpr <- go (map VarSub usandtp) (NE.toList pattphrases) (CIllegalInstr () :| []) 
+        pattexpr <- go (map VarSub usandtp) (fmap (first (map removeStringPatt)) $ NE.toList pattphrases) (CIllegalInstr () :| [])
 
         return $ (patts, pattexpr)  
   where
@@ -1290,16 +1296,11 @@ patternCompileConcPatPhrases pattphrases =
                 match :: MplPattern MplTypeChecked -> Maybe 
                     (Either 
                         ((Location, MplType MplTypeChecked), MplPattern MplTypeChecked, MplPattern MplTypeChecked)
-                        (
-                        Either
-                            ((Location, MplType MplTypeChecked), [MplPattern MplTypeChecked])
-                            ((Location, MplType MplTypeChecked), String)
-                        )
+                        ((Location, MplType MplTypeChecked), [MplPattern MplTypeChecked])
                     )
                 match = \case 
                     PListCons cxt a b -> Just $ Left (cxt,a,b)
-                    PList cxt lst -> Just $ Right $ Left (cxt, lst)
-                    PString cxt str -> Just $ Right $ Right (cxt, str)
+                    PList cxt lst -> Just $ Right (cxt, lst)
                     _ -> Nothing
 
                 f :: NonEmpty _ -> m (NonEmpty (MplCmd MplPatternCompiled))
@@ -1311,12 +1312,8 @@ patternCompileConcPatPhrases pattphrases =
                         g acc (lstpatt, patttail) = case lstpatt of
                             Left (ann, l, r) -> first ((patttail & _1 %~ ([l, r]<>)):) acc
                             -- regular list
-                            Right (Left (ann, l:r)) -> first ((patttail & _1 %~ ([l, PList ann r]<>)):) acc
-                            Right (Left (ann, [])) -> second (patttail:) acc 
-                            -- string
-                            Right (Right (ann, [])) -> second (patttail:) acc 
-                            Right (Right (ann, l:r)) -> 
-                                first ((patttail & _1 %~ ([PChar ann l, PList ann $ map (PChar ann) r]<>)):) acc
+                            Right (ann, l:r) -> first ((patttail & _1 %~ ([l, PList ann r]<>)):) acc
+                            Right (ann, []) -> second (patttail:) acc 
 
                     -- get the type of the list.. this is a bit of a mess just by design of the 
                     -- language
