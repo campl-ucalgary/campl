@@ -23,6 +23,7 @@ import qualified Pipes.Attoparsec as PA
 import Text.Read
 
 import Data.Maybe
+import Debug.Trace
 
 
 -- pSNCmd 
@@ -107,7 +108,7 @@ mplClient sock = do
                     loop ps'
 
                 SNPutString -> do
-                    (res, ps'') <- P.runStateT (PA.parse  pSNString) ps'
+                    (res, ps'') <- P.runStateT (PA.parse pSNString) ps'
                     case res of
                         Just (Right res') -> do
                             liftIO $ putStrLn res'

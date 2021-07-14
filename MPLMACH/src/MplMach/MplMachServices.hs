@@ -284,11 +284,12 @@ pSNInt = A.char ':' *> A.signed A.decimal <* A.endOfLine
 pSNChar :: A.Parser Char
 pSNChar = A.char ';' *> A.anyChar <* A.endOfLine
 
-{-| "?<SOMESTRING>\r\n" -}
+{-| "?<LENGTH>\r\n<SOMESTRINGOFLENGTH>\r\n" -}
 pSNString :: A.Parser String
 pSNString = do 
     _ <- A.char '?' 
     (n :: Int) <- A.decimal 
+    _ <- A.endOfLine 
     str <- A.take n 
     _ <- A.endOfLine 
     return $ B.unpack str
@@ -316,7 +317,7 @@ snInstrToByteString ::
 snInstrToByteString = \case
     SNInt n -> ':' `B.cons` (B.pack (show n) `B.append` eoc)
     SNChar n -> ';' `B.cons` (B.pack [n] `B.append` eoc)
-    SNString n -> '?' `B.cons` (B.pack (show $ length n) `B.append` B.pack n `B.append` eoc)
+    SNString n -> '?' `B.cons` (B.pack (show $ length n) `B.append` eoc `B.append` B.pack n `B.append` eoc)
 
     SNGetChar -> '+' `B.cons` ("GETCHAR" `B.append` eoc)
     SNPutChar -> '+' `B.cons` ("PUTCHAR" `B.append` eoc)

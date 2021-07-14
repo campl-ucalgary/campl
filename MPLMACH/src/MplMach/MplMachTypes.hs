@@ -303,13 +303,13 @@ data Val
 N.B. Note we make some assumptoins as given in the
 assembler -- lists have 
 
-    - Cons as ix 0
-    - Empty as ix 1
+    - Empty as ix 0
+    - Cons as ix 1
 
 Unfortunately, this is a bit hard coded....
 -}
 strToVal :: String -> Val
-strToVal = foldr (\c acc -> VCons (CaseIx 0) [VChar c, acc]) (VCons (CaseIx 1) [])
+strToVal = foldr (\c acc -> VCons (CaseIx 1) [VChar c, acc]) (VCons (CaseIx 0) [])
 
 
 newtype IllegalString = IllegalString String 

@@ -539,39 +539,6 @@ defn
 
                     halt passer
         
-
-
-{-
-proc playerX :: | PasserMem( | MemCell(Grid |)) => MemCell(Grid | ), UserMoveSet  =
-    | passermem =>  mem, usrmvset -> hcase passermem of
-        PasserMem -> do
-            -- get the current board state
-            hput MemGet on mem 
-            get grid on mem
-
-            -- really should hcase here to see if the game is done
-
-            -- set the user board
-            hput UserMoveSet  on usrmvset
-            put (X, grid) on usrmvset
-
-            -- query the new user board
-            hput UserMoveGet  on usrmvset
-            get ngrid on usrmvset
-
-            -- set the new board state
-            hput MemPut on mem
-            put ngrid on mem
-
-            fork passermem as 
-                nmem with mem -> mem |=| nmem
-                nmemandnpasser with usrmvset -> do
-                    split nmemandnpasser into nmem, npasser
-                    plug 
-                        playerX( | npasser => nnmem, usrmvset)
-                        nnmem,nmem  => -> nmem |=| neg nnmem 
--}
-
 proc run =
     | => _strtermO, _strtermX -> do
         plug 

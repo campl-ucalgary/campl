@@ -96,7 +96,13 @@ mplMachRunnner env ((mainins, mainouts), instrs) = withSocketsDo $ flip runMplMa
             -- (flip runMplMach env (mplMachSteps stec)) 
             ( mapConcurrently_ (flip runMplMach env) 
                 (mplMachSteps stec : insvs ++ outsvs)
-                ) `finally` liftIO (cancel svthd)
+                ) `finally` liftIO (threadDelay 1000 >> cancel svthd)
+                -- oh god, why is this thread delay? TODO: This is here
+                -- because sometimes the main thread will finish before
+                -- sending all the messages out the network to the service thread..
+                -- really, we should have an mvar or something to keep track of 
+                -- all the child threads so we wait on the child threads to die
+                -- and ensure that all messages are sent.
 
         return ()
 

@@ -352,16 +352,6 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
             -- chlkup = t Map.! ch
             Just chlkup = Map.lookup ch t 
 
-        -- actually there's probably a bug here: need to do some extra work (but when?)
-        -- to run the channel manager when we have (close, close)
-        (s, t, e, IClose ch) -> do
-            -- writeChMQueue (chlkup ^. activeQueue) QClose
-            return $ Just $ stec 
-                & code !~ c
-                & translation % at ch !~ Nothing
-          where
-            -- chlkup = t Map.! ch
-            Just chlkup = Map.lookup ch t 
 
         (s, t, e, IId lch rch) -> do
             fetchAndWriteChMQueue (lchlkup ^. activeQueue) $ QId (translationLkupToGlobalChan rchlkup)
@@ -678,10 +668,27 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
 
         (_, t, e, IHalt ch) -> do
             -- writeChMQueue (chlkup ^. activeQueue) QHalt
+
+            _ <- liftIO $ atomically $ do
+                -- traceTranslationLkupWithHeader  "ihalt" chlkup
+                chactivequeue <- chlkup ^. activeQueue % to readChMQueue
+                isEmptyTQueue chactivequeue >>= check
+
             return Nothing
           where
             -- chlkup = t Map.! ch
             Just chlkup = Map.lookup ch t
+
+        -- actually there's probably a bug here: need to do some extra work (but when?)
+        -- to run the channel manager when we have (close, close)
+        (s, t, e, IClose ch) -> do
+            -- writeChMQueue (chlkup ^. activeQueue) QClose
+            return $ Just $ stec 
+                & code !~ c
+                & translation % at ch !~ Nothing
+          where
+            -- chlkup = t Map.! ch
+            Just chlkup = Map.lookup ch t 
 
         (s, t, e, IRun tmapping callix n) -> do
             instrs <- gviews supercombinators (Arr.! callix)

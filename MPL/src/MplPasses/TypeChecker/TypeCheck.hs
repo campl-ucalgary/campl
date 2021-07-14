@@ -2175,7 +2175,7 @@ typeCheckCmd cmd = let cmdann = _Just % _TypeAnnCmd # cmd in case cmd of
         return (CSwitch cxt switches', [eqn])
 
     CIf cxt cond cthen celse -> do
-        (ttypeexpr, (expr', expreqn)) <- withFreshTypeTag $ typeCheckExpr cond
+        (ttypeexpr, (expr', expreqns)) <- withFreshTypeTag $ typeCheckExpr cond
 
         (cthen', ctheneqns) <- localEnvSt id $ typeCheckCmds cthen
         (celse', celseeqns) <- localEnvSt id $ typeCheckCmds celse
@@ -2185,6 +2185,7 @@ typeCheckCmd cmd = let cmdann = _Just % _TypeAnnCmd # cmd in case cmd of
                 [ TypeEqnsEq (typePtoTypeVar ttypepexpr, _TypeBoolF # Just (TypeAnnExpr $ cond)) ]
                 <> ctheneqns
                 <> celseeqns
+                <> expreqns
 
         envLcl % typeInfoSymTab % symTabCh .= mempty
 

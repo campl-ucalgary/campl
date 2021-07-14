@@ -361,6 +361,9 @@ patternCompileCmds = fmap (second NE.fromList) . go . NE.toList
             insertChInContext chp
 
             let upatt = _PVar # (utp, u) :: MplPattern MplPatternCompiled
+
+            insertPattInContext upatt
+
             second (CGet ann upatt chp:) <$> go cmds
 
         -- get should NOT be the last command for sure..
@@ -368,12 +371,15 @@ patternCompileCmds = fmap (second NE.fromList) . go . NE.toList
             deleteChFromContext chp
             insertChInContext chp
 
+
             let exhstchk = patternCompileExhaustiveCheck ([patt] :| [])
             tell $ bool [ _NonExhaustiveGet # ann ] [] exhstchk 
             u <- freshUIdP
             let utp = getPattType patt
                 uexpr = _EVar # (utp, u) :: MplExpr MplPatternCompiled
                 upatt = _PVar # (utp, u) :: MplPattern MplPatternCompiled
+
+            insertPattInContext upatt
 
             -- technically using the annotation from CGet is wrong, but
             -- we already check that this is exhaustive from just immediately above.
@@ -587,7 +593,6 @@ patternCompileCmds = fmap (second NE.fromList) . go . NE.toList
             (ndefns0, cthen') <- localEnvSt id $ patternCompileCmds cthen
             (ndefns1, celse') <- localEnvSt id $ patternCompileCmds celse
             return (ndefns0 ++ ndefns1, [CIf () cond' cthen' celse']) 
-            undefined
             -- fmap pure $ CIf () <$> patternCompileExpr cond <*> patternCompileCmds cthen <*> patternCompileCmds celse
             -- @go cmds@ should always be empty list here
 
