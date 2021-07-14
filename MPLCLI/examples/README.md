@@ -1,0 +1,11 @@
+# Examples
+This folder contains some more significant examples of some MPL programs.
+
+## Tic tac toe
+A classical tic tac toe game meant to be played by two different players.
+
+Remarks.
+- This uses a memory cell to pass the game state between the two players
+
+## Chat room
+A simple chat room for two players to chat on.
