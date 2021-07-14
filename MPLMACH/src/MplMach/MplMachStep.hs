@@ -484,7 +484,7 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
                     _ -> retry
             -}
 
-            -- N.B. this is the old method...
+            -- N.B. this is the old method (which works)
             liftIO $ atomically $ do
                 -- traceTranslationLkupWithHeader "idl" lchlkup
                 -- traceTranslationLkupWithHeader "idr" rchlkup

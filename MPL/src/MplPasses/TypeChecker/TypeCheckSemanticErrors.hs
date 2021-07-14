@@ -104,10 +104,12 @@ data TypeCheckSemanticErrors =
     | IllegalRaceAgainstDifferentPolarities KeyWordNameOcc [ChP MplRenamed] [ChP MplRenamed]
 
     -- | Cut condition failures..
-    -- (c1), (c2), (c3), cycle condition
+    -- (c1), (c2), (c3), (c4), cycle condition
     | ExpectedAtMostTwoOccurencesOfAChannelInAPlugPhraseButGot [ChIdentR]
     | ExpectedVariablesToBeOfOppositePolarityInAPlugPhraseButGot [ChIdentR] 
     | ExpectedVariablesToBeInADifferentPlugPhraseButGotIn [ChIdentR] ([ChIdentR], [ChIdentR])
+    -- intersected plugs 
+    | ExpectedAtMostOnePluggedChannelToBeConnectingPlugPhrases [ChIdentR] 
     -- ExpectedProcessesTo
     -- [ChIdentR] ([ChIdentR], [ChIdentR])
 
@@ -298,7 +300,7 @@ cutConditions ::
     [([ChIdentR], [ChIdentR])] ->
     [e]
 cutConditions plugged plugphrases = 
-    c1c2 plugphrases <> concatMap c3 plugphrases 
+    c1c2 plugphrases <> concatMap c3 plugphrases <> c4 plugphrases
   where
     c1c2 = concatMap g . toListOf folded . flip execState Map.empty . traverse f 
 
@@ -333,3 +335,24 @@ cutConditions plugged plugphrases =
         let common = ins `intersect` outs
         in bool [_ExpectedVariablesToBeInADifferentPlugPhraseButGotIn # (common, phrase)]
             [] $ null common
+
+    c4 = snd . foldr go mempty 
+      where
+        go a@(ins, outs) (idacc, errs) = 
+            -- focused ins or focused outs, the list of the opposite phrases
+            let check focused oppositephrases = 
+                    concatMap 
+                        -- (filter (`elem` plugged) . view chIdentRIdentR) 
+                        (mkerror . filter (`elem` focused)) 
+                        oppositephrases
+
+                mkerror lst@(_:_:_) = [_ExpectedAtMostOnePluggedChannelToBeConnectingPlugPhrases # lst]
+                mkerror _ = []
+            in 
+                ( a:idacc
+                , concat 
+                    [ check (filter ((`elem`plugged) . view chIdentRIdentR) ins) $ map snd idacc
+                    , check (filter ((`elem`plugged) . view chIdentRIdentR) outs) $ map fst idacc
+                    , errs
+                    ]
+                )

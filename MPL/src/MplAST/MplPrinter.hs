@@ -861,6 +861,10 @@ mplCmdsToBnfc proxy cmds = B.PROCESS_COMMANDS_DO_BLOCK $ NE.toList $ fmap (mplCm
 instance PPrint ChIdentT x where
     pprint proxy n = n ^. chIdentTChIdentR % to (pprint proxy)
 
+instance {-# OVERLAPPING #-} PPrint ChIdentT MplTypeChecked where
+    -- pprint proxy n = n ^. chIdentTChIdentR % to (pprint proxy) ++ " :: "++ n ^. chIdentTType % to (pprint proxy)
+    pprint proxy n = n ^. chIdentTChIdentR % to (pprint proxy) 
+
 instance PPrint B.MplProg x where
     pprint _ = B.printTree 
 
@@ -967,6 +971,7 @@ mplDefnToBnfc proxy (ProcessDefn (MplProcess id tp body)) = B.MPL_PROCESS_DEFN $
             (map (toBnfcIdent proxy) ins) 
             (map (toBnfcIdent proxy) outs) $ mplCmdsToBnfc proxy cmds
 
+mplDefnToBnfc _ _ = error "bad 'mplDefnToBnfc' use"
 
 instance MplPrintConstraints x y => PPrint (MplProg x) y where
     pprint = mplPprint

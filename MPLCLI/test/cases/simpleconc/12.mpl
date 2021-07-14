@@ -14,10 +14,10 @@ proc p0 :: | Get([Char] | TopBot) =>  =
 
 proc p1 :: | => A, Neg(A) =
     | => ch0, ch1 -> do
-        ch0 |=| neg ch1
+        ch1 |=| neg ch0
 
 proc p2 :: | A, Neg(A) => =
-    | ch1, ch2 =>  -> do
+    | ch2, ch1 =>  -> do
         ch1 |=| neg ch2
 
 proc p3 :: | Console => Get([Char] | TopBot) =
@@ -36,5 +36,6 @@ proc run =
         plug 
             p0( | ch0      =>          )
             p1( |          => ch0, ch1 )
-            p2( | ch1, ch2 =>          )
+            p2( | ch2, ch1 =>          )
             p3( | _console => ch2      )
+

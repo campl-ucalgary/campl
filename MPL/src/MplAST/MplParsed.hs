@@ -89,13 +89,13 @@ type instance XProcessDefn MplParsed  = MplProcess MplParsed
 
 -- Expression instances
 type instance XMplExpr MplParsed = MplExpr MplParsed
-type instance XEPOps MplParsed = ()
+type instance XEPOps MplParsed = Location
 type instance XEVar MplParsed = ()
 type instance XEInt MplParsed = Location
 type instance XEChar MplParsed = Location
 type instance XEDouble MplParsed = Location
 type instance XEBool MplParsed = Location
-type instance XECase MplParsed = ()
+type instance XECase MplParsed = Location
 type instance XECasePattern MplParsed = XMplPattern MplParsed
 type instance XEObjCall MplParsed = ()
 type instance XECall MplParsed = ()

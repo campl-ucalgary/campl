@@ -1,12 +1,6 @@
-# MPLCLI
-
-# Bug List
-- This does not non exhaustive pattern matches.. 
-```
-protocol StringTerminal => S =
-    StringTerminalPut :: Put( [Char] | S) => S
-    StringTerminalGet :: Get( [Char] | S) => S 
-    StringTerminalClose :: TopBot => S
+{-
+adgbehcfi
+-}
 
 coprotocol S => Console =
     ConsolePut :: S => Get( [Char] | S) 
@@ -36,18 +30,20 @@ defn
     fun transpose :: [[A]] -> [[A]] = 
         [] -> []
         []:ts -> transpose(ts)
+        (s:ss):ts -> case headstails(ts) of
+            nts -> (s : concatMap( (App := (head, _) -> head ), nts))
+                : transpose( ss : map( (App := (_, tail) -> tail), nts ))
 where
     fun headstails :: [[A]] -> [([A], [A])] =
         [] -> []
         []:ts -> ([], []) : headstails(ts)
         (s:ss):ts -> ([s], ss) : headstails(ts)
 
-        
-    
-
 proc run =
     | _console => -> do
+        hput ConsolePut on _console
+        put concat(transpose(["abc", "def","ghi"])) on _console
+        
 
         hput ConsoleClose on _console
         halt _console
-```

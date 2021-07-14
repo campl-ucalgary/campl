@@ -1421,13 +1421,13 @@ typeCheckProcessBody procbdy@((patts, ins, outs), cmds) = do
         ins' = zipWith 
                 (\stref -> 
                     review _ChIdentT 
-                    . (,fromJust $ lookupInferredSeqTypeExpr stref ttypemap) 
+                    . (,fromJust $ lookupInferredTypeCh stref ttypemap) 
                     )
                 ttypeins ins 
         outs' = zipWith 
                 (\stref -> 
                     review _ChIdentT 
-                    . (,fromJust $ lookupInferredSeqTypeExpr stref ttypemap) 
+                    . (,fromJust $ lookupInferredTypeCh stref ttypemap) 
                     )
                 ttypeouts
                 outs 
@@ -1592,7 +1592,6 @@ typeCheckCmd cmd = let cmdann = _Just % _TypeAnnCmd # cmd in case cmd of
         ttypech' <- freshChTypeTag ch
 
         (ttypepatt, (patt', patteqns)) <- withFreshTypeTag $ typeCheckPattern patt
-
 
         let ch' = _ChIdentT # (ch, fromJust $ lookupInferredSeqTypeExpr ttypech ttypemap)
             ttypepch = annotateTypeTag ttypech ch
@@ -2051,13 +2050,21 @@ typeCheckCmd cmd = let cmdann = _Just % _TypeAnnCmd # cmd in case cmd of
         tell $ review _ExternalError $ cutCycles $ NE.fromList allphrasesgraph
 
         -- Get the map for the stable equations
+        {-
         let allchs = nubBy ((==) `on` view uniqueTag) 
                 $ foldMapOf (folded % _2 % each % folded) (pure . view uniqueTag) 
                 $ phr1:phr2:phrs
             allchsids = map (view uniqueTag) allchs
         ttypechsstable <- traverse (const freshTypeTag) allchs 
         let stablerefs = Map.fromList $ zip allchs ttypechsstable
+        -}
 
+        {-  Honestly, this is really confusing... I'm pretty sure 
+         'ttypesplugged' is a map from the channels and the tags of types which it could be
+         (should be at most 2 from the plug condition checks) and after when all the commands
+         types are put together, it will set each of the types in the non empty list equal to 
+         each other.. some legacy stuff from misunderstanding how this works initially....
+        -}
         ~((phr1':phr2':phrs', acceqns), ttypesplugged) <- flip runStateT Map.empty 
             $ fmap unzip 
             $ for allphrases 
@@ -2083,18 +2090,25 @@ typeCheckCmd cmd = let cmdann = _Just % _TypeAnnCmd # cmd in case cmd of
                         (Map.filterWithKey (\k _ -> k `elem` phrsechsids)))
                     $ typeCheckCmds cmds
 
+                -- awkwardness with the legacy way of doing this to recover the original type tag
+                -- to look up the information.
+                symtabch <- lift $ guse $ envLcl % typeInfoSymTab % symTabCh
+
                 let eqns = cmdseqns
                     ins' = map (\ch -> _ChIdentT # 
                             ( ch
                             , fromJust $ 
-                                lookupInferredTypeCh (fromJust $ stablerefs ^. at (ch ^. uniqueTag)) ttypemap 
+                                lookupInferredTypeCh (fromJust $ symtabch ^? at (ch ^. uniqueTag) % _Just % _SymEntry % _1) ttypemap 
                             )) ins
                     outs' = map (\ch -> _ChIdentT # 
                             ( ch
-                            , fromJust $ lookupInferredTypeCh (fromJust $ stablerefs ^. at (ch ^. uniqueTag)) ttypemap
+                            , fromJust $ lookupInferredTypeCh (fromJust $ symtabch ^? at (ch ^. uniqueTag) % _Just % _SymEntry % _1) ttypemap
                             )) outs
 
                 return ((cxt, (ins', outs'), cmds'), eqns)
+
+        -- same awkardness as before.
+        symtabch <- guse $ envLcl % typeInfoSymTab % symTabCh 
 
         let (exists, pluggedeqns) = second fold 
                 $ unzip 
@@ -2114,7 +2128,7 @@ typeCheckCmd cmd = let cmdann = _Just % _TypeAnnCmd # cmd in case cmd of
             eqn = TypeEqnsExist exists $ pluggedeqns <> fold acceqns
             plugs' = map (\ch -> 
                     ( ch
-                    , fromJust $ lookupInferredTypeCh (fromJust $ stablerefs ^. at (ch ^. uniqueTag)) ttypemap
+                    , fromJust $ lookupInferredTypeCh (fromJust $ symtabch ^? at (ch ^. uniqueTag) % _Just % _SymEntry % _1) ttypemap
                     )
                 ) plugs
 

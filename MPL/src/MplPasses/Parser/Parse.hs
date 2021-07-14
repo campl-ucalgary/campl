@@ -217,7 +217,7 @@ parseBnfcExpr (B.LET_EXPR stmts expr) = do
 
 parseBnfcExpr (B.INFIXR0_EXPR a colon b) = do
     ~[a', b']<- traverseTryEach parseBnfcExpr [a,b]
-    return $ _EPOps # ((), PrimitiveColon, a', b')
+    return $ _EPOps # (toLocation colon, PrimitiveColon, a', b')
     
 parseBnfcExpr (B.INFIXL1_EXPR a op b) = 
     error $ "not implemented instr" ++ show op
@@ -226,12 +226,12 @@ parseBnfcExpr (B.INFIXL2_EXPR a op b) =
 parseBnfcExpr (B.INFIXL3_EXPR a (B.Infixl3op (pos, op)) b) = do
     ~[a', b'] <- traverseTryEach parseBnfcExpr [a,b]
     case op of
-        "==" -> return $ _EPOps #  ((), PrimitiveEq, a',b') 
-        "/=" -> return $ _EPOps #  ((), PrimitiveNeq, a',b') 
-        "<"  -> return $ _EPOps #  ((), PrimitiveLt, a',b') 
-        ">"  -> return $ _EPOps #  ((), PrimitiveGt, a',b') 
-        "<=" -> return $ _EPOps #  ((), PrimitiveLeq, a',b') 
-        ">=" -> return $ _EPOps #  ((), PrimitiveGeq, a',b') 
+        "==" -> return $ _EPOps #  (toLocation pos, PrimitiveEq, a',b') 
+        "/=" -> return $ _EPOps #  (toLocation pos, PrimitiveNeq, a',b') 
+        "<"  -> return $ _EPOps #  (toLocation pos, PrimitiveLt, a',b') 
+        ">"  -> return $ _EPOps #  (toLocation pos, PrimitiveGt, a',b') 
+        "<=" -> return $ _EPOps #  (toLocation pos, PrimitiveLeq, a',b') 
+        ">=" -> return $ _EPOps #  (toLocation pos, PrimitiveGeq, a',b') 
         _ -> error $ "not implemented" ++ op
 
 parseBnfcExpr (B.INFIXL4_EXPR a op b) = 
@@ -240,14 +240,14 @@ parseBnfcExpr (B.INFIXL4_EXPR a op b) =
 parseBnfcExpr (B.INFIXL5_EXPR a (B.Infixl5op (pos, op)) b) = do
     ~[a', b']<- traverseTryEach parseBnfcExpr [a,b]
     case op of
-        "+" -> return $ _EPOps #  ((), PrimitiveAdd, a',b') 
-        "-" -> return $ _EPOps #  ((), PrimitiveSub, a',b') 
+        "+" -> return $ _EPOps #  (toLocation pos, PrimitiveAdd, a',b') 
+        "-" -> return $ _EPOps #  (toLocation pos, PrimitiveSub, a',b') 
         _ -> error $ "not implemented: " ++ op
 parseBnfcExpr (B.INFIXL6_EXPR a (B.Infixl6op (pos,op)) b) = do
     ~[a', b']<- traverseTryEach parseBnfcExpr [a,b]
     case op of
-        "*" -> return $ _EPOps #  ((), PrimitiveMul, a',b') 
-        "/" -> return $ _EPOps #  ((), PrimitiveDiv, a',b') 
+        "*" -> return $ _EPOps #  (toLocation pos, PrimitiveMul, a',b') 
+        "/" -> return $ _EPOps #  (toLocation pos, PrimitiveDiv, a',b') 
         _ -> error $ "not implemented: " ++ op
 
 parseBnfcExpr (B.INFIXR7_EXPR a op b) = 
@@ -274,7 +274,16 @@ parseBnfcExpr (B.LIST_EXPR lbr exprs rbr) = do
     exprs' <- traverse parseBnfcExpr exprs
     return $ _EList # (toLocation lbr, exprs')
 parseBnfcExpr (B.STRING_EXPR (B.PString (loc, str))) = 
-    return $ _EString # (toLocation loc, init $ tail str)
+    return $ _EString # (toLocation loc, helper $ init $ tail str)
+  where
+    helper ('\\':c:rst) = case c of
+        'n' -> '\n' : helper rst
+        't' -> '\t' : helper rst
+        'r' -> '\r' : helper rst
+        'f' -> '\f' : helper rst
+        _ -> error "impossible bnfc error happened"
+    helper (c:rst) = c : helper rst
+    helper [] = []
 
 parseBnfcExpr (B.UNIT_EXPR lbr rbr) = 
     return $ _EUnit # toLocation lbr 
@@ -291,7 +300,7 @@ parseBnfcExpr (B.UNFOLD_EXPR expr phrases) = do
 parseBnfcExpr (B.CASE_EXPR cxt expr pattsexprs) = do
     expr' <- parseBnfcExpr expr
     pattexprs' <- traverseTryEach (f <=< parseBnfcPattsExpr) pattsexprs
-    return $ _ECase # ((), expr', NE.fromList pattexprs')
+    return $ _ECase # (toLocation cxt, expr', NE.fromList pattexprs')
   where
     f ([patt], expr) = return (patt, expr)
     f (n, expr) = tell [_CaseExpectedExactlyOnePatternButGot # n] >> throwError ()

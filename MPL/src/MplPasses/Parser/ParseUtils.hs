@@ -67,6 +67,9 @@ instance ToLocation B.LSquareBracket  where
 instance ToLocation B.RSquareBracket  where
     toLocation (B.RSquareBracket (pos, str)) = toLocation pos
 
+instance ToLocation B.Case where
+    toLocation (B.Case (pos, _str)) = toLocation pos
+
 
 instance ToLocation B.Colon  where
     toLocation (B.Colon (pos, str)) = toLocation pos

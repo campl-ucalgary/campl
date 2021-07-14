@@ -107,9 +107,17 @@ instance ( PPrint (MplType x) y, PPrint (IdP x) y, PPrint (TypeP x) y) => PPrint
                     <> map f rst ]
 
         f (TypeEqnsForall forall rst) = vsep 
-            [ nest 2 $ vsep 
-                $ [ hsep [pretty "forall", pretty (map (pprint proxy . view _2) forall), pretty "s.t."] ]
-                    <> map f rst ]
+            [ nest 2 
+                $ vsep 
+                $ [ hsep [pretty "forall", pretty (map g forall), pretty "s.t."] ]
+                    <> map f rst 
+            ]
+          where
+            g inp = concat 
+                [ "scoped: " ++ intercalate "," (map (pprint proxy) $ inp ^. _1)
+                , "; root: " ++ pprint proxy (inp ^. _2)
+                , "; is: " ++ pprint proxy (inp ^. _3)
+                ] 
 
 instance ( PPrint (MplType x) MplRenamed, PPrint (IdP x) MplRenamed, PPrint (TypeP x) MplRenamed) => Show (TypeEqns x) where
     show = pprint (Proxy :: Proxy MplRenamed)
@@ -257,9 +265,12 @@ matchCont ty0 ty1 k = f ty0 ty1
     -- anything is is potentially a match, since @x@ could be potentially
     -- substituted for something like @x = Neg(y)@.
     -- TODO: If it is x = Neg(y), we need to make this x = Neg(y) and NOT 
-    -- change this to y = Neg(x).
-    f (TypeBuiltIn (TypeNegF cxt0 (TypeVar _ a))) b = fmap pure $ mkValidSub a $ TypeBuiltIn $ TypeNegF cxt0 b
-    f a (TypeBuiltIn (TypeNegF cxt1 (TypeVar _ b))) = fmap pure $ mkValidSub b $ TypeBuiltIn $ TypeNegF cxt1 a
+    -- change this to y = Neg(x)... 
+    -- N.B. It does this automatically actually...  just above, we test if we have
+    -- a type var and something else, which will cover this case. 
+ 
+    -- f (TypeBuiltIn (TypeNegF cxt0 (TypeVar _ a))) b = fmap pure $ mkValidSub a $ TypeBuiltIn $ TypeNegF cxt0 b
+    -- f a (TypeBuiltIn (TypeNegF cxt1 (TypeVar _ b))) = fmap pure $ mkValidSub b $ TypeBuiltIn $ TypeNegF cxt1 a
 
     f type0@(TypeSeqWithArgs _cxt0 a args) type1@(TypeSeqWithArgs _cxt1 b brgs) 
         | a == b && length args == length brgs =
@@ -754,6 +765,11 @@ packageUniversalElim vs pkg = traverseOf packageSubs linearize pkg >>= flip (fol
                 g [] = return ()
                 g ((l, (TypeBuiltIn (TypeNegF _ (TypeBuiltIn (TypeNegF _ r))))):rst)  =  g $ (l,r):rst
 
+                -- need to include the symmetric case with negation, in particular, we need
+                --  a = Neg(b) 
+                --  where b is for all quantified to not type check.
+                g ((l, r@(TypeBuiltIn (TypeNegF _ (TypeVar rcxt r')))):rst) | r' `elem` foralls = throwerr 
+
                 g ((l, r@(TypeVar rcxt r')):rst)
                     -- trivial substitutions are okay or any matching to a non for all
                     | isTrivialSub (l, r) = g rst
@@ -768,20 +784,25 @@ packageUniversalElim vs pkg = traverseOf packageSubs linearize pkg >>= flip (fol
                  - of the type, then there must be another instance of the
                  - single negation somewhere else. 
                  -
-                 - Otherwise, if it really is the last negaiton with no other
+                 - Otherwise, if it really is the last negation with no other
                  - instance of the negation, then it should not unify... 
                 -}
-                g [(l, r@(TypeBuiltIn (TypeNegF _ _)))] = throwerr
-                g ((l, r@(TypeBuiltIn (TypeNegF _ _))):rst) = coalesce (l, r) rst >>= g
+                -- g [(l, r@(TypeBuiltIn (TypeNegF _ _)))] = throwerr
+                -- g ((l, r@(TypeBuiltIn (TypeNegF _ _))):rst) = coalesce (l, r) rst >>= g
 
                 g ((l, r):rst)
                     | l `elem` foralls = throwerr
                     | otherwise = g rst
 
-            (match vtp tp `catchError` const 
-                (throwError $ _TypeForallMatchFailure # (vtp, tp))) 
+            {-
+            match vtp tp `catchError` const (throwError $ _TypeForallMatchFailure # (vtp, tp))
                 >>= linearize 
                 >>= g 
+            -}
+            match vtp tp `catchError` const (throwError $ _TypeForallMatchFailure # (vtp, tp))
+                >>= linearize 
+                >>= g 
+
             return $ acc' & packageSubs %~ ((v,vtp):) . deleteSubList v
       where
         acc' = acc & packageSubs %~ alignSubs v
@@ -807,7 +828,10 @@ packageUniversalElim vs pkg = traverseOf packageSubs linearize pkg >>= flip (fol
  -          - fail
  -}
 
-{- | TODO: The whole annotation business needs to be cleaned up, and it should be actually used for error messages -}
+{- | TODO: The whole annotation business needs to be cleaned up, and it should be actually used for error messages. 
+
+N.B. I think I actually did this now 
+-}
 pprintTypeUnificationError ::
     -- TypeUnificationError x -> 
     TypeUnificationError MplTypeSub -> 
@@ -922,10 +946,12 @@ pprintTypeUnificationError = go
         TypeAnnExpr expr ->
             [ pretty "expression"
             , codeblock $ pprintParsed expr
+            , getexprloc expr
             ]
         TypeAnnPatt patt ->
             [ pretty "pattern"
             , codeblock $ pprintParsed patt
+            , getpattloc patt
             ]
         TypeAnnCh ch ->
             [ pretty "channel"
@@ -958,6 +984,48 @@ pprintTypeUnificationError = go
         CRace _ _ -> mempty
         CSwitch _ _ -> mempty
         CIf ann _ _ _ -> ann ^. coerced @KeyWordNameOcc @NameOcc % nameOccLocation % to loctodoc
+
+    getexprloc :: MplExpr MplRenamed -> MplDoc
+    getexprloc = (pretty "at"<+>) . \case
+        EPOps ann _ _ _ -> ann ^. location % to loctodoc
+        EVar _ idp -> idp ^. location % to loctodoc
+        EInt ann _ -> ann ^. location % to loctodoc
+        EChar ann _ -> ann ^. location % to loctodoc
+        EDouble ann _ -> ann ^. location % to loctodoc
+        EBool ann _ -> ann ^. location % to loctodoc
+        ECase ann _ _ -> ann ^. location % to loctodoc
+        EObjCall _ann idp _ -> idp ^. location % to loctodoc
+        ECall _ann idp _ -> idp ^. location % to loctodoc
+        ERecord ann _ -> ann ^. location % to loctodoc
+        EList ann _ -> ann ^. location % to loctodoc
+        EString ann _ -> ann ^. location % to loctodoc
+        EUnit ann -> ann ^. location % to loctodoc
+        ETuple ann _ -> ann ^. location % to loctodoc
+        -- EProj !(XEProj x) Int (MplExpr x)
+        EBuiltInOp _ _ _ _ -> error "no location for built in ops -- not implemented yet"
+        -- bugged bnfc?
+        EIf ann _ _ _ -> mempty
+        -- bugged bnfc?
+        EFold ann _ _ -> mempty
+        -- bugged bnfc?
+        EUnfold ann _ _ -> mempty
+        -- bugged bnfc?
+        ESwitch ann _ -> mempty
+
+    getpattloc :: MplPattern MplRenamed -> MplDoc
+    getpattloc = (pretty "at"<+>) . \case
+        PConstructor _ idp _ -> idp ^. location % to loctodoc
+        PRecord ann _ -> ann ^. location % to loctodoc
+        PVar _ idp -> idp ^. location % to loctodoc
+        PNull ann -> ann ^. location % to loctodoc
+        PUnit ann -> ann ^. location % to loctodoc
+        PTuple ann _ -> ann ^. location % to loctodoc
+        PList ann _ -> ann ^. location % to loctodoc
+        PString ann _ -> ann ^. location % to loctodoc
+        PListCons ann _ _ -> ann ^. location % to loctodoc
+        PChar ann _ -> ann ^. location % to loctodoc
+        PInt ann _ -> ann ^. location % to loctodoc
+        PBool ann _ -> ann ^. location % to loctodoc
 
     loctodoc (Location (r,c)) = pretty "line"
         <+> pretty r

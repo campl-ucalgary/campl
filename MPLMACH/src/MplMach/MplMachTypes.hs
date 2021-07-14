@@ -373,11 +373,7 @@ data QInstr
     | QRace Stec
   deriving Show
 
-qInstrStmShow :: QInstr -> STM String
-qInstrStmShow = undefined
-
-
-{- | returns true if the instruction will make the process suspend -}
+{- | returns true if the instruction will make the process suspend. N.B. I don't think this is used. -}
 isSuspendingQInstr ::
     QInstr -> 
     Bool

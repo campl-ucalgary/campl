@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
@@ -28,6 +29,7 @@ import Control.Concurrent (forkFinally)
 import System.IO (isEOF)
 import Control.Monad
 import Data.Coerce
+import Text.Read
 
 import MplMach.MplMachTypes
 import MplMach.MplMachStack
@@ -78,13 +80,12 @@ serviceManager s = forever $ gview equality >>= \env -> liftIO $ do
             _ -> throwIO e
 
 {- | Honestly, literally everything about services is a silly mess. They make the 
-language frankly unusable for anything. -}
+language frankly unusable for anything. well actually io in general is a mess.... -}
 serviceClient  ::
     HasMplMachServicesEnv r =>
     Socket ->
     MplMach r ()
 serviceClient s = gview equality >>= \env -> do
-    -- error "what"
     ~(Just egch, pbts) <- P.runStateT (PA.parse pServiceCh) (recvPipe s) 
     svmp <- liftIO $ env ^. serviceMap % to readIORef 
     case egch of
@@ -99,7 +100,9 @@ serviceClient s = gview equality >>= \env -> do
         FOR SURE be a HPut
     * Then, that HPut (with the particular index) determines what we want to do
 
-Again, this language is literally unusable with this design of services.
+Again, this language is literally unusable with this design of services....
+
+Also, there's lots of trash duplicated code in this.
 -}
 
 serviceClientLoop ::
@@ -117,6 +120,7 @@ serviceClientLoop ::
 serviceClientLoop sock gchlkup psock pinstrs = next pinstrs >>= \case
     Left () -> return ()
     Right (instr, pinstrs') -> case instr of
+        -- Int instructions
         SHGetInt -> do
             -- send that we want an int
             liftIO $ sendAll sock $ snInstrToByteString SNGetInt
@@ -147,6 +151,75 @@ serviceClientLoop sock gchlkup psock pinstrs = next pinstrs >>= \case
 
             -- send actually put the int
             liftIO $ sendAll sock $ snInstrToByteString $ SNInt v
+                
+            serviceClientLoop sock gchlkup psock pinstrs'
+
+        -- Char instructions
+        SHGetChar -> do
+            -- send that we want an int
+            liftIO $ sendAll sock $ snInstrToByteString SNGetChar
+            -- keep looking querying until we actually parse an int
+            (psock', inp) <- loop psock
+
+            -- add it to the queue
+            fetchAndWriteChMQueue (gchlkup ^. activeQueue) $ QPut $ VChar inp
+
+            serviceClientLoop sock gchlkup psock' pinstrs'
+          where
+            loop psock = do
+                ~(mval, psock') <- P.runStateT (PA.parse pSNChar) psock 
+                case mval of
+                    Just (Right val) -> return (psock', val)
+                    _ -> loop psock'
+        SHPutChar -> do
+
+            v <- liftIO $ atomically $ 
+                gchlkup ^. otherQueue % to readChMQueue
+                    >>= readTQueue
+                    >>= \case
+                        QPut (VChar v) -> return v
+                        bad -> throwSTM $ ppShowIllegalStep bad
+
+            -- send we want to put an int
+            liftIO $ sendAll sock $ snInstrToByteString $ SNPutChar
+
+            -- send actually put the int
+            liftIO $ sendAll sock $ snInstrToByteString $ SNChar v
+                
+            serviceClientLoop sock gchlkup psock pinstrs'
+
+        -- String instructions
+        SHGetString -> do
+            -- send that we want an int
+            liftIO $ sendAll sock $ snInstrToByteString SNGetString
+            -- keep looking querying until we actually parse a string
+            (psock', inp) <- loop psock
+
+            -- add it to the queue
+            fetchAndWriteChMQueue (gchlkup ^. activeQueue) $ QPut $ strToVal inp
+
+            serviceClientLoop sock gchlkup psock' pinstrs'
+          where
+            loop psock = do
+                ~(mval, psock') <- P.runStateT (PA.parse pSNString) psock 
+                case mval of
+                    Just (Right val) -> return (psock', val)
+                    _ -> loop psock'
+
+        SHPutString -> do
+
+            v <- liftIO $ atomically $ 
+                gchlkup ^. otherQueue % to readChMQueue
+                    >>= readTQueue
+                    >>= \case
+                        QPut v -> return $ valToStr v
+                        bad -> throwSTM $ ppShowIllegalStep bad
+
+            -- send we want to put an int
+            liftIO $ sendAll sock $ snInstrToByteString $ SNPutString
+
+            -- send actually put the int
+            liftIO $ sendAll sock $ snInstrToByteString $ SNString v
                 
             serviceClientLoop sock gchlkup psock pinstrs'
 
@@ -182,9 +255,6 @@ recvPipe s = go
 
     rECV_MAX_BYTES_TO_RECEIVE :: Int
     rECV_MAX_BYTES_TO_RECEIVE = 4096
-    
-
-
 
 {-| Rougly follows the idea here: https://redis.io/topics/protocol. The specification is as follows.
 
@@ -192,7 +262,7 @@ recvPipe s = go
 
     * Chars the first byte of the reply is ";"
 
-    * Strings the first byte of the reply is "?", then the length (as an int), then the string.
+    * Strings the first byte of the reply is "?", then the length @n@ (as an int), then @n@ characters.
 
     * Errors the first byte of the reply is "-" 
 
@@ -214,10 +284,14 @@ pSNInt = A.char ':' *> A.signed A.decimal <* A.endOfLine
 pSNChar :: A.Parser Char
 pSNChar = A.char ';' *> A.anyChar <* A.endOfLine
 
-{-| ";<SOMESTRING>\r\n" -}
-pSNString :: A.Parser Char
-pSNString = A.char '?' *> A.anyChar <* A.endOfLine
-
+{-| "?<SOMESTRING>\r\n" -}
+pSNString :: A.Parser String
+pSNString = do 
+    _ <- A.char '?' 
+    (n :: Int) <- A.decimal 
+    str <- A.take n 
+    _ <- A.endOfLine 
+    return $ B.unpack str
 
 pSNCmd :: A.Parser SNInstr
 pSNCmd = 
@@ -225,8 +299,12 @@ pSNCmd =
     A.choice 
         [ SNGetChar <$ A.string "GETCHAR"
         , SNPutChar <$ A.string "PUTCHAR"
+
         , SNGetInt <$ A.string "GETINT"
         , SNPutInt <$ A.string "PUTINT"
+
+        , SNGetString <$ A.string "GETSTR"
+        , SNPutString <$ A.string "PUTSTR"
 
         , SNClose <$ A.string "CLOSE"
         ]
@@ -237,7 +315,8 @@ snInstrToByteString ::
     ByteString
 snInstrToByteString = \case
     SNInt n -> ':' `B.cons` (B.pack (show n) `B.append` eoc)
-    SNChar n -> ';' `B.cons` (B.pack (show n) `B.append` eoc)
+    SNChar n -> ';' `B.cons` (B.pack [n] `B.append` eoc)
+    SNString n -> '?' `B.cons` (B.pack (show $ length n) `B.append` B.pack n `B.append` eoc)
 
     SNGetChar -> '+' `B.cons` ("GETCHAR" `B.append` eoc)
     SNPutChar -> '+' `B.cons` ("PUTCHAR" `B.append` eoc)
@@ -245,21 +324,17 @@ snInstrToByteString = \case
     SNGetInt -> '+' `B.cons` ("GETINT" `B.append` eoc)
     SNPutInt -> '+' `B.cons` ("PUTINT" `B.append` eoc)
 
+    SNGetString -> '+' `B.cons` ("GETSTR" `B.append` eoc)
+    SNPutString -> '+' `B.cons` ("PUTSTR" `B.append` eoc)
+
     SNClose -> '+' `B.cons` ("CLOSE" `B.append` eoc)
   where
     eoc = "\r\n"
-    {-
-
-    | SNGetInt
-    | SNPutInt
-
-    -}
 
 serviceChToByteString :: 
     ServiceCh ->
     ByteString
 serviceChToByteString ch = '=' `B.cons` (B.pack (show (coerce @ServiceCh @Int ch)) `B.append` "\r\n")
-    
 
 
 {-| Parses a service channel which is given by:
@@ -285,6 +360,49 @@ serviceThread chlkup = loop
                 QSHPut sinstr -> readTQueue chotherqueue >> return sinstr
                 _ -> retry 
         case sinstr of
+            -- int instructions 
+            SHGetInt -> do 
+                gview stdLock >>= \mvar -> liftIO $ withMVar mvar $ const $ do
+                    putStrLn "Please enter an int: "
+                    let inputloop = fmap readMaybe getLine 
+                            >>= \case 
+                                Just n ->  return (n :: Int)
+                                Nothing ->  inputloop
+                    n <- inputloop
+                    fetchAndWriteChMQueue 
+                        (chlkup ^. activeQueue) 
+                        (QPut (VInt n))
+                loop
+            SHPutInt -> do 
+                ~(QPut (VInt n)) <- liftIO $ atomically $ 
+                    chlkup ^. otherQueue % to (readTQueue <=< readChMQueue)
+                gview stdLock >>= \mvar -> liftIO $ withMVar mvar $ const $ do
+                    putStrLn "Putting int: "
+                    putStrLn $ show n
+                loop
+
+            -- char instructions 
+            SHGetChar -> do 
+                gview stdLock >>= \mvar -> liftIO $ withMVar mvar $ const $ do
+                    putStrLn "Please enter an char: "
+                    let inputloop = getLine 
+                            >>= \case 
+                                [c] ->  return c
+                                _ ->  inputloop
+                    n <- inputloop
+                    fetchAndWriteChMQueue 
+                        (chlkup ^. activeQueue) 
+                        (QPut (VChar n))
+                loop
+            SHPutChar -> do 
+                ~(QPut (VChar n)) <- liftIO $ atomically $ 
+                    chlkup ^. otherQueue % to (readTQueue <=< readChMQueue)
+                gview stdLock >>= \mvar -> liftIO $ withMVar mvar $ const $ do
+                    putStrLn "Putting char: "
+                    putStrLn [n]
+                loop
+
+            -- string instructions 
             SHGetString -> do 
                 gview stdLock >>= \mvar -> liftIO $ withMVar mvar $ const $ do
                     str <- getLine
@@ -298,5 +416,8 @@ serviceThread chlkup = loop
                 gview stdLock >>= \mvar -> liftIO 
                     $ withMVar mvar $ const $ putStrLn $ valToStr inp
                 loop
+
+
+
 
             SHClose -> return ()

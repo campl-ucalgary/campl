@@ -12,83 +12,6 @@ False
 4
 -}
 
-{-
-coprotocol S => Console =
-    ConsolePut :: S => Get( [Char] | S) 
-    ConsoleGet :: S => Put( [Char] | S) 
-    ConsoleClose :: S => TopBot 
-
-data Maybe(A) -> S =
-    Just    :: A -> S
-    Nothing ::   -> S
-
-fun uncons :: [A] -> Maybe((A,[A])) =
-    [] -> Nothing
-    s:ss -> Just( (s, ss) )
-
-fun singleton :: A -> [A] =
-    s -> [s]
-
-fun null :: [A] -> Bool =
-    [] -> True
-    _ -> False
-
-fun length :: [A] -> Int =
-    [] -> 0
-    _ : ss -> 1 + length(ss)
-
-fun append :: [A],[A] -> [A] =
-    s:ss, ts -> s : append(ss,ts)
-    [], ts -> ts
-
-fun concat :: [[A]] -> [A] =
-    [] -> []
-    s:ss -> append(s, concat(ss))
-
-fun showUnconsResult :: Maybe( (Char,[Char]) ) -> [Char] =
-    Nothing -> "Nothing"
-    Just((c,cs)) -> concat(["Just((", [c] ,", ", cs ,"))"])
-
-fun showBool :: Bool -> [Char] =
-    True -> "True"
-    False -> "False"
-
-
--- this is for showing an int
-defn
-    fun showInt :: Int -> [Char] =
-        0 -> ['0']
-        n -> go(n, [])
-where
-    -- this does integer division for a,b as input
-    -- and outputs (q,r) where q is the integer division and r 
-    -- is the remainder.
-    fun divqr :: Int, Int -> (Int, Int) =
-        a, b -> if a < b
-            then (0, a)
-            else case divqr(a - b, b) of
-                (q, r) ->  (q + 1, r)
-
-    fun intToDigit :: Int -> Char =
-        0 -> '0'
-        1 -> '1'
-        2 -> '2'
-        3 -> '3'
-        4 -> '4'
-        5 -> '5'
-        6 -> '6'
-        7 -> '7'
-        8 -> '8'
-        9 -> '9'
-        -- in the use cases of this progrma, this will never happen!
-        _ -> '#'
-
-    fun go :: Int, [Char] -> [Char] =
-        0, acc -> acc
-        n, acc -> case divqr(n, 10) of
-            (q, r) -> go(q, intToDigit(r):acc)
-
--}
 
 {-
 Nothing
@@ -101,231 +24,233 @@ Nothing
 Just(ab)
 -}
 
-coprotocol S => Console =
-    ConsolePut :: S => Get( [Char] | S) 
-    ConsoleGet :: S => Put( [Char] | S) 
-    ConsoleClose :: S => TopBot 
-
-data Maybe(A) -> S =
-    Just    :: A -> S
-    Nothing ::   -> S
-
-
-fun last :: [A] -> Maybe(A) =
-    [] -> Nothing
-    [s] -> Just(s)
-    _:ss -> last(ss)
-
-fun init :: [A] -> Maybe([A]) =
-    [] -> Nothing
-    [s] -> Just([])
-    s:ss -> Just(
-            case init(ss) of
-                Just(nss) -> s:nss
-                Nothing -> [s]
-        )
-
-
-{-
-fun append :: [A],[A] -> [A] =
-    s:ss, ts -> s : append(ss,ts)
-    [], ts -> ts
-
-fun concat :: [[A]] -> [A] =
-    [] -> []
-    s:ss -> append(s, concat(ss))
-
-fun showMaybeChar :: Maybe(Char) -> [Char] =
-    Nothing -> "Nothing"
-    Just(c) -> concat(["Just(", [c] ,")"])
-
-fun showMaybeStr :: Maybe([Char]) -> [Char] =
-    Nothing -> "Nothing"
-    Just(str) -> concat(["Just(", str ,")"])
--}
-
-
-{-
-proc run :: | Console => =
-    | _console => -> do
-        hput ConsolePut on _console
-        put showMaybeChar(head([])) on _console
-        hput ConsolePut on _console
-        put showMaybeChar(head("abc")) on _console
-
-        hput ConsolePut on _console
-        put showMaybeStr(tail([])) on _console
-        hput ConsolePut on _console
-        put showMaybeStr(tail("abc")) on _console
-
-        hput ConsolePut on _console
-        put showMaybeChar(last([])) on _console
-        hput ConsolePut on _console
-        put showMaybeChar(last("abc")) on _console
-
-        hput ConsolePut on _console
-        put showMaybeStr(init([])) on _console
-        hput ConsolePut on _console
-        put showMaybeStr(init("abc")) on _console
-
-        hput ConsoleClose on _console
-        halt _console
-
--}
-
 {-
 coprotocol S => Console =
     ConsolePut :: S => Get( [Char] | S) 
     ConsoleGet :: S => Put( [Char] | S) 
     ConsoleClose :: S => TopBot 
 
-proc p1 =
-    | => a -> do
-        split a into a0,a1
-        put 0 on a0
-        put 1 on a1
-        close a0
-        halt a1
-        
+protocol IntTerminal => S =
+    IntTerminalPut :: Put( Int | S) => S
+    IntTerminalGet :: Get( Int | S) => S 
+    IntTerminalClose :: TopBot => S
 
-proc p2 =
-    | a => _intterm0, _intterm1 -> do
-        fork a as
-            a0 -> do
-                get n on a0
+protocol Mem(M|) => S =
+    MemPut :: Put(M|S) => S
+    MemGet :: Get(M|S) => S
+    MemCls :: TopBot => S
 
-                hput IntTerminalPut on _intterm0
-                put n on _intterm0
+protocol Passer(|P) => S =
+    Passer :: P (+) (Neg(P) (*) S) => S
 
-                hput IntTerminalClose on _intterm0
-                close _intterm0
+proc memory :: A | Mem(A|) => =
+    x | ch => -> do
+        hcase ch of
+            MemPut -> do
+                get y on ch
+                memory(y | ch => )
+            MemGet -> do
+                put x on ch
+                memory(x | ch => )
+            MemCls -> do
+                halt ch
 
-                halt a0
-            a1 -> do
-                get n on a1
+proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+    | => passer, _inp -> do
+        hput Passer on passer
+        split passer into mm,nmpp
+        hput MemGet on mm 
+        get y on mm
+        hput IntTerminalPut on _inp
+        put y on _inp
+        hput IntTerminalGet on _inp
+        get x on _inp
+        hput MemPut on mm
+        put x on mm
+        fork nmpp as
+            nm with mm -> nm |=| neg mm
+            pp with _inp -> p1(| => pp, _inp)
 
-                hput IntTerminalPut on _intterm1
-                put n on _intterm1
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer => _inp, mem -> do
+        hcase passer of
+            Passer -> do
+                hput MemGet on mem
+                get y on mem
+                hput IntTerminalPut on _inp
+                put y on _inp
+                hput IntTerminalGet on _inp
+                get x on _inp
+                hput MemPut on mem
+                put x on mem
+                fork passer as
+                    mm with mem -> do
+                        mm |=| mem
+                    nmpp with _inp -> do
+                        split nmpp into nm, pp
+                        plug
+                            p2( | pp => _inp,z)
+                            z,nm => -> nm |=| neg z 
 
-                hput IntTerminalClose on _intterm1
-                close _intterm1
-
-                halt a1
-
-proc run =
-    | => _intterm0, _intterm1 ->  do
-        plug
-            p1( |     => a)
-            p2( |  a  => _intterm0,  _intterm1)
--}
-
-coprotocol S => Console =
-    ConsolePut :: S => Get( [Char] | S) 
-    ConsoleGet :: S => Put( [Char] | S) 
-    ConsoleClose :: S => TopBot 
-
-
--- oopsies
-proc p0 :: | Get([Char] | TopBot) =>  =
-    | ch0  => -> do
-        put "pomeranian" on ch0
-        halt ch0
-
-proc p1 :: | => A, Neg(A) =
-    | => ch0, ch1 -> do
-        ch0 |=| neg ch1
-
-proc p2 :: | A, Neg(A) => =
-    | ch1, ch2 =>  -> do
-        ch1 |=| neg ch2
-
-proc p3 :: | Console => Get([Char] | TopBot) =
-    | _console => ch  -> do
-        get n on ch 
-        close ch
-
-        hput ConsolePut on _console
-        put n on _console
-
-        hput ConsoleClose on _console
-        halt _console
-
-proc run =
-    | _console => -> do
+proc run :: | => IntTerminal , IntTerminal =
+    | => _inpterm0, _inpterm1 -> do
         plug 
-            p0( | ch0      =>          )
-            p1( |          => ch0, ch1 )
-            p2( | ch1, ch2 =>          )
-            p3( | _console => ch2      )
-
-
-{-
-coprotocol S => Console =
-    ConsolePut :: S => Get( [Char] | S) 
-    ConsoleGet :: S => Put( [Char] | S) 
-    ConsoleClose :: S => TopBot 
-
-proc p0 :: |  => Put([Char] | Put([Char] | TopBot)) =
-    | => ch0 -> do
-        put "yorkshire terrier" on ch0
-        put "pomeranian" on ch0
-        halt ch0
-
-proc p1 :: | Put([Char] | P ) => P =
-    | ch0 => ch1 -> do
-        get n on ch0
-        ch0 |=| ch1
-
-proc p2 :: | Console, Put([Char] | TopBot) => =
-    | _console, ch1 =>  -> do
-        get n on ch1
-        close ch1
-
-        hput ConsolePut on _console
-        put n on _console
-
-        hput ConsoleClose on _console
-        halt _console
-
-proc run =
-    | _console => ->  do
-        plug
-            p0(|                => ch0 )
-            p1(|           ch0  => ch1 )
-            p2(| _console, ch1  =>     )
+            p1(| => passer, _inpterm0)
+            p2(| passer => _inpterm1, mem)
+            memory(100 | mem => )
 -}
 
 
 {-
+
+protocol IntTerminal => S =
+    IntTerminalPut :: Put( Int | S) => S
+    IntTerminalGet :: Get( Int | S) => S 
+    IntTerminalClose :: TopBot => S
+
+-- infinite memory cell 
+protocol Mem(M|) => S =
+    MemPut :: Put(M|S) => S
+    MemGet :: Get(M|S) => S
+    MemCls :: TopBot => S
+
+protocol Passer(|P) => S =
+    Passer :: P (+) (Neg(P) (*) S) => S
+
 protocol InfGetPut => S =
-    InfGetPut :: Get([Char] | S) => S
+    InfGet :: Get(Int | S) => S
+    InfPut :: Put(Int | S) => S
 
-coprotocol S => Console =
-    ConsolePut :: S => Get( [Char] | S) 
-    ConsoleGet :: S => Put( [Char] | S) 
-    ConsoleClose :: S => TopBot 
 
-proc infgetput :: Char, [Char] |InfGetPut => =
-    tocons, str | ch  => -> hcase ch of 
-        InfGetPut -> case tocons:str of
+proc infgetput :: Int | InfGetPut => IntTerminal =
+    n | ch  => _intterm -> hcase ch of 
+        InfGet -> case n + 2 of
             res -> do
                 put res on ch
-                infgetput(tocons, res | ch => )
-        
+                infgetput(res | ch => _intterm)
+        InfPut -> do
+            get nn on ch
 
-proc p0 :: | Console => InfGetPut = 
-    | _console => ch -> do
-        hput InfGetPut on ch
-        get n on ch
+            hput IntTerminalPut on _intterm
+            put nn on _intterm
 
-        hput ConsolePut on _console
 
-        p0( | _console => ch )
+            infgetput(nn | ch => _intterm )
 
+proc memory :: A | Mem(A|) => =
+    x | ch => -> do
+        hcase ch of
+            MemPut -> do
+                get y on ch
+                memory(y | ch => )
+            MemGet -> do
+                put x on ch
+                memory(x | ch => )
+            MemCls -> do
+                halt ch
+
+proc p1 :: | => Passer(|Mem(Int|)), InfGetPut = 
+    | => passer, infgetch -> do
+        hput Passer on passer
+        split passer into mm,nmpp
+        hput MemGet on mm 
+        get y on mm
+
+        hput InfPut on infgetch
+        put y on infgetch
+        hput InfGet on infgetch
+        get x on infgetch
+
+        hput MemPut on mm
+        put x on mm
+        fork nmpp as
+            nm with mm -> nm |=| neg mm 
+            pp with infgetch -> p1(| => pp, infgetch)
+
+proc p2 :: | Passer(| Mem(Int|)) => InfGetPut, Mem(Int|) =
+    | passer => infgetch, mem -> do
+        hcase passer of
+            Passer -> do
+                hput MemGet on mem
+                get y on mem
+
+                hput InfPut on infgetch
+                put y on infgetch
+
+                hput InfGet on infgetch
+                get x on infgetch
+
+                hput MemPut on mem
+                put x on mem
+                fork passer as
+                    mm with mem -> do
+                        mm |=| mem
+                    nmpp with infgetch -> do
+                        split nmpp into nm, pp
+                        plug
+                            p2( | pp => infgetch,z)
+                            z,nm => -> nm |=| neg z 
 
 proc run =
-    | _console => ->  do
+    | => _intterm0, _intterm1-> do
         plug 
-            infgetput('a', "" | ch => )
-            p0( | _console => ch  )
+            infgetput(0 | infget0 => _intterm0)
+            infgetput(1 | infget1 => _intterm1)
+            p1(| => passer, infget0)
+            p2(| passer => infget1, mem)
+            memory(100 | mem => )
+-}
+
+{-
+protocol IntTerminal => S =
+    IntTerminalPut :: Put( [Char] | S) => S
+    IntTerminalGet :: Get( [Char] | S) => S 
+    IntTerminalClose :: TopBot => S
+
+proc run =
+    | _console => -> do
+        hput IntTerminalPut on _intterm
+        put ['a'] on _intterm
+
+        hput IntTerminalGet on _intterm
+        get n on _intterm
+
+        hput IntTerminalPut on _intterm
+        put n on _intterm
+
+        hput IntTerminalClose on _intterm
+        halt _intterm
+
+-}
+
+coprotocol S => Console =
+    ConsolePut :: S => Get( [Char] | S) 
+    ConsoleGet :: S => Put( [Char] | S) 
+    ConsoleClose :: S => TopBot 
+
+codata S -> Monoid(M) =
+    MAppend :: M,M,S -> M
+    MUnit :: S -> M
+
+fun append :: [A], [A] -> [A] =
+    [], ts -> ts
+    s:ss, ts -> s : append(ss,ts)
+
+fun listMonoid :: -> Monoid([A]) = 
+    -> (MAppend := a,b -> append(a,b), MUnit := -> [])
+
+proc run =
+    | _console => -> do
+        hput ConsolePut on _console
+        put MAppend("pome", MAppend(MUnit(listMonoid), "ranian", listMonoid), listMonoid) 
+            on _console
+
+        hput ConsoleClose on _console
+        halt _console
+
+
+
+{-
+codata S -> Fold(A,B) =
+    Tally :: A,S-> 
 -}

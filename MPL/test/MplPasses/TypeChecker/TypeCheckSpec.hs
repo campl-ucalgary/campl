@@ -59,9 +59,9 @@ spec = do
         casesdir <- map (negcasesdir</>) <$> listDirectory negcasesdir
         namedcases <- mapM ( sequence . (id &&& readFile) ) casesdir
         return namedcases
-    mapM_ (`describeAnyErrorsFile` ("Type unification for all failure", 
+    mapM_ (`describeAnyErrorsFile` ("General negative tests", 
             _MplTypeCheckErrors 
-            % _TypeCheckUnificationErrors 
+            -- % _TypeCheckUnificationErrors 
             -- % _TypeForallMatchFailure
             )
             ) negcases

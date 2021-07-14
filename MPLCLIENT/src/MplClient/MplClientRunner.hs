@@ -60,10 +60,16 @@ mplClient sock = do
         (res, ps') <- P.runStateT (PA.parse pSNCmd) ps
         case res of
             Just (Right instr) -> case instr of
+                -- int instructions
                 SNGetInt -> do
                     n <- liftIO $ input "Please enter an int: "
                     liftIO $ sendAll sock $ snInstrToByteString $ SNInt n
                     loop ps'
+                  where
+                    input :: Read a => String -> IO a
+                    input msg = putStrLn msg >> fmap readMaybe getLine >>= \case
+                        Just x -> return x
+                        Nothing -> input msg
 
                 SNPutInt -> do
                     n <- liftIO $ putStrLn "Receiving an int: "
@@ -74,15 +80,45 @@ mplClient sock = do
                             loop ps''
                         bad -> liftIO $ throwIO $ IllegalServerCommand $ show bad
 
+                -- char instructions
+                SNGetChar -> do
+                    n <- liftIO $ input "Please enter a character: "
+                    liftIO $ sendAll sock $ snInstrToByteString $ SNChar n
+                    loop ps'
+                  where
+                    input :: String -> IO Char
+                    input msg = putStrLn msg >> fmap uncons getLine >>= \case
+                        Just (c, []) -> return c
+                        _otherwise -> input msg
+
+                SNPutChar -> do
+                    n <- liftIO $ putStrLn "Receiving a character: "
+                    (res, ps'') <- P.runStateT (PA.parse pSNChar) ps'
+                    case res of
+                        Just (Right res') -> do
+                            liftIO $ putStrLn $ [res']
+                            loop ps''
+                        bad -> liftIO $ throwIO $ IllegalServerCommand $ show bad
+
+                -- string instructions
+                SNGetString -> do
+                    n <- liftIO $ getLine
+                    liftIO $ sendAll sock $ snInstrToByteString $ SNString n
+                    loop ps'
+
+                SNPutString -> do
+                    (res, ps'') <- P.runStateT (PA.parse  pSNString) ps'
+                    case res of
+                        Just (Right res') -> do
+                            liftIO $ putStrLn res'
+                            loop ps''
+                        bad -> liftIO $ throwIO $ IllegalServerCommand $ show bad
+
                 SNClose -> liftIO $ putStrLn "Closing... (press enter)" *> return ()
 
                 bad -> liftIO $ throwIO $ IllegalServerCommand $ show bad
             bad -> liftIO $ throwIO $ IllegalServerCommand $ show bad
 
-    input :: Read a => String -> IO a
-    input str = putStrLn str >> fmap readMaybe getLine >>= \case
-        Just x -> return x
-        Nothing -> input str
 
 
 

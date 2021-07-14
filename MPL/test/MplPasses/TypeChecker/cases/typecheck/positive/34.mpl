@@ -1,18 +1,12 @@
-proc v34 =
+
+proc v35 =
     | a => -> do
         plug
-            f => -> do
-                halt f
-            a => b,c -> do
-                close a 
-                close b 
+            c =>  -> do
                 halt c
-            b,c => d,e,f -> do
-                close b 
-                close c
-                close d
-                close e
-                halt f
-            e,d => -> do
-                close d
-                halt e
+            a => b,c -> do
+                close a
+                close b
+                halt c
+            b =>  -> do
+                halt b

@@ -132,14 +132,14 @@ type instance XProcessDefn MplRenamed  = MplProcess MplRenamed
 
 -- Expression instances
 type instance XMplExpr MplRenamed = MplExpr MplRenamed
-type instance XEPOps MplRenamed = ()
-type instance XEVar MplRenamed = ()
-type instance XEInt MplRenamed = Location
-type instance XEChar MplRenamed = Location
-type instance XEDouble MplRenamed = Location
-type instance XEBool MplRenamed = Location
+type instance XEPOps MplRenamed = XEPOps MplParsed 
+type instance XEVar MplRenamed = XEVar MplParsed 
+type instance XEInt MplRenamed = XEInt MplParsed 
+type instance XEChar MplRenamed = XEChar MplParsed 
+type instance XEDouble MplRenamed = XEDouble MplParsed
+type instance XEBool MplRenamed = XEBool MplParsed
 
-type instance XECase MplRenamed = ()
+type instance XECase MplRenamed = XECase MplParsed
 type instance XECasePattern MplRenamed = XMplPattern MplRenamed 
 type instance XECall MplRenamed = ()
 type instance XEObjCall MplRenamed = ()

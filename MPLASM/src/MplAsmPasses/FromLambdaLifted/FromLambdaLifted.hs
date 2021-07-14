@@ -2,6 +2,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -41,6 +42,7 @@ import Data.Coerce
 import Data.Foldable
 import Data.Traversable
 import Data.Bool
+import Data.Function
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
 import Control.Exception
@@ -680,27 +682,54 @@ mplAssembleCmd = cata go
             case chname of
                 '_':_ -> case chpol of
                     Input -> case totp of
+                        -- String 
                         TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeListF _ (TypeBuiltIn (TypeCharF _)))) _) -> 
                             return [ Asm.CSHPut () Asm.SHPutString (toAsmIdP ch) ]
                         TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeListF _ (TypeBuiltIn (TypeCharF _)))) _) -> 
                             return [ Asm.CSHPut () Asm.SHGetString (toAsmIdP ch) ]
                         TypeBuiltIn (TypeTopBotF _) -> 
                             return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
-                        _ -> tell [_NoService # (ch, phr, ann ^. _2)] >> return []
 
-                        {-
-                        TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeIntF _)) _ ) -> 
+                        -- Int
+                        TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeIntF _)) _ ) -> 
                             return [ Asm.CSHPut () Asm.SHPutInt (toAsmIdP ch) ]
+                        TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeIntF _)) _ ) -> 
+                            return [ Asm.CSHPut () Asm.SHGetInt (toAsmIdP ch) ]
                         TypeBuiltIn (TypeTopBotF _) -> 
                             return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
+
+                        -- Char
+                        TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeCharF _)) _ ) -> 
+                            return [ Asm.CSHPut () Asm.SHPutChar (toAsmIdP ch) ]
+                        TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeCharF _)) _ ) -> 
+                            return [ Asm.CSHPut () Asm.SHGetChar (toAsmIdP ch) ]
+                        TypeBuiltIn (TypeTopBotF _) -> 
+                            return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
+
                         _ -> tell [_NoService # (ch, phr, ann ^. _2)] >> return []
-                        -}
 
                     Output -> case fromtp of
+                        -- String 
+                        TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeListF _ (TypeBuiltIn (TypeCharF _)))) _) -> 
+                            return [ Asm.CSHPut () Asm.SHGetString (toAsmIdP ch) ]
+                        TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeListF _ (TypeBuiltIn (TypeCharF _)))) _) -> 
+                            return [ Asm.CSHPut () Asm.SHPutString (toAsmIdP ch) ]
+                        TypeBuiltIn (TypeTopBotF _) -> 
+                            return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
+
+                        -- Int
                         TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeIntF _)) _ ) -> 
                             return [ Asm.CSHPut () Asm.SHGetInt (toAsmIdP ch) ]
                         TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeIntF _)) _ ) -> 
                             return [ Asm.CSHPut () Asm.SHPutInt (toAsmIdP ch) ]
+                        TypeBuiltIn (TypeTopBotF _) -> 
+                            return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
+
+                        -- Char
+                        TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeCharF _)) _ ) -> 
+                            return [ Asm.CSHPut () Asm.SHGetChar (toAsmIdP ch) ]
+                        TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeCharF _)) _ ) -> 
+                            return [ Asm.CSHPut () Asm.SHPutChar (toAsmIdP ch) ]
                         TypeBuiltIn (TypeTopBotF _) -> 
                             return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
                     {-
@@ -735,7 +764,32 @@ mplAssembleCmd = cata go
                     )
                 ]
         CIdF _ (lch, rch) -> return [Asm.CId () (toAsmIdP lch, toAsmIdP rch)]
-        CIdNegF _ (lch, rch) -> return [Asm.CId () (toAsmIdP lch, toAsmIdP rch)]
+        -- CIdNegF _ (lch, rch) -> return [Asm.CId () (toAsmIdP lch, toAsmIdP rch)]
+        {-
+        We need to do some work to get the negation to work correctly. Essentially, 
+        we need the id comand to be not on the the dummy channel (channel of type negation),
+        for this to not deadlock.
+
+        First, we need to assert that they both have the same polarity (obviously).
+        -}
+        {-
+        CIdNegF _ (lch, rch) -> assert (and 
+            [ ((==) `on` view polarity) lch rch
+            , has (chIdentTType % _TypeBuiltIn % _TypeNegF) lch || has (chIdentTType % _TypeBuiltIn % _TypeNegF) lch
+            ]) $ return $ case lch ^. chIdentTType of
+                TypeBuiltIn (TypeNegF _ _) -> rchislch
+                _ -> lchisrch
+          where
+            rchislch = [Asm.CId () (toAsmIdP rch, toAsmIdP lch)]
+            lchisrch = [Asm.CId () (toAsmIdP rch, toAsmIdP lch)]
+        -}
+        CIdNegF _ (lch, rch) -> assert (and 
+            [ ((==) `on` view polarity) lch rch
+            , has (chIdentTType % _TypeBuiltIn % _TypeNegF) lch || has (chIdentTType % _TypeBuiltIn % _TypeNegF) lch
+            ]) $ return rchislch
+          where
+            rchislch = [Asm.CId () (toAsmIdP rch, toAsmIdP lch)]
+            -- lchisrch = [Asm.CId () (toAsmIdP rch, toAsmIdP lch)]
 
         CRaceF _ races -> do
             races' <- traverse f races 

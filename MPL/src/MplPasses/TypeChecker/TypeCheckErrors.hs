@@ -241,7 +241,7 @@ pprintTypeCheckErrors = go
                 <> pretty "."
                 <+> pretty "Channels"
                 <+> hsep (map (pretty . pprintParsed) [ch0, ch1])
-                <+> pretty "have the same polarity, but must have different polarity."
+                <+> pretty "have different polarity, but must have the same polarity."
             ]
         {- IllegalRaceAgainstDifferentPolarities KeyWordNameOcc [ChP MplRenamed] [ChP MplRenamed] -}
         -- input polarities, output polarities
@@ -265,6 +265,13 @@ pprintTypeCheckErrors = go
                 <+> pretty "All plugged channels must be of opposite polarity, but the following channels have the same polarity."
                 <> line
                 <+> indent 2 (pprintChs chs)
+            ]
+
+        ExpectedAtMostOnePluggedChannelToBeConnectingPlugPhrases intersected -> fold
+            [ pretty "Illegal `plug' command."
+                <+> pretty "Plug phrases must be connected by at most one plugged channel, but the following plugged channels violate this condition."
+                <> line
+                <+> indent 2 (pprintChs intersected)
             ]
 
         IllegalCycleInPlugPhrase phrases -> fold

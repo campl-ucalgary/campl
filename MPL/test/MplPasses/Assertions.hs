@@ -9,6 +9,7 @@ import Test.QuickCheck
 import Test.HUnit
 
 import MplAST.MplPrinter
+import MplPasses.PassesErrors
 
 import qualified MplPasses.Parser.BnfcParse as B
 import MplPasses.Parser.Parse
@@ -42,7 +43,7 @@ describeValidRename prog rst = do
                 Right prog'' -> do
                     rst prog''
                     return ()
-                Left (errs :: [MplPassesErrors]) -> assertFailure (show errs) >> return () 
+                Left (errs :: [MplPassesErrors]) -> assertFailure (show $ pprintMplPassesErrors errs) >> return () 
 
 describeValidTypeCheck :: 
     -- | file name, and file input 
@@ -72,7 +73,7 @@ describeValidTypeCheckWithContinuation (filename, prog) rst = do
                 Right prog'' -> do
                     rst prog''
                     return ()
-                Left (errs :: [MplPassesErrors]) -> assertFailure (show errs) >> return () 
+                Left (errs :: [MplPassesErrors]) -> assertFailure (show $ pprintMplPassesErrors errs) >> return () 
 
 describeErrors prog (errmsg, pred) = do
     describe ("Testing the invalid program for " ++ errmsg ++ ":\n" ++ prog) $ do

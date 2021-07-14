@@ -1,13 +1,13 @@
 
+protocol IntTerminal => S =
+    IntTerminalPut :: Put( Int | S) => S
+    IntTerminalGet :: Get( Int | S) => S 
+    IntTerminalClose :: TopBot => S
+
 protocol Mem(M|) => S =
     MemPut :: Put(M|S) => S
     MemGet :: Get(M|S) => S
     MemCls :: TopBot => S
-
-protocol InpTerm(I|) => S =
-    InpPut :: Put(I|S) => S
-    InpGet :: Get(I|S) => S
-    InpCls :: TopBot => S
 
 protocol Passer(|P) => S =
     Passer :: P (+) (Neg(P) (*) S) => S
@@ -24,32 +24,32 @@ proc memory :: A | Mem(A|) => =
             MemCls -> do
                 halt ch
 
-proc p1 :: | => Passer(|Mem(A|)), InpTerm(A|) = 
-    | => passer, inp -> do
+proc p1 :: | => Passer(|Mem(Int|)), IntTerminal = 
+    | => passer, _inp -> do
         hput Passer on passer
         split passer into mm,nmpp
         hput MemGet on mm 
         get y on mm
-        hput InpPut on inp
-        put y on inp
-        hput InpGet on inp
-        get x on inp
+        hput IntTerminalPut on _inp
+        put y on _inp
+        hput IntTerminalGet on _inp
+        get x on _inp
         hput MemPut on mm
         put x on mm
         fork nmpp as
             nm -> nm |=| neg mm
-            pp -> p1(| => pp, inp)
+            pp -> p1(| => pp, _inp)
 
-proc p2 :: | Passer(| Mem(A|)) => InpTerm(A|), Mem(A|) =
-    | passer => inp, mem -> do
+proc p2 :: | Passer(| Mem(Int|)) => IntTerminal, Mem(Int|) =
+    | passer => _inp, mem -> do
         hcase passer of
             Passer -> do
                 hput MemGet on mem
                 get y on mem
-                hput InpPut on inp
-                put y on inp
-                hput InpGet on inp
-                get x on inp
+                hput IntTerminalPut on _inp
+                put y on _inp
+                hput IntTerminalGet on _inp
+                get x on _inp
                 hput MemPut on mem
                 put x on mem
                 fork passer as
@@ -58,13 +58,14 @@ proc p2 :: | Passer(| Mem(A|)) => InpTerm(A|), Mem(A|) =
                     nmpp -> do
                         split nmpp into nm, pp
                         plug
-                            p2( | pp => inp,z)
-                            z,nm => -> z |=| neg nm
+                            p2( | pp => _inp,z)
+                            z,nm => -> nm |=| neg z 
 
-proc run :: | => InpTerm(Int |) , InpTerm(Int|) =
-    | => inpterm0, inpterm1 -> do
-        plug
-            p1(| => passer, inpterm0)
-            p2(| passer => inpterm1, mem)
+proc run :: | => IntTerminal , IntTerminal =
+    | => _inpterm0, _inpterm1 -> do
+        plug 
+            p1(| => passer, _inpterm0)
+            p2(| passer => _inpterm1, mem)
             memory(100 | mem => )
+
 
