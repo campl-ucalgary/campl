@@ -351,7 +351,7 @@ patternCompileCmds = fmap (second NE.fromList) . go . NE.toList
 
             return $ CGet ann upatt chp : cmds''
         -}
-        {- special case when we just have a variable pattern for get..  WHy is this here? Well if it's
+        {- special cases when we just have a variable pattern for get..  WHy is this here? Well if it's
             just a variable, there's no need to memoize the result at all.. moreover, we would have to
             trivailly re-pattern compile evrything to ensure that the variable is substituted out; hence, this
             is faster for both the compiler and the final code generated.
@@ -363,6 +363,15 @@ patternCompileCmds = fmap (second NE.fromList) . go . NE.toList
             let upatt = _PVar # (utp, u) :: MplPattern MplPatternCompiled
 
             insertPattInContext upatt
+
+            second (CGet ann upatt chp:) <$> go cmds
+        -- this special case is identical to the PVar case (no need to add it in the context however..)..
+        CGet ann (PNull utp) chp -> assert (not $ null cmds) $ do
+            deleteChFromContext chp
+            insertChInContext chp
+
+            u <- freshUIdP 
+            let upatt = _PVar # (snd utp, u) :: MplPattern MplPatternCompiled
 
             second (CGet ann upatt chp:) <$> go cmds
 
