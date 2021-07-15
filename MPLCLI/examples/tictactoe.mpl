@@ -42,7 +42,6 @@ fun showBool :: Bool -> [Char] =
     True -> "True"
     False -> "False"
 
-
 defn
     fun transpose :: [[A]] -> [[A]] = 
         [] -> []
@@ -76,7 +75,7 @@ fun or :: [Bool] -> Bool =
     True:_ -> True
     False:ts -> or(ts)
 
--- | replciates an element n times in a list (n should be positive) 
+-- | replciates an element n times in a list (n should be non negative) 
 fun replicate :: Int, A -> [A] = 
     0, _ -> []
     n, s -> s : replicate(n - 1, s)
@@ -512,7 +511,7 @@ proc run =
             userMoveSetAndGet( | usrmvO => _strtermO)
             userMoveSetAndGet( | usrmvX =>  _strtermX)
 
-            playerO( | => passer, usrmvO )
+            playerO( |        => passer, usrmvO )
             playerX( | passer => mem, usrmvX)
 
             memCell(emptyGrid | mem => )

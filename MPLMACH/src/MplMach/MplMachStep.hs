@@ -750,61 +750,68 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
         (s, t , e, IRace races) -> assert (not (null races)) $ do
             {- N.B.  This works by doing the following steps
 
-                * put the race in the queues. 
+                (1) put the race in the queues. 
 
-                * for each of the queues, wait for ANY of them to finish (but 
+                (2) for each of the queues, wait for ANY of them to finish (but 
                     do NOT modify anything!)
 
-                * Once we have a winner, first update the queue that won,
+                (3) Once we have a winner, first update the queue that won (3.1),
                     THEN, concurrently update all the queues and continute this 
-                    process concurrently as well.
+                    process concurrently as well (3.2).
             -}
             let raceslkups = fmap (first (id &&& (t Map.!))) races 
                 lchs = map fst races
 
+            -- This is (1)
             for_ raceslkups $ \((_lch, chlkup), rc) -> 
                 fetchAndWriteChMQueue
                     (chlkup ^. activeQueue) 
                     (QRace (stec & code !~ rc))
 
             liftIO $ do 
+                -- This is (2)
                 (rch, rstec, rchlkup) <- fmap snd $ 
-                    foldrM go [] (raceslkups & mapped %~ fst) 
+                    foldrM go2 [] (raceslkups & mapped %~ fst) 
                         >>= waitAnyCancel
 
+                -- atomically $ for raceslkups $ \lkup -> traceTranslationLkupWithHeader  "race" $ lkup ^. _1 % _2
+
+                -- This is (3.1)
                 -- pop the race off the top of the queue.
-                _ <- atomically $ rchlkup ^. activeQueue % to 
-                    (readTQueue <=< readChMQueue)
+                -- _ <- atomically $ rchlkup ^. activeQueue % to (readTQueue <=< readChMQueue)
+                _ <- atomically $ go3 rchlkup 
 
                 mapConcurrently_ id $
                     -- run the race which won
                     void (mplMachSteps' rstec) :
-                    -- concurrently remove all other races
+                    -- concurrently remove all other races (3.2)
                     map 
                         ( void 
                         . atomically 
                         . view 
                             ( _1
                             % _2
-                            % activeQueue 
-                            % to (readTQueue <=< readChMQueue)
+                            % to go3
+                            -- % activeQueue 
+                            -- % to (readTQueue <=< readChMQueue)
                             )
                         )
                         (filter ((/=rch) . fst . fst ) raceslkups)
 
             return Nothing
           where
-            go :: 
+            -- helper function for (2).
+            go2 :: 
                 (LocalChan, TranslationLkup) -> 
                 [Async (LocalChan, Stec, TranslationLkup)] -> 
                 IO [Async (LocalChan, Stec, TranslationLkup)]
             {-
-            go (lch, chlkup) acc = withAsync go' $ \asyncchlkup ->
+            go2 (lch, chlkup) acc = withAsync go2' $ \asyncchlkup ->
                 return $ asyncchlkup:acc
             -}
-            go (lch, chlkup) acc = (:) <$> async go' <*> pure acc
+            go2 (lch, chlkup) acc = (:) <$> (racer >>= link >> racer) <*> pure acc
               where
-                go' = atomically $ do
+                racer = async $ atomically $ do
                     chactivequeue <- chlkup ^. activeQueue % to readChMQueue
                     peekTQueue chactivequeue >>= \case
                         QRace rstec -> do
@@ -813,6 +820,15 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
                                 QPut _ -> return (lch, rstec, chlkup)
                                 _ -> retry
                         _ -> retry
+
+            -- helper function for (3).
+            go3 :: TranslationLkup -> STM ()
+            go3 lkup = do 
+                activqueue <- lkup ^. activeQueue % to readChMQueue
+                peekTQueue activqueue >>= \case 
+                    QRace _ -> void $ readTQueue activqueue
+                    _ -> retry
+                
 
         _ -> k stec
 

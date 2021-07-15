@@ -7,5 +7,5 @@ A classical tic tac toe game meant to be played by two different players.
 Remarks.
 - This uses a memory cell to pass the game state between the two players
 
-## Chat room
-A simple chat room for two players to chat on.
+## Message board
+As simple message board for people to dump messages on....
