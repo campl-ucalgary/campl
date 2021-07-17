@@ -40,7 +40,7 @@ data DumpOpt
 
 -- | List of all dump options.
 allDumpOpts :: [DumpOpt]
-allDumpOpts = [Parsed .. Assembled]
+allDumpOpts = [Parsed .. AssembledAst]
 
 -- | Converts a dumped opt to a String for printing
 -- for generating the command line operations

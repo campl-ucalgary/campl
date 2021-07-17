@@ -69,7 +69,7 @@ fun lnot :: Bool -> Bool =
 fun lor :: Bool, Bool -> Bool =
     a,b -> lnot(land(a,b))
 
--- | ors a list together.
+-- | lazily ors a list together.
 fun or :: [Bool] -> Bool = 
     [] -> False
     True:_ -> True
@@ -299,23 +299,15 @@ fun playMove :: Player,GridIx,Grid -> Maybe(Grid) =
 
 -- | parses a move index
 fun parseGridIx :: [Char] -> Maybe(GridIx) =
-    [l,r] -> case l of 
-        'a' -> case r of 
-            '1' -> Just(A1)
-            '2' -> Just(A2)
-            '3' -> Just(A3)
-            _ -> Nothing
-        'b' -> case r of 
-            '1' -> Just(B1)
-            '2' -> Just(B2)
-            '3' -> Just(B3)
-            _ -> Nothing
-        'c' -> case r of 
-            '1' -> Just(C1)
-            '2' -> Just(C2)
-            '3' -> Just(C3)
-            _ -> Nothing
-        _ -> Nothing
+    "a1" -> Just(A1)
+    "a2" -> Just(A2)
+    "a3" -> Just(A3)
+    "b1" -> Just(B1)
+    "b2" -> Just(B2)
+    "b3" -> Just(B3)
+    "c1" -> Just(C1)
+    "c2" -> Just(C2)
+    "c3" -> Just(C3)
     _ -> Nothing
 
 protocol 
@@ -400,16 +392,17 @@ protocol
         Passer :: (Neg(M) (*) S) => T
         Passed :: TopBot => T
 
-protocol MemCell(A | ) => S = 
+protocol MemCell(A | )  => S = 
     MemPut :: Put(A| S) => S
     MemGet :: Get(A| S) => S
-    MemClose :: TopBot => S
+    MemClose :: TopBot  => S
 
 proc memCell :: A | MemCell(A| ) => =
     v | ch => -> hcase ch of
         MemPut -> do
             get nv on ch
             memCell(nv | ch => )
+
         MemGet -> do
             put v on ch
             memCell(v | ch => )

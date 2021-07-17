@@ -5,6 +5,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE CPP #-}
 module MplMach.MplMachStep 
     ( mplMachSteps
     , mplMachOpenChs
@@ -49,6 +50,34 @@ import qualified Text.Show.Pretty as PrettyShow
 
 import System.Process
 
+{- Some C macros which are enabled when MPL_MACH_DEBUG is defined. 
+These are used to trace the queue outputs before any process takes a step. 
+
+Notes:
+
+    - MSG should be a string; 
+
+    - CHLKUP should be the lookuped channel; and 
+    -
+    - CHLKUPS should be a list of lookuped channels.
+-}
+#if MPL_MACH_DEBUG
+
+#define TRACE_TRANSLATION_LKUP_WITH_HEADER(MSG, CHLKUP) \
+    (traceTranslationLkupWithHeader (MSG) (CHLKUP))
+#define ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER(MSG, CHLKUP) \
+    (liftIO $ atomically $ TRACE_TRANSLATION_LKUP_WITH_HEADER(MSG, CHLKUP))
+#define ATOMICALLY_TRACE_MANY_TRANSLATION_LKUP_WITH_HEADER(MSG, CHLKUPS) \
+    (atomically $ for (CHLKUPS) $ \lkup -> TRACE_TRANSLATION_LKUP_WITH_HEADER((MSG), lkup))
+
+#else 
+
+#define TRACE_TRANSLATION_LKUP_WITH_HEADER(MSG, CHLKUP) 
+#define ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER(MSG, CHLKUP) 
+#define ATOMICALLY_TRACE_MANY_TRANSLATION_LKUP_WITH_HEADER(MSG, CHLKUPS) 
+
+#endif 
+
 {- | runs the MplMach from start to finish -}
 mplMachSteps :: 
     Stec ->
@@ -56,33 +85,18 @@ mplMachSteps ::
 mplMachSteps = go . Just 
   where
     go = \case
-        {-
         Just stec -> seqStep (concStep (liftIO . throwIO . ppShowIllegalStep)) stec 
             >>= go
-        -}
 
+        {-
         Just stec -> do
-            {-
-            mvar <- gview stdLock
-
-            liftIO $ do
-                takeMVar mvar
-                PrettyShow.pPrint stec
-
-                fkk <- liftIO 
-                    $ sequenceOf (traversed % _2) $ stec ^. translation 
-                    % to (Map.toList >>> map (second showTranslationLkup))
-                PrettyShow.pPrint $ "Queues"
-                PrettyShow.pPrint $ fkk
-
-                putMVar mvar ()
-            -}
             -- traceM $ PrettyShow.ppShow stec
             stec' <- seqStep k stec 
             go stec'
           where
             k = concStep  k'
             k' = liftIO . throwIO . ppShowIllegalStep
+        -}
 
         Nothing -> return ()
 
@@ -245,7 +259,10 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
 
             -- the channel manager action
             stec' <- liftIO $ atomically $ do
+
                 -- traceTranslationLkupWithHeader  "get" chlkup
+                TRACE_TRANSLATION_LKUP_WITH_HEADER("get", chlkup)
+
                 chactivequeue <- chlkup ^. activeQueue % to readChMQueue
                 peekTQueue chactivequeue >>= \case
                     QGet gstec -> do
@@ -284,7 +301,10 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
 
         (v:s, t, e, IPut ch) -> do
             fetchAndWriteChMQueue (chlkup ^. activeQueue) (QPut v)
+
             -- liftIO $ atomically $ traceTranslationLkupWithHeader "put" chlkup
+            ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER("put", chlkup)
+
             return $ Just $ stec 
                 & stack !~ s
                 & code !~ c
@@ -299,6 +319,7 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
             fetchAndWriteChMQueue (chlkup ^. activeQueue) (QSplit glch grch)
 
             -- liftIO $ atomically $ traceTranslationLkupWithHeader "split" chlkup
+            ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER("split", chlkup)
 
             return $ Just $ stec 
                 -- first set the lechlkup channel
@@ -323,6 +344,7 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
             -- the channel manager action
             (stec0', stec1') <- liftIO $ atomically $ do
                 -- traceTranslationLkupWithHeader  "fork" chlkup
+                TRACE_TRANSLATION_LKUP_WITH_HEADER("fork", chlkup)
                 {- Notes:
                     - the active queue must be QFork (since we just put QFork there)
                     - So, in a well typed program, the other queue should be a split 
@@ -477,7 +499,10 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
             -- N.B. this is the old method (which works)
             liftIO $ atomically $ do
                 -- traceTranslationLkupWithHeader "idl" lchlkup
+                TRACE_TRANSLATION_LKUP_WITH_HEADER("idl", lchlkup)
                 -- traceTranslationLkupWithHeader "idr" rchlkup
+                TRACE_TRANSLATION_LKUP_WITH_HEADER("idr", rchlkup)
+
                 (lchmlastptr, lchmqueue) <- readChMQueueWithLastPtr (lchlkup ^. activeQueue)
                 peekTQueue lchmqueue >>= \case
                     QId rgch -> readTQueue lchmqueue >> case lchlkup of
@@ -671,6 +696,8 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
 
             _ <- liftIO $ atomically $ do
                 -- traceTranslationLkupWithHeader  "ihalt" chlkup
+                TRACE_TRANSLATION_LKUP_WITH_HEADER("ihalt", chlkup)
+
                 chactivequeue <- chlkup ^. activeQueue % to readChMQueue
                 isEmptyTQueue chactivequeue >>= check
 
@@ -705,6 +732,8 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
         (s, t, e, IHPut ch hcaseix) -> do
             fetchAndWriteChMQueue (chlkup ^. activeQueue) $ QHPut hcaseix
             -- liftIO $ atomically $ traceTranslationLkupWithHeader "hput" chlkup
+            ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER("hput", chlkup)
+
             return $ Just $ stec
                 & code !~ c
           where
@@ -714,6 +743,8 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
         (s, t, e, ISHPut ch sinstr) -> do
             fetchAndWriteChMQueue (chlkup ^. activeQueue) $ QSHPut sinstr
             -- liftIO $ atomically $ traceTranslationLkupWithHeader "ihsput" chlkup
+            ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER("ihsput", chlkup)
+
             return $ Just $ stec
                 & code !~ c
           where
@@ -725,6 +756,8 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
 
             stec' <- liftIO $ atomically $ do
                 -- traceTranslationLkupWithHeader  "ihcase" chlkup
+                TRACE_TRANSLATION_LKUP_WITH_HEADER("ihcase", chlkup)
+
                 chactivequeue <- chlkup ^. activeQueue % to readChMQueue
                 peekTQueue chactivequeue >>= \case
                     QHCase hstec hcases -> do
@@ -775,11 +808,13 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
                         >>= waitAnyCancel
 
                 -- atomically $ for raceslkups $ \lkup -> traceTranslationLkupWithHeader  "race" $ lkup ^. _1 % _2
+                ATOMICALLY_TRACE_MANY_TRANSLATION_LKUP_WITH_HEADER("race", map (view (_1 % _2)) raceslkups)
 
                 -- This is (3.1)
                 -- pop the race off the top of the queue.
                 -- _ <- atomically $ rchlkup ^. activeQueue % to (readTQueue <=< readChMQueue)
                 _ <- atomically $ go3 rchlkup 
+
 
                 mapConcurrently_ id $
                     -- run the race which won

@@ -5,9 +5,19 @@ fun testing :: Int -> Bool =
     _ -> True
 
 
-proc testproc =
-    a | => ch -> if testing(a) 
-        then halt ch
-        else halt ch
+data 
+    Fk -> S =
+        Fk :: -> S
+data 
+    FK -> S =
+        FK :: -> S
+
+
+fun testfun =
+    -> FK
+    -> FK
+
+fun mycall =
+    -> testfun(FK)
         
 

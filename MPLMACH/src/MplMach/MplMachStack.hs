@@ -3,6 +3,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE CPP #-}
 
 {-| Module for the DSL of the machine. 
 This includes the monad transformer stack used in this machine and many
@@ -95,78 +96,16 @@ runMplMach ma env = runReaderT (unwrapMplMach ma) env
     
 
 
-{- | wrapper for 'newTQueue' -}
+{- | wrapper for 'newTQueue'. 
+Notes about the debug build: 
+
+    - in the debug build, we include not exactly fully correct ids for each of the queues.
+        But in the release build we on't really need these anymore.. It's sorta hepful
+        when debugging
+-}
 newGlobalChan ::
     MplMach r GlobalChan
-{-
-newGlobalChan = gview equality >>= \env -> liftIO $ do
-
-    ans <- atomically $ do
-
-
-        out <- newChMQueue
-        inp <- newChMQueue
-        return 
-            $ coerce @ChMQueues @GlobalChan
-            $ ChMQueues out inp
-
-    atomicModifyIORef gGlobalChans ((ans:) &&& const())
-
-    res <- atomicModifyIORef printPrintingThreadRef (const False &&& id)
-
-    when res $ liftIO $ do
-        let loop oLD = do
-                gchs <- readIORef gGlobalChans
-                -- putStrLn "START"
-                sqs <- for gchs $ \gch -> do
-                    let gch' = coerce @GlobalChan @ChMQueues  gch
-                    -- putStrLn "output"
-                    outt <- gch' ^. chMOutputQueue % to fetchChMQueue
-                    uhout <- showChMQueue outt
-                    -- PrettyShow.pPrint $ uhout 
-
-                    -- putStrLn "input"
-                    inn <- gch' ^. chMInputQueue  % to fetchChMQueue
-                    uhin <- showChMQueue $ inn
-                    -- PrettyShow.pPrint $ uhin
-                    return $ intercalate "\n"
-                        [ "output"
-                        , PrettyShow.ppShow uhout
-                        , "input"
-                        , PrettyShow.ppShow uhin
-                        , ""
-                        ]
-                let tres = "START-----------------------":sqs ++ ["END--"]
-
-                when (oLD /= tres) $ putStrLn $ intercalate "\n" tres
-
-                loop tres
-                
-                -- putStrLn "END"
-        void $ forkIO (loop [])
-
-    return ans
-
-  where
-    newChMQueue = fmap CNil newTQueue 
-        >>= \q -> coerce <$> newTVar q
-
-    -- showChMQueue :: ChMQueue -> IO _ 
-    showChMQueue q = atomically $ do
-        res <- flushTQueue q
-        for (reverse res) (unGetTQueue q)
-        return res
--}
-
-{-
-newGlobalChan = gview equality >>= \env -> liftIO $ atomically $ do
-    out <- newChMQueue
-    inp <- newChMQueue
-    return $ coerce @ChMQueues @GlobalChan $ ChMQueues out inp
-  where
-    newChMQueue = fmap CNil newTQueue 
-        >>= \q -> ChMQueue <$> newTVar q
--}
+#if MPL_MACH_DEBUG
 newGlobalChan = gview equality >>= \env -> liftIO $ do
     out <- newChMQueue
     inp <- newChMQueue
@@ -226,9 +165,15 @@ traceTranslationLkupWithHeader str lkup = do
     for_ (reverse resoth) (unGetTQueue oth)
 
     return ()
-
-
-    
+#else
+newGlobalChan = gview equality >>= \env -> liftIO $ atomically $ do
+    out <- newChMQueue
+    inp <- newChMQueue
+    return $ coerce @ChMQueues @GlobalChan $ ChMQueues out inp
+  where
+    newChMQueue = fmap CNil newTQueue 
+        >>= \q -> ChMQueue <$> newTVar q
+#endif
     
 
 {-| sets a translation lookup to use the channels given by a 'GlobalChan' -}
@@ -376,25 +321,6 @@ fullySimplifyChMQueue q = simplifyChMQueueChain q >>= go
     go = \case
         Just q' -> simplifyChMQueueChain q' >>= go
         Nothing -> return ()
-
-
-traceMTranslationLkup ::
-    MonadIO m => 
-    TranslationLkup -> 
-    m ()
-traceMTranslationLkup lkup = do
-    liftIO $ takeMVar tracelock
-    liftIO $ print lkup
-    liftIO $ putMVar tracelock ()
-
-    return ()
-
-{-# NOINLINE tracelock  #-}
-tracelock = unsafePerformIO $ newMVar ()
-
-
-
-
 
 {-| Reads both look up queues. Recall by convention (i.e., Prashant) we have:
 

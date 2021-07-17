@@ -4,6 +4,7 @@
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE CPP #-}
 {-| This module all the data types for the abstract machine.
 -}
 module MplMach.MplMachTypes where
@@ -42,14 +43,29 @@ data ChMQueueChain
     = CCons (TVar ChMQueueChain)
     | CNil (TQueue QInstr)
 
+{- | 'ChMQueue' 
+ 
+Notes about the debug...
+When in debug mode, we include some not totally correct ids 
+of each of the elements, which makes it easier to 'show' which 
+things are referring to what i.e., this are simply showable 
+wrapers around 'TVar's. But in the release build, these are simply not 
+necessary..
+-}
+#if MPL_MACH_DEBUG
 data ChMQueue = ChMQueue 
     { _chMId :: Int
     , _chMQueueChainRef :: TVar ChMQueueChain
     }
-
 instance Show ChMQueue where
     -- show _ = "ChMQueue _"
     show chm = "ChMQueue " ++ show (_chMId chm)
+#else
+newtype ChMQueue = ChMQueue { _chMQueueChainRef :: TVar ChMQueueChain
+    }
+instance Show ChMQueue where
+    show _ = "ChMQueue _"
+#endif
 
 {- | helpful little debug function to essentially get a snap shot of the queue 
 a given point of time -}

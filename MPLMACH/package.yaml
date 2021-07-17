@@ -41,11 +41,6 @@ dependencies:
 # maybe consider using: to get rid of the liftIO so we can use an MTL representation
 # https://hackage.haskell.org/package/exceptions
 
-# - warp
-# - http-types
-# - wai
-# - binary
-
 library:
   source-dirs: src
 
@@ -58,6 +53,10 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     - -O2
+
+    # use these for debug dump of the channel manager actions for the machine steps. 
+    # cpp-options:
+    # - -DMPL_MACH_DEBUG
     dependencies:
     - MPLMACH
 

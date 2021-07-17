@@ -206,7 +206,12 @@ mplAsmCollectStmtsInSymTab prog = do
     -}
     procSymTab decs =
         for_ decs $ \(pname, (seqs, ins, outs), _) -> do
-            uniqCounters % uniqLocalChan .= (coerce (0 :: Int) :: LocalChan)
+            -- As nice as this would be, if we did have this, we would need to 
+            -- change how we compile processes so that it would set the uniqLocalChan
+            -- to be the length of the arugmetns to ensure we get a unique couner...
+            -- or we avoid this small issue altogether by forcing all local channels
+            -- to be different.
+            -- uniqCounters % uniqLocalChan .= (coerce (0 :: Int) :: LocalChan)
 
             insids <- traverse freshLocalChanOrServiceChanInput ins
             outsids <- traverse freshLocalChanOrServiceChanOutput outs
