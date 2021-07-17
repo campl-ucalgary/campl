@@ -62,7 +62,6 @@ executable MPLMACH-exe
   hs-source-dirs:
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -O2
-  cpp-options: -DMPL_MACH_DEBUG
   build-depends:
       MPLMACH
     , array

@@ -92,7 +92,6 @@ proc memCell :: A | MemCell(A | ) => =
         
 -- switching the order of @p1@ and @p2@ fixed the deadlock
 -- probably because Im messing up the calling convention
-
 proc p1 :: |  Passer( | MemCell([Char]|)) => MemCell([Char]| ), StringTerminal =
     | passer => mem, _strterm -> hcase passer of 
         Passer -> do 
@@ -137,11 +136,14 @@ proc p2 :: |   => Passer( | MemCell([Char]|)), StringTerminal =
         fork negmemandnpasser as 
             negmem with mem -> negmem |=| neg mem 
             npasser with _strterm -> p2( | => npasser, _strterm )
+
+proc p3 :: |   => Passer( | MemCell([Char]|)), StringTerminal =
+    
                     
 proc run =
     | => _strterm0, _strterm1 -> do
         plug 
-            p2( |        => passer, _strterm0)
             p1( | passer => mem, _strterm1)
+            p2( |        => passer, _strterm0)
             memCell( "a" | mem => )
 
