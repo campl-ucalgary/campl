@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 080c69e66c9f50a0c3462497949b548621a536eb8cd28eefec9f1eaab0adb9ba
+-- hash: e5daf36f5fb6648e598d1063d4887cb4b6033bbed560774573b689ab450c2c9c
 
 name:           MPL
 version:        0.1.0.0
@@ -113,6 +113,7 @@ library
     , mtl
     , optics
     , optics-extra
+    , pretty-show
     , pretty-simple
     , prettyprinter
     , raw-strings-qq
@@ -140,6 +141,7 @@ executable mpl-front-end
     , mtl
     , optics
     , optics-extra
+    , pretty-show
     , pretty-simple
     , prettyprinter
     , raw-strings-qq
@@ -176,6 +178,7 @@ test-suite MPL-test
     , mtl
     , optics
     , optics-extra
+    , pretty-show
     , pretty-simple
     , prettyprinter
     , raw-strings-qq

@@ -29,6 +29,7 @@ dependencies:
 - containers
 - unordered-containers
 - hashable
+- pretty-show
 
 - transformers
 - mtl

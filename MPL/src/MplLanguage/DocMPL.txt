@@ -361,7 +361,7 @@ All other symbols are terminals.
   | //ForkChannel// | -> | //PIdent//
   | //[ForkChannel]// | -> | **eps**
   |  |  **|**  | //ForkChannel//
-  |  |  **|**  | //ForkChannel// ``;`` //[ForkChannel]//
+  |  |  **|**  | //ForkChannel// ``,`` //[ForkChannel]//
   | //RacePhrase// | -> | //PIdent// ``->`` //ProcessCommandsBlock//
   | //[RacePhrase]// | -> | **eps**
   |  |  **|**  | //RacePhrase//

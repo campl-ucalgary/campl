@@ -3,13 +3,20 @@
 {
 {-# OPTIONS -fno-warn-incomplete-patterns #-}
 {-# OPTIONS_GHC -w #-}
+
+{-# LANGUAGE PatternSynonyms #-}
+
 module MplLanguage.LexMPL where
 
+import Prelude
+
 import qualified Data.Bits
-import Data.Word (Word8)
-import Data.Char (ord)
+import Data.Char     (ord)
+import Data.Function (on)
+import Data.Word     (Word8)
 }
 
+-- Predefined character classes
 
 $c = [A-Z\192-\221] # [\215]  -- capital isolatin1 letter (215 = \times) FIXME
 $s = [a-z\222-\255] # [\247]  -- small   isolatin1 letter (247 = \div  ) FIXME
@@ -18,167 +25,260 @@ $d = [0-9]           -- digit
 $i = [$l $d _ ']     -- identifier character
 $u = [. \n]          -- universal: any character
 
-@rsyms =    -- symbols and non-identifier-like reserved words
-   \, | \{ | \} | \; | \| | \- \> | \= | \: \: | \= \> | \: \=
+-- Symbols and non-identifier-like reserved words
+
+@rsyms = \, | \{ | \} | \; | \| | \- \> | \= | \: \: | \= \> | \: \=
 
 :-
 
--- Line comments
+-- Line comment "--"
 "--" [.]* ;
 
--- Block comments
+-- Block comment "{-" "-}"
 \{ \- [$u # \-]* \- ([$u # [\- \}]] [$u # \-]* \- | \-)* \} ;
 
+-- Whitespace (skipped)
 $white+ ;
+
+-- Symbols
 @rsyms
-    { tok (\p s -> PT p (eitherResIdent TV s)) }
+    { tok (eitherResIdent TV) }
+
+-- token PInteger
 (\- $d | $d)$d *
-    { tok (\p s -> PT p (eitherResIdent T_PInteger s)) }
+    { tok (eitherResIdent T_PInteger) }
+
+-- token PDouble
 $d + \. $d + (e \- ? $d +)?
-    { tok (\p s -> PT p (eitherResIdent T_PDouble s)) }
+    { tok (eitherResIdent T_PDouble) }
+
+-- token PChar
 \' ([$u # [\' \\]] | \\ [\' \\ f n r t]) \'
-    { tok (\p s -> PT p (eitherResIdent T_PChar s)) }
+    { tok (eitherResIdent T_PChar) }
+
+-- token PString
 \" ([$u # [\" \\]] | \\ [\" \\ f n r t]) * \"
-    { tok (\p s -> PT p (eitherResIdent T_PString s)) }
+    { tok (eitherResIdent T_PString) }
+
+-- token Par
 \( \+ \)
-    { tok (\p s -> PT p (eitherResIdent T_Par s)) }
+    { tok (eitherResIdent T_Par) }
+
+-- token Tensor
 \( \* \)
-    { tok (\p s -> PT p (eitherResIdent T_Tensor s)) }
+    { tok (eitherResIdent T_Tensor) }
+
+-- token LBracket
 \(
-    { tok (\p s -> PT p (eitherResIdent T_LBracket s)) }
+    { tok (eitherResIdent T_LBracket) }
+
+-- token RBracket
 \)
-    { tok (\p s -> PT p (eitherResIdent T_RBracket s)) }
+    { tok (eitherResIdent T_RBracket) }
+
+-- token LSquareBracket
 \[
-    { tok (\p s -> PT p (eitherResIdent T_LSquareBracket s)) }
+    { tok (eitherResIdent T_LSquareBracket) }
+
+-- token RSquareBracket
 \]
-    { tok (\p s -> PT p (eitherResIdent T_RSquareBracket s)) }
+    { tok (eitherResIdent T_RSquareBracket) }
+
+-- token NullPattern
 \_
-    { tok (\p s -> PT p (eitherResIdent T_NullPattern s)) }
+    { tok (eitherResIdent T_NullPattern) }
+
+-- token Colon
 \:
-    { tok (\p s -> PT p (eitherResIdent T_Colon s)) }
+    { tok (eitherResIdent T_Colon) }
+
+-- token Infixl1op
 \| \|
-    { tok (\p s -> PT p (eitherResIdent T_Infixl1op s)) }
+    { tok (eitherResIdent T_Infixl1op) }
+
+-- token Infixl2op
 \& \&
-    { tok (\p s -> PT p (eitherResIdent T_Infixl2op s)) }
+    { tok (eitherResIdent T_Infixl2op) }
+
+-- token Infixl3op
 \= \= | \/ \= | \< | \> | \< \= | \> \=
-    { tok (\p s -> PT p (eitherResIdent T_Infixl3op s)) }
+    { tok (eitherResIdent T_Infixl3op) }
+
+-- token Infixl4op
 \+ \+
-    { tok (\p s -> PT p (eitherResIdent T_Infixl4op s)) }
+    { tok (eitherResIdent T_Infixl4op) }
+
+-- token Infixl5op
 [\+ \-]
-    { tok (\p s -> PT p (eitherResIdent T_Infixl5op s)) }
+    { tok (eitherResIdent T_Infixl5op) }
+
+-- token Infixl6op
 [\% \* \/]
-    { tok (\p s -> PT p (eitherResIdent T_Infixl6op s)) }
+    { tok (eitherResIdent T_Infixl6op) }
+
+-- token Infixr7op
 \^
-    { tok (\p s -> PT p (eitherResIdent T_Infixr7op s)) }
+    { tok (eitherResIdent T_Infixr7op) }
+
+-- token Infixl8op
 \! \!
-    { tok (\p s -> PT p (eitherResIdent T_Infixl8op s)) }
+    { tok (eitherResIdent T_Infixl8op) }
+
+-- token Close
 c l o s e
-    { tok (\p s -> PT p (eitherResIdent T_Close s)) }
+    { tok (eitherResIdent T_Close) }
+
+-- token Halt
 h a l t
-    { tok (\p s -> PT p (eitherResIdent T_Halt s)) }
+    { tok (eitherResIdent T_Halt) }
+
+-- token Get
 g e t
-    { tok (\p s -> PT p (eitherResIdent T_Get s)) }
+    { tok (eitherResIdent T_Get) }
+
+-- token Put
 p u t
-    { tok (\p s -> PT p (eitherResIdent T_Put s)) }
+    { tok (eitherResIdent T_Put) }
+
+-- token HCase
 h c a s e
-    { tok (\p s -> PT p (eitherResIdent T_HCase s)) }
+    { tok (eitherResIdent T_HCase) }
+
+-- token HPut
 h p u t
-    { tok (\p s -> PT p (eitherResIdent T_HPut s)) }
+    { tok (eitherResIdent T_HPut) }
+
+-- token Split
 s p l i t
-    { tok (\p s -> PT p (eitherResIdent T_Split s)) }
+    { tok (eitherResIdent T_Split) }
+
+-- token Fork
 f o r k
-    { tok (\p s -> PT p (eitherResIdent T_Fork s)) }
+    { tok (eitherResIdent T_Fork) }
+
+-- token ChId
 \| \= \|
-    { tok (\p s -> PT p (eitherResIdent T_ChId s)) }
+    { tok (eitherResIdent T_ChId) }
+
+-- token Case
 c a s e
-    { tok (\p s -> PT p (eitherResIdent T_Case s)) }
+    { tok (eitherResIdent T_Case) }
+
+-- token UIdent
 $c (\_ | ($d | $l)) *
-    { tok (\p s -> PT p (eitherResIdent T_UIdent s)) }
+    { tok (eitherResIdent T_UIdent) }
+
+-- token PIdent
 (\_ | $l)([\' \_]| ($d | $l)) *
-    { tok (\p s -> PT p (eitherResIdent T_PIdent s)) }
+    { tok (eitherResIdent T_PIdent) }
+
+-- token UPIdent
 $l ([\' \_]| ($d | $l)) *
-    { tok (\p s -> PT p (eitherResIdent T_UPIdent s)) }
+    { tok (eitherResIdent T_UPIdent) }
 
+-- Keywords and Ident
 $l $i*
-    { tok (\p s -> PT p (eitherResIdent TV s)) }
-
-
-
-
+    { tok (eitherResIdent TV) }
 
 {
+-- | Create a token with position.
+tok :: (String -> Tok) -> (Posn -> String -> Token)
+tok f p = PT p . f
 
-tok :: (Posn -> String -> Token) -> (Posn -> String -> Token)
-tok f p s = f p s
+-- | Token without position.
+data Tok
+  = TK {-# UNPACK #-} !TokSymbol  -- ^ Reserved word or symbol.
+  | TL !String                    -- ^ String literal.
+  | TI !String                    -- ^ Integer literal.
+  | TV !String                    -- ^ Identifier.
+  | TD !String                    -- ^ Float literal.
+  | TC !String                    -- ^ Character literal.
+  | T_PInteger !String
+  | T_PDouble !String
+  | T_PChar !String
+  | T_PString !String
+  | T_Par !String
+  | T_Tensor !String
+  | T_LBracket !String
+  | T_RBracket !String
+  | T_LSquareBracket !String
+  | T_RSquareBracket !String
+  | T_NullPattern !String
+  | T_Colon !String
+  | T_Infixl1op !String
+  | T_Infixl2op !String
+  | T_Infixl3op !String
+  | T_Infixl4op !String
+  | T_Infixl5op !String
+  | T_Infixl6op !String
+  | T_Infixr7op !String
+  | T_Infixl8op !String
+  | T_Close !String
+  | T_Halt !String
+  | T_Get !String
+  | T_Put !String
+  | T_HCase !String
+  | T_HPut !String
+  | T_Split !String
+  | T_Fork !String
+  | T_ChId !String
+  | T_Case !String
+  | T_UIdent !String
+  | T_PIdent !String
+  | T_UPIdent !String
+  deriving (Eq, Show, Ord)
 
-data Tok =
-   TS !String !Int    -- reserved words and symbols
- | TL !String         -- string literals
- | TI !String         -- integer literals
- | TV !String         -- identifiers
- | TD !String         -- double precision float literals
- | TC !String         -- character literals
- | T_PInteger !String
- | T_PDouble !String
- | T_PChar !String
- | T_PString !String
- | T_Par !String
- | T_Tensor !String
- | T_LBracket !String
- | T_RBracket !String
- | T_LSquareBracket !String
- | T_RSquareBracket !String
- | T_NullPattern !String
- | T_Colon !String
- | T_Infixl1op !String
- | T_Infixl2op !String
- | T_Infixl3op !String
- | T_Infixl4op !String
- | T_Infixl5op !String
- | T_Infixl6op !String
- | T_Infixr7op !String
- | T_Infixl8op !String
- | T_Close !String
- | T_Halt !String
- | T_Get !String
- | T_Put !String
- | T_HCase !String
- | T_HPut !String
- | T_Split !String
- | T_Fork !String
- | T_ChId !String
- | T_Case !String
- | T_UIdent !String
- | T_PIdent !String
- | T_UPIdent !String
+-- | Smart constructor for 'Tok' for the sake of backwards compatibility.
+pattern TS :: String -> Int -> Tok
+pattern TS t i = TK (TokSymbol t i)
 
- deriving (Eq,Show,Ord)
+-- | Keyword or symbol tokens have a unique ID.
+data TokSymbol = TokSymbol
+  { tsText :: String
+      -- ^ Keyword or symbol text.
+  , tsID   :: !Int
+      -- ^ Unique ID.
+  } deriving (Show)
 
-data Token =
-   PT  Posn Tok
- | Err Posn
-  deriving (Eq,Show,Ord)
+-- | Keyword/symbol equality is determined by the unique ID.
+instance Eq  TokSymbol where (==)    = (==)    `on` tsID
 
+-- | Keyword/symbol ordering is determined by the unique ID.
+instance Ord TokSymbol where compare = compare `on` tsID
+
+-- | Token with position.
+data Token
+  = PT  Posn Tok
+  | Err Posn
+  deriving (Eq, Show, Ord)
+
+-- | Pretty print a position.
 printPosn :: Posn -> String
 printPosn (Pn _ l c) = "line " ++ show l ++ ", column " ++ show c
 
+-- | Pretty print the position of the first token in the list.
 tokenPos :: [Token] -> String
 tokenPos (t:_) = printPosn (tokenPosn t)
-tokenPos [] = "end of file"
+tokenPos []    = "end of file"
 
+-- | Get the position of a token.
 tokenPosn :: Token -> Posn
 tokenPosn (PT p _) = p
-tokenPosn (Err p) = p
+tokenPosn (Err p)  = p
 
+-- | Get line and column of a token.
 tokenLineCol :: Token -> (Int, Int)
 tokenLineCol = posLineCol . tokenPosn
 
+-- | Get line and column of a position.
 posLineCol :: Posn -> (Int, Int)
 posLineCol (Pn _ l c) = (l,c)
 
+-- | Convert a token into "position token" form.
 mkPosToken :: Token -> ((Int, Int), String)
-mkPosToken t@(PT p _) = (posLineCol p, tokenText t)
+mkPosToken t = (tokenLineCol t, tokenText t)
 
+-- | Convert a token to its text.
 tokenText :: Token -> String
 tokenText t = case t of
   PT _ (TS s _) -> s
@@ -222,24 +322,55 @@ tokenText t = case t of
   PT _ (T_PIdent s) -> s
   PT _ (T_UPIdent s) -> s
 
+-- | Convert a token to a string.
 prToken :: Token -> String
 prToken t = tokenText t
 
-data BTree = N | B String Tok BTree BTree deriving (Show)
+-- | Finite map from text to token organized as binary search tree.
+data BTree
+  = N -- ^ Nil (leaf).
+  | B String Tok BTree BTree
+      -- ^ Binary node.
+  deriving (Show)
 
+-- | Convert potential keyword into token or use fallback conversion.
 eitherResIdent :: (String -> Tok) -> String -> Tok
 eitherResIdent tv s = treeFind resWords
   where
   treeFind N = tv s
-  treeFind (B a t left right) | s < a  = treeFind left
-                              | s > a  = treeFind right
-                              | s == a = t
+  treeFind (B a t left right) =
+    case compare s a of
+      LT -> treeFind left
+      GT -> treeFind right
+      EQ -> t
 
+-- | The keywords and symbols of the language organized as binary search tree.
 resWords :: BTree
-resWords = b "in" 19 (b "codata" 10 (b ";" 5 (b "::" 3 (b "->" 2 (b "," 1 N N) N) (b ":=" 4 N N)) (b "and" 8 (b "=>" 7 (b "=" 6 N N) N) (b "as" 9 N N))) (b "else" 15 (b "defn" 13 (b "data" 12 (b "coprotocol" 11 N N) N) (b "do" 14 N N)) (b "fun" 17 (b "fold" 16 N N) (b "if" 18 N N)))) (b "race" 29 (b "on" 24 (b "neg" 22 (b "let" 21 (b "into" 20 N N) N) (b "of" 23 N N)) (b "proc" 27 (b "potato" 26 (b "plug" 25 N N) N) (b "protocol" 28 N N))) (b "with" 34 (b "unfold" 32 (b "then" 31 (b "switch" 30 N N) N) (b "where" 33 N N)) (b "|" 36 (b "{" 35 N N) (b "}" 37 N N))))
-   where b s n = let bs = s
-                 in  B bs (TS bs n)
+resWords =
+  b "in" 19
+    (b "codata" 10
+       (b ";" 5
+          (b "::" 3 (b "->" 2 (b "," 1 N N) N) (b ":=" 4 N N))
+          (b "and" 8 (b "=>" 7 (b "=" 6 N N) N) (b "as" 9 N N)))
+       (b "else" 15
+          (b "defn" 13
+             (b "data" 12 (b "coprotocol" 11 N N) N) (b "do" 14 N N))
+          (b "fun" 17 (b "fold" 16 N N) (b "if" 18 N N))))
+    (b "race" 29
+       (b "on" 24
+          (b "neg" 22 (b "let" 21 (b "into" 20 N N) N) (b "of" 23 N N))
+          (b "proc" 27
+             (b "potato" 26 (b "plug" 25 N N) N) (b "protocol" 28 N N)))
+       (b "with" 34
+          (b "unfold" 32
+             (b "then" 31 (b "switch" 30 N N) N) (b "where" 33 N N))
+          (b "|" 36 (b "{" 35 N N) (b "}" 37 N N))))
+  where
+  b s n = B bs (TS bs n)
+    where
+    bs = s
 
+-- | Unquote string literal.
 unescapeInitTail :: String -> String
 unescapeInitTail = id . unesc . tail . id
   where
@@ -249,9 +380,9 @@ unescapeInitTail = id . unesc . tail . id
     '\\':'t':cs  -> '\t' : unesc cs
     '\\':'r':cs  -> '\r' : unesc cs
     '\\':'f':cs  -> '\f' : unesc cs
-    '"':[]    -> []
-    c:cs      -> c : unesc cs
-    _         -> []
+    '"':[]       -> []
+    c:cs         -> c : unesc cs
+    _            -> []
 
 -------------------------------------------------------------------
 -- Alex wrapper code.
@@ -259,7 +390,7 @@ unescapeInitTail = id . unesc . tail . id
 -------------------------------------------------------------------
 
 data Posn = Pn !Int !Int !Int
-      deriving (Eq, Show,Ord)
+  deriving (Eq, Show, Ord)
 
 alexStartPos :: Posn
 alexStartPos = Pn 0 1 1
@@ -303,7 +434,7 @@ alexInputPrevChar (p, c, bs, s) = c
 -- | Encode a Haskell String to a list of Word8 values, in UTF8 format.
 utf8Encode :: Char -> [Word8]
 utf8Encode = map fromIntegral . go . ord
- where
+  where
   go oc
    | oc <= 0x7f       = [oc]
 

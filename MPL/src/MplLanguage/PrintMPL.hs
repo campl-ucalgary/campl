@@ -1,8 +1,10 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 #if __GLASGOW_HASKELL__ <= 708
 {-# LANGUAGE OverlappingInstances #-}
 #endif
-{-# LANGUAGE FlexibleInstances #-}
+
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 
 -- | Pretty-printer for MplLanguage.
@@ -10,8 +12,16 @@
 
 module MplLanguage.PrintMPL where
 
+import Prelude
+  ( ($), (.)
+  , Bool(..), (==), (<)
+  , Int, Integer, Double, (+), (-), (*)
+  , String, (++)
+  , ShowS, showChar, showString
+  , all, elem, foldr, id, map, null, replicate, shows, span
+  )
+import Data.Char ( Char, isSpace )
 import qualified MplLanguage.AbsMPL
-import Data.Char
 
 -- | The top-level printing method.
 
@@ -24,19 +34,48 @@ doc :: ShowS -> Doc
 doc = (:)
 
 render :: Doc -> String
-render d = rend 0 (map ($ "") $ d []) "" where
-  rend i ss = case ss of
-    "["      :ts -> showChar '[' . rend i ts
-    "("      :ts -> showChar '(' . rend i ts
-    "{"      :ts -> showChar '{' . new (i+1) . rend (i+1) ts
-    "}" : ";":ts -> new (i-1) . space "}" . showChar ';' . new (i-1) . rend (i-1) ts
-    "}"      :ts -> new (i-1) . showChar '}' . new (i-1) . rend (i-1) ts
-    [";"]        -> showChar ';'
-    ";"      :ts -> showChar ';' . new i . rend i ts
-    t  : ts@(p:_) | closingOrPunctuation p -> showString t . rend i ts
-    t        :ts -> space t . rend i ts
-    _            -> id
-  new i     = showChar '\n' . replicateS (2*i) (showChar ' ') . dropWhile isSpace
+render d = rend 0 False (map ($ "") $ d []) ""
+  where
+  rend
+    :: Int        -- ^ Indentation level.
+    -> Bool       -- ^ Pending indentation to be output before next character?
+    -> [String]
+    -> ShowS
+  rend i p = \case
+      "["      :ts -> char '[' . rend i False ts
+      "("      :ts -> char '(' . rend i False ts
+      "{"      :ts -> onNewLine i     p . showChar   '{'  . new (i+1) ts
+      "}" : ";":ts -> onNewLine (i-1) p . showString "};" . new (i-1) ts
+      "}"      :ts -> onNewLine (i-1) p . showChar   '}'  . new (i-1) ts
+      [";"]        -> char ';'
+      ";"      :ts -> char ';' . new i ts
+      t  : ts@(s:_) | closingOrPunctuation s
+                   -> pending . showString t . rend i False ts
+      t        :ts -> pending . space t      . rend i False ts
+      []           -> id
+    where
+    -- Output character after pending indentation.
+    char :: Char -> ShowS
+    char c = pending . showChar c
+
+    -- Output pending indentation.
+    pending :: ShowS
+    pending = if p then indent i else id
+
+  -- Indentation (spaces) for given indentation level.
+  indent :: Int -> ShowS
+  indent i = replicateS (2*i) (showChar ' ')
+
+  -- Continue rendering in new line with new indentation.
+  new :: Int -> [String] -> ShowS
+  new j ts = showChar '\n' . rend j True ts
+
+  -- Make sure we are on a fresh line.
+  onNewLine :: Int -> Bool -> ShowS
+  onNewLine i p = (if p then id else showChar '\n') . indent i
+
+  -- Separate given string from following text by a space (if needed).
+  space :: String -> ShowS
   space t s =
     case (all isSpace t', null spc, null rest) of
       (True , _   , True ) -> []              -- remove trailing space
@@ -70,23 +109,26 @@ replicateS n f = concatS (replicate n f)
 
 class Print a where
   prt :: Int -> a -> Doc
-  prtList :: Int -> [a] -> Doc
-  prtList i = concatD . map (prt i)
 
 instance {-# OVERLAPPABLE #-} Print a => Print [a] where
-  prt = prtList
+  prt i = concatD . map (prt i)
 
 instance Print Char where
-  prt _ s = doc (showChar '\'' . mkEsc '\'' s . showChar '\'')
-  prtList _ s = doc (showChar '"' . concatS (map (mkEsc '"') s) . showChar '"')
+  prt _ c = doc (showChar '\'' . mkEsc '\'' c . showChar '\'')
+
+instance Print String where
+  prt _ = printString
+
+printString :: String -> Doc
+printString s = doc (showChar '"' . concatS (map (mkEsc '"') s) . showChar '"')
 
 mkEsc :: Char -> Char -> ShowS
-mkEsc q s = case s of
-  _ | s == q -> showChar '\\' . showChar s
-  '\\'-> showString "\\\\"
+mkEsc q = \case
+  s | s == q -> showChar '\\' . showChar s
+  '\\' -> showString "\\\\"
   '\n' -> showString "\\n"
   '\t' -> showString "\\t"
-  _ -> showChar s
+  s -> showChar s
 
 prPrec :: Int -> Int -> Doc -> Doc
 prPrec i j = if j < i then parenth else id
@@ -98,150 +140,113 @@ instance Print Double where
   prt _ x = doc (shows x)
 
 instance Print MplLanguage.AbsMPL.PInteger where
-  prt _ (MplLanguage.AbsMPL.PInteger (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.PInteger (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.PDouble where
-  prt _ (MplLanguage.AbsMPL.PDouble (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.PDouble (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.PChar where
-  prt _ (MplLanguage.AbsMPL.PChar (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.PChar (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.PString where
-  prt _ (MplLanguage.AbsMPL.PString (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.PString (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Par where
-  prt _ (MplLanguage.AbsMPL.Par (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.Par (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Tensor where
-  prt _ (MplLanguage.AbsMPL.Tensor (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.Tensor (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.LBracket where
-  prt _ (MplLanguage.AbsMPL.LBracket (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.LBracket (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.RBracket where
-  prt _ (MplLanguage.AbsMPL.RBracket (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.RBracket (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.LSquareBracket where
-  prt _ (MplLanguage.AbsMPL.LSquareBracket (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.LSquareBracket (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.RSquareBracket where
-  prt _ (MplLanguage.AbsMPL.RSquareBracket (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.RSquareBracket (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.NullPattern where
-  prt _ (MplLanguage.AbsMPL.NullPattern (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.NullPattern (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Colon where
-  prt _ (MplLanguage.AbsMPL.Colon (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.Colon (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Infixl1op where
-  prt _ (MplLanguage.AbsMPL.Infixl1op (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.Infixl1op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Infixl2op where
-  prt _ (MplLanguage.AbsMPL.Infixl2op (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.Infixl2op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Infixl3op where
-  prt _ (MplLanguage.AbsMPL.Infixl3op (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.Infixl3op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Infixl4op where
-  prt _ (MplLanguage.AbsMPL.Infixl4op (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.Infixl4op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Infixl5op where
-  prt _ (MplLanguage.AbsMPL.Infixl5op (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.Infixl5op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Infixl6op where
-  prt _ (MplLanguage.AbsMPL.Infixl6op (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.Infixl6op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Infixr7op where
-  prt _ (MplLanguage.AbsMPL.Infixr7op (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.Infixr7op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Infixl8op where
-  prt _ (MplLanguage.AbsMPL.Infixl8op (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.Infixl8op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Close where
-  prt _ (MplLanguage.AbsMPL.Close (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.Close (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Halt where
-  prt _ (MplLanguage.AbsMPL.Halt (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.Halt (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Get where
-  prt _ (MplLanguage.AbsMPL.Get (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.Get (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Put where
-  prt _ (MplLanguage.AbsMPL.Put (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.Put (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.HCase where
-  prt _ (MplLanguage.AbsMPL.HCase (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.HCase (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.HPut where
-  prt _ (MplLanguage.AbsMPL.HPut (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.HPut (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Split where
-  prt _ (MplLanguage.AbsMPL.Split (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.Split (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Fork where
-  prt _ (MplLanguage.AbsMPL.Fork (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.Fork (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.ChId where
-  prt _ (MplLanguage.AbsMPL.ChId (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.ChId (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Case where
-  prt _ (MplLanguage.AbsMPL.Case (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.Case (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.UIdent where
-  prt _ (MplLanguage.AbsMPL.UIdent (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.UIdent (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.PIdent where
-  prt _ (MplLanguage.AbsMPL.PIdent (_,i)) = doc $ showString $ i
-  prtList _ [] = concatD []
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
-
+  prt _ (MplLanguage.AbsMPL.PIdent (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.UPIdent where
-  prt _ (MplLanguage.AbsMPL.UPIdent (_,i)) = doc $ showString $ i
-
+  prt _ (MplLanguage.AbsMPL.UPIdent (_,i)) = doc $ showString i
 instance Print [MplLanguage.AbsMPL.PIdent] where
-  prt = prtList
+  prt _ [] = concatD []
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.MplProg where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.MPL_PROG mplstmts -> prPrec i 0 (concatD [prt 0 mplstmts])
 
 instance Print MplLanguage.AbsMPL.MplStmt where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.MPL_DEFN_STMS_WHERE mpldefns mplwheres -> prPrec i 0 (concatD [doc (showString "defn"), doc (showString "{"), prt 0 mpldefns, doc (showString "}"), doc (showString "where"), doc (showString "{"), prt 0 mplwheres, doc (showString "}")])
     MplLanguage.AbsMPL.MPL_DEFN_STMS mpldefns -> prPrec i 0 (concatD [doc (showString "defn"), doc (showString "{"), prt 0 mpldefns, doc (showString "}")])
     MplLanguage.AbsMPL.MPL_STMT mpldefn -> prPrec i 0 (concatD [prt 0 mpldefn])
-  prtList _ [] = concatD []
-  prtList _ (x:xs) = concatD [prt 0 x, prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.MplDefn] where
-  prt = prtList
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.MplStmt] where
-  prt = prtList
+  prt _ [] = concatD []
+  prt _ (x:xs) = concatD [prt 0 x, prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.MplWhere where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.MPL_WHERE mplstmt -> prPrec i 0 (concatD [prt 0 mplstmt])
-  prtList _ [] = concatD []
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.MplWhere] where
-  prt = prtList
+  prt _ [] = concatD []
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.MplDefn where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.MPL_SEQUENTIAL_TYPE_DEFN sequentialtypedefn -> prPrec i 0 (concatD [prt 0 sequentialtypedefn])
     MplLanguage.AbsMPL.MPL_CONCURRENT_TYPE_DEFN concurrenttypedefn -> prPrec i 0 (concatD [prt 0 concurrenttypedefn])
     MplLanguage.AbsMPL.MPL_FUNCTION_DEFN functiondefn -> prPrec i 0 (concatD [prt 0 functiondefn])
     MplLanguage.AbsMPL.MPL_PROCESS_DEFN processdefn -> prPrec i 0 (concatD [prt 0 processdefn])
     MplLanguage.AbsMPL.MPL_DEFNTEST -> prPrec i 0 (concatD [doc (showString "potato")])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.MplType where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.MPL_TYPE mpltype -> prPrec i 0 (concatD [prt 0 mpltype])
     MplLanguage.AbsMPL.PAR_TYPE mpltype1 par mpltype2 -> prPrec i 0 (concatD [prt 1 mpltype1, prt 0 par, prt 1 mpltype2])
     MplLanguage.AbsMPL.TENSOR_TYPE mpltype1 tensor mpltype2 -> prPrec i 1 (concatD [prt 2 mpltype1, prt 0 tensor, prt 2 mpltype2])
@@ -254,90 +259,82 @@ instance Print MplLanguage.AbsMPL.MplType where
     MplLanguage.AbsMPL.MPL_TUPLE_TYPE lbracket mpltype tuplelisttypes rbracket -> prPrec i 2 (concatD [prt 0 lbracket, prt 0 mpltype, doc (showString ","), prt 0 tuplelisttypes, prt 0 rbracket])
     MplLanguage.AbsMPL.MPL_SEQ_ARROW_TYPE forallvarlists mpltypes mpltype -> prPrec i 2 (concatD [doc (showString "forall"), prt 0 forallvarlists, doc (showString "."), prt 0 mpltypes, doc (showString "->"), prt 0 mpltype])
     MplLanguage.AbsMPL.MPL_CONC_ARROW_TYPE forallvarlists mpltypes1 mpltypes2 mpltypes3 -> prPrec i 2 (concatD [doc (showString "forall"), prt 0 forallvarlists, doc (showString "."), prt 0 mpltypes1, doc (showString "|"), prt 0 mpltypes2, doc (showString "=>"), prt 0 mpltypes3])
-  prtList _ [] = concatD []
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.TupleListType where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.TUPLE_LIST_TYPE mpltype -> prPrec i 0 (concatD [prt 0 mpltype])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.ForallVarList where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.MPL_SEQ_FUN_TYPE_FORALL_LIST uident -> prPrec i 0 (concatD [prt 0 uident])
-  prtList _ [] = concatD []
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString " "), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.ForallVarList] where
-  prt = prtList
+  prt _ [] = concatD []
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString " "), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.TupleListType] where
-  prt = prtList
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.MplType] where
-  prt = prtList
+  prt _ [] = concatD []
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.SequentialTypeDefn where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.DATA_DEFN seqtypeclausedefns -> prPrec i 0 (concatD [doc (showString "data"), prt 0 seqtypeclausedefns])
     MplLanguage.AbsMPL.CODATA_DEFN seqtypeclausedefns -> prPrec i 0 (concatD [doc (showString "codata"), prt 0 seqtypeclausedefns])
 
 instance Print MplLanguage.AbsMPL.SeqTypeClauseDefn where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.SEQ_TYPE_CLAUSE mpltype1 mpltype2 seqtypephrasedefns -> prPrec i 0 (concatD [prt 0 mpltype1, doc (showString "->"), prt 0 mpltype2, doc (showString "="), doc (showString "{"), prt 0 seqtypephrasedefns, doc (showString "}")])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString "and"), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.SeqTypePhraseDefn where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.SEQ_TYPE_PHRASE typehandlenames mpltypes mpltype -> prPrec i 0 (concatD [prt 0 typehandlenames, doc (showString "::"), prt 0 mpltypes, doc (showString "->"), prt 0 mpltype])
-  prtList _ [] = concatD []
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.SeqTypeClauseDefn] where
-  prt = prtList
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString "and"), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.SeqTypePhraseDefn] where
-  prt = prtList
+  prt _ [] = concatD []
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.ConcurrentTypeDefn where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.PROTOCOL_DEFN concurrenttypeclausedefns -> prPrec i 0 (concatD [doc (showString "protocol"), prt 0 concurrenttypeclausedefns])
     MplLanguage.AbsMPL.COPROTOCOL_DEFN concurrenttypeclausedefns -> prPrec i 0 (concatD [doc (showString "coprotocol"), prt 0 concurrenttypeclausedefns])
 
 instance Print MplLanguage.AbsMPL.ConcurrentTypeClauseDefn where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.CONCURRENT_TYPE_CLAUSE mpltype1 mpltype2 concurrenttypephrasedefns -> prPrec i 0 (concatD [prt 0 mpltype1, doc (showString "=>"), prt 0 mpltype2, doc (showString "="), doc (showString "{"), prt 0 concurrenttypephrasedefns, doc (showString "}")])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString "and"), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.ConcurrentTypePhraseDefn where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.CONCURRENT_TYPE_PHRASE typehandlenames mpltype1 mpltype2 -> prPrec i 0 (concatD [prt 0 typehandlenames, doc (showString "::"), prt 0 mpltype1, doc (showString "=>"), prt 0 mpltype2])
-  prtList _ [] = concatD []
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.ConcurrentTypeClauseDefn] where
-  prt = prtList
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString "and"), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.ConcurrentTypePhraseDefn] where
-  prt = prtList
+  prt _ [] = concatD []
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.TypeHandleName where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.TYPE_HANDLE_NAME uident -> prPrec i 0 (concatD [prt 0 uident])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.TypeHandleName] where
-  prt = prtList
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.Expr where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.EXPR expr -> prPrec i 0 (concatD [prt 0 expr])
     MplLanguage.AbsMPL.TYPED_EXPR expr mpltype -> prPrec i 0 (concatD [prt 0 expr, doc (showString "::"), prt 0 mpltype])
     MplLanguage.AbsMPL.IF_EXPR expr1 expr2 expr3 -> prPrec i 0 (concatD [doc (showString "if"), prt 0 expr1, doc (showString "then"), prt 0 expr2, doc (showString "else"), prt 0 expr3])
@@ -368,76 +365,67 @@ instance Print MplLanguage.AbsMPL.Expr where
     MplLanguage.AbsMPL.FUN_EXPR pident lbracket exprs rbracket -> prPrec i 10 (concatD [prt 0 pident, prt 0 lbracket, prt 0 exprs, prt 0 rbracket])
     MplLanguage.AbsMPL.RECORD_EXPR lbracket recordexprphrases rbracket -> prPrec i 10 (concatD [prt 0 lbracket, prt 0 recordexprphrases, prt 0 rbracket])
     MplLanguage.AbsMPL.BRACKETED_EXPR lbracket expr rbracket -> prPrec i 10 (concatD [prt 0 lbracket, prt 0 expr, prt 0 rbracket])
-  prtList _ [] = concatD []
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.UnfoldExprPhrase where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.UNFOLD_EXPR_PHRASE pattern_ foldexprphrases -> prPrec i 0 (concatD [prt 0 pattern_, doc (showString "of"), doc (showString "{"), prt 0 foldexprphrases, doc (showString "}")])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.UnfoldExprPhrase] where
-  prt = prtList
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.FoldExprPhrase where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.FOLD_EXPR_PHRASE uident colon patterns expr -> prPrec i 0 (concatD [prt 0 uident, prt 0 colon, prt 0 patterns, doc (showString "->"), prt 0 expr])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.FoldExprPhrase] where
-  prt = prtList
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.LetExprPhrase where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.LET_EXPR_PHRASE mplstmt -> prPrec i 0 (concatD [prt 0 mplstmt])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.LetExprPhrase] where
-  prt = prtList
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.TupleExprList where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.TUPLE_EXPR_LIST expr -> prPrec i 0 (concatD [prt 0 expr])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.TupleExprList] where
-  prt = prtList
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.RecordExprPhrase where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.RECORD_EXPR_PHRASE uident expr -> prPrec i 0 (concatD [prt 0 uident, doc (showString ":="), prt 0 expr])
     MplLanguage.AbsMPL.RECORD_EXPR_HIGHER_ORDER_PHRASE uident pattexprphrase -> prPrec i 0 (concatD [prt 0 uident, doc (showString ":="), prt 0 pattexprphrase])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.RecordExprPhrase] where
-  prt = prtList
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.SwitchExprPhrase where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.SWITCH_EXPR_PHRASE expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "->"), prt 0 expr2])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.SwitchExprPhrase] where
-  prt = prtList
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.Expr] where
-  prt = prtList
+  prt _ [] = concatD []
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.PattExprPhrase where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.PATTERN_TO_EXPR patterns expr -> prPrec i 0 (concatD [prt 0 patterns, doc (showString "->"), prt 0 expr])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.Pattern where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.PATTERN pattern_ -> prPrec i 0 (concatD [prt 0 pattern_])
     MplLanguage.AbsMPL.TYPED_PATTERN pattern_ mpltype -> prPrec i 0 (concatD [prt 0 pattern_, doc (showString "::"), prt 0 mpltype])
     MplLanguage.AbsMPL.LIST_COLON_PATTERN pattern_1 colon pattern_2 -> prPrec i 0 (concatD [prt 1 pattern_1, prt 0 colon, prt 0 pattern_2])
@@ -453,65 +441,63 @@ instance Print MplLanguage.AbsMPL.Pattern where
     MplLanguage.AbsMPL.INT_PATTERN pinteger -> prPrec i 1 (concatD [prt 0 pinteger])
     MplLanguage.AbsMPL.NULL_PATTERN nullpattern -> prPrec i 1 (concatD [prt 0 nullpattern])
     MplLanguage.AbsMPL.BRACKETED_PATTERN lbracket pattern_ rbracket -> prPrec i 1 (concatD [prt 0 lbracket, prt 0 pattern_, prt 0 rbracket])
-  prtList _ [] = concatD []
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.Pattern] where
-  prt = prtList
+  prt _ [] = concatD []
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.TupleListPattern where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.TUPLE_LIST_PATTERN pattern_ -> prPrec i 0 (concatD [prt 0 pattern_])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.TupleListPattern] where
-  prt = prtList
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.DestructorPatternPhrase where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.DESTRUCTOR_PATTERN_PHRASE uident pattern_ -> prPrec i 0 (concatD [prt 0 uident, doc (showString ":="), prt 0 pattern_])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.DestructorPatternPhrase] where
-  prt = prtList
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.FunctionDefn where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.INTERNAL_TYPED_FUNCTION_DEFN pident mpltype pattexprphrases -> prPrec i 0 (concatD [doc (showString "fun"), prt 0 pident, doc (showString "::"), prt 0 mpltype, doc (showString "="), doc (showString "{"), prt 0 pattexprphrases, doc (showString "}")])
     MplLanguage.AbsMPL.TYPED_FUNCTION_DEFN pident mpltypes mpltype pattexprphrases -> prPrec i 0 (concatD [doc (showString "fun"), prt 0 pident, doc (showString "::"), prt 0 mpltypes, doc (showString "->"), prt 0 mpltype, doc (showString "="), doc (showString "{"), prt 0 pattexprphrases, doc (showString "}")])
     MplLanguage.AbsMPL.FUNCTION_DEFN pident pattexprphrases -> prPrec i 0 (concatD [doc (showString "fun"), prt 0 pident, doc (showString "="), doc (showString "{"), prt 0 pattexprphrases, doc (showString "}")])
 
 instance Print [MplLanguage.AbsMPL.PattExprPhrase] where
-  prt = prtList
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.ProcessDefn where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.TYPED_PROCESS_DEFN pident mpltypes1 mpltypes2 mpltypes3 processphrases -> prPrec i 0 (concatD [doc (showString "proc"), prt 0 pident, doc (showString "::"), prt 0 mpltypes1, doc (showString "|"), prt 0 mpltypes2, doc (showString "=>"), prt 0 mpltypes3, doc (showString "="), doc (showString "{"), prt 0 processphrases, doc (showString "}")])
     MplLanguage.AbsMPL.INTERNAL_TYPED_PROCESS_DEFN pident mpltype processphrases -> prPrec i 0 (concatD [doc (showString "proc"), prt 0 pident, doc (showString "::"), prt 0 mpltype, doc (showString "="), doc (showString "{"), prt 0 processphrases, doc (showString "}")])
     MplLanguage.AbsMPL.PROCESS_DEFN pident processphrases -> prPrec i 0 (concatD [doc (showString "proc"), prt 0 pident, doc (showString "="), doc (showString "{"), prt 0 processphrases, doc (showString "}")])
 
 instance Print MplLanguage.AbsMPL.ProcessPhrase where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.PROCESS_PHRASE patterns pidents1 pidents2 processcommandsblock -> prPrec i 0 (concatD [prt 0 patterns, doc (showString "|"), prt 0 pidents1, doc (showString "=>"), prt 0 pidents2, doc (showString "->"), prt 0 processcommandsblock])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.ProcessPhrase] where
-  prt = prtList
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.ProcessCommandsBlock where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.PROCESS_COMMANDS_DO_BLOCK processcommands -> prPrec i 0 (concatD [doc (showString "do"), doc (showString "{"), prt 0 processcommands, doc (showString "}")])
     MplLanguage.AbsMPL.PROCESS_COMMANDS_SINGLE_COMMAND_BLOCK processcommand -> prPrec i 0 (concatD [prt 0 processcommand])
 
 instance Print [MplLanguage.AbsMPL.ProcessCommand] where
-  prt = prtList
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.ProcessCommand where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.PROCESS_RUN pident lbracket exprs pidents1 pidents2 rbracket -> prPrec i 0 (concatD [prt 0 pident, prt 0 lbracket, prt 0 exprs, doc (showString "|"), prt 0 pidents1, doc (showString "=>"), prt 0 pidents2, prt 0 rbracket])
     MplLanguage.AbsMPL.PROCESS_CLOSE close pident -> prPrec i 0 (concatD [prt 0 close, prt 0 pident])
     MplLanguage.AbsMPL.PROCESS_HALT halt pident -> prPrec i 0 (concatD [prt 0 halt, prt 0 pident])
@@ -528,83 +514,72 @@ instance Print MplLanguage.AbsMPL.ProcessCommand where
     MplLanguage.AbsMPL.PROCESS_CASE case_ expr processcasephrases -> prPrec i 0 (concatD [prt 0 case_, prt 0 expr, doc (showString "of"), doc (showString "{"), prt 0 processcasephrases, doc (showString "}")])
     MplLanguage.AbsMPL.PROCESS_IF expr processcommandsblock1 processcommandsblock2 -> prPrec i 0 (concatD [doc (showString "if"), prt 0 expr, doc (showString "then"), prt 0 processcommandsblock1, doc (showString "else"), prt 0 processcommandsblock2])
     MplLanguage.AbsMPL.PROCESS_SWITCH processswitchphrases -> prPrec i 0 (concatD [doc (showString "switch"), doc (showString "{"), prt 0 processswitchphrases, doc (showString "}")])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.HCasePhrase where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.HCASE_PHRASE uident processcommandsblock -> prPrec i 0 (concatD [prt 0 uident, doc (showString "->"), prt 0 processcommandsblock])
-  prtList _ [] = concatD []
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.HCasePhrase] where
-  prt = prtList
+  prt _ [] = concatD []
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.SplitChannel where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.SPLIT_CHANNEL pident -> prPrec i 0 (concatD [prt 0 pident])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.SplitChannel] where
-  prt = prtList
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.ForkPhrase where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.FORK_PHRASE pident processcommandsblock -> prPrec i 0 (concatD [prt 0 pident, doc (showString "->"), prt 0 processcommandsblock])
     MplLanguage.AbsMPL.FORK_WITH_PHRASE pident forkchannels processcommandsblock -> prPrec i 0 (concatD [prt 0 pident, doc (showString "with"), prt 0 forkchannels, doc (showString "->"), prt 0 processcommandsblock])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.ForkPhrase] where
-  prt = prtList
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.ForkChannel where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.FORK_CHANNEL pident -> prPrec i 0 (concatD [prt 0 pident])
-  prtList _ [] = concatD []
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.ForkChannel] where
-  prt = prtList
+  prt _ [] = concatD []
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.RacePhrase where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.RACE_PHRASE pident processcommandsblock -> prPrec i 0 (concatD [prt 0 pident, doc (showString "->"), prt 0 processcommandsblock])
-  prtList _ [] = concatD []
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.RacePhrase] where
-  prt = prtList
+  prt _ [] = concatD []
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.PlugPhrase where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.PLUG_PHRASE processcommandsblock -> prPrec i 0 (concatD [prt 0 processcommandsblock])
     MplLanguage.AbsMPL.PLUG_PHRASE_AS pidents1 pidents2 processcommandsblock -> prPrec i 0 (concatD [prt 0 pidents1, doc (showString "=>"), prt 0 pidents2, doc (showString "->"), prt 0 processcommandsblock])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.PlugPhrase] where
-  prt = prtList
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.ProcessCasePhrase where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.PROCESS_CASE_PHRASE pattern_ processcommandsblock -> prPrec i 0 (concatD [prt 0 pattern_, doc (showString "->"), prt 0 processcommandsblock])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.ProcessCasePhrase] where
-  prt = prtList
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.ProcessSwitchPhrase where
-  prt i e = case e of
+  prt i = \case
     MplLanguage.AbsMPL.PROCESS_SWITCH_PHRASE expr processcommandsblock -> prPrec i 0 (concatD [prt 0 expr, doc (showString "->"), prt 0 processcommandsblock])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
 instance Print [MplLanguage.AbsMPL.ProcessSwitchPhrase] where
-  prt = prtList
-
+  prt _ [x] = concatD [prt 0 x]
+  prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]

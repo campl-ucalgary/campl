@@ -410,7 +410,7 @@ FORK_WITH_PHRASE . ForkPhrase ::= PIdent "with" [ForkChannel] "->" ProcessComman
 separator nonempty ForkPhrase ";" ;
 
 FORK_CHANNEL . ForkChannel ::= PIdent ;
-separator ForkChannel ";" ;
+separator ForkChannel "," ;
 
 RACE_PHRASE . RacePhrase ::= PIdent "->" ProcessCommandsBlock ;
 separator RacePhrase ";" ;
