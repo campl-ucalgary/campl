@@ -384,7 +384,7 @@ instance PPrint (MplBuiltInTypesF MplTypeSub (MplType MplTypeSub)) y where
 instance PPrint TypeTag y where
     pprint proxy (TypeTag n) = pprint proxy n
 
--- overlapping so it is printable without the unique tag.
+-- overlapping so it is printable without the unqiue tag.
 instance {-# OVERLAPPING #-} PPrint TypeIdentT MplParsed where
     pprint proxy (TypeIdentT tag (TypeIdentTInfoTypeVar v)) = case v of
         NamedType identt -> identt ^. name % coerced 

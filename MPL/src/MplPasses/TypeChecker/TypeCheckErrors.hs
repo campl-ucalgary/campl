@@ -192,7 +192,9 @@ pprintTypeCheckErrors = go
                 <> pretty "' command at"
                 <+> fork ^. location % to pprintLoc
                 <> pretty "."
-                <+> pretty "Channels in a `fork' command must be disjoint but they are not."
+                <+> pretty "Channels each phrase of a `fork' command must be disjoint but they are not with channels:"
+                <> line
+                <+> indent 2 (pprintChs chs)
             ]
 
         ForkHasChannelsInScopeButContextsAreNonExhaustiveWith 
@@ -298,6 +300,7 @@ pprintTypeCheckErrors = go
             [ pretty "At the last command "
             , codeblock $ pprintParsed cmd 
             , pretty "there are illegal unclosed channels as follows."
+            , line
             , indent 2 $ pprintChs chs
             ]
 

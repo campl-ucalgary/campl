@@ -254,9 +254,10 @@ matchCont ::
 matchCont ty0 ty1 k = f ty0 ty1
   where
     -- need to simplify double negations first.
-    f (TypeBuiltIn (TypeNegF _ (TypeBuiltIn (TypeNegF _ a)))) b = f a b
-    f a (TypeBuiltIn (TypeNegF _ (TypeBuiltIn (TypeNegF _ b)))) = f a b
+    -- f (TypeBuiltIn (TypeNegF _ (TypeBuiltIn (TypeNegF _ a)))) b = f a b
+    -- f a (TypeBuiltIn (TypeNegF _ (TypeBuiltIn (TypeNegF _ b)))) = f a b
 
+    -- f (TypeVar cxt0 a) (TypeVar cxt1 b) | a == b = return []
     f (TypeVar cxt0 a) b = fmap pure $ mkValidSub a b
     f a (TypeVar cxt1 b) = fmap pure $ mkValidSub b a
 
@@ -438,7 +439,8 @@ failsOccursCheck ::
     TypeP x ->
     MplType x ->
     Bool
-failsOccursCheck n (TypeBuiltIn (TypeNegF _ (TypeBuiltIn (TypeNegF _ a)))) = failsOccursCheck n a
+-- No double negation rule.. this breaks things quite a bit..
+-- failsOccursCheck n (TypeBuiltIn (TypeNegF _ (TypeBuiltIn (TypeNegF _ a)))) = failsOccursCheck n a
 failsOccursCheck _ (TypeVar _ _) = False
 failsOccursCheck _ (TypeSeqVarWithArgs _ _ []) = False
 failsOccursCheck _ (TypeConcVarWithArgs _ _ ([],[])) = False
@@ -710,8 +712,9 @@ packageExistentialElim  ::
     Package x ->
     m (Package x)
 packageExistentialElim pkg = do
-    foldrM f pkg' (pkg ^. packageExisVar) >>= traverseOf
-        packageSubs linearize
+    -- We don't linearize at each level -- helps performance a bit I guess and this is unneccessasry as well.
+    -- foldrM f pkg' (pkg ^. packageExisVar) >>= traverseOf packageSubs linearize
+    foldrM f pkg' (pkg ^. packageExisVar) 
   where
     pkg' = pkg & packageExisVar .~ mempty
                -- & packageSubs %~ filter (not . isTrivialSub)
@@ -794,11 +797,6 @@ packageUniversalElim vs pkg = traverseOf packageSubs linearize pkg >>= flip (fol
                     | l `elem` foralls = throwerr
                     | otherwise = g rst
 
-            {-
-            match vtp tp `catchError` const (throwError $ _TypeForallMatchFailure # (vtp, tp))
-                >>= linearize 
-                >>= g 
-            -}
             match vtp tp `catchError` const (throwError $ _TypeForallMatchFailure # (vtp, tp))
                 >>= linearize 
                 >>= g 
@@ -855,7 +853,8 @@ pprintTypeUnificationError = go
         TypeOccursCheck tpp tp0 -> fold
             [ pretty "Occurs check failure with"
             , codeblock
-                $ pprintParsed $ typeIdentTToTypeT tpp
+                -- $ pprintParsed $ typeIdentTToTypeT tpp
+                $ pprintParsed $ tpp
             , pretty "and"
             , codeblock
                 $ pprintParsed tp0
@@ -1011,6 +1010,8 @@ pprintTypeUnificationError = go
         EUnfold ann _ _ -> mempty
         -- bugged bnfc?
         ESwitch ann _ -> mempty
+        -- bugged bnfc?
+        ELet _ _ _ -> mempty
 
     getpattloc :: MplPattern MplRenamed -> MplDoc
     getpattloc = (pretty "at"<+>) . \case

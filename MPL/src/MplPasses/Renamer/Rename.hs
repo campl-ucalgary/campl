@@ -43,6 +43,7 @@ import Data.Traversable
 import Control.Arrow
 
 import Debug.Trace
+import qualified Text.Show.Pretty as PrettyShow
 
 runRename' ::
     AsRenameErrors err =>
@@ -493,6 +494,9 @@ renameCmd = f
             -- it, by providing the information of whether it was user supplied so we know whether
             -- to do out of scope checks.
             -- I think I fixed this -- I cna't quite recall.. would probably need to study the code a bit
+          
+        -- traceM $ PrettyShow.ppShow cxt1'
+        -- traceM $ PrettyShow.ppShow cxt2'
 
         if p1 == UserProvidedContext
             then do 

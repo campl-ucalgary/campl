@@ -48,6 +48,9 @@ import Debug.Trace
 import Data.Foldable
 import Data.Void
 
+import Debug.Trace
+import qualified Text.Show.Pretty as PrettyShow
+
 {- Module for getting the free variables in mpl commands..
  - This is needed to find the context for which a Fork / plug command
  - are called with. The algorithm is as follows.
@@ -139,18 +142,22 @@ cmdBindFreeVars = f
         
     f (CHCase cxt ch cases) = do
         equality %= (ch:)
-        cases' <- traverse g cases
+
+        (nst, cases') <- fmap NE.unzip $ traverse g cases
+
+        equality .= foldr union [] nst
+
         return $ CHCase cxt ch cases'
       where
         g (cxt, ident, cmds) = do
-            cmds' <- cmdsBindFreeVars cmds
-            return (cxt, ident, cmds')
+            (nst, cmds') <- localState $ cmdsBindFreeVars cmds
+            return (nst, (cxt, ident, cmds'))
     f (CHPut cxt ident ch) = do
         equality %= (ch:)
         return $ CHPut cxt ident ch
 
     f (CSplit cxt ch (ch1, ch2)) = do
-        equality %= (ch:) . filter (not . (`elem`[ch1,ch2])) . nub
+        equality %= (ch:) . filter (not . (`elem`[ch1,ch2])) 
         return $ CSplit cxt ch (ch1, ch2)
     f (CFork cxt ch ((ch1, cxt1, cmds1), (ch2, cxt2, cmds2))) = do
         -- some invalid programs will have free variables after this
@@ -158,12 +165,13 @@ cmdBindFreeVars = f
         -- because they technically are a part of the context.
         initfreevars <- guse equality
 
+        equality .= mempty
         cmds1' <- cmdsBindFreeVars cmds1
         cxt1' <- guses equality (filter (/=ch1) . nub)
 
         -- the free variables from each fork branch.. These
         -- are disjoint.
-        equality .= initfreevars
+        equality .= mempty
 
         cmds2' <- cmdsBindFreeVars cmds2
         cxt2' <- guses equality (filter (/=ch2) . nub)
@@ -221,23 +229,40 @@ cmdBindFreeVars = f
 
 
     f (CCase cxt expr cases) = do   
-        cases' <- traverse g cases
+        (nst, cases') <- fmap NE.unzip $ traverse g cases
+
+        equality .= foldr union [] nst
+
         return $ CCase cxt expr cases'
       where
         g (patt, cmds) = do
-            cmds' <- cmdsBindFreeVars cmds
-            return (patt, cmds')
+            (nst, cmds') <- localState $ cmdsBindFreeVars cmds
+            return (nst, (patt, cmds'))
 
     f (CSwitch cxt switches) = do
-        switches' <- traverse g switches
+        (nst, switches') <- fmap NE.unzip $ traverse g switches
+
+        equality .= foldr union [] nst
+
         return $ CSwitch cxt switches'
       where
-        g (expr, cmds) = (expr,) <$> cmdsBindFreeVars cmds
+        g (expr, cmds) = do
+            (nst, cmds') <- localState $ cmdsBindFreeVars cmds
+            return (nst, (expr, cmds'))
 
     f (CIf cxt condc thenc elsec) = do
-        thenc' <- cmdsBindFreeVars thenc
-        elsec' <- cmdsBindFreeVars elsec
+        (thennst, thenc') <- localState $ cmdsBindFreeVars thenc
+        (elsenst, elsec') <- localState $ cmdsBindFreeVars elsec
+        equality .= thennst `union` elsenst
         return $ CIf cxt condc thenc' elsec'
+
+    localState ma = do
+        oldst <- guse equality
+        a <- ma 
+        nst <- guse equality
+        equality .= oldst
+        return (nst, a)
+        
 
 {- | This will correct the contxt AFTER computing the free variables. 
 See note above for why this is necessary..
@@ -272,7 +297,7 @@ cmdsCorrectContext context = NE.fromList . go context . NE.toList
                 ( ch' 
                 , (ComputedContext, filter (`elem` context) cxt') 
                 , cmdsCorrectContext (ch':context) cmds')
-            f (ch', cxt', cmds') = ( ch' , cxt' , cmdsCorrectContext (ch':context) cmds')
+            f (ch', cxt', cmds') = ( ch' , cxt' , cmdsCorrectContext ((ch':context) \\ [ch]) cmds')
             -- _ cxt1
         CPlugs cxt (phr1, phr2, phrs)
             -> CPlugs cxt' (f phr1, f phr2, map f phrs) : go context cmds
@@ -295,7 +320,7 @@ cmdsCorrectContext context = NE.fromList . go context . NE.toList
         CPut ann expr ch -> CPut ann expr ch : go context cmds
         CHCase ann ch phrases -> CHCase ann ch (phrases & mapped % _3 %~ cmdsCorrectContext context) : go context cmds
         CHPut ann idp chp -> CHPut ann idp chp : go context cmds
-        CSplit ann chp (lchp,rchp) -> CSplit ann chp (lchp,rchp) : go (lchp:rchp:context) cmds
+        CSplit ann chp (lchp,rchp) -> CSplit ann chp (lchp,rchp) : go ((lchp:rchp:context) \\ [chp]) cmds
         CId ann (lch,rch) -> CId ann (lch,rch) : go context cmds
         CIdNeg ann (lch, rch) -> CIdNeg ann (lch, rch) : go context cmds
         CRace ann races -> CRace ann (races & mapped % _2 %~ cmdsCorrectContext context) : go context cmds
