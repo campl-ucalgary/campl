@@ -43,6 +43,9 @@ dependencies:
 
 library:
   source-dirs: src
+  # use these for debug dump of the channel manager actions for the machine steps. 
+  # cpp-options:
+  # - -DMPL_MACH_DEBUG
 
 executables:
   MPLMACH-exe:
@@ -57,6 +60,7 @@ executables:
     # use these for debug dump of the channel manager actions for the machine steps. 
     # cpp-options:
     # - -DMPL_MACH_DEBUG
+
     dependencies:
     - MPLMACH
 

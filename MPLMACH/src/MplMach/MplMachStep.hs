@@ -49,6 +49,7 @@ import Debug.Trace
 import qualified Text.Show.Pretty as PrettyShow
 
 import System.Process
+import System.IO.Unsafe
 
 {- Some C macros which are enabled when MPL_MACH_DEBUG is defined. 
 These are used to trace the queue outputs before any process takes a step. 
@@ -64,15 +65,28 @@ Notes:
 #if MPL_MACH_DEBUG
 
 #define TRACE_TRANSLATION_LKUP_WITH_HEADER(MSG, CHLKUP) \
-    (traceTranslationLkupWithHeader (MSG) (CHLKUP))
-#define ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER(MSG, CHLKUP) \
-    (liftIO $ atomically $ TRACE_TRANSLATION_LKUP_WITH_HEADER(MSG, CHLKUP))
+    (traceTranslationLkupWithHeader ((MSG)) (CHLKUP))
+    -- (traceTranslationLkupWithHeader ((MSG)) (CHLKUP))
+#define ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER(MSG, CHLKUP)       \
+    (liftIO $ do                                                         \
+        { threadid <- myThreadId                                         \
+        ; let { msg = intercalate " " [(MSG), show threadid] }           \
+        ; atomically $ TRACE_TRANSLATION_LKUP_WITH_HEADER(msg, CHLKUP)   \
+        }                                                                \
+    )
 #define ATOMICALLY_TRACE_MANY_TRANSLATION_LKUP_WITH_HEADER(MSG, CHLKUPS) \
-    (atomically $ for (CHLKUPS) $ \lkup -> TRACE_TRANSLATION_LKUP_WITH_HEADER((MSG), lkup))
+    (liftIO $  do                                                        \
+        { threadid <- myThreadId                                         \
+        ; let { msg = intercalate " " [(MSG), show threadid] }           \
+        ; atomically                                                     \
+            $ for (CHLKUPS)                                              \
+            $ \lkup -> TRACE_TRANSLATION_LKUP_WITH_HEADER(msg, lkup)     \
+        }                                                                \
+    )
 
 #else 
 
-#define TRACE_TRANSLATION_LKUP_WITH_HEADER(MSG, CHLKUP) 
+#define TRACE_TRANSLATION_LKUP_WITH_HEADER(MSG, CHLKUP)  
 #define ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER(MSG, CHLKUP) 
 #define ATOMICALLY_TRACE_MANY_TRANSLATION_LKUP_WITH_HEADER(MSG, CHLKUPS) 
 
@@ -803,9 +817,9 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
 
             liftIO $ do 
                 -- This is (2)
-                (rch, rstec, rchlkup) <- fmap snd $ 
-                    foldrM go2 [] (raceslkups & mapped %~ fst) 
-                        >>= waitAnyCancel
+                (rch, rstec, rchlkup) <- runConcurrently 
+                    $ asum 
+                    $ map (Concurrently . go2) (raceslkups & mapped %~ fst) 
 
                 -- atomically $ for raceslkups $ \lkup -> traceTranslationLkupWithHeader  "race" $ lkup ^. _1 % _2
                 ATOMICALLY_TRACE_MANY_TRANSLATION_LKUP_WITH_HEADER("race", map (view (_1 % _2)) raceslkups)
@@ -837,24 +851,18 @@ concStep k stec = gview equality >>= \fundefns -> let mplMachSteps' inpstec = ru
           where
             -- helper function for (2).
             go2 :: 
-                (LocalChan, TranslationLkup) -> 
-                [Async (LocalChan, Stec, TranslationLkup)] -> 
-                IO [Async (LocalChan, Stec, TranslationLkup)]
-            {-
-            go2 (lch, chlkup) acc = withAsync go2' $ \asyncchlkup ->
-                return $ asyncchlkup:acc
-            -}
-            go2 (lch, chlkup) acc = (:) <$> (racer >>= link >> racer) <*> pure acc
-              where
-                racer = async $ atomically $ do
-                    chactivequeue <- chlkup ^. activeQueue % to readChMQueue
-                    peekTQueue chactivequeue >>= \case
-                        QRace rstec -> do
-                            chotherqueue <- chlkup ^. otherQueue % to readChMQueue
-                            peekTQueue chotherqueue >>= \case
-                                QPut _ -> return (lch, rstec, chlkup)
-                                _ -> retry
-                        _ -> retry
+                (LocalChan, TranslationLkup) ->
+                IO (LocalChan, Stec, TranslationLkup)
+            go2 (lch, chlkup) = liftIO $ atomically $ do
+                chactivequeue <- chlkup ^. activeQueue % to readChMQueue
+                peekTQueue chactivequeue >>= \case
+                    QRace rstec -> do
+                        chotherqueue <- chlkup ^. otherQueue % to readChMQueue
+                        peekTQueue chotherqueue >>= \case
+                            QPut _ -> return (lch, rstec, chlkup)
+                            _ -> retry
+                    _ -> retry
+
 
             -- helper function for (3).
             go3 :: TranslationLkup -> STM ()
