@@ -383,13 +383,13 @@ defn
             userMoveGetLoop(playerty, grid | usrmvget =>  _strterm)
 
 protocol 
-    PasserMem(|M) => S =
-        PasserMem :: M (+) T => S
+    Passer(|M) => S =
+        Passer :: M (+) T => S
 
     and 
 
-    Passer(|M) => T =
-        Passer :: (Neg(M) (*) S) => T
+    PassBack(|M) => T =
+        PassBack :: Neg(M) (*) S => T
         Passed :: TopBot => T
 
 protocol MemCell(A | )  => S = 
@@ -410,9 +410,9 @@ proc memCell :: A | MemCell(A| ) => =
         MemClose -> 
             halt ch
 
-proc playerO :: | => PasserMem( | MemCell(Grid |)), UserMoveSet =
+proc playerO :: | => Passer( | MemCell(Grid |)), UserMoveSet =
     | => passermem, usrmvset -> do
-        hput PasserMem on passermem
+        hput Passer on passermem
         split passermem into mem, passer
 
         -- get the current board state
@@ -446,7 +446,7 @@ proc playerO :: | => PasserMem( | MemCell(Grid |)), UserMoveSet =
                 hput MemPut on mem
                 put ngrid on mem
 
-                hput Passer on passer
+                hput PassBack on passer
                 -- do the passer thing 
                 fork passer as
                     nmem with mem -> nmem |=| neg mem
@@ -454,9 +454,9 @@ proc playerO :: | => PasserMem( | MemCell(Grid |)), UserMoveSet =
                         playerO( | => npasser, usrmvset )
 
 defn
-    proc playerX :: | PasserMem( | MemCell(Grid |)) => MemCell(Grid | ), UserMoveSet  =
+    proc playerX :: | Passer( | MemCell(Grid |)) => MemCell(Grid | ), UserMoveSet  =
         | passermem =>  mem, usrmvset -> hcase passermem of
-            PasserMem -> do
+            Passer -> do
                 -- get the current board state
                 hput MemGet on mem 
                 get grid on mem
@@ -481,12 +481,12 @@ defn
 
                         goPasserMem( ngrid | passermem => mem, usrmvset)
 
-    proc goPasserMem :: Grid | MemCell(Grid|) (+) Passer( | MemCell(Grid|)) => MemCell(Grid|), UserMoveSet =
+    proc goPasserMem :: Grid | MemCell(Grid|) (+) PassBack( | MemCell(Grid|)) => MemCell(Grid|), UserMoveSet =
         grid | passermem => mem, usrmvset -> fork passermem as
             nmem with mem -> mem |=| nmem
 
             passer with usrmvset -> hcase passer of
-                Passer -> do
+                PassBack -> do
                     split passer into nmem, npasser
                     plug 
                         playerX( | npasser => nnmem, usrmvset)

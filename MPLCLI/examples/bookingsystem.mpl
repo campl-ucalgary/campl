@@ -46,6 +46,9 @@ threadDelay 10000
 -- (thinking about message passing / session types)
 -- Demonstrate some programs (don't need to be super complicated!) !
 
+I want 8!! I want 9!...
+:q
+
 
 -}
 

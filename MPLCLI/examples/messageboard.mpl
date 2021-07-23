@@ -8,9 +8,8 @@ coprotocol S => Console =
     ConsoleGet   :: S => Put( [Char] | S) 
     ConsoleClose :: S => TopBot 
 
-protocol
-    InfGet(A| ) => S =
-        InfGet :: Get(A | S) => S
+protocol InfGet(A| ) => S =
+    InfGet :: Get(A | S) => S
 
 defn 
     proc getInps :: | InfGet([Char]| ) (+) InfGet([Char] | ) => StringTerminal, StringTerminal =
@@ -28,11 +27,13 @@ where
                 InfGet -> do
                     put inp on ch
                     go(| ch => _strterm)
+
 defn 
     proc messageBoard :: | Console => InfGet([Char]| ), InfGet([Char]| ) = 
          | _console => ch0, ch1 -> do
             hput InfGet on ch0 
             hput InfGet on ch1 
+
             race
                 ch0 -> messageBoardLoop( | _console => ch0, ch1)
                 ch1 -> messageBoardLoop( | _console => ch1, ch0)

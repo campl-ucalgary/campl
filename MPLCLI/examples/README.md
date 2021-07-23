@@ -42,5 +42,22 @@ TODO:
 
 
 
+# Semaphore..
+- People asking for temrinals and demanding them..
+- Bounded resources... After a certain amount of time, the resource becomes free.. 
+- WE could do this byliterally gettin gthe person to type into a temrianl that a resource is free.
 
+- There are only 2 interfaces for which a process can use. (producer and consumer)
+
+
+- Either the semaphore returns a value or waits (block itself).. 
+
+
+- 4 memory cells (and allocate the memory cells) an d orf course the proeses that pick them up havej to put them down...
+    And when they put them down, they become avaiblab,e and they can be allocated to someone who wants them.
+
+
+- More terminals (dynamically)
+- Timeouts
+- random number genrator
 
