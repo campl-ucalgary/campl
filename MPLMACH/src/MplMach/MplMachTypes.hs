@@ -344,6 +344,11 @@ valToStr val = go val
     go (VCons _ [VChar c, acc]) =  c : go acc
     go (VCons _ []) =  []
     go bad = throw $ IllegalString $ PrettyShow.ppShow val
+
+{- | Corresponds to the hardcoded unit from the front end
+-}
+unitVCons :: Val
+unitVCons = VCons (CaseIx 0) []
     
 
 
@@ -389,17 +394,6 @@ data QInstr
     | QRace Stec
   deriving Show
 
-{- | returns true if the instruction will make the process suspend. N.B. I don't think this is used. -}
-isSuspendingQInstr ::
-    QInstr -> 
-    Bool
-isSuspendingQInstr = \case
-    QGet _ -> True
-    QFork _ _ -> True
-    QHCase _ _ -> True
-    _ -> False
-
-
 {- | a service instruction -}
 data SInstr 
     = SHGetChar
@@ -410,6 +404,13 @@ data SInstr
 
     | SHGetInt
     | SHPutInt
+
+    | SHOpenTerm
+    | SHOpenThread
+
+    | SHTimeOut
+
+    | SHForkNegStringTerm
 
     | SHClose
   deriving Show

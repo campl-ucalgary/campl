@@ -1991,23 +1991,36 @@ typeCheckCmd cmd = let cmdann = _Just % _TypeAnnCmd # cmd in case cmd of
                 [ geteqn  ]
                 <> cmdseqns
 
+        {- For every raced channel
+            - look it up in the symbol table
+            - annotate it with the right information
+            - get the correct get equation for it (either get or put depending on polarity)
+            - type check the equations 
+            - Set the output channel 
+            -
+        N.B. Actually this is essentially duplciate from above, and we can
+        reduce the code duplication Previously, there was a misunderstanding
+        that all of the raced channels MUST have the same type, but that's
+        wrong! The only thing that matters is that each of the raced channels
+        should have either Get or Put depending on polarity (They need not all
+        be of get or put type -- they just need to be of the correct type so
+        that it receives something
+        -}
         (races', raceseqns) <- fmap unzip 
-            $ flip evalStateT ttypepch
             $ for races $ \(ch, cmds) -> do
                 -- duplciated code..
-                ~(SymEntry ttypech info) <- lift $ zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch
+                ~(SymEntry ttypech info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch
         
                 let ttypepch = annotateTypeTag ttypech ch
         
-                (ttypepdummies, geteqn) <- lift $ instantiateRaceEqn ch ttypepch
-                (cmds', cmdseqns) <- lift $ localEnvSt id $ typeCheckCmds cmds
-
-                oldch <- equality <<.= ttypepch
+                (ttypepdummies, geteqn) <- instantiateRaceEqn ch ttypepch
+                (cmds', cmdseqns) <- localEnvSt id $ typeCheckCmds cmds
 
                 let ch' = _ChIdentT # (ch, fromJust $ lookupInferredTypeCh ttypech ttypemap )
                     raceeqn = TypeEqnsExist ttypepdummies $ 
                         [ geteqn 
-                        , TypeEqnsEq (typePtoTypeVar oldch, typePtoTypeVar ttypepch) ]
+                        -- , TypeEqnsEq (typePtoTypeVar oldch, typePtoTypeVar ttypepch) 
+                        ]
                         <> cmdseqns
 
                 return ((ch', cmds'), raceeqn)

@@ -34,7 +34,6 @@ import MplMach.MplMachTypes
 
 import Data.Map (Map)
 
-
 import qualified Text.Show.Pretty as PrettyShow
 
 import Network.Socket
@@ -62,8 +61,7 @@ data MplMachEnv = MplMachEnv
 data MplMachServicesEnv = MplMachServicesEnv
     { _serviceHostName :: String
     , _servicePortName :: String
-    , _serviceMap :: IORef (Map ServiceCh TranslationLkup)
-    , _serviceChRefFresh :: IORef ServiceCh
+    , _serviceMap :: MVar (Map ServiceCh TranslationLkup)
     }
 
 
@@ -72,7 +70,7 @@ initMplMachEnv ::
     MplMachSuperCombinators -> 
     IO MplMachEnv 
 initMplMachEnv sp = do
-    mp <- newIORef mempty
+    mp <- newMVar mempty
     svch <- newIORef $ coerce @Int @ServiceCh (-10)
     frsh <- newIORef $ 0
     nmvar <- newMVar ()
@@ -83,7 +81,6 @@ initMplMachEnv sp = do
                 { _serviceHostName = "127.0.0.1"
                 , _servicePortName = "3000"
                 , _serviceMap = mp
-                , _serviceChRefFresh = svch
                 }
             , _stdLock = nmvar
             }
@@ -206,6 +203,17 @@ translationLkupToGlobalChan = \case
         { _chMOutputQueue = aq
         , _chMInputQueue = oq
         }
+
+{- | Flips a translation lkup so that the new translation lkup would be how a
+process of opposite polarity would interact with this translation lkup 
+-}
+flipTranslationLkup :: 
+    TranslationLkup ->
+    TranslationLkup 
+flipTranslationLkup = \case 
+    InputLkup aq oq -> OutputLkup oq aq
+    OutputLkup aq oq -> InputLkup oq aq
+
 
 
 

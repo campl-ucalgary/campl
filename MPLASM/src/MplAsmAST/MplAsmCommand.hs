@@ -176,26 +176,32 @@ data MplAsmServices
     | SHGetChar
     | SHPutChar
 
+    | SHTimeOut
+
+    | SHForkNegStringTerm 
+
     | SHClose
   deriving Show
 
-maybeTermService :: 
+asmServiceToMachService :: 
     MplAsmServices ->
-    Maybe MplMach.SInstr
-maybeTermService = \case
-    SHGetInt -> Just MplMach.SHGetInt
-    SHPutInt -> Just MplMach.SHPutInt
+    MplMach.SInstr
+asmServiceToMachService = \case
+    SHGetInt -> MplMach.SHGetInt
+    SHPutInt -> MplMach.SHPutInt
 
-    SHGetChar -> Just MplMach.SHGetChar
-    SHPutChar -> Just MplMach.SHPutChar
+    SHGetChar -> MplMach.SHGetChar
+    SHPutChar -> MplMach.SHPutChar
 
+    SHGetString -> MplMach.SHGetString
+    SHPutString -> MplMach.SHPutString
 
-    SHGetString -> Just MplMach.SHGetString
-    SHPutString -> Just MplMach.SHPutString
+    SHTimeOut -> MplMach.SHTimeOut
 
-    SHClose -> Just MplMach.SHClose
+    SHForkNegStringTerm -> MplMach.SHForkNegStringTerm 
 
-    _ -> Nothing
+    SHClose -> MplMach.SHClose
+
 
 
 type MplAsmComs x = [MplAsmCom x]

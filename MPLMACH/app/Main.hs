@@ -4,7 +4,6 @@ import MplMach.MplMachRunner
 import MplMach.MplMachStep
 import MplMach.MplMachTypes
 import MplMach.MplMachStack
-import MplMach.MplMachServices
 
 import Data.Array
 

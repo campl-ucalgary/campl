@@ -192,7 +192,7 @@ pprintTypeCheckErrors = go
                 <> pretty "' command at"
                 <+> fork ^. location % to pprintLoc
                 <> pretty "."
-                <+> pretty "Channels each phrase of a `fork' command must be disjoint but they are not with channels:"
+                <+> pretty "Channels in each phrase of a `fork' command must be disjoint, but they are not with channels:"
                 <> line
                 <+> indent 2 (pprintChs chs)
             ]
@@ -210,10 +210,14 @@ pprintTypeCheckErrors = go
                 <+> fork ^. location % to pprintLoc
                 <> pretty "."
                 <+> pretty "A `fork' command must split all channels in scope."
-                <+> pretty "There are channels"
-                <+> hsep (map (pretty . pprintParsed) scoped)
-                <+> pretty "in scope, but are nonexhaustive with"
-                <+> hsep (map (pretty . pprintParsed) nonexhaustive)
+                <+> pretty "The following channels are in scope:"
+                <> line
+                <+> indent 2 (pprintChs scoped)
+                <> line
+                <+> pretty "but the `fork' command is nonexhaustive with:"
+                <> line
+                <+> indent 2 (pprintChs nonexhaustive)
+                <> line
             ]
         IllegalIdGotChannelsOfTheSamePolarityButIdNeedsDifferentPolarity idop ch0 ch1 -> fold
             [ pretty "Illegal `"

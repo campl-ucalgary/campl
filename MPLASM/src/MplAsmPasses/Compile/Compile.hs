@@ -83,7 +83,7 @@ mplAsmProgToInitMachState prog = case runWriter res of
                 - resolve the channels according to the above "weirdness"
          -}
 
-        ~(Just mainf) <- case prog ^. mplAsmMain of
+        ~(Just mainf@(_, ((mainins, mainouts), _))) <- case prog ^. mplAsmMain of
             Just (mainident, (seqs, ins, outs), coms) -> assert (null seqs) $ do
                 let overlapping = filter ((>1) . length) $ group $ sort $ seqs ++ ins ++ outs
                 tell $ bool [_OverlappingDeclarations # overlapping] [] $ null overlapping 
@@ -116,10 +116,20 @@ mplAsmProgToInitMachState prog = case runWriter res of
             Nothing -> tell [_NoMainFunction # ()] >> return Nothing
 
         let allfuns = second snd mainf : funs
+            -- the actual main function that is run needs to open up the proper
+            -- service channels, so we do that here.
+            maindef = second 
+                ((++) $ concat   
+                    [ map (review _ISHPut . (,MplMach.MplMachTypes.SHOpenThread)) mainins 
+                    , map (review _ISHPut . (,MplMach.MplMachTypes.SHOpenTerm)) mainouts 
+                    ]
+                    ) 
+                $ snd mainf 
+            -- _ISHPut # (chid, sinstr) 
             
         return 
             ( coerce @(Array CallIx [Instr]) @MplMachSuperCombinators  (Arr.array (coerce @Int @CallIx 0, coerce @Int @CallIx $ length allfuns - 1) allfuns)
-            , snd mainf)
+            , maindef )
 
 {- | collects all the elements into the symbol table. Note: this is required to permit mutually
  - recursive declarations between data / codta and functions, etc. -}
@@ -424,11 +434,9 @@ mplAsmComToInstr = \case
         -- recall output polarity means you hput protocol...
         if isJust lkup
             then case pol of
-                Input | Just sinstr <- maybeTermService sv -> return [ _ISHPut # (chid, sinstr) ]
-                Output | Just sinstr <- maybeTermService sv -> return [ _ISHPut # (chid, sinstr) ]
-                -- Output | Just sinstr <- maybeTermService sv -> return [ _ISHPut # (chid, sinstr) ]
+                _ -> return [ _ISHPut # (chid, asmServiceToMachService sv) ]
 
-                _ -> tell [_IllegalServiceCall # (sv, ch)] >> return []
+                -- _ -> tell [_IllegalServiceCall # (sv, ch)] >> return []
             else return []
 
 

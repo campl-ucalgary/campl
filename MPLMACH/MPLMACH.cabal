@@ -27,7 +27,6 @@ library
   exposed-modules:
       MplMach.MplMachException
       MplMach.MplMachRunner
-      MplMach.MplMachServices
       MplMach.MplMachStack
       MplMach.MplMachStep
       MplMach.MplMachTypes

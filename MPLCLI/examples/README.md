@@ -61,3 +61,37 @@ TODO:
 - Timeouts
 - random number genrator
 
+# Magic Eye
+The idea is that you pulll resources from somewhere... 
+
+a number of channels and distributed a task
+and you poll a channel.. if it polls in a certain amount of time you give it another task... 
+If it runs out you poll out the task. and keep doing it forever...
+
+# ping pong
+two messages (ping and pong)
+
+The main program is just going to ping and pong... 
+The two semaphores (to put such a common thing)
+
+
+The receiver just gets stuff
+
+
+What we're trying to do is force ping and pong (into ping and pong) 
+
+So, there is a connection to the main console (and a connection between the two things).... 
+
+Well you shouldn't be able to really do that in MPL! Cyclic code is kinda bad
+
+# Notes on racing..
+Okay you can request another terminal and it can break off..
+
+Protocols have leafs, and you can request that you can break up the leaves...
+
+How about you have a list.. arranged by the Console
+    - At the console, we can ask for another terminal; and what it does it pops another pair on the list
+
+    - the list is a protocol
+
+

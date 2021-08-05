@@ -51,3 +51,13 @@ proc run =
         hput ConsoleClose on _console
         halt _console
 ```
+
+
+coprotocol S => Console =
+    ConsolePut :: S => Get( [Char] | S) 
+    ConsoleGet :: S => Put( [Char] | S) 
+    ConsoleClose :: S => TopBot
+
+    -- we'd have to fork for that... that's the idea
+    ConsoleTerm :: S => S (+) neg(StringTerm)
+

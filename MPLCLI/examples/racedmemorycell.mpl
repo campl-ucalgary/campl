@@ -1,3 +1,5 @@
+{- | Code for racing 2 memory cells which aquire the resource, then release it and any arbitrary time..
+-}
 
 protocol StringTerminal => S =
     StringTerminalGet :: Get( [Char] | S) => S 
@@ -31,18 +33,22 @@ protocol Passer( A | ) => U =
 -- | a leaf in the multi memory cell
 proc leaf :: | => Put( () | Passer([Char] | )), StringTerminal =
     | => ch, _strterm -> do
+        -- first, we ask the user to acquire the memory cell
         hput StringTerminalPut on _strterm
         put "Type anything to request the memory cell:" on _strterm
 
         hput StringTerminalGet on _strterm
         get userinp on _strterm
 
-        -- acquire the memory cell
+        -- this will acquire the memory cell by winning the race
         put () on ch
 
+        -- usual memory cell stuff to get the passer.
         hput Passer on ch
         split ch into mem, negmemandnch
 
+        -- Typical io
+        ---------------
         hput StringTerminalPut on _strterm
         put "Current memory cell value:" on _strterm
 
@@ -60,7 +66,10 @@ proc leaf :: | => Put( () | Passer([Char] | )), StringTerminal =
 
         hput MemPut on mem
         put userinp on mem
+        -- end of typical io
+        ---------------
 
+        -- usual memory cell
         fork negmemandnch as 
             negmem -> negmem |=| neg mem 
             nch -> leaf(| => nch, _strterm)

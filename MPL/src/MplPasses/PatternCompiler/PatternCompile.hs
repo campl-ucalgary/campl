@@ -1351,11 +1351,11 @@ patternCompileConcPatPhrases pattphrases =
             unitrule  :: _ (Maybe (NonEmpty (MplCmd MplPatternCompiled)))
             unitrule = sequenceA $ traverse (match . fst) pattheads <&> f
               where
-                match = preview _PSimpleUnit 
+                match = preview _PUnit
 
                 ty = getPattType $ fst $ NE.head pattheads 
 
-                f :: NonEmpty (XPSimpleUnit (MplPass 'TypeChecked)) -> m (NonEmpty (MplCmd MplPatternCompiled))
+                f :: NonEmpty (XPUnit (MplPass 'TypeChecked)) -> m (NonEmpty (MplCmd MplPatternCompiled))
                 f cters = fmap (pure . CCase () (getExprFromSubstitutable u) . NE.fromList) $ sequenceA [unitpat]
                   where
                     unitpat = do

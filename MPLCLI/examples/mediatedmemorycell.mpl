@@ -1,3 +1,7 @@
+{- |  A modifcation of the memory cell example to use a third process
+which acts as the central mediator for two procss which pass the memory cell
+between each other.. 
+-}
 protocol StringTerminal => S =
     StringTerminalGet :: Get( [Char] | S) => S 
     StringTerminalPut :: Put( [Char] | S) => S

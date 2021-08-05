@@ -853,7 +853,6 @@ pprintTypeUnificationError = go
         TypeOccursCheck tpp tp0 -> fold
             [ pretty "Occurs check failure with"
             , codeblock
-                -- $ pprintParsed $ typeIdentTToTypeT tpp
                 $ pprintParsed $ tpp
             , pretty "and"
             , codeblock

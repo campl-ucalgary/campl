@@ -128,7 +128,12 @@ mplAssembleProg uniq prog =
 
         asmstmts <- fmap concat $ traverse mplAssembleStmt stmts
         asmmain <- case maybemain of
-            Just mainf -> fmap Just $ mplAssembleProcDefn mainf
+            Just mainf -> assert (null rst) $ fmap Just $ do 
+                res <- mplAssembleProcDefn mainf
+                return res 
+              where
+                ((seqs, ins, outs), _) :| rst = mainf ^. procDefn 
+                
             Nothing -> return Nothing
 
         return $ Asm.MplAsmProg (builtintypes : asmstmts) asmmain
@@ -138,6 +143,7 @@ mplAssembleProg uniq prog =
 
     -- we find the bottom most definition named @run@ as the main function 
     -- (honestly quite confusing how this is done, but it should hopefully work)
+    -- I don't think this is totally correct being totally honest
     stmts :: [MplStmt MplLambdaLifted]
     maybemain :: Maybe (MplProcess MplLambdaLifted)
     (stmts, maybemain) = first reverse . para f . reverse $ prog'
@@ -400,6 +406,7 @@ mplAssembleExpr = para go
           where
             op' = case op of
                 PrimitiveAdd -> pure [Asm.CAdd ()]
+                PrimitiveMul -> pure [Asm.CMul ()]
                 PrimitiveSub -> pure [Asm.CSub ()]
                 PrimitiveLt -> pure [Asm.CLtInt ()]
                 PrimitiveLeq -> pure [Asm.CLeqInt ()]
@@ -666,6 +673,8 @@ mplAssembleCmd = cata go
                     ProtocolDefn defn -> defn ^. typePhraseExt % typeClauseName
                     CoprotocolDefn defn -> defn ^. typePhraseExt % typeClauseName
 
+                phrname = phr ^. name % coerced 
+
                 -- the type of the from expression
                 fromtp = case ann ^. _2 of
                     ProtocolDefn defn -> defn ^. typePhraseFrom
@@ -676,62 +685,91 @@ mplAssembleCmd = cata go
                     CoprotocolDefn defn -> defn ^. typePhraseTo
                     
             {- Here's the idea... it uses the type of the phrase to determine whether it is a
-             - service channel or not.  -}
+             - service channel or not...  -}
             
-
             case chname of
-                '_':_ -> case chpol of
+                -- DEPRECATED this underscore syntax -- it just doesn't play
+                -- nicely with certain services which may or may not be a
+                -- service depending on what is hcased.
+                _ -> case chpol of
+                -- '_':_ -> case chpol of
                     Input -> case totp of
                         -- String 
-                        TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeListF _ (TypeBuiltIn (TypeCharF _)))) _) -> 
-                            return [ Asm.CSHPut () Asm.SHPutString (toAsmIdP ch) ]
-                        TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeListF _ (TypeBuiltIn (TypeCharF _)))) _) -> 
-                            return [ Asm.CSHPut () Asm.SHGetString (toAsmIdP ch) ]
-                        TypeBuiltIn (TypeTopBotF _) -> 
-                            return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
+                        TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeListF _ (TypeBuiltIn (TypeCharF _)))) _) 
+                            | phrname == "ConsolePut" -> return [ Asm.CSHPut () Asm.SHPutString (toAsmIdP ch) ]
+                        TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeListF _ (TypeBuiltIn (TypeCharF _)))) _) 
+                            | phrname == "ConsoleGet" -> return [ Asm.CSHPut () Asm.SHGetString (toAsmIdP ch) ]
+                        -- S (+) Neg(StringTerminal)
+                        {-
+                        TypeBuiltIn 
+                                (TypeParF _ 
+                                    (TypeVar _ _) 
+                                    -- Okay technically, this should be a type with no args.... But we're just gonna ignore this actually..
+                                    (TypeBuiltIn (TypeNegF _ (TypeConcWithArgs _ ( traceShowId . view (name % coerced) -> "StringTerminal") ([],[]))))
+                                )
+                        -}
+                        TypeBuiltIn 
+                                (TypeParF _ 
+                                    (TypeVar _ _) 
+                                    (TypeBuiltIn (TypeNegF _ _))
+                                )
+                            | phrname == "ConsoleStringTerminal" -> return [ Asm.CSHPut () Asm.SHForkNegStringTerm (toAsmIdP ch) ]
+
+                        TypeBuiltIn (TypeTopBotF _) 
+                            | phrname == "ConsoleClose" -> return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
+
 
                         -- Int
-                        TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeIntF _)) _ ) -> 
-                            return [ Asm.CSHPut () Asm.SHPutInt (toAsmIdP ch) ]
-                        TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeIntF _)) _ ) -> 
-                            return [ Asm.CSHPut () Asm.SHGetInt (toAsmIdP ch) ]
-                        TypeBuiltIn (TypeTopBotF _) -> 
-                            return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
+                        TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeIntF _)) _ ) 
+                            | phrname == "IntConsolePut" -> return [ Asm.CSHPut () Asm.SHPutInt (toAsmIdP ch) ]
+                        TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeIntF _)) _ ) 
+                            | phrname == "IntConsoleGet" -> return [ Asm.CSHPut () Asm.SHGetInt (toAsmIdP ch) ]
+                        TypeBuiltIn (TypeTopBotF _) 
+                            | phrname == "IntConsoleClose" -> return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
 
                         -- Char
-                        TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeCharF _)) _ ) -> 
-                            return [ Asm.CSHPut () Asm.SHPutChar (toAsmIdP ch) ]
-                        TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeCharF _)) _ ) -> 
-                            return [ Asm.CSHPut () Asm.SHGetChar (toAsmIdP ch) ]
-                        TypeBuiltIn (TypeTopBotF _) -> 
-                            return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
+                        TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeCharF _)) _ ) 
+                            | phrname == "CharConsolePut" -> return [ Asm.CSHPut () Asm.SHPutChar (toAsmIdP ch) ]
+                        TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeCharF _)) _ ) 
+                            | phrname == "CharConsoleGet" -> return [ Asm.CSHPut () Asm.SHGetChar (toAsmIdP ch) ]
+                        TypeBuiltIn (TypeTopBotF _) 
+                            | phrname == "CharConsoleClose" -> return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
 
-                        _ -> tell [_NoService # (ch, phr, ann ^. _2)] >> return []
+                        -- Timeout  (recall this is of input polarity
+                        -- Timer:: C => Get(Int | C (*) Put(() | TopBot))
+                        TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeIntF _)) (TypeBuiltIn (TypeTensorF _ (TypeVar _ _) (TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeUnitF _)) (TypeBuiltIn (TypeTopBotF _)))))))
+                            | phrname == "Timer" -> return [ Asm.CSHPut () Asm.SHTimeOut (toAsmIdP ch) ]
+                        TypeBuiltIn (TypeTopBotF _) 
+                            | phrname == "TimerClose" -> return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
+                        
+
+                        -- _ -> tell [_NoService # (ch, phr, ann ^. _2)] >> return []
+                        _ -> return [ Asm.CHPut () (Asm.TypeAndSpec (toAsmIdP tp) (toAsmIdP phr)) (toAsmIdP ch) ]
 
                     Output -> case fromtp of
                         -- String 
-                        TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeListF _ (TypeBuiltIn (TypeCharF _)))) _) -> 
-                            return [ Asm.CSHPut () Asm.SHGetString (toAsmIdP ch) ]
-                        TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeListF _ (TypeBuiltIn (TypeCharF _)))) _) -> 
-                            return [ Asm.CSHPut () Asm.SHPutString (toAsmIdP ch) ]
-                        TypeBuiltIn (TypeTopBotF _) -> 
-                            return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
+                        TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeListF _ (TypeBuiltIn (TypeCharF _)))) _) 
+                            | phrname == "StringTerminalGet" -> return [ Asm.CSHPut () Asm.SHGetString (toAsmIdP ch) ]
+                        TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeListF _ (TypeBuiltIn (TypeCharF _)))) _) 
+                            | phrname == "StringTerminalPut" -> return [ Asm.CSHPut () Asm.SHPutString (toAsmIdP ch) ]
+                        TypeBuiltIn (TypeTopBotF _) 
+                            | phrname == "StringTerminalClose" -> return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
 
                         -- Int
-                        TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeIntF _)) _ ) -> 
-                            return [ Asm.CSHPut () Asm.SHGetInt (toAsmIdP ch) ]
-                        TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeIntF _)) _ ) -> 
-                            return [ Asm.CSHPut () Asm.SHPutInt (toAsmIdP ch) ]
-                        TypeBuiltIn (TypeTopBotF _) -> 
-                            return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
+                        TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeIntF _)) _ ) 
+                            | phrname == "IntTerminalGet" -> return [ Asm.CSHPut () Asm.SHGetInt (toAsmIdP ch) ]
+                        TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeIntF _)) _ ) 
+                            | phrname == "IntTerminalPut" -> return [ Asm.CSHPut () Asm.SHPutInt (toAsmIdP ch) ]
+                        TypeBuiltIn (TypeTopBotF _) 
+                            | phrname == "IntTerminalClose" -> return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
 
                         -- Char
-                        TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeCharF _)) _ ) -> 
-                            return [ Asm.CSHPut () Asm.SHGetChar (toAsmIdP ch) ]
-                        TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeCharF _)) _ ) -> 
-                            return [ Asm.CSHPut () Asm.SHPutChar (toAsmIdP ch) ]
-                        TypeBuiltIn (TypeTopBotF _) -> 
-                            return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
+                        TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeCharF _)) _ ) 
+                            | phrname == "CharTerminalGet" -> return [ Asm.CSHPut () Asm.SHGetChar (toAsmIdP ch) ]
+                        TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeCharF _)) _ ) 
+                            | phrname == "CharTerminalPut" -> return [ Asm.CSHPut () Asm.SHPutChar (toAsmIdP ch) ]
+                        TypeBuiltIn (TypeTopBotF _)  
+                            | phrname == "CharTerminalClose" -> return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
                     {-
                     Output -> case fromtp of
                         TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeIntF _)) _ ) -> 
@@ -747,7 +785,9 @@ mplAssembleCmd = cata go
                         "IntTerminalPut" -> return [ Asm.CSHPut () Asm.SHPutInt (toAsmIdP ch) ]
                         "IntTerminalClose" -> return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
                     -}
-                        _ -> tell [_NoService # (ch, phr, ann ^. _2)] >> return []
+                        -- _ -> tell [_NoService # (ch, phr, ann ^. _2)] >> return []
+
+                        _ -> return [ Asm.CHPut () (Asm.TypeAndSpec (toAsmIdP tp) (toAsmIdP phr)) (toAsmIdP ch) ]
 
                 _ -> return [ Asm.CHPut () (Asm.TypeAndSpec (toAsmIdP tp) (toAsmIdP phr)) (toAsmIdP ch) ]
 
@@ -1025,7 +1065,7 @@ getExprType = \case
     ETuple ann _ -> ann
     EProj ann _ _ -> ann
     EBuiltInOp ann _ _ _ -> ann
-    EIf ann _ _ _ -> undefined
+    EIf ann _ _ _ -> ann
     {-
     EFold _ _ _ -> undefined
     EUnfold _ _ _ -> undefined

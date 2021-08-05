@@ -117,7 +117,7 @@ proc p1 :: |  Passer( | MemCell([Char]|)) => MemCell([Char]| ), StringTerminal =
                         z, negmem => -> negmem |=| neg z
 
 
-proc p2 :: |   => Passer( | MemCell([Char]|)), StringTerminal =
+proc p2 :: |  => Passer( | MemCell([Char]|)), StringTerminal =
     | => passer, _strterm -> do
         hput Passer on passer
         split passer into mem, negmemandnpasser
