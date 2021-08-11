@@ -61,6 +61,7 @@ data MplMachEnv = MplMachEnv
 data MplMachServicesEnv = MplMachServicesEnv
     { _serviceHostName :: String
     , _servicePortName :: String
+    , _serviceChGen :: IORef ServiceCh
     , _serviceMap :: MVar (Map ServiceCh TranslationLkup)
     }
 
@@ -72,7 +73,6 @@ initMplMachEnv ::
 initMplMachEnv sp = do
     mp <- newMVar mempty
     svch <- newIORef $ coerce @Int @ServiceCh (-10)
-    frsh <- newIORef $ 0
     nmvar <- newMVar ()
     return $
         MplMachEnv 
@@ -80,6 +80,7 @@ initMplMachEnv sp = do
             , _servicesEnv = MplMachServicesEnv 
                 { _serviceHostName = "127.0.0.1"
                 , _servicePortName = "3000"
+                , _serviceChGen = svch
                 , _serviceMap = mp
                 }
             , _stdLock = nmvar
@@ -90,6 +91,8 @@ runMplMach ::
     r ->
     IO a 
 runMplMach ma env = runReaderT (unwrapMplMach ma) env
+    
+
     
 
 
@@ -390,4 +393,20 @@ instance HasMplMachServicesEnv MplMachEnv where
 
 instance HasMplMachSuperCombinators MplMachEnv where
     mplMachSuperCombinators = supercombinatorEnv 
+
+
+{- | Generates a fresh service channel -}
+freshServiceCh ::
+    HasMplMachServicesEnv r => 
+    MplMach r ServiceCh
+freshServiceCh = 
+    join 
+        $ fmap liftIO
+        $ gviews serviceChGen 
+        $ flip atomicModifyIORef' 
+            ( coerce @Int @ServiceCh
+            . pred 
+            . coerce @ServiceCh @Int
+            &&& id)
+
     

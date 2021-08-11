@@ -803,7 +803,6 @@ serviceClient s = gview equality >>= \env -> do
                     `finally` modifyMVar_ (env ^. serviceMap ) (\v ->  return (Map.delete gch v ))
                 -- we delete it from the map at the end
             | otherwise -> liftIO $ throwIO $ userError "illegal client connection"
-
         Left err -> liftIO $ throwIO err
 
 {- | This is honestly super confusing and literally everything is horrible about this...  Some remarks
@@ -1199,8 +1198,9 @@ sOpenTerm ::
     MplMach MplMachEnv ()
 sOpenTerm ch chlkup = void $ do
     svmap <- gview serviceMap
+    svch <- freshServiceCh 
     _ <- liftIO $ modifyMVar_ svmap 
-        ( pure . Map.insert (coerce ch) (flipTranslationLkup chlkup) ) 
+        ( pure . Map.insert svch (flipTranslationLkup chlkup) ) 
 
     -- silly way of doing services. 
     -- like actually so silly. still can't believe
@@ -1213,7 +1213,7 @@ sOpenTerm ch chlkup = void $ do
         , "mpl-client"
         , " --hostname=" ++ show hn
         , " --port=" ++ show pn
-        , " --service-ch=" ++ show (show $ coerce @LocalChan @Int ch)
+        , " --service-ch=" ++ show (show $ coerce @ServiceCh @Int svch)
         , "; read"
         , "'"
         ]

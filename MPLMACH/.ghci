@@ -50,7 +50,7 @@ import Pipes
 import Pipes.Core
 import qualified Pipes.Prelude as P
 -- import Pipes.Network.TCP
-import Pipes.Binary
+-- import Pipes.Binary
 import qualified Pipes.Attoparsec as P
 import qualified Pipes.Parse as P
 
