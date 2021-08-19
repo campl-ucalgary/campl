@@ -69,7 +69,9 @@ mplAssembleProg ::
     MplProg MplLambdaLifted ->
     Either [e] (Asm.MplAsmProg MplAsmFromLambdaLifted)
 -- we assert that there are nothing in the where bindings (which shouldn't be the case 
--- from lambda lifting)
+-- from lambda lifting) actually not too sure why I don't do this anymore? I mean I guess
+-- technically where bindings are not liek let bindings in Haskell, so they could indeed
+-- may stil be there (since where bindings are just a symobl table trick in this language)
 {-
 mplAssembleProg uniq prog = assert (all (null . view stmtWhereBindings) prog') 
     $ (\case 
@@ -340,24 +342,6 @@ mplAssembleProcDefn procdefn = assert (lengthOf (procDefn % folded) procdefn == 
     -}
     outs' <- for (procdefn ^.. procDefn % to NE.head % _1 % _3 % folded) $ \ch -> do
         return $ toAsmIdP ch
-            {-
-            return $ case phr ^. nameStr of
-                "IntTerminalGet" -> [ Asm.CSHPut () Asm.SHGetInt (toAsmIdP ch) ]
-                "IntTerminalPut" -> [ Asm.CSHPut () Asm.SHPutInt (toAsmIdP ch) ]
-                "IntTerminalClose" -> [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
-                _ -> [ Asm.CHPut () (Asm.TypeAndSpec (toAsmIdP tp) (toAsmIdP phr)) (toAsmIdP ch) ]
-            -}
-    {-
-    outs' <- for (procdefn ^.. procDefn % to NE.head % _1 % _3 % folded) $ \ch -> let ch' = toAsmIdP ch in case ch ^. nameStr of
-        '_':_ -> case ch ^? chIdentTType % _TypeConcWithArgs of
-            Just (ann, idtp, (seqs, concs)) 
-                | idtp ^. nameStr == "IntTerminal" -> return $ ch' & Asm.nameStr %~ ("_INTTERMINAL"<>)
-                | idtp ^. nameStr == "CharTerminal" -> return $ ch' & Asm.nameStr %~ ("_CHARTERMINAL"<>)
-                | otherwise -> tell [_NoService # ch] >> return (toAsmIdP ch)
-            Nothing -> return ch'
-        _ -> return ch'
-    -}
-
 
     return 
         ( procdefn ^. procName % to toAsmIdP
@@ -369,18 +353,6 @@ mplAssembleProcDefn procdefn = assert (lengthOf (procDefn % folded) procdefn == 
         , defn' 
         )
         
-
-
-    {-
-    procStmts :: MplDefn MplLambdaLifted -> Maybe (Asm.MplAsmStmt MplAsmFromLambdaLifted)
-    procStmts defn = case defn of
-        -- assert is here since from compilation of pattern matching, there should only be one pattern (similarly to fun stmts).
-        ProcessDefn procdefn -> Just $ assert (lengthOf (procDefn % folded) procdefn == 1) $
-            undefined
-        _ -> Nothing
-        
-    -}
-
 mplAssembleExpr :: 
     forall s m.
     ( HasUniqueSupply s
@@ -699,7 +671,7 @@ mplAssembleCmd = cata go
                             | phrname == "ConsolePut" -> return [ Asm.CSHPut () Asm.SHPutString (toAsmIdP ch) ]
                         TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeListF _ (TypeBuiltIn (TypeCharF _)))) _) 
                             | phrname == "ConsoleGet" -> return [ Asm.CSHPut () Asm.SHGetString (toAsmIdP ch) ]
-                        -- S (+) Neg(StringTerminal)
+                        -- S (*) Neg(StringTerminal)
                         {-
                         TypeBuiltIn 
                                 (TypeParF _ 
@@ -709,11 +681,11 @@ mplAssembleCmd = cata go
                                 )
                         -}
                         TypeBuiltIn 
-                                (TypeParF _ 
+                                (TypeTensorF _ 
                                     (TypeVar _ _) 
                                     (TypeBuiltIn (TypeNegF _ _))
                                 )
-                            | phrname == "ConsoleStringTerminal" -> return [ Asm.CSHPut () Asm.SHForkNegStringTerm (toAsmIdP ch) ]
+                            | phrname == "ConsoleStringTerminal" -> return [ Asm.CSHPut () Asm.SHSplitNegStringTerm (toAsmIdP ch) ]
 
                         TypeBuiltIn (TypeTopBotF _) 
                             | phrname == "ConsoleClose" -> return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]

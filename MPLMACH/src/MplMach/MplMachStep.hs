@@ -614,7 +614,8 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                     return $ Just $ liftIO $ runMplMach (serviceThread slkup) env
 
 
-                SHOpenTerm -> sOpenTerm ch chlkup >> return Nothing
+                -- SHOpenTerm -> sOpenTerm ch chlkup >> return Nothing
+                SHOpenTerm -> sOpenTerm chlkup >> return Nothing
 
                 _ -> do
                     fetchAndWriteChMQueue (chlkup ^. activeQueue) $ QSHPut sinstr
@@ -941,7 +942,7 @@ serviceClientLoop sock gchlkup psock pinstrs = next pinstrs >>= \case
 
         SHOpenThread -> liftIO $ throwIO $ userError $ "illegal service in client: " ++ show SHOpenThread
         SHOpenTerm -> liftIO $ throwIO $ userError $ "illegal service in client: " ++ show SHOpenTerm
-        SHForkNegStringTerm -> liftIO $ throwIO $ userError $ "illegal service in client: " ++ show SHForkNegStringTerm 
+        SHSplitNegStringTerm -> liftIO $ throwIO $ userError $ "illegal service in client: " ++ show SHSplitNegStringTerm 
         SHTimeOut -> liftIO $ throwIO $ userError $ "illegal service in client: " ++ show SHTimeOut 
 
 serviceQueueSInstrPipe ::
@@ -1158,23 +1159,25 @@ serviceThread chlkup = loop chlkup
                 return ()
 
             --  S => S (+) Neg(StringTerminal)
-            SHForkNegStringTerm -> do
-                ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER("SHForkNegStringTerm(1)", chlkup)
-                ~(QFork (lch, lstec) (rch, rstec)) <- liftIO $ atomically $ chlkup ^. otherQueue % to (peekTQueue <=< readChMQueue)
+            SHSplitNegStringTerm -> do
+                ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER("SHSplitNegStringTerm(1)", chlkup)
+                ~(QSplit glch grch) <- liftIO $ atomically $ chlkup ^. otherQueue % to (peekTQueue <=< readChMQueue)
 
-                ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER("SHForkNegStringTerm(2)", chlkup)
+                ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER("SHSplitNegStringTerm(2)", chlkup)
 
                 -- essentially duplicated from the split case of 'concStep'
+                {-
                 glch <- newGlobalChan
                 grch <- newGlobalChan
                 fetchAndWriteChMQueue (chlkup ^. activeQueue) (QSplit glch grch)
 
-                ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER("SHForkNegStringTerm(3)", chlkup)
+                ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER("SHSplitNegStringTerm(3)", chlkup)
 
+                -}
                 let llkup = setTranslationLkup chlkup glch
                     rlkup = setTranslationLkup chlkup grch
 
-                sOpenTerm rch rlkup
+                sOpenTerm rlkup
 
                 loop llkup
 
@@ -1191,12 +1194,10 @@ serviceThread chlkup = loop chlkup
 {- | opens a terminal. It expects
 -}
 sOpenTerm ::
-    LocalChan ->
-        -- ^ a local channel id
     TranslationLkup ->
         -- ^ the correspnding lookup in that processes translation 
     MplMach MplMachEnv ()
-sOpenTerm ch chlkup = void $ do
+sOpenTerm chlkup = void $ do
     svmap <- gview serviceMap
     svch <- freshServiceCh 
     _ <- liftIO $ modifyMVar_ svmap 

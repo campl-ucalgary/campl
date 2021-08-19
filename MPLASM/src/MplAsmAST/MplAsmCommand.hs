@@ -178,7 +178,7 @@ data MplAsmServices
 
     | SHTimeOut
 
-    | SHForkNegStringTerm 
+    | SHSplitNegStringTerm 
 
     | SHClose
   deriving Show
@@ -198,7 +198,7 @@ asmServiceToMachService = \case
 
     SHTimeOut -> MplMach.SHTimeOut
 
-    SHForkNegStringTerm -> MplMach.SHForkNegStringTerm 
+    SHSplitNegStringTerm -> MplMach.SHSplitNegStringTerm 
 
     SHClose -> MplMach.SHClose
 

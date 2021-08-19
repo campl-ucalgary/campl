@@ -427,9 +427,9 @@ patternCompileCmds = fmap (second NE.fromList) . go . NE.toList
         CFork ann chp phrases -> assert (null cmds) $ do
             ((ndefns0, phrase0), (ndefns1, phrase1)) <- forOf each phrases $ \(forkon, withs, cmds) -> do
                 let modenv = over envLcl 
-                        $ over _3 (filter (`elem`withs))
+                        $ (case forkon ^. polarity of Input -> over _2 (forkon:) ; Output -> over _3 (forkon:))
+                        . over _3 (filter (`elem`withs))
                         . over _2 (filter (`elem`withs))
-                        . (case forkon ^. polarity of Input -> over _2 (forkon:) ; Output -> over _3 (forkon:))
                 (ndefns, cmds') <- localEnvSt modenv $ patternCompileCmds cmds
                 return (ndefns, (forkon, withs, cmds'))
 

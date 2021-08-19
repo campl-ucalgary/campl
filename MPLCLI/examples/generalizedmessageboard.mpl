@@ -8,7 +8,6 @@ coprotocol S => Console =
     ConsoleGet :: S => Put( [Char] | S) 
     ConsoleClose :: S => TopBot
 
-    -- we would have to fork for that... thats the idea
     ConsoleStringTerminal :: S => S (*) Neg(StringTerminal)
 
 protocol InfGet(A| ) => S =
@@ -53,14 +52,6 @@ defn
                                 put loserinp on z
                                 loser |=| z
 
-
-
-
-proc initMessageBoardListP :: | ListP(| InfGet([Char]|)) => StringTerminal =
-    | up => strterm -> do
-        hput NilP on up
-        strTermInfGetter( | up => strterm)
-
 proc nilp :: | ListP(| M) => M =
     | up => m -> do
         hput NilP on up
@@ -93,10 +84,11 @@ defn
                         consp( | nlistp => h, nlistp0)
                         strTermInfGetter( | h => strterm ) 
 
-                        nilp( | nlistp0 =>  infget )
+                        nilp( | nlistp0 => infget)
 
                         {-
                         negstrterm, strterm => -> negstrterm |=| neg strterm
+
                         nconsole => strterm, infget -> plug
                             nlistp => strterm, infget -> plug 
                                 consp( | nlistp => h, nlistp0)
@@ -135,6 +127,12 @@ proc run :: | Console => StringTerminal =
     | console => strterm -> do
         plug 
             messageBoard( | console => listp) 
+
+            nilp( | listp => m)
+            strTermInfGetter( | m => strterm)
+
+            {-
             listp => strterm -> plug
                 nilp( | listp => m)
                 strTermInfGetter( | m => strterm)
+            -}

@@ -410,7 +410,7 @@ data SInstr
 
     | SHTimeOut
 
-    | SHForkNegStringTerm
+    | SHSplitNegStringTerm
 
     | SHClose
   deriving Show
