@@ -9,12 +9,20 @@ coprotocol S => Console =
     ConsoleClose :: S => TopBot
 
     -- we would have to fork for that... thats the idea
-    ConsoleStringTerminal :: S => S (+) Neg(StringTerminal)
+    ConsoleStringTerminal :: S => S (*) Neg(StringTerminal)
 
 proc run :: | Console => = 
-    | console => ->
+    | console => -> do
+        hput ConsoleStringTerminal on console
+        split console into nconsole, negstrterm
+
         plug 
-            => strterm -> do
+            negstrterm, strterm => -> negstrterm |=| neg strterm 
+
+            nconsole => strterm -> do
+                hput ConsoleClose on nconsole
+                close nconsole
+
                 hput StringTerminalGet on strterm
                 get inp on strterm
 
@@ -23,10 +31,3 @@ proc run :: | Console => =
 
                 hput StringTerminalClose on strterm
                 halt strterm
-            strterm, console => -> do
-                hput ConsoleStringTerminal on console
-                fork console as
-                    nconsole -> do
-                        hput ConsoleClose on nconsole
-                        halt nconsole
-                    negstrterm -> negstrterm |=| neg strterm 

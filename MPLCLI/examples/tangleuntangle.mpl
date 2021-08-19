@@ -1,5 +1,8 @@
 {- | This program takes 3 channels, and ``tangles'' them up,
 so that we can unravel them and print stuff to their consoles.
+
+TODO: I got so stuck on this, I had no idea what I was doing, this 
+never really worked out lololololol 
 -}
 
 protocol StringTerminal => S =

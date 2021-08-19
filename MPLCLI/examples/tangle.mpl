@@ -11,10 +11,10 @@ protocol Wire( | M) => S =
     Wire :: M (*) (TopBot (+) S) => S 
     Strand :: M => S
 
+
 coprotocol S => CoWire( | M) =
     CoWire :: S => M (*) (TopBot (+) S)
     CoStrand :: S => M 
-
 
 proc tangle1 :: | CoWire( | M) => M = 
     | cowire => m0 -> do
