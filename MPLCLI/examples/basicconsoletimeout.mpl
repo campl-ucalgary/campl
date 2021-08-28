@@ -49,24 +49,21 @@ proc timedConsole :: | Timer, Console  => =
                 put inp on console
 
                 plug
-                    ch0,ch1 => nch -> do
-                        plug 
-                            ch0, ch1 => nnch -> do
-                                fork nnch as
-                                    nnch0 with ch0 -> nnch0 |=| ch0
-                                    nnch1 with ch1 -> do
-                                        get _ on ch1
-                                        close ch1
-                                        halt nnch1
-                            nnch => nch -> do
-                                split nnch into nnch0,nnch1
-                                close nnch1
-                                nnch0 |=| nch
+                    ch0, ch1 => nnch -> do
+                        fork nnch as
+                            nnch0 with ch0 -> nnch0 |=| ch0
+                            nnch1 with ch1 -> do
+                                get _ on ch1
+                                close ch1
+                                halt nnch1
+                    nnch => nch -> do
+                        split nnch into nnch0,nnch1
+                        close nnch1
+                        nnch0 |=| nch
                         
                     timedConsole( | nch, console => )
 
 
 proc run =
-    | timer,console =>  -> do
-        timedConsole( |timer, console=>)
+    | timer,console =>  -> timedConsole( |timer, console=>)
 

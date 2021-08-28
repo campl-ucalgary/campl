@@ -40,8 +40,6 @@ TODO:
     - If you both turn over the same face card, then first person to call snap doesn't hvae to pick up the card.
     - objective: get rid of all cards..
 
-
-
 # Semaphore..
 - People asking for temrinals and demanding them..
 - Bounded resources... After a certain amount of time, the resource becomes free.. 
@@ -93,5 +91,21 @@ How about you have a list.. arranged by the Console
     - At the console, we can ask for another terminal; and what it does it pops another pair on the list
 
     - the list is a protocol
+
+# Message board
+* Make the console the spawner... and a sepearte string termianl for the messages
+
+# Booking system
+* Theater of 5 seats 
+* The console is just for opnening terminals
+* and we write all to some central terminal?
+
+* Someone books, then we refresh... i.e., display what the state of the booking is now... 
+
+1. race for the right to get hold of the memory cell.. 
+2. the race gets the memory cell up to the leaf
+3. then, it has to go right back to the base again when it does that 
+    (when we move it to the leaf, we need to generate the path back..., so it's easy to return the state to the root)
+    
 
 

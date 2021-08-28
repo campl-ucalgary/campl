@@ -47,10 +47,9 @@ defn
                     node( | up => winner, z)
                     z => loser -> do
                         get loserinp on loser
-                        hcase z of
-                            InfGet -> do
-                                put loserinp on z
-                                loser |=| z
+                        hcase z of InfGet -> do
+                            put loserinp on z
+                            loser |=| z
 
 proc nilp :: | ListP(| M) => M =
     | up => m -> do
@@ -65,6 +64,11 @@ proc consp :: | ListP(| M) => M,ListP(| M) =
             r -> r |=| tail
 
 defn 
+    proc messageBoard :: | Console => ListP(| InfGet([Char]|)) = 
+        | console => listp -> plug
+            root ( | console => infget )
+            unravelToMessageBoard( | infget => listp )
+
     proc root :: | Console => InfGet([Char] | ) = 
         | console => infget -> do
             hput InfGet on infget
@@ -86,30 +90,11 @@ defn
 
                         nilp( | nlistp0 => infget)
 
-                        {-
-                        negstrterm, strterm => -> negstrterm |=| neg strterm
-
-                        nconsole => strterm, infget -> plug
-                            nlistp => strterm, infget -> plug 
-                                consp( | nlistp => h, nlistp0)
-                                strTermInfGetter( | h => strterm ) 
-
-                                nilp( | nlistp0 =>  infget )
-
-                            messageBoard( | nconsole => nlistp)
-                        -}
-        
                 _ -> do
                     hput ConsolePut on console
                     put inp on console
 
                     root( | console =>  infget)
-
-    proc messageBoard :: | Console => ListP(| InfGet([Char]|)) = 
-        | console => listp -> 
-            plug
-                root ( | console => infget )
-                unravelToMessageBoard( | infget => listp )
 where
     proc unravelToMessageBoard :: | InfGet([Char] | ) => ListP(| InfGet([Char]|)) = 
         | infget => listp -> do
@@ -124,15 +109,8 @@ where
 
 
 proc run :: | Console => StringTerminal =
-    | console => strterm -> do
-        plug 
-            messageBoard( | console => listp) 
+    | console => strterm -> plug 
+        messageBoard( | console => listp) 
 
-            nilp( | listp => m)
-            strTermInfGetter( | m => strterm)
-
-            {-
-            listp => strterm -> plug
-                nilp( | listp => m)
-                strTermInfGetter( | m => strterm)
-            -}
+        nilp( | listp => m)
+        strTermInfGetter( | m => strterm)

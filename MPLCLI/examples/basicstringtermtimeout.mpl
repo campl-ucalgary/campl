@@ -45,20 +45,18 @@ proc timedStringTerminal :: | Timer => StringTerminal  =
                 put inp on strterm
 
                 plug
-                    ch0,ch1 => nch -> do
-                        plug 
-                            ch0, ch1 => nnch -> do
-                                fork nnch as
-                                    nnch0 with ch0 -> nnch0 |=| ch0
-                                    nnch1 with ch1 -> do
-                                        get _ on ch1
-                                        close ch1
-                                        halt nnch1
-                            nnch => nch -> do
-                                split nnch into nnch0,nnch1
-                                close nnch1
-                                nnch0 |=| nch
-                        
+                    timer0, timer1 => nnch -> do
+                        fork nnch as
+                            nntimer0 with timer0 -> nntimer0 |=| timer0
+                            nntimer1 with timer1 -> do
+                                get _ on timer1
+                                close timer1
+                                halt nntimer1
+                    nnch => nch -> do
+                        split nnch into nntimer0,nntimer1
+                        close nnch1
+                        nntimer0 |=| nch
+                
                     timedStringTerminal( | nch => strterm )
 
 proc run =
