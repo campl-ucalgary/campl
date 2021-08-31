@@ -199,9 +199,11 @@ patternCompileExpr = cata go
              -
              - NB. I thinkn the above is fixed
              -}
-             {- Okay final revision -- we fully float all lambda definitions to the
-              - top to avoid creating dupliate definitions which may occur sometimes when
-              - the pattern compilation algorithm duplicates the expression body...
+             {- Okay final revision -- we fully float all lambda definitions to
+              - the top to avoid creating dupliate definitions which may occur
+              - sometimes when the pattern compilation algorithm duplicates the
+              - expression body which would later cause an error in the
+              - assembling of the process, since we do not alpha rename later
               -}
             casef <- freshCaseFunIdP
 

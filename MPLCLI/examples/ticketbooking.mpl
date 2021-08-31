@@ -35,37 +35,6 @@ fun append :: [A],[A] -> [A] =
 fun concat :: [[A]] -> [A] =
 	[] -> []
 	s:ss -> append(s, concat(ss))
-
-defn
-    fun words :: [Char] -> [[Char]] = 
-        ts -> case skip(ts) of
-            [] -> [] 
-            nts -> case slice(nts) of
-                (wrd,nnts) -> wrd : words(nnts)
-where
-    fun isSpace :: Char -> Bool = 
-        ' ' -> True
-        '\t' -> True
-        '\n' -> True
-        _ -> False
-
-    fun skip :: [Char] -> [Char] =
-        [] -> []
-        t:ts -> if isSpace(t) then skip(ts) else t:ts
-
-    fun slice :: [Char] -> ([Char], [Char]) =
-        [] -> ([], [])
-        t:ts -> if isSpace(t) 
-            then ([], t:ts)
-            else case slice(ts) of
-                (ls, rs) -> (t:ls, rs)
-
-
-
-fun unlines :: [[Char]] -> [Char] =
-	[] -> []
-	s:ss -> append(s, '\n':unlines(ss))
-
     
 -- | ticket data type. 
 codata S -> Ticket = 
@@ -96,6 +65,7 @@ data Maybe(A) -> S =
     Just :: A -> S
     Nothing :: -> S
 
+-- | parses an int 
 defn 
     fun pInt :: [Char] -> Maybe(Int) =
         [] -> Nothing
@@ -127,7 +97,7 @@ where
         res, [] -> res
         res, s:ss -> go(step(res,s), ss)
 
--- | time in seconds for the time out
+-- | time in seconds for the time out of the clients
 fun tIMEOUT :: -> Int  =
     -> 5 * 1000000
 
@@ -542,6 +512,10 @@ where {
 
 }
 
+-- | time in seconds for the time out of the clients
+fun iNIT_FRESH_TICKET_ID :: -> Int  =
+    -> 0
+
 proc run = 
     | timer, console => strterm -> plug
         -- memCell( [mkTicket("Temmie", "A cute white and cream colored pomeranian", 0) ] | => mem  )
@@ -551,6 +525,5 @@ proc run =
             l -> l |=| timer
             r -> r |=| mem
 
-        server( 0 | console, m => tail)  
+        server( iNIT_FRESH_TICKET_ID | console, m => tail)
         clientLeaf( [] | tail => strterm)
-
