@@ -48,10 +48,12 @@ localEnvSt f act = do
     sup <- freshUniqueSupply
     st <- guse equality
 
-    uniqueSupply .= sup
     equality %= f
 
     act' <- act 
 
     equality .= st
+
+    uniqueSupply .= sup
+
     return act'

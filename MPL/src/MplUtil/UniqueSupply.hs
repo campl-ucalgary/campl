@@ -118,13 +118,12 @@ instance Show Unique where
     -}
 
 -- | Generates a fresh unique supply for the user
--- remark -- a bit inefficient with the unique supply here!
+-- N.B. a bit inefficient with the unique supply here!
 freshUniqueSupply ::
     ( MonadState c m
     , HasUniqueSupply c ) => 
     m UniqueSupply
-freshUniqueSupply =
-    uniqueSupply %%= split
+freshUniqueSupply = uniqueSupply %%= split
 
 -- | TODO deprecate this... It does not ``split" a unique supply...
 -- running the next computation in the state monad will still depend on

@@ -163,6 +163,7 @@ defn
                                 put () on nloser
                                 nloser |=| loser
 
+-- | time in seconds for the time out
 fun tIMEOUT :: -> Int  =
     -> 5 * 1000000
 

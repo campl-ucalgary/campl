@@ -40,6 +40,8 @@ import MplPasses.PatternCompiler.PatternCompileErrors
 
 import Data.Functor.Identity
 
+import Debug.Trace
+
 {- | 
 We mainly just need the unique supply, but we also need the context of 
 variables in scope and channels in scope when compiling a process so we 

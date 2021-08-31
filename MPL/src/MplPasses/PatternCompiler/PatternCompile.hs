@@ -1,5 +1,6 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
@@ -66,6 +67,8 @@ import qualified Data.Set as Set
 
 import Unsafe.Coerce
 
+-- TODO: The let floating should really all be in the writer monad instead
+-- of doing the manual plumbing of passing the state up..
 
 runPatternCompile' ::
     AsPatternCompileErrors err => 
@@ -103,7 +106,7 @@ runPatternCompile (MplProg prog) = fmap runErrors $ getCompose go
 patternCompileStmt ::
     PatternCompile (MplStmt MplTypeChecked) (MplStmt MplPatternCompiled) 
 patternCompileStmt stmt = do
-    wheres' <- traverse patternCompileStmt wheres
+    wheres' <- traverse (localEnvSt id . patternCompileStmt) wheres
     defns' <- fmap (NE.fromList . concat) $ traverse patternCompileDefn defns
     return $ MplStmt defns' wheres'
   where
@@ -117,8 +120,8 @@ pattern compiling 'CCase' efficiently.
 patternCompileDefn :: 
     PatternCompile (MplDefn MplTypeChecked) [MplDefn MplPatternCompiled]
 patternCompileDefn (ObjectDefn obj) = fmap (pure . ObjectDefn) $ patternCompileObj obj
-patternCompileDefn (FunctionDefn fun) = fmap (pure . FunctionDefn) $ patternCompileFunDefn fun
-patternCompileDefn (ProcessDefn proc) = fmap (map ProcessDefn) $ patternCompileProcessDefn proc
+patternCompileDefn (FunctionDefn fun) = patternCompileFunDefn fun
+patternCompileDefn (ProcessDefn proc) = patternCompileProcessDefn proc
 
 -- | patternCompileObj.  This is essentially the identity function to juggle some types around.
 -- TODO: I guess I should probabaly write out the translation instead of just using 'unsafeCoerce'
@@ -133,23 +136,31 @@ patternCompileObj inp = return $ unsafeCoerce inp
 -- the data structure, but it needs to fix @case@s given by the user; and this recurses through the 
 -- expression
 patternCompileExpr ::
-    PatternCompile (MplExpr MplTypeChecked) (MplExpr MplPatternCompiled)
+    PatternCompile 
+        (MplExpr MplTypeChecked) 
+        ([MplDefn MplPatternCompiled], MplExpr MplPatternCompiled)
 patternCompileExpr = cata go
   where
     go :: 
-        MplExprF (MplPass 'TypeChecked) (_ (MplExpr MplPatternCompiled)) -> 
-        _ (MplExpr MplPatternCompiled)
+        MplExprF (MplPass 'TypeChecked) (_ ([MplDefn MplPatternCompiled], MplExpr MplPatternCompiled)) -> 
+        _ ([MplDefn MplPatternCompiled], MplExpr MplPatternCompiled)
     go = \case
-        EPOpsF ann primop l r -> EPOps ann primop <$> l <*> r
-        EVarF ann ident -> pure $ EVar ann ident
-        EIntF ann n -> pure $ EInt (snd ann) n
-        ECharF ann v -> pure $ EChar (snd ann) v
-        EDoubleF ann v -> pure $ EDouble (snd ann) v
-        EBoolF ann v -> pure $ EBool (snd ann) v
+        EPOpsF ann primop l r -> do
+            (ndefns0, l') <- l 
+            (ndefns1, r') <- r
+            return $ (ndefns0 ++ ndefns1, EPOps ann primop l' r')
+        EVarF ann ident -> fmap (mempty,) $ pure $ EVar ann ident
+        EIntF ann n -> fmap (mempty,) $ pure $ EInt (snd ann) n
+        ECharF ann v -> fmap (mempty,) $ pure $ EChar (snd ann) v
+        EDoubleF ann v -> fmap (mempty,) $ pure $ EDouble (snd ann) v
+        EBoolF ann v -> fmap (mempty,) $ pure $ EBool (snd ann) v
         -- ECaseF ann expr cases -> ECase ann <$> expr <*> traverse sequenceA cases
         ECaseF ann expr cases -> do
-            expr' <- expr
-            cases' <- sequenceOf (traversed % _2) cases
+            (ndefnsexpr, expr') <- expr
+            (ndefnscases, cases') <- fmap (first fold . NE.unzip) $ for cases $ \(patt, expr) -> do 
+                (ndefns, expr') <- localEnvSt (over envLcl((collectPattVars patt,[],[])<>)) $ expr
+                return (ndefns, (patt,expr'))
+
             let caseslst' = fmap (over _1 pure) cases'
                 exhstchk = patternCompileExhaustiveCheck $ fmap fst caseslst'
             tell $ bool [_NonExhaustiveECasePatt # ()] [] exhstchk
@@ -184,46 +195,92 @@ patternCompileExpr = cata go
              - NB. there is a performance bug with the 'CCase' -- since there aren't let
              - bindings in do blocks, doing this same transformation is impossible. 
              - We would have to essentially end it with a ``Run'' to continue everything
-             - where we left off
+             - where we left off. 
+             -
+             - NB. I thinkn the above is fixed
              -}
+             {- Okay final revision -- we fully float all lambda definitions to the
+              - top to avoid creating dupliate definitions which may occur sometimes when
+              - the pattern compilation algorithm duplicates the expression body...
+              -}
             casef <- freshCaseFunIdP
+
+            seqscxt <- guse (envLcl % _1)
 
             let letfloated = MplStmt (letdefn :| []) []
                 letdefn = FunctionDefn $ MplFunction 
                     casef 
-                    ([], [getExprType expr'], getExprType nbdy) 
-                    (([PVar (getExprType expr') u], nbdy) :| [])
+                    ([], map (\(PVar ann _) -> ann) seqscxt ++ [getExprType expr'], getExprType nbdy) 
+                    (( seqscxt ++ [PVar (getExprType expr') u], nbdy) :| [])
 
             return 
-                $ ELet () (letfloated :| []) 
-                $ ECall (getExprType nbdy) casef [expr']
+                ( ndefnsexpr ++ ndefnscases ++ [letdefn]
+                -- ELet () (letfloated :| []) $ ECall (getExprType nbdy) casef [expr']
+                , ECall (getExprType nbdy) casef $ map (\(PVar ann v) -> EVar ann v) seqscxt ++ [expr']
+                )
                 -- substituteVarIdentByExpr (u, ECall (getExprType nbdy) u []) nbdy
 
-        EObjCallF ann ident exprs -> EObjCall ann ident <$> sequenceA exprs
+        EObjCallF ann ident exprs -> do
+            (ndefns, exprs') <- fmap (first concat . unzip) $ sequenceA exprs
+            return (ndefns, EObjCall ann ident exprs')
+
         -- TODO: we need to check if creating records is exhaustive..
         ERecordF ann phrases -> do
-            phrases' <- for phrases $ \(phrase, identt, (patts, mexpr)) -> do
+            (ndefns, phrases') <- fmap (first fold . NE.unzip) $ for phrases $ \(phrase, identt, (patts, mexpr)) -> do
                 let exhstchk = patternCompileExhaustiveCheck (patts :| [])
                 tell $ bool [ _NonExhaustiveRecordPatt # identt] [] exhstchk
-                expr <- mexpr
+                (ndefns, expr) <- mexpr
                 (us, expr') <- patternCompileSeqPatPhrases ((patts, expr) :| [])
 
-                return (phrase, identt, (us, expr')) 
+                return (ndefns, (phrase, identt, (us, expr')) )
 
-            return $ _ERecord # (snd ann, phrases')
+            return (ndefns, _ERecord # (snd ann, phrases'))
 
-        ECallF ann ident exprs -> ECall ann ident <$> sequenceA exprs 
-        EListF ann exprs -> EList (snd ann) <$> sequenceA exprs
-        EStringF ann str -> pure $ EString (snd ann) str
-        EUnitF ann -> pure $ EUnit $ snd ann
-        ETupleF ann (mt0,mt1,mts) -> fmap (ETuple (snd ann)) $ (,,) <$> mt0 <*> mt1 <*> sequenceA mts
-        EBuiltInOpF ann op l r -> EBuiltInOp (snd ann) op <$> l <*> r
-        EIfF ann iff thenf elsef -> EIf ann <$> iff <*> thenf <*> elsef
+        ECallF ann ident exprs -> do
+            (ndefns, exprs') <- fmap (first concat . unzip) $ sequenceA exprs 
+            return (ndefns, ECall ann ident exprs')
+
+        EListF ann exprs -> do
+            (ndefns, exprs') <- fmap (first concat . unzip) $ sequenceA exprs 
+            return (ndefns, EList (snd ann) exprs')
+
+        EStringF ann str -> 
+            pure $ (mempty, EString (snd ann) str)
+
+        EUnitF ann -> pure $ (mempty, EUnit $ snd ann)
+
+        ETupleF ann (mt0,mt1,mts) -> do
+            (ndefns0, t0) <- mt0 
+            (ndefns1, t1) <- mt1 
+            (ndefnss, ts) <- fmap (first concat . unzip) $ sequenceA mts
+
+            return $ (ndefns0 ++ ndefns1 ++ ndefnss, ETuple (snd ann) (t0,t1,ts))
+
+        EBuiltInOpF ann op l r -> do
+            (ndefns0, l') <- l
+            (ndefns1, r') <- r
+            return ( ndefns0 ++ ndefns1, EBuiltInOp (snd ann) op l' r')
+
+        EIfF ann iff thenf elsef -> do
+            (ndefns0, iff') <- iff
+            (ndefns1, thenf') <- thenf
+            (ndefns2, elsef') <- elsef
+            return (ndefns0 ++ ndefns1 ++ ndefns2, EIf ann iff' thenf' elsef')
 
         ESwitchF ann switches -> do
+            (ndefns, switches') <- fmap (first fold . NE.unzip) $ for switches $ \(l,r) -> do
+                (ndefns0, l') <- l
+                (ndefns1, r') <- r
+                return (ndefns0 ++ ndefns1, (l',r'))
+
+            switches'' <- patternCompileExhaustiveESwitchCheck switches'
+
+            return (ndefns, foldr f (EIllegalInstr $ getExprType $ snd $ NE.head switches') switches'')
+            {-
             sequenceOf (traversed % each) switches 
                 >>= \switches' -> patternCompileExhaustiveESwitchCheck switches'
                     >>= return . foldr f (EIllegalInstr $ getExprType $ snd $ NE.head switches')
+            -}
           where
             f :: 
                 (MplExpr MplPatternCompiled, MplExpr MplPatternCompiled) -> 
@@ -231,29 +288,43 @@ patternCompileExpr = cata go
                 MplExpr MplPatternCompiled
             f (bexpr, thenc) acceq = EIf (getExprType thenc) bexpr thenc acceq
             
-        ELetF ann lets expr -> ELet ann <$> (traverse patternCompileStmt lets) <*> expr
+        ELetF ann lets expr -> do
+            lets' <- traverse patternCompileStmt lets 
+            (ndefns, expr') <- expr
+            return (ndefns, ELet ann lets' expr')
 
+        {-
         {- We gave up on folds and unfolds
         EFoldF ann foldon phrases -> EFold ann foldon phrases
         EUnfoldF ann expr phrases -> EUnfold ann expr phrases
         XExprF ann -> XExpr ann
         -}
+        -}
 
 -- | Pattern compiles a function definition.
 patternCompileFunDefn :: 
-    PatternCompile (XFunctionDefn MplTypeChecked) (XFunctionDefn MplPatternCompiled)
+    PatternCompile (XFunctionDefn MplTypeChecked) [MplDefn MplPatternCompiled]
 patternCompileFunDefn (MplFunction funName funTp funDefn) = do
-    funDefn' <- traverseOf (traversed % _2) patternCompileExpr funDefn
+    -- funDefn' <- traverseOf (traversed % _2) patternCompileExpr funDefn
+    -- funDefn' <- traverseOf (traversed % _2) patternCompileExpr funDefn
+
+    (ndefns, funDefn') <- fmap (first fold . NE.unzip) $ for funDefn $ \(patts, expr) -> do
+        -- (ndefns, expr') <- patternCompileExpr expr
+        (ndefns, expr') <- localEnvSt (over envLcl ((foldMap collectPattVars patts, [], [])<>)) 
+                $ patternCompileExpr expr
+        return (ndefns, (patts, expr'))
+        
 
     let exhstchk = patternCompileExhaustiveCheck $ fmap fst funDefn'
     tell $ bool [_NonExhaustiveFunPatt # funName] [] exhstchk
 
     (patts, pattexpr) <- patternCompileSeqPatPhrases funDefn'
-    return $ MplFunction funName funTp $ (patts, pattexpr)  :| []
+    return $ ndefns ++ [FunctionDefn $ MplFunction funName funTp $ (patts, pattexpr)  :| []]
 
 -- | Pattern compiles a process definition.
 patternCompileProcessDefn ::
-    PatternCompile (XProcessDefn MplTypeChecked) [XProcessDefn MplPatternCompiled]
+    -- PatternCompile (XProcessDefn MplTypeChecked) [XProcessDefn MplPatternCompiled]
+    PatternCompile (XProcessDefn MplTypeChecked) [MplDefn MplPatternCompiled]
 patternCompileProcessDefn (MplProcess procName procTp procDefn) = do
     (ndefns, cmds@(cmd0 :| rstcmds)) <- fmap (first (reverse . concat) . NE.unzip) $ for procDefn $ \((seqs, ins, outs), cmds) -> do
          -- cmds' <- localEnvSt (set envLcl (coerce (foldMap collectPattVars seqs, ins, outs))) $ patternCompileCmds cmds
@@ -277,7 +348,7 @@ patternCompileProcessDefn (MplProcess procName procTp procDefn) = do
 
     (npatts, ncmds) <- patternCompileConcPatPhrases $ NE.zip patts cmds'
 
-    return $ ndefns ++ [MplProcess procName procTp $ ((npatts, cmds0ins, cmds0outs), ncmds) :| []]
+    return $ ndefns ++ [ProcessDefn $ MplProcess procName procTp $ ((npatts, cmds0ins, cmds0outs), ncmds) :| []]
 
 {- | 'patternCompileCmds'
 Mostly should be straightforard.. some strangeness
@@ -293,16 +364,18 @@ Mostly should be straightforard.. some strangeness
 patternCompileCmds :: 
     PatternCompile 
         (NonEmpty (MplCmd MplTypeChecked)) 
-        ([XProcessDefn MplPatternCompiled], NonEmpty (MplCmd MplPatternCompiled))
+        ([MplDefn MplPatternCompiled], NonEmpty (MplCmd MplPatternCompiled))
 patternCompileCmds = fmap (second NE.fromList) . go . NE.toList
   where
-    go :: PatternCompile [MplCmd MplTypeChecked] ([XProcessDefn MplPatternCompiled], [MplCmd MplPatternCompiled])
+    go :: PatternCompile 
+        [MplCmd MplTypeChecked] 
+        ([MplDefn MplPatternCompiled], [MplCmd MplPatternCompiled])
     go [] = pure mempty
     go (cmd:cmds) = case cmd of
         CRun ann idp seqs ins outs -> assert (null cmds) $ do
-            seqs' <- traverse patternCompileExpr seqs
+            (ndefns, seqs') <- fmap (first fold . unzip) $ traverse patternCompileExpr seqs
             -- second (CRun ann idp seqs' ins outs:) <$> go cmds
-            return (mempty, [CRun () idp seqs' ins outs])
+            return (ndefns, [CRun () idp seqs' ins outs])
             -- @CRun@ should be the lsat command, so no need to do @go cmds@
         CClose ann chp -> deleteChFromContext chp >> second (CClose ann chp:) <$> go cmds
         CHalt ann chp -> assert (null cmds) $ deleteChFromContext chp >> return (mempty, [CHalt ann chp]) 
@@ -400,8 +473,8 @@ patternCompileCmds = fmap (second NE.fromList) . go . NE.toList
         CPut ann expr chp -> do
             deleteChFromContext chp
             insertChInContext chp
-            expr' <- patternCompileExpr expr
-            second (CPut ann expr' chp:) <$> go cmds
+            (ndefns, expr') <- patternCompileExpr expr
+            (mappend ndefns *** (CPut ann expr' chp:)) <$> go cmds
 
         CHCase ann chp phrases -> assert (null cmds) $ do
             -- phrases' <-  traverseOf (traversed % _3) patternCompileCmds phrases
@@ -462,8 +535,8 @@ patternCompileCmds = fmap (second NE.fromList) . go . NE.toList
         -- CPlug !(XCPlug x) (CPlugPhrase x, CPlugPhrase x)
         CPlugs ann (phrase0, phrase1, phrases) -> assert (null cmds) $ do
             ~(ndefns, phrase0':phrase1':phrases') <- fmap (first concat . unzip) $ for (phrase0:phrase1:phrases) $ \(ann, (inpwiths, outwiths), cmds) -> do
-                let envmod = over envLcl $ set _2 inpwiths . set _3 outwiths
-                (ndefns, cmds') <- localEnvSt envmod $ patternCompileCmds cmds
+                let modenv = over envLcl $ set _2 inpwiths . set _3 outwiths
+                (ndefns, cmds') <- localEnvSt modenv $ patternCompileCmds cmds
                 return (ndefns, (ann, (inpwiths, outwiths), cmds'))
             return (ndefns, [CPlugs ann (phrase0', phrase1', phrases')])
 
@@ -517,9 +590,9 @@ patternCompileCmds = fmap (second NE.fromList) . go . NE.toList
             case really only evaluates it if it is data... 
         -}
         CCase ann expr pattscmds -> assert (null cmds) $ do
-            expr' <- patternCompileExpr expr
+            (ndefnsexpr, expr') <- patternCompileExpr expr
             (ndefns, pattscmds') <- fmap (first concat . NE.unzip) $ for pattscmds $ \(patt, cmds) -> do
-                (ndefns, cmds') <- localEnvSt id $ patternCompileCmds cmds
+                (ndefns, cmds') <- localEnvSt (over envLcl((collectPattVars patt,[],[])<>)) $ patternCompileCmds cmds
                 -- we have '[patt]' since when we later pattern compile it, we need a list of patterns.
                 -- Indeed, we can only have one pattern.
                 return (ndefns, ([patt], cmds'))
@@ -544,7 +617,7 @@ patternCompileCmds = fmap (second NE.fromList) . go . NE.toList
             -- TODO: Okay, refactor this so we don't retain the call information anymore
             -- this is useless and never used later.. then we can remove this error call..
             return 
-                ( ndefns ++ [pfloated]
+                ( ndefnsexpr ++ ndefns ++ [ProcessDefn pfloated]
                 , 
                     [ CRun 
                         ()
@@ -581,9 +654,9 @@ patternCompileCmds = fmap (second NE.fromList) . go . NE.toList
         -}
         CSwitch ann switches -> assert (null cmds) $ do
             (ndefns, switches') <- fmap (first concat . NE.unzip) $ for switches $ \(switchon, cmds) -> do
-                switchon' <- patternCompileExpr switchon
+                (ndefnsexpr, switchon') <- patternCompileExpr switchon
                 (ndefns, cmds') <- localEnvSt id $ patternCompileCmds cmds
-                return (ndefns, (switchon', cmds'))
+                return (ndefnsexpr ++ ndefns, (switchon', cmds'))
 
             switches'' <- patternCompileExhaustiveCSwitchCheck switches'
 
@@ -598,10 +671,10 @@ patternCompileCmds = fmap (second NE.fromList) . go . NE.toList
         -}
 
         CIf ann cond cthen celse -> assert (null cmds) $ do
-            cond' <- patternCompileExpr cond
-            (ndefns0, cthen') <- localEnvSt id $ patternCompileCmds cthen
-            (ndefns1, celse') <- localEnvSt id $ patternCompileCmds celse
-            return (ndefns0 ++ ndefns1, [CIf () cond' cthen' celse']) 
+            (ndefns0, cond') <- patternCompileExpr cond
+            (ndefns1, cthen') <- localEnvSt id $ patternCompileCmds cthen
+            (ndefns2, celse') <- localEnvSt id $ patternCompileCmds celse
+            return (ndefns0 ++ ndefns1 ++ ndefns0, [CIf () cond' cthen' celse']) 
             -- fmap pure $ CIf () <$> patternCompileExpr cond <*> patternCompileCmds cthen <*> patternCompileCmds celse
             -- @go cmds@ should always be empty list here
 
@@ -799,13 +872,18 @@ patternCompileSeqPatPhrases pattphrases =
             (patts :: [MplPattern MplPatternCompiled]) = fmap (review _PVar . swap) usandtp
 
         -- we need to remove the string patterns to allow efficient compilation of strings
-        pattexpr <- go (map VarSub usandtp) (fmap (first (map removeStringPatt)) $ NE.toList pattphrases) (EIllegalInstr restp) 
+        pattexpr <- go 
+            (map VarSub usandtp) 
+            (NE.toList pattphrases) 
+            (EIllegalInstr restp) 
 
         return (patts, pattexpr)  
   where
     -- the type of the codomain 
     restp :: XMplType MplTypeChecked
     restp = getExprType $ snd $ NE.head pattphrases
+
+    
 
     go :: 
         [Substitutable]  -> 
@@ -815,7 +893,7 @@ patternCompileSeqPatPhrases pattphrases =
     go [] patts mexpr 
         | null patts = pure $ mexpr
         | otherwise = pure $ snd $ head patts 
-    go (u:us) patts mexpr = case groupedpatts of
+    go (u:us) (fmap (first (map removeStringPatt))-> patts) mexpr = case groupedpatts of
         -- the case when all patts are of the same type
         _ :| [] -> fmap (fromJust . asum) 
             $ sequenceA 
@@ -1239,7 +1317,10 @@ patternCompileConcPatPhrases pattphrases =
         let usandtp = zipWith (curry (second getPattType)) us (fst . NE.head $ pattphrases) 
             (patts :: [MplPattern MplPatternCompiled]) = fmap (review _PVar . swap) usandtp
 
-        pattexpr <- go (map VarSub usandtp) (fmap (first (map removeStringPatt)) $ NE.toList pattphrases) (CIllegalInstr () :| [])
+        pattexpr <- go 
+            (map VarSub usandtp) 
+            (NE.toList pattphrases) 
+            (CIllegalInstr () :| [])
 
         return $ (patts, pattexpr)  
   where
@@ -1252,7 +1333,7 @@ patternCompileConcPatPhrases pattphrases =
     go [] patts mexpr 
         | null patts = pure $ mexpr
         | otherwise = pure $ snd $ head patts 
-    go (u:us) patts mexpr = case groupedpatts of
+    go (u:us) (fmap (first (map removeStringPatt)) -> patts) mexpr = case groupedpatts of
         -- the case when all patts are of the same type
         _ :| [] -> fmap (fromJust . asum) 
             $ sequenceA 
