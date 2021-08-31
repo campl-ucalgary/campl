@@ -27,15 +27,12 @@ type instance Asm.XCCall MplAsmFromLambdaLifted = ()
 type instance Asm.XCInt MplAsmFromLambdaLifted = ()
 type instance Asm.XCChar MplAsmFromLambdaLifted = ()
 type instance Asm.XCBool MplAsmFromLambdaLifted = ()
-type instance Asm.XCEqInt MplAsmFromLambdaLifted = ()
+type instance Asm.XCIntCmp MplAsmFromLambdaLifted = ()
 
-type instance Asm.XCLeqInt MplAsmFromLambdaLifted = ()
 type instance Asm.XCEqChar MplAsmFromLambdaLifted = ()
 type instance Asm.XCLeqChar MplAsmFromLambdaLifted = ()
 
-type instance Asm.XCAdd MplAsmFromLambdaLifted = ()
-type instance Asm.XCSub MplAsmFromLambdaLifted = ()
-type instance Asm.XCMul MplAsmFromLambdaLifted = ()
+type instance Asm.XCIntArith MplAsmFromLambdaLifted = ()
 type instance Asm.XCConstructor MplAsmFromLambdaLifted = ()
 type instance Asm.XCDestructor MplAsmFromLambdaLifted = ()
 

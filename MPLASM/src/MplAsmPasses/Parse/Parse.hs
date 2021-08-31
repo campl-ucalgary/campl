@@ -131,9 +131,10 @@ mplAsmParseCom = go
     | B.AC_EQS Eqs
     | B.AC_CONCAT ConcatS Integer
     -}
-        B.AC_ADD keyword -> pure $ CAdd (toRowCol keyword)
-        B.AC_SUB keyword -> pure $ CSub (toRowCol keyword)
-        B.AC_MUL keyword -> pure $ CMul (toRowCol keyword)
+        B.AC_ADD keyword -> pure $ CAddInt (toRowCol keyword)
+        B.AC_SUB keyword -> pure $ CSubInt (toRowCol keyword)
+        B.AC_MUL keyword -> pure $ CMulInt (toRowCol keyword)
+        B.AC_DIVR keyword -> pure $ CDivInt (toRowCol keyword)
     {-
     | B.AC_DIVQ Quot
     | B.AC_DIVR Rem

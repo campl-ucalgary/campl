@@ -377,11 +377,14 @@ mplAssembleExpr = para go
         EPOpsF ann op (lexpr, l) (_, r) -> fmap concat $ sequenceA [r, l, op']
           where
             op' = case op of
-                PrimitiveAdd -> pure [Asm.CAdd ()]
-                PrimitiveMul -> pure [Asm.CMul ()]
-                PrimitiveSub -> pure [Asm.CSub ()]
+                PrimitiveAdd -> pure [Asm.CAddInt ()]
+                PrimitiveMul -> pure [Asm.CMulInt ()]
+                PrimitiveSub -> pure [Asm.CSubInt ()]
+                PrimitiveDiv -> pure [Asm.CDivInt ()]
                 PrimitiveLt -> pure [Asm.CLtInt ()]
+                PrimitiveGt -> pure [Asm.CGtInt ()]
                 PrimitiveLeq -> pure [Asm.CLeqInt ()]
+                PrimitiveGeq -> pure [Asm.CGeqInt ()]
                 PrimitiveEq -> case getExprType lexpr of 
                     TypeBuiltIn (TypeIntF _) -> pure [Asm.CEqInt ()]
                     TypeBuiltIn (TypeBoolF _) -> pure [Asm.CEqBool ()]

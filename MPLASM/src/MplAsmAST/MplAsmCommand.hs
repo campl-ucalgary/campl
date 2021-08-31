@@ -27,15 +27,13 @@ type family XCCall x
 type family XCInt x
 type family XCChar x
 type family XCBool x
-type family XCEqInt x
+type family XCIntCmp x
 
-type family XCLeqInt x
 type family XCEqChar x
 type family XCLeqChar x
 
-type family XCAdd x
-type family XCSub x
-type family XCMul x
+type family XCIntArith x
+
 type family XCConstructor x
 type family XCDestructor x
 
@@ -70,13 +68,9 @@ type ForallMplAsmCom c x =
     , c (XCInt x)
     , c (XCChar x)
     , c (XCBool x)
-    , c (XCEqInt x)
-    , c (XCLeqInt x)
+    , c (XCIntCmp x)
     , c (XCEqChar x)
     , c (XCLeqChar x)
-    , c (XCAdd x)
-    , c (XCSub x)
-    , c (XCMul x)
     , c (XCConstructor x)
     , c (XCDestructor x)
     , c (XCCase x)
@@ -122,18 +116,21 @@ data MplAsmCom x
 
     -- TODO: These SHOULD NOT all use the Eq int type family
     -- and, or other bool operators
-    | CEqBool (XCEqInt x)
+    | CEqBool (XCIntCmp x)
 
-    | CEqInt (XCEqInt x)
-    | CLtInt (XCLeqInt x)
-    | CLeqInt (XCLeqInt x)
+    | CEqInt (XCIntCmp x)
+    | CLtInt (XCIntCmp x)
+    | CLeqInt (XCIntCmp x)
+    | CGtInt (XCIntCmp x)
+    | CGeqInt (XCIntCmp x)
 
     | CEqChar (XCEqChar x)
     | CLeqChar (XCLeqChar x)
 
-    | CAdd (XCAdd x)
-    | CSub (XCSub x)
-    | CMul (XCMul x)
+    | CAddInt (XCIntArith x)
+    | CSubInt (XCIntArith x)
+    | CMulInt (XCIntArith x)
+    | CDivInt (XCIntArith x)
     -- | data type, handle, arguments
     | CConstructor (XCConstructor x) (TypeAndSpec x) [IdP x]
     -- | data type, handle, arguments, expression to destruct

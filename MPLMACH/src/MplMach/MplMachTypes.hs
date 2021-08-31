@@ -278,7 +278,9 @@ data ISeq
     -- Tests if two Vals are equal or less than or equal to
     | IEqInt
     | ILeqInt
+    | IGeqInt
     | ILtInt
+    | IGtInt
 
     | IEqChar
     | ILeqChar

@@ -326,12 +326,14 @@ mplAsmComToInstr = \case
     CEqBool _  -> return [_IEqBool # ()]
 
     CLeqInt _  -> return [_ILeqInt # ()]
+    CGeqInt _  -> return [_IGeqInt # ()]
     CLtInt _  -> return [_ILtInt # ()]
     CLeqChar _ -> return [_ILeqChar # ()]
 
-    CAdd _ -> return [_IAddInt # ()]
-    CSub _ -> return [_ISubInt # ()]
-    CMul _ -> return [_IMulInt # ()]
+    CAddInt _ -> return [_IAddInt # ()]
+    CSubInt _ -> return [_ISubInt # ()]
+    CMulInt _ -> return [_IMulInt # ()]
+    CDivInt _ -> return [_IDivInt # ()]
     CConstructor _ typeandspec args -> do
         ~(Just (caseix, numargs)) <- lookupData typeandspec
         tell $ bool [ _IllegalConstructorCall # (typeandspec, numargs, genericLength args)] [] $ genericLength args == numargs

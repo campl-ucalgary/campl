@@ -253,6 +253,10 @@ seqStep k stec = case steccode of
             stec & code !~ c
                  & stack !~ s
                  & stack %!~ cons (VInt $ n * m)
+        (IDivInt, e, VInt n : VInt m : s) -> {-# SCC "IDivInt" #-} pure $ Just $
+            stec & code !~ c
+                 & stack !~ s
+                 & stack %!~ cons (VInt $ n `div` m)
         (IEqInt, e, VInt n : VInt m : s) -> {-# SCC "IEqInt" #-} pure $ Just $
             stec & code !~ c
                  & stack !~ s
@@ -261,10 +265,18 @@ seqStep k stec = case steccode of
             stec & code !~ c
                  & stack !~ s
                  & stack %!~ cons (VBool $ n <= m)
+        (IGeqInt, e, VInt n : VInt m : s) -> {-# SCC "IGeqInt" #-} pure $ Just $
+            stec & code !~ c
+                 & stack !~ s
+                 & stack %!~ cons (VBool $ n >= m)
         (ILtInt, e, VInt n : VInt m : s) -> {-# SCC "ILtInt" #-} pure $ Just $
             stec & code !~ c
                  & stack !~ s
                  & stack %!~ cons (VBool $ n < m)
+        (IGtInt, e, VInt n : VInt m : s) -> {-# SCC "IGtInt" #-} pure $ Just $
+            stec & code !~ c
+                 & stack !~ s
+                 & stack %!~ cons (VBool $ n > m)
 
         (IEqBool, e, VBool n : VBool m : s) -> {-# SCC "IEqBool" #-} pure $ Just $
             stec & code !~ c

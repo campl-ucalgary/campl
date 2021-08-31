@@ -51,15 +51,12 @@ type instance XCCall MplAsmParsed = RowCol
 type instance XCInt MplAsmParsed = RowCol
 type instance XCChar MplAsmParsed = RowCol
 type instance XCBool MplAsmParsed = RowCol
-type instance XCEqInt MplAsmParsed = RowCol
+type instance XCIntCmp MplAsmParsed = RowCol
 
-type instance XCLeqInt MplAsmParsed = RowCol
 type instance XCEqChar MplAsmParsed = RowCol
 type instance XCLeqChar MplAsmParsed = RowCol
 
-type instance XCAdd MplAsmParsed = RowCol
-type instance XCSub MplAsmParsed = RowCol
-type instance XCMul MplAsmParsed = RowCol
+type instance XCIntArith MplAsmParsed = RowCol
 type instance XCConstructor MplAsmParsed = RowCol
 type instance XCDestructor MplAsmParsed = RowCol
 

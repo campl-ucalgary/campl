@@ -179,9 +179,10 @@ mplAsmComToBnfcCom = cata go
         CLeqIntF _ -> B.AC_LEQ bnfcKeyword
         CLeqCharF _ -> B.AC_LEQ bnfcKeyword
 
-        CAddF _ -> B.AC_ADD bnfcKeyword
-        CSubF _ -> B.AC_SUB bnfcKeyword
-        CMulF _ -> B.AC_MUL bnfcKeyword
+        CAddIntF _ -> B.AC_ADD bnfcKeyword
+        CSubIntF _ -> B.AC_SUB bnfcKeyword
+        CMulIntF _ -> B.AC_MUL bnfcKeyword
+        CDivIntF _ -> B.AC_DIVQ bnfcKeyword
         CConstructorF _ (TypeAndSpec  a b) args ->
             B.AC_CONSTRUCTOR_ARGS 
                 (toBnfcIdent a) 
@@ -345,6 +346,10 @@ instance BnfcKeyword B.Subtract where
 
 instance BnfcKeyword B.Mul where
     bnfcKeyword = B.Mul (invalidPosition, "mul")
+
+instance BnfcKeyword B.Quot where
+    bnfcKeyword = B.Quot (invalidPosition, "quot[TODO]")
+
 
 instance BnfcKeyword B.Rec where
     bnfcKeyword = B.Rec (invalidPosition, "rec")

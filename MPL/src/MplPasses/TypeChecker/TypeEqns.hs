@@ -253,7 +253,12 @@ matchCont ::
     m [(TypeP x, MplType x)]
 matchCont ty0 ty1 k = f ty0 ty1
   where
-    -- need to simplify double negations first.
+    -- TODO: Why did we remove this? Simply because it doesn't really make
+    -- sense... It makes types suggestions rather than what they really are;
+    -- and it now instead depends on how a function is called if it has the
+    -- correct type (i.e., type classes)
+    --
+    -- Need to simplify double negations first.
     -- f (TypeBuiltIn (TypeNegF _ (TypeBuiltIn (TypeNegF _ a)))) b = f a b
     -- f a (TypeBuiltIn (TypeNegF _ (TypeBuiltIn (TypeNegF _ b)))) = f a b
 
@@ -267,8 +272,8 @@ matchCont ty0 ty1 k = f ty0 ty1
     -- substituted for something like @x = Neg(y)@.
     -- TODO: If it is x = Neg(y), we need to make this x = Neg(y) and NOT 
     -- change this to y = Neg(x)... 
-    -- N.B. It does this automatically actually...  just above, we test if we have
-    -- a type var and something else, which will cover this case. 
+    -- N.B. It does this automatically actually...  just above, we test if we
+    -- have a type var and something else, which will cover this case. 
  
     -- f (TypeBuiltIn (TypeNegF cxt0 (TypeVar _ a))) b = fmap pure $ mkValidSub a $ TypeBuiltIn $ TypeNegF cxt0 b
     -- f a (TypeBuiltIn (TypeNegF cxt1 (TypeVar _ b))) = fmap pure $ mkValidSub b $ TypeBuiltIn $ TypeNegF cxt1 a
@@ -394,8 +399,10 @@ matchNumNudge ::
 matchNumNudge ty0 ty1 = matchCont ty0 ty1 k
   where
     k type0@(TypeBuiltIn a) type1@(TypeBuiltIn b) = case (a,b) of
+        {-
         (TypeIntF a, TypeIntF b) -> return []
         (TypeDoubleF a, TypeDoubleF b) -> return []
+        -}
         _ -> throwError $ _TypeMatchFailure # (type0,type1)
     k type0 type1 = throwError $ _TypeMatchFailure # (type0,type1)
 
@@ -523,6 +530,7 @@ coalesceNumNudge (s, ssub) = flip runStateT (s,ssub) . go
     go ((t, tsub):rst) = do
         (s, ssub) <- get
         if s == t 
+            {-
             then case (ssub, tsub) of 
                 (TypeBuiltIn (TypeIntF a), TypeBuiltIn (TypeDoubleF _)) -> do
                     equality .= (s, TypeBuiltIn (TypeDoubleF a))
@@ -530,6 +538,8 @@ coalesceNumNudge (s, ssub) = flip runStateT (s,ssub) . go
                 (TypeBuiltIn (TypeDoubleF _ ), TypeBuiltIn (TypeIntF b)) -> do
                     (:) <$> mkValidSub t (TypeBuiltIn (TypeDoubleF b)) <*> go rst
                 _ -> mappend <$> match ssub tsub <*> go rst
+            -}
+            then mappend <$> match ssub tsub <*> go rst
             else (:) <$> mkValidSub t (substitute (s, ssub) tsub) <*> go rst
 
 {-| linearize.  This is unification for a set of constraints essentially. -}
