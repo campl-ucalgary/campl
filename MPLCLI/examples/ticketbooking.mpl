@@ -1,5 +1,9 @@
 {- | A ticket booking system based on @./generalizedtimedracedmemorycell.mpl@. 
 Pretty much the most straightforward application of that program
+
+closing clients
+atomic snapshots?
+cancelling and refund
 -}
 
 protocol StringTerminal => S =
