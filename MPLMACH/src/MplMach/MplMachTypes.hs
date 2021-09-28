@@ -417,6 +417,25 @@ data SInstr
     | SHClose
   deriving Show
 
+{- A networked service instruction -}
+data SNInstr
+    = SNInt Int
+    | SNChar Char
+    | SNString String
+
+    | SNGetInt
+    | SNPutInt 
+
+    | SNGetChar
+    | SNPutChar
+
+    | SNGetString
+    | SNPutString
+
+    | SNClose
+  deriving Show
+
+
 {- | Negative chs are service channels -}
 isServiceCh :: 
     LocalChan ->

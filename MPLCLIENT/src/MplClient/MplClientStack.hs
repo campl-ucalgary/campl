@@ -8,9 +8,7 @@ import Optics
 import Control.Monad.Reader
 import Data.Coerce
 
-import MplMach.MplMachServices
 import MplMach.MplMachTypes
-
 
 newtype MplClient r a = MplClient (ReaderT r IO a)
   deriving 

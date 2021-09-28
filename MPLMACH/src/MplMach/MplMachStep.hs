@@ -8,10 +8,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE CPP #-}
-module MplMach.MplMachStep 
-    ( mplMachSteps
-    , serviceManager ) 
-    where
+module MplMach.MplMachStep where
 
 import Optics
 import Data.Coerce
@@ -765,24 +762,6 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
     stectranslation = stec ^. translation
 
 -- * Services 
-
-{- A networked service instruction -}
-data SNInstr
-    = SNInt Int
-    | SNChar Char
-    | SNString String
-
-    | SNGetInt
-    | SNPutInt 
-
-    | SNGetChar
-    | SNPutChar
-
-    | SNGetString
-    | SNPutString
-
-    | SNClose
-  deriving Show
 
 
 serviceManager :: 

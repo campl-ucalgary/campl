@@ -6,8 +6,13 @@ import Optics
 
 import MplClient.Flags
 import MplClient.MplClientStack
-import MplMach.MplMachServices
 import MplClient.MplClientException
+
+-- We need the appropraite service types and functions...
+-- unfortunately, we awkwardly crammed everything in MplMachStep
+-- to avoid mutual recursion things.
+import MplMach.MplMachTypes
+import MplMach.MplMachStep
 
 import Network.Socket
 import Network.Socket.ByteString
