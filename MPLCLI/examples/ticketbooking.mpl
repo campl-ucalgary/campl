@@ -103,7 +103,7 @@ where
 
 -- | time in seconds for the time out of the clients
 fun tIMEOUT :: -> Int  =
-    -> 5 * 1000000
+    -> 15 * 1000000
 
 defn
     fun showInt :: Int -> [Char] =

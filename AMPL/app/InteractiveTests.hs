@@ -52,7 +52,7 @@ codataMain =
                 , [iConst (VInt 100), iAccess 0, iAddInt, iRet]     -- 1
                 , [iConst (VInt 200), iAccess 0, iAddInt, iRet]     -- 2
                 ]
-        , iDest (CaseIx 2) 1
+        , iDest (ConsIx 2) 1
         ]
 sequentialCodataTest = do
     svs <- genServicesChannelManagerAndStream [] []

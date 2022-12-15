@@ -1,10 +1,10 @@
 cabal-version: 1.18
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f6a08623e8b62534285a0fdee1ff09980eb983e7698f8c94f385dce1ba52b298
+-- hash: 7d3c0d2ded6db7cea65ef1675c599e2c8c327e0aaedd8e3a8dbf67a8793b6d28
 
 name:           AMPLASM
 version:        0.1.0.0
@@ -53,6 +53,8 @@ library
       Paths_AMPLASM
   hs-source-dirs:
       src
+  build-tools:
+      alex
   build-depends:
       AMPL
     , GenericPretty
@@ -74,6 +76,8 @@ executable amplasm
   hs-source-dirs:
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-tools:
+      alex
   build-depends:
       AMPL
     , AMPLASM
@@ -97,6 +101,8 @@ test-suite AMPLASM-test
   hs-source-dirs:
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-tools:
+      alex
   build-depends:
       AMPL
     , AMPLASM

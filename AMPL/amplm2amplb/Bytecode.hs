@@ -254,7 +254,7 @@ translateSequential (IEq ) = emit $ BI B_AM_EQ
 translateSequential (ILeq) = emit $ BI B_AM_LE
 
 
-translateSequential (ICons (CaseIx consIdx) nargs) = do
+translateSequential (ICons (ConsIx consIdx) nargs) = do
     ret <- emit $ BI B_AM_CONS
     emit $ BIdx $ fromIntegral consIdx
     emit $ BU $ fromIntegral nargs
@@ -293,7 +293,7 @@ translateSequential (IRec entryInstructions) = let
         return ret
 
 
-translateSequential (IDest (CaseIx idx) nargs) = do
+translateSequential (IDest (ConsIx idx) nargs) = do
         ret <- emit $ BI B_AM_DEST
         emit $ BIdx $ fromIntegral idx
         emit $ BU $ fromIntegral nargs

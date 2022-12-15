@@ -1200,6 +1200,16 @@ sOpenTerm chlkup = void $ do
     hn <- gview serviceHostName
     pn <- gview servicePortName
     liftIO $ spawnCommand $ concat
+        -- [ "open -na \"alacritty\" --args  -e "
+        -- -- , "'"
+        -- , "mpl-client"
+        -- , " --hostname=" ++ show hn
+        -- , " --port=" ++ show pn
+        -- , " --service-ch=" ++ show (show $ coerce @ServiceCh @Int svch)
+        -- -- , "; read"
+        -- -- , "'"
+        -- ]
+	
         [ "alacritty -e "
         -- , "'"
         , "mpl-client"

@@ -2,12 +2,12 @@
 
     - Two guys are asking for a memory cell 
 
-    - Whoever asks first gets the memory cell... Then, gets to determine if he can ge tthe seat that he wants.
+    - Whoever asks first gets the memory cell... Then, gets to determine if he can get the seat that he wants.
 
     - If two people book the same seat, one after another, just one guy can sit there.
 
 
-e.g. memory cell with just two seats.. Whoever books taht seat first gets the seat, or just one seat will do to start with 
+e.g. memory cell with just two seats.. Whoever books that seat first gets the seat, or just one seat will do to start with 
     (for the memory cell)
 
 Then, we can hopefully elaborate on that...

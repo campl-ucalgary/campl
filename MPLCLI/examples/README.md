@@ -1,3 +1,5 @@
+
+stack exec -- mpl --run <file.mpl>
 # Examples
 This folder contains some more significant examples of some MPL programs.
 

@@ -55,16 +55,21 @@ newtype FunID = FunID Word  -- function id
     deriving anyclass Out
     deriving newtype Enum
 
--- | an infinite stream of words. Useful for generating things with CaseIx
+-- | an infinite stream of words. Useful for generating things with ConsIx
 wordStream :: Stream Word
 wordStream = Stream.iterate succ 0
 
 -- indexing constructors...
-newtype CaseIx = CaseIx Word
+newtype ConsIx = ConsIx Word
     deriving (Show, Read, Eq, Ord, Ix, Generic, Typeable)
     deriving anyclass Out
     deriving newtype Enum
 
+-- indexing codata destructors...
+newtype DesIx = DesIx Word
+    deriving (Show, Read, Eq, Ord, Ix, Generic, Typeable)
+    deriving anyclass Out
+    deriving newtype Enum
 
 -- indexing codata destructors...
 newtype TupleIx = TupleIx Word
@@ -211,10 +216,8 @@ composeTranslationWithLocalTranslationMapping as bs = foldr f g bs as
 
 -- | restrict translations to certain LocalChannel ids
 restrictTranslation :: 
-    -- | List of local channel ids to restrict the translations to
-    [LocalChanID] -> 
-    -- | translations to be restricted
-    [Translation] -> 
+    [LocalChanID] -> -- ^ List of local channel ids to restrict the translations to
+    [Translation] -> -- ^ translations to be restricted
     [Translation]
 restrictTranslation lcls = filter (\(p, (lc, gc)) -> lc `elem` lcls)
 
@@ -263,13 +266,13 @@ data SequentialInstr =
     | IAppend
 
     -- data instructions...
-    | ICons CaseIx Word 
+    | ICons ConsIx Word 
         -- pushes the i'th constructor onto the stack with the top n elements in the stack
-    | ICase (Array CaseIx [Instr])
+    | ICase (Array ConsIx [Instr])
 
     -- Codata instructions
-    | IRec (Array CaseIx [Instr]) -- create a record on the stack
-    | IDest CaseIx Word
+    | IRec (Array DesIx [Instr]) -- create a record on the stack
+    | IDest DesIx Word
         -- destructs the record by choosing the ith funciton closure with the top n elements of the stack
 
     -- Unused... (just copied because Prashant had it)
@@ -327,21 +330,21 @@ iDivInt = SequentialInstr IDivInt
 iModInt :: Instr
 iModInt = SequentialInstr IModInt
 
-iCons :: CaseIx -> Word -> Instr
+iCons :: ConsIx -> Word -> Instr
 iCons ix n = SequentialInstr (ICons ix n)
 
 iCase :: [[Instr]] -> Instr
-iCase [] = SequentialInstr (ICase (listArray (coerce (1 :: Word) :: CaseIx, coerce (0 :: Word) :: CaseIx) []))
+iCase [] = SequentialInstr (ICase (listArray (coerce (1 :: Word) :: ConsIx, coerce (0 :: Word) :: ConsIx) []))
 iCase cs = SequentialInstr 
-    (ICase (listArray (coerce (0 :: Word) :: CaseIx, coerce (genericLength cs - 1 :: Word) :: CaseIx) cs))
+    (ICase (listArray (coerce (0 :: Word) :: ConsIx, coerce (genericLength cs - 1 :: Word) :: ConsIx) cs))
 
 
 iRec :: [[Instr]] -> Instr
-iRec [] = SequentialInstr (IRec (listArray (coerce (1 :: Word) :: CaseIx, coerce (0 :: Word) :: CaseIx) []))
+iRec [] = SequentialInstr (IRec (listArray (coerce (1 :: Word) :: DesIx, coerce (0 :: Word) :: DesIx) []))
 iRec cs = SequentialInstr 
-    (IRec (listArray (coerce (0 :: Word) :: CaseIx, coerce (genericLength cs - 1 :: Word) :: CaseIx) cs))
+    (IRec (listArray (coerce (0 :: Word) :: DesIx, coerce (genericLength cs - 1 :: Word) :: DesIx) cs))
 
-iDest :: CaseIx -> Word -> Instr
+iDest :: DesIx -> Word -> Instr
 iDest ix n = SequentialInstr (IDest (coerce ix) n)
 
 iTuple :: Word -> Instr
@@ -368,7 +371,6 @@ iToInt = SequentialInstr IToInt
 iAppend :: Instr
 iAppend = SequentialInstr IAppend
 
-
 iErrorMsg :: String -> Instr
 iErrorMsg = SequentialInstr . IErrorMsg
 
@@ -383,8 +385,8 @@ data Val =
     | VTuple (Array TupleIx Val)
 
     -- User defined data types..
-    | VCons (CaseIx, [Val])
-    | VRec (Array CaseIx [Instr], [Val])
+    | VCons (ConsIx, [Val])
+    | VRec (Array DesIx [Instr], [Val])
     deriving (Show, Read, Eq, Generic, Out, Typeable)
 
 -- | a printer for val to string -- mainly used for printing things
