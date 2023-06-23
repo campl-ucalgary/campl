@@ -15,6 +15,7 @@ import MplPasses.Parser.ParseErrors
 import MplPasses.Parser.ParseUtils 
 import MplPasses.Parser.ParseMplType 
 import MplPasses.Parser.ParseMplPattern 
+import MplPasses.Parser.MacroRemover
 
 import Debug.Trace
 import Control.Monad.Writer
@@ -43,6 +44,7 @@ runParse' =
     . runWriter 
     . runExceptT 
     . runParse
+    . MplPasses.Parser.MacroRemover.removeMacros -- Gets rid of 'on _ do _' syntax.
 
 -- | Parses an Mpl program
 runParse :: BnfcParse B.MplProg (MplProg MplParsed)
@@ -415,6 +417,8 @@ parseBnfcCmd (B.PROCESS_HCASE cxt ident phrases) = do
         return $ ((), toChIdentP uident, cmds)
 parseBnfcCmd (B.PROCESS_HPUT cxt s t) = do
     return $ _CHPut # (coerce $ toNameOcc cxt, toChIdentP s, toChIdentP t)
+
+
 
 parseBnfcCmd (B.PROCESS_SPLIT cxt s chs) = do
     let chs' = map f chs in case chs' of

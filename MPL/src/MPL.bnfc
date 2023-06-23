@@ -382,6 +382,18 @@ PROCESS_PUT   .   ProcessCommand ::= Put Expr "on" PIdent ;
 PROCESS_HCASE .   ProcessCommand ::= HCase PIdent "of" "{" [HCasePhrase] "}";
 PROCESS_HPUT  .   ProcessCommand ::= HPut UIdent "on" PIdent ;
 
+-----------------------------
+-- Syntax for 'on channel do x,y,z'
+
+PROCESS_ON . ProcessCommand ::= "on" PIdent "do" "{" [OnPhrase] "}";
+
+ON_PUT  . OnPhrase ::= Put Expr;
+ON_GET  . OnPhrase ::= Get Pattern;
+ON_HPUT . OnPhrase ::= HPut UIdent;
+separator OnPhrase ";" ;
+
+-----------------------------
+
 PROCESS_SPLIT . ProcessCommand ::= Split PIdent "into" [ SplitChannel ] ;
 PROCESS_FORK  . ProcessCommand ::= Fork PIdent "as" "{" [ ForkPhrase ] "}" ;
 

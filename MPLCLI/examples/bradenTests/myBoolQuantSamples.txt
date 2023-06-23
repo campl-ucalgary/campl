@@ -1,0 +1,32 @@
+Here are some sample equations, to help clarify the syntax. You can copy-paste them to see how they are interpreted.
+
+
+A a A b A c A d A e & & & & a b c d e
+
+A a A b A c A d & | a b | c d
+
+A a a
+
+E a a
+
+A a | a ! a
+
+E a & a ! a
+
+| c d
+^^ This will fail, since 'c' and 'd' need either a 'for all' or a 'there exists' qualifier first.
+
+! A a a
+^^ This will fail, since the 'for all' and 'there exists' need to be before the equation, not inside.
+
+"For all" means the following claim holds, regardless of if the variable is true or false
+"There exists" means that the following claim holds for at least one state of the variable.
+
+The types of the operators:
+A :: Var -> Equation -> Equation
+E :: Var -> Equation -> Equation
+! :: Equation -> Equation
+& :: Equation -> Equation -> Equation
+| :: Equation -> Equation -> Equation
+
+Because we are using prefix notation, and all operators have fixed numbers of inputs, brackets are not needed. They can be inferred from the context. See 'polish notation' for an explaination of prefix notation.

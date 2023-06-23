@@ -191,7 +191,7 @@ data ProcessCommand
     | PROCESS_PUT Put Expr PIdent
     | PROCESS_HCASE HCase PIdent [HCasePhrase]
     | PROCESS_HPUT HPut UIdent PIdent
-    | PROCESS_ON PIdent [OnPhrase]
+    | PROCESS_ON [OnPhrase]
     | PROCESS_SPLIT Split PIdent [SplitChannel]
     | PROCESS_FORK Fork PIdent [ForkPhrase]
     | PROCESS_ID PIdent ChId PIdent

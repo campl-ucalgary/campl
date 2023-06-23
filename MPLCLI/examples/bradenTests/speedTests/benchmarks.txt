@@ -1,0 +1,22 @@
+1002523×1002523×5 = 5025261827645
+
+primePlus:
+	Ans : 1
+	Tree: 25
+
+primeFull: (with automatic exit)
+	Ans : 1
+	Tree: 1
+
+
+---------------------------------------------------------------------------
+
+1002523×1002523 = 1005052365529
+
+primePlus:
+	Ans : 9
+	Tree: 14
+
+primeFull: (with automatic exit)
+	Ans : 17
+	Tree: 17

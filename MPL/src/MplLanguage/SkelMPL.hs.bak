@@ -340,7 +340,7 @@ transProcessCommand x = case x of
   MplLanguage.AbsMPL.PROCESS_PUT put expr pident -> failure x
   MplLanguage.AbsMPL.PROCESS_HCASE hcase pident hcasephrases -> failure x
   MplLanguage.AbsMPL.PROCESS_HPUT hput uident pident -> failure x
-  MplLanguage.AbsMPL.PROCESS_ON pident onphrases -> failure x
+  MplLanguage.AbsMPL.PROCESS_ON onphrases -> failure x
   MplLanguage.AbsMPL.PROCESS_SPLIT split pident splitchannels -> failure x
   MplLanguage.AbsMPL.PROCESS_FORK fork pident forkphrases -> failure x
   MplLanguage.AbsMPL.PROCESS_ID pident1 chid pident2 -> failure x

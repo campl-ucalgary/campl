@@ -1,10 +1,10 @@
 cabal-version: 1.18
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.35.1.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e5daf36f5fb6648e598d1063d4887cb4b6033bbed560774573b689ab450c2c9c
+-- hash: 4e041f5ad240045ccef2d4d6de2b2abf3ca71730a038cd71edf8dd66c33487d3
 
 name:           MPL
 version:        0.1.0.0
@@ -59,6 +59,7 @@ library
       MplPasses.LambdaLifter.LambdaLift
       MplPasses.LambdaLifter.LambdaLiftUtil
       MplPasses.Parser.BnfcParse
+      MplPasses.Parser.MacroRemover
       MplPasses.Parser.Parse
       MplPasses.Parser.ParseErrors
       MplPasses.Parser.ParseMplPattern

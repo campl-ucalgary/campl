@@ -520,7 +520,7 @@ instance Print MplLanguage.AbsMPL.ProcessCommand where
     MplLanguage.AbsMPL.PROCESS_PUT put expr pident -> prPrec i 0 (concatD [prt 0 put, prt 0 expr, doc (showString "on"), prt 0 pident])
     MplLanguage.AbsMPL.PROCESS_HCASE hcase pident hcasephrases -> prPrec i 0 (concatD [prt 0 hcase, prt 0 pident, doc (showString "of"), doc (showString "{"), prt 0 hcasephrases, doc (showString "}")])
     MplLanguage.AbsMPL.PROCESS_HPUT hput uident pident -> prPrec i 0 (concatD [prt 0 hput, prt 0 uident, doc (showString "on"), prt 0 pident])
-    MplLanguage.AbsMPL.PROCESS_ON pident onphrases -> prPrec i 0 (concatD [doc (showString "on"), prt 0 pident, doc (showString "do"), doc (showString "{"), prt 0 onphrases, doc (showString "}")])
+    MplLanguage.AbsMPL.PROCESS_ON onphrases -> prPrec i 0 (concatD [doc (showString "nylon"), doc (showString "do"), doc (showString "{"), prt 0 onphrases, doc (showString "}")])
     MplLanguage.AbsMPL.PROCESS_SPLIT split pident splitchannels -> prPrec i 0 (concatD [prt 0 split, prt 0 pident, doc (showString "into"), prt 0 splitchannels])
     MplLanguage.AbsMPL.PROCESS_FORK fork pident forkphrases -> prPrec i 0 (concatD [prt 0 fork, prt 0 pident, doc (showString "as"), doc (showString "{"), prt 0 forkphrases, doc (showString "}")])
     MplLanguage.AbsMPL.PROCESS_ID pident1 chid pident2 -> prPrec i 0 (concatD [prt 0 pident1, prt 0 chid, prt 0 pident2])
