@@ -5,12 +5,12 @@ module MplPasses.Parser.MacroRemover (removeMacros) where
 import MplPasses.Parser.BnfcParse as B
 
 -- A module which resolves the 'on channel do x,y,z' syntax.
--- This is done at the start of the parser stage in order to prevent the need to duplicate code
--- (Since 'on _ do _' is effectively just a macro.)
+-- This is done by turning every instance of this syntax into an instance of the standard syntax (macro expansion)
+-- 'on _ do _' is just a macro.
 
--- The way it does this is to replace every node "PROCESS_ON" with a series of nodes corresponding to
+-- The way this file does this is to replace every node "PROCESS_ON" with a series of nodes corresponding to
 -- each of the sub-instructions. This substitution means that we don't have to deal with this structure
--- any other place in the code, which is nice. In exchange, whenever the AST is modified, this will also need to be.
+-- any other place in the project, which is nice. In exchange, whenever the AST rules are modified, this will also need to be.
 -- (Though this code can also be used for other similar changes in the AST)
 
 -- This code is essentially a map, which turns PROCESS_ON nodes into a list of nodes corresponding to each node in the block.
@@ -62,8 +62,8 @@ remBlock :: ProcessCommandsBlock -> ProcessCommandsBlock
 remBlock (PROCESS_COMMANDS_DO_BLOCK cs) =
     PROCESS_COMMANDS_DO_BLOCK (remCs cs)
 remBlock (PROCESS_COMMANDS_SINGLE_COMMAND_BLOCK (PROCESS_ON id ps)) =
-    PROCESS_COMMANDS_DO_BLOCK (onUnwrap id ps) -- special case: a single 'on' block becomes a 'do' block.
-remBlock (PROCESS_COMMANDS_SINGLE_COMMAND_BLOCK c) =
+    PROCESS_COMMANDS_DO_BLOCK (remCs (onUnwrap id ps)) -- special case: a single 'on' block becomes a 'do' block.
+remBlock (PROCESS_COMMANDS_SINGLE_COMMAND_BLOCK c) = -- single command, not an 'on' block.
     PROCESS_COMMANDS_SINGLE_COMMAND_BLOCK (remC c)
 
 -- Remove macros from a list of commands. Everything else is basically just tree traversal;
@@ -71,12 +71,14 @@ remBlock (PROCESS_COMMANDS_SINGLE_COMMAND_BLOCK c) =
 remCs :: [ProcessCommand] -> [ProcessCommand]
 remCs [] = []
 remCs ((PROCESS_ON id ps):rs) =
-    (onUnwrap id ps) ++ (remCs rs) -- Remove macro
+    remCs ((onUnwrap id ps) ++ rs) -- Remove macro
 remCs (r:rs) =
     (remC r) : (remCs rs) -- handle this case then go to the next.
 
 
--- This function removes macros from a single command
+-- This function removes macros from a single command.
+-- Note that 'PROCESS_ON' is not included here, as it returns a list,
+-- and a list needs to be handled separately (since that changes the structure of the AST)
 remC :: ProcessCommand -> ProcessCommand
 remC (PROCESS_HCASE a b ps) =
     PROCESS_HCASE a b (map remHCP ps)
@@ -125,6 +127,7 @@ remPSP (PROCESS_SWITCH_PHRASE a block) =
     PROCESS_SWITCH_PHRASE a (remBlock block)
 
 -- Unwraps an 'on _ do x,y,z' to a series of discrete commands.
+-- Note: those commands may also need to be unwrapped, so be sure to call remCs on the result of onUnwrap!
 onUnwrap :: PIdent -> [OnPhrase] -> [ProcessCommand]
 onUnwrap channel [] = []
 onUnwrap channel ((ON_PUT p expr):rs) =
@@ -133,3 +136,13 @@ onUnwrap channel ((ON_GET g patt):rs) =
     (PROCESS_GET g patt channel) : (onUnwrap channel rs)
 onUnwrap channel ((ON_HPUT h hand):rs) =
     (PROCESS_HPUT h hand channel) : (onUnwrap channel rs)
+onUnwrap channel ((ON_HCASE h phrases):rs) =
+    (PROCESS_HCASE h channel phrases) : (onUnwrap channel rs)
+onUnwrap channel ((ON_FORK h phrases):rs) =
+    (PROCESS_FORK h channel phrases) : (onUnwrap channel rs)
+onUnwrap channel ((ON_SPLIT h phrases):rs) =
+    (PROCESS_SPLIT h channel phrases) : (onUnwrap channel rs)
+onUnwrap channel ((ON_CLOSE h):rs) =
+    (PROCESS_CLOSE h channel) : (onUnwrap channel rs)
+onUnwrap channel ((ON_HALT h):rs) =
+    (PROCESS_HALT h channel) : (onUnwrap channel rs)

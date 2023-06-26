@@ -45,22 +45,21 @@ import MplLanguage.LexMPL
   'into'           { PT _ (TS _ 20)            }
   'let'            { PT _ (TS _ 21)            }
   'neg'            { PT _ (TS _ 22)            }
-  'nylon'          { PT _ (TS _ 23)            }
-  'of'             { PT _ (TS _ 24)            }
-  'on'             { PT _ (TS _ 25)            }
-  'plug'           { PT _ (TS _ 26)            }
-  'potato'         { PT _ (TS _ 27)            }
-  'proc'           { PT _ (TS _ 28)            }
-  'protocol'       { PT _ (TS _ 29)            }
-  'race'           { PT _ (TS _ 30)            }
-  'switch'         { PT _ (TS _ 31)            }
-  'then'           { PT _ (TS _ 32)            }
-  'unfold'         { PT _ (TS _ 33)            }
-  'where'          { PT _ (TS _ 34)            }
-  'with'           { PT _ (TS _ 35)            }
-  '{'              { PT _ (TS _ 36)            }
-  '|'              { PT _ (TS _ 37)            }
-  '}'              { PT _ (TS _ 38)            }
+  'of'             { PT _ (TS _ 23)            }
+  'on'             { PT _ (TS _ 24)            }
+  'plug'           { PT _ (TS _ 25)            }
+  'potato'         { PT _ (TS _ 26)            }
+  'proc'           { PT _ (TS _ 27)            }
+  'protocol'       { PT _ (TS _ 28)            }
+  'race'           { PT _ (TS _ 29)            }
+  'switch'         { PT _ (TS _ 30)            }
+  'then'           { PT _ (TS _ 31)            }
+  'unfold'         { PT _ (TS _ 32)            }
+  'where'          { PT _ (TS _ 33)            }
+  'with'           { PT _ (TS _ 34)            }
+  '{'              { PT _ (TS _ 35)            }
+  '|'              { PT _ (TS _ 36)            }
+  '}'              { PT _ (TS _ 37)            }
   L_PInteger       { PT _ (T_PInteger _)       }
   L_PDouble        { PT _ (T_PDouble _)        }
   L_PChar          { PT _ (T_PChar _)          }
@@ -561,7 +560,7 @@ ProcessCommand
   | Put Expr 'on' PIdent { MplLanguage.AbsMPL.PROCESS_PUT $1 $2 $4 }
   | HCase PIdent 'of' '{' ListHCasePhrase '}' { MplLanguage.AbsMPL.PROCESS_HCASE $1 $2 $5 }
   | HPut UIdent 'on' PIdent { MplLanguage.AbsMPL.PROCESS_HPUT $1 $2 $4 }
-  | 'nylon' 'do' '{' ListOnPhrase '}' { MplLanguage.AbsMPL.PROCESS_ON $4 }
+  | 'on' PIdent 'do' '{' ListOnPhrase '}' { MplLanguage.AbsMPL.PROCESS_ON $2 $5 }
   | Split PIdent 'into' ListSplitChannel { MplLanguage.AbsMPL.PROCESS_SPLIT $1 $2 $4 }
   | Fork PIdent 'as' '{' ListForkPhrase '}' { MplLanguage.AbsMPL.PROCESS_FORK $1 $2 $5 }
   | PIdent ChId PIdent { MplLanguage.AbsMPL.PROCESS_ID $1 $2 $3 }

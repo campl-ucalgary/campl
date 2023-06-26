@@ -764,7 +764,8 @@ mplAssembleCmd = cata go
 
                         _ -> return [ Asm.CHPut () (Asm.TypeAndSpec (toAsmIdP tp) (toAsmIdP phr)) (toAsmIdP ch) ]
 
-                _ -> return [ Asm.CHPut () (Asm.TypeAndSpec (toAsmIdP tp) (toAsmIdP phr)) (toAsmIdP ch) ]
+                -- This case is redundant with the previous case.
+                -- _ -> return [ Asm.CHPut () (Asm.TypeAndSpec (toAsmIdP tp) (toAsmIdP phr)) (toAsmIdP ch) ]
 
         CSplitF _ ch (lch, rch) -> return [Asm.CSplit () (toAsmIdP ch) (toAsmIdP lch, toAsmIdP rch) ]
         CForkF _ ch ((ch0, withs0, cmds0), (ch1, withs1, cmds1)) -> do

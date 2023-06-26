@@ -536,6 +536,11 @@ instance Print MplLanguage.AbsMPL.OnPhrase where
     MplLanguage.AbsMPL.ON_PUT put expr -> prPrec i 0 (concatD [prt 0 put, prt 0 expr])
     MplLanguage.AbsMPL.ON_GET get pattern_ -> prPrec i 0 (concatD [prt 0 get, prt 0 pattern_])
     MplLanguage.AbsMPL.ON_HPUT hput uident -> prPrec i 0 (concatD [prt 0 hput, prt 0 uident])
+    MplLanguage.AbsMPL.ON_HCASE hcase hcasephrases -> prPrec i 0 (concatD [prt 0 hcase, doc (showString "of"), doc (showString "{"), prt 0 hcasephrases, doc (showString "}")])
+    MplLanguage.AbsMPL.ON_FORK fork forkphrases -> prPrec i 0 (concatD [prt 0 fork, doc (showString "as"), doc (showString "{"), prt 0 forkphrases, doc (showString "}")])
+    MplLanguage.AbsMPL.ON_SPLIT split splitchannels -> prPrec i 0 (concatD [prt 0 split, doc (showString "into"), prt 0 splitchannels])
+    MplLanguage.AbsMPL.ON_CLOSE close -> prPrec i 0 (concatD [prt 0 close])
+    MplLanguage.AbsMPL.ON_HALT halt -> prPrec i 0 (concatD [prt 0 halt])
 
 instance Print [MplLanguage.AbsMPL.OnPhrase] where
   prt _ [] = concatD []
