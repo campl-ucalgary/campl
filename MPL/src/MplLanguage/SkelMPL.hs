@@ -356,6 +356,11 @@ transOnPhrase x = case x of
   MplLanguage.AbsMPL.ON_PUT put expr -> failure x
   MplLanguage.AbsMPL.ON_GET get pattern_ -> failure x
   MplLanguage.AbsMPL.ON_HPUT hput uident -> failure x
+  MplLanguage.AbsMPL.ON_HCASE hcase hcasephrases -> failure x
+  MplLanguage.AbsMPL.ON_FORK fork forkphrases -> failure x
+  MplLanguage.AbsMPL.ON_SPLIT split splitchannels -> failure x
+  MplLanguage.AbsMPL.ON_CLOSE close -> failure x
+  MplLanguage.AbsMPL.ON_HALT halt -> failure x
 
 transHCasePhrase :: MplLanguage.AbsMPL.HCasePhrase -> Result
 transHCasePhrase x = case x of

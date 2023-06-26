@@ -204,7 +204,14 @@ data ProcessCommand
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data OnPhrase
-    = ON_PUT Put Expr | ON_GET Get Pattern | ON_HPUT HPut UIdent
+    = ON_PUT Put Expr
+    | ON_GET Get Pattern
+    | ON_HPUT HPut UIdent
+    | ON_HCASE HCase [HCasePhrase]
+    | ON_FORK Fork [ForkPhrase]
+    | ON_SPLIT Split [SplitChannel]
+    | ON_CLOSE Close
+    | ON_HALT Halt
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data HCasePhrase = HCASE_PHRASE UIdent ProcessCommandsBlock

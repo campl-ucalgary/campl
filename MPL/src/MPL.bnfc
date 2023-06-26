@@ -387,9 +387,14 @@ PROCESS_HPUT  .   ProcessCommand ::= HPut UIdent "on" PIdent ;
 
 PROCESS_ON . ProcessCommand ::= "on" PIdent "do" "{" [OnPhrase] "}";
 
-ON_PUT  . OnPhrase ::= Put Expr;
-ON_GET  . OnPhrase ::= Get Pattern;
-ON_HPUT . OnPhrase ::= HPut UIdent;
+ON_PUT    .  OnPhrase ::= Put Expr;
+ON_GET    .  OnPhrase ::= Get Pattern;
+ON_HPUT   .  OnPhrase ::= HPut UIdent;
+ON_HCASE  .  OnPhrase ::= HCase "of" "{" [HCasePhrase] "}";
+ON_FORK   .  OnPhrase ::= Fork "as" "{" [ ForkPhrase ] "}" ;
+ON_SPLIT  .  OnPhrase ::= Split "into" [ SplitChannel ] ;
+ON_CLOSE  .  OnPhrase ::= Close;
+ON_HALT   .  OnPhrase ::= Halt;
 separator OnPhrase ";" ;
 
 -----------------------------

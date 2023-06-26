@@ -350,6 +350,11 @@ All other symbols are terminals.
   | //OnPhrase// | -> | //Put// //Expr//
   |  |  **|**  | //Get// //Pattern//
   |  |  **|**  | //HPut// //UIdent//
+  |  |  **|**  | //HCase// ``of`` ``{`` //[HCasePhrase]// ``}``
+  |  |  **|**  | //Fork// ``as`` ``{`` //[ForkPhrase]// ``}``
+  |  |  **|**  | //Split// ``into`` //[SplitChannel]//
+  |  |  **|**  | //Close//
+  |  |  **|**  | //Halt//
   | //[OnPhrase]// | -> | **eps**
   |  |  **|**  | //OnPhrase//
   |  |  **|**  | //OnPhrase// ``;`` //[OnPhrase]//

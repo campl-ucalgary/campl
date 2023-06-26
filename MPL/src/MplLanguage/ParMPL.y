@@ -576,6 +576,11 @@ OnPhrase
   : Put Expr { MplLanguage.AbsMPL.ON_PUT $1 $2 }
   | Get Pattern { MplLanguage.AbsMPL.ON_GET $1 $2 }
   | HPut UIdent { MplLanguage.AbsMPL.ON_HPUT $1 $2 }
+  | HCase 'of' '{' ListHCasePhrase '}' { MplLanguage.AbsMPL.ON_HCASE $1 $4 }
+  | Fork 'as' '{' ListForkPhrase '}' { MplLanguage.AbsMPL.ON_FORK $1 $4 }
+  | Split 'into' ListSplitChannel { MplLanguage.AbsMPL.ON_SPLIT $1 $3 }
+  | Close { MplLanguage.AbsMPL.ON_CLOSE $1 }
+  | Halt { MplLanguage.AbsMPL.ON_HALT $1 }
 
 ListOnPhrase :: { [MplLanguage.AbsMPL.OnPhrase] }
 ListOnPhrase
