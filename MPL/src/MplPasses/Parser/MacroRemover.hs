@@ -130,19 +130,19 @@ remPSP (PROCESS_SWITCH_PHRASE a block) =
 -- Note: those commands may also need to be unwrapped, so be sure to call remCs on the result of onUnwrap!
 onUnwrap :: PIdent -> [OnPhrase] -> [ProcessCommand]
 onUnwrap channel [] = []
-onUnwrap channel ((ON_PUT p expr):rs) =
-    (PROCESS_PUT p expr channel) : (onUnwrap channel rs)
-onUnwrap channel ((ON_GET g patt):rs) =
-    (PROCESS_GET g patt channel) : (onUnwrap channel rs)
-onUnwrap channel ((ON_HPUT h hand):rs) =
-    (PROCESS_HPUT h hand channel) : (onUnwrap channel rs)
-onUnwrap channel ((ON_HCASE h phrases):rs) =
-    (PROCESS_HCASE h channel phrases) : (onUnwrap channel rs)
-onUnwrap channel ((ON_FORK h phrases):rs) =
-    (PROCESS_FORK h channel phrases) : (onUnwrap channel rs)
-onUnwrap channel ((ON_SPLIT h phrases):rs) =
-    (PROCESS_SPLIT h channel phrases) : (onUnwrap channel rs)
-onUnwrap channel ((ON_CLOSE h):rs) =
-    (PROCESS_CLOSE h channel) : (onUnwrap channel rs)
-onUnwrap channel ((ON_HALT h):rs) =
-    (PROCESS_HALT h channel) : (onUnwrap channel rs)
+onUnwrap channel@(PIdent (_,chan)) ((ON_PUT p@(Put (coords,_)) expr):rs) =
+    (PROCESS_PUT p expr (PIdent (coords,chan))) : (onUnwrap channel rs)
+onUnwrap channel@(PIdent (_,chan)) ((ON_GET g@(Get (coords,_)) patt):rs) =
+    (PROCESS_GET g patt (PIdent (coords,chan))) : (onUnwrap channel rs)
+onUnwrap channel@(PIdent (_,chan)) ((ON_HPUT h@(HPut (coords,_)) hand):rs) =
+    (PROCESS_HPUT h hand (PIdent (coords,chan))) : (onUnwrap channel rs)
+onUnwrap channel@(PIdent (_,chan)) ((ON_HCASE h@(HCase (coords,_)) phrases):rs) =
+    (PROCESS_HCASE h (PIdent (coords,chan)) phrases) : (onUnwrap channel rs)
+onUnwrap channel@(PIdent (_,chan)) ((ON_FORK h@(Fork (coords,_)) phrases):rs) =
+    (PROCESS_FORK h (PIdent (coords,chan)) phrases) : (onUnwrap channel rs)
+onUnwrap channel@(PIdent (_,chan)) ((ON_SPLIT h@(Split (coords,_)) phrases):rs) =
+    (PROCESS_SPLIT h (PIdent (coords,chan)) phrases) : (onUnwrap channel rs)
+onUnwrap channel@(PIdent (_,chan)) ((ON_CLOSE h@(Close (coords,_))):rs) =
+    (PROCESS_CLOSE h (PIdent (coords,chan))) : (onUnwrap channel rs)
+onUnwrap channel@(PIdent (_,chan)) ((ON_HALT h@(Halt (coords,_))):rs) =
+    (PROCESS_HALT h (PIdent (coords,chan))) : (onUnwrap channel rs)
