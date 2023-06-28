@@ -1,0 +1,35 @@
+The new 'on' syntax is a macro that allows for a channel name to be specified once, and used multiple times.
+
+For example:
+
+	on channelName do
+		get a
+		put a + 3
+		hput Listener
+
+Is equivalent to:
+
+	get a on channelName
+	put a + 3 on channelName
+	hput Listener on channelName
+
+'on channel do' is a process command, and can be used anywhere process commands are used.
+The 'on' block is automatically converted to a regular sequence of commands prior
+to other forms of AST traversal, so any non-parser errors related to 'on' blocks will
+display the sub-commands in their expanded forms.
+The valid sub-commands to be used within an 'on' block are as follows:
+
+    get <pattern>
+    put <value>
+    hput <handle>
+    hcase of
+        <handle> -> procBody
+        ...
+        <handle> -> procBody
+    fork as
+        <name1> -> procBody
+        <name2> -> procBody
+    split into <name1>,<name2>
+    close
+    halt
+    
