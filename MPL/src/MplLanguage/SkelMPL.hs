@@ -95,6 +95,30 @@ transInfixl8op :: MplLanguage.AbsMPL.Infixl8op -> Result
 transInfixl8op x = case x of
   MplLanguage.AbsMPL.Infixl8op string -> failure x
 
+transInfixU1op :: MplLanguage.AbsMPL.InfixU1op -> Result
+transInfixU1op x = case x of
+  MplLanguage.AbsMPL.InfixU1op string -> failure x
+
+transInfixU2op :: MplLanguage.AbsMPL.InfixU2op -> Result
+transInfixU2op x = case x of
+  MplLanguage.AbsMPL.InfixU2op string -> failure x
+
+transInfixU3op :: MplLanguage.AbsMPL.InfixU3op -> Result
+transInfixU3op x = case x of
+  MplLanguage.AbsMPL.InfixU3op string -> failure x
+
+transInfixU5op :: MplLanguage.AbsMPL.InfixU5op -> Result
+transInfixU5op x = case x of
+  MplLanguage.AbsMPL.InfixU5op string -> failure x
+
+transInfixU6op :: MplLanguage.AbsMPL.InfixU6op -> Result
+transInfixU6op x = case x of
+  MplLanguage.AbsMPL.InfixU6op string -> failure x
+
+transInfixU7op :: MplLanguage.AbsMPL.InfixU7op -> Result
+transInfixU7op x = case x of
+  MplLanguage.AbsMPL.InfixU7op string -> failure x
+
 transClose :: MplLanguage.AbsMPL.Close -> Result
 transClose x = case x of
   MplLanguage.AbsMPL.Close string -> failure x
@@ -230,13 +254,20 @@ transExpr x = case x of
   MplLanguage.AbsMPL.LET_EXPR letexprphrases expr -> failure x
   MplLanguage.AbsMPL.INFIXR0_EXPR expr1 colon expr2 -> failure x
   MplLanguage.AbsMPL.INFIXL1_EXPR expr1 infixlop expr2 -> failure x
+  MplLanguage.AbsMPL.INFIXU1_EXPR expr1 infixuop expr2 -> failure x
   MplLanguage.AbsMPL.INFIXL2_EXPR expr1 infixlop expr2 -> failure x
+  MplLanguage.AbsMPL.INFIXU2_EXPR expr1 infixuop expr2 -> failure x
   MplLanguage.AbsMPL.INFIXL3_EXPR expr1 infixlop expr2 -> failure x
+  MplLanguage.AbsMPL.INFIXU3_EXPR expr1 infixuop expr2 -> failure x
   MplLanguage.AbsMPL.INFIXL4_EXPR expr1 infixlop expr2 -> failure x
   MplLanguage.AbsMPL.INFIXL5_EXPR expr1 infixlop expr2 -> failure x
+  MplLanguage.AbsMPL.INFIXU5_EXPR expr1 infixuop expr2 -> failure x
   MplLanguage.AbsMPL.INFIXL6_EXPR expr1 infixlop expr2 -> failure x
+  MplLanguage.AbsMPL.INFIXU6_EXPR expr1 infixuop expr2 -> failure x
   MplLanguage.AbsMPL.INFIXR7_EXPR expr1 infixrop expr2 -> failure x
+  MplLanguage.AbsMPL.INFIXU7_EXPR expr1 infixuop expr2 -> failure x
   MplLanguage.AbsMPL.INFIXL8_EXPR expr1 infixlop expr2 -> failure x
+  MplLanguage.AbsMPL.INFIXU_SECT lbracket1 infixuop rbracket1 lbracket2 expr1 expr2 rbracket2 -> failure x
   MplLanguage.AbsMPL.LIST_EXPR lsquarebracket exprs rsquarebracket -> failure x
   MplLanguage.AbsMPL.VAR_EXPR pident -> failure x
   MplLanguage.AbsMPL.INT_EXPR pinteger -> failure x
@@ -254,6 +285,15 @@ transExpr x = case x of
   MplLanguage.AbsMPL.FUN_EXPR pident lbracket exprs rbracket -> failure x
   MplLanguage.AbsMPL.RECORD_EXPR lbracket recordexprphrases rbracket -> failure x
   MplLanguage.AbsMPL.BRACKETED_EXPR lbracket expr rbracket -> failure x
+
+transInfixUop :: MplLanguage.AbsMPL.InfixUop -> Result
+transInfixUop x = case x of
+  MplLanguage.AbsMPL.InfixUop1 infixuop -> failure x
+  MplLanguage.AbsMPL.InfixUop2 infixuop -> failure x
+  MplLanguage.AbsMPL.InfixUop3 infixuop -> failure x
+  MplLanguage.AbsMPL.InfixUop5 infixuop -> failure x
+  MplLanguage.AbsMPL.InfixUop6 infixuop -> failure x
+  MplLanguage.AbsMPL.InfixUop7 infixuop -> failure x
 
 transUnfoldExprPhrase :: MplLanguage.AbsMPL.UnfoldExprPhrase -> Result
 transUnfoldExprPhrase x = case x of
@@ -315,6 +355,8 @@ transFunctionDefn x = case x of
   MplLanguage.AbsMPL.INTERNAL_TYPED_FUNCTION_DEFN pident mpltype pattexprphrases -> failure x
   MplLanguage.AbsMPL.TYPED_FUNCTION_DEFN pident mpltypes mpltype pattexprphrases -> failure x
   MplLanguage.AbsMPL.FUNCTION_DEFN pident pattexprphrases -> failure x
+  MplLanguage.AbsMPL.TYPED_FUNCTION_DEFN_UINFIX lbracket infixuop rbracket mpltype1 mpltype2 mpltype3 pattexprphrases -> failure x
+  MplLanguage.AbsMPL.FUNCTION_DEFN_UINFIX lbracket infixuop rbracket pattexprphrases -> failure x
 
 transProcessDefn :: MplLanguage.AbsMPL.ProcessDefn -> Result
 transProcessDefn x = case x of

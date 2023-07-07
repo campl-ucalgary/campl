@@ -125,6 +125,30 @@ $d + \. $d + (e \- ? $d +)?
 \! \!
     { tok (eitherResIdent T_Infixl8op) }
 
+-- token InfixU1op
+\| [\# \$ \: \= \? \@ \\ \_ \| \~]*
+    { tok (eitherResIdent T_InfixU1op) }
+
+-- token InfixU2op
+\& [\# \$ \: \= \? \@ \\ \_ \| \~]*
+    { tok (eitherResIdent T_InfixU2op) }
+
+-- token InfixU3op
+[\! \< \>][\# \$ \: \= \? \@ \\ \_ \| \~]*
+    { tok (eitherResIdent T_InfixU3op) }
+
+-- token InfixU5op
+[\+ \-][\# \$ \: \= \? \@ \\ \_ \| \~]*
+    { tok (eitherResIdent T_InfixU5op) }
+
+-- token InfixU6op
+[\% \* \/][\# \$ \: \= \? \@ \\ \_ \| \~]*
+    { tok (eitherResIdent T_InfixU6op) }
+
+-- token InfixU7op
+\^ [\# \$ \: \= \? \@ \\ \_ \| \~]*
+    { tok (eitherResIdent T_InfixU7op) }
+
 -- token Close
 c l o s e
     { tok (eitherResIdent T_Close) }
@@ -214,6 +238,12 @@ data Tok
   | T_Infixl6op !String
   | T_Infixr7op !String
   | T_Infixl8op !String
+  | T_InfixU1op !String
+  | T_InfixU2op !String
+  | T_InfixU3op !String
+  | T_InfixU5op !String
+  | T_InfixU6op !String
+  | T_InfixU7op !String
   | T_Close !String
   | T_Halt !String
   | T_Get !String
@@ -309,6 +339,12 @@ tokenText t = case t of
   PT _ (T_Infixl6op s) -> s
   PT _ (T_Infixr7op s) -> s
   PT _ (T_Infixl8op s) -> s
+  PT _ (T_InfixU1op s) -> s
+  PT _ (T_InfixU2op s) -> s
+  PT _ (T_InfixU3op s) -> s
+  PT _ (T_InfixU5op s) -> s
+  PT _ (T_InfixU6op s) -> s
+  PT _ (T_InfixU7op s) -> s
   PT _ (T_Close s) -> s
   PT _ (T_Halt s) -> s
   PT _ (T_Get s) -> s

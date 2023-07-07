@@ -6,16 +6,11 @@ import MplPasses.Parser.BnfcParse as B
 
 -- A module which resolves the 'on channel do x,y,z' syntax.
 -- This is done by turning every instance of this syntax into an instance of the standard syntax (macro expansion)
--- 'on _ do _' is just a macro.
 
--- The way this file does this is to replace every node "PROCESS_ON" with a series of nodes corresponding to
--- each of the sub-instructions. This substitution means that we don't have to deal with this structure
--- any other place in the project, which is nice. In exchange, whenever the AST rules are modified, this will also need to be.
--- (Though this code can also be used for other similar changes in the AST)
+-- Additionally, it converts instances of user-defined infix operators into standard function calls,
+-- and turns user-defined infix operator definitions into standard function definitions.
+-- Finally, it turns sectioned function calls "(infixOperator)(a,b)" into standard function calls.
 
--- This code is essentially a map, which turns PROCESS_ON nodes into a list of nodes corresponding to each node in the block.
--- Most of the code is here because the AST is a giant mutually-recursive data structure, so mapping across it takes a lot of functions.
--- There are a couple special cases put in to make sure that the 'on' blocks are turned into multiple nodes, but apart from that, it's a regular map.
 
 removeMacros :: B.MplProg -> B.MplProg
 removeMacros (MPL_PROG ls) = MPL_PROG (remStmts ls)

@@ -80,6 +80,12 @@ import MplLanguage.LexMPL
   L_Infixl6op      { PT _ (T_Infixl6op _)      }
   L_Infixr7op      { PT _ (T_Infixr7op _)      }
   L_Infixl8op      { PT _ (T_Infixl8op _)      }
+  L_InfixU1op      { PT _ (T_InfixU1op _)      }
+  L_InfixU2op      { PT _ (T_InfixU2op _)      }
+  L_InfixU3op      { PT _ (T_InfixU3op _)      }
+  L_InfixU5op      { PT _ (T_InfixU5op _)      }
+  L_InfixU6op      { PT _ (T_InfixU6op _)      }
+  L_InfixU7op      { PT _ (T_InfixU7op _)      }
   L_Close          { PT _ (T_Close _)          }
   L_Halt           { PT _ (T_Halt _)           }
   L_Get            { PT _ (T_Get _)            }
@@ -155,6 +161,24 @@ Infixr7op  : L_Infixr7op { MplLanguage.AbsMPL.Infixr7op (mkPosToken $1) }
 
 Infixl8op :: { MplLanguage.AbsMPL.Infixl8op }
 Infixl8op  : L_Infixl8op { MplLanguage.AbsMPL.Infixl8op (mkPosToken $1) }
+
+InfixU1op :: { MplLanguage.AbsMPL.InfixU1op }
+InfixU1op  : L_InfixU1op { MplLanguage.AbsMPL.InfixU1op (mkPosToken $1) }
+
+InfixU2op :: { MplLanguage.AbsMPL.InfixU2op }
+InfixU2op  : L_InfixU2op { MplLanguage.AbsMPL.InfixU2op (mkPosToken $1) }
+
+InfixU3op :: { MplLanguage.AbsMPL.InfixU3op }
+InfixU3op  : L_InfixU3op { MplLanguage.AbsMPL.InfixU3op (mkPosToken $1) }
+
+InfixU5op :: { MplLanguage.AbsMPL.InfixU5op }
+InfixU5op  : L_InfixU5op { MplLanguage.AbsMPL.InfixU5op (mkPosToken $1) }
+
+InfixU6op :: { MplLanguage.AbsMPL.InfixU6op }
+InfixU6op  : L_InfixU6op { MplLanguage.AbsMPL.InfixU6op (mkPosToken $1) }
+
+InfixU7op :: { MplLanguage.AbsMPL.InfixU7op }
+InfixU7op  : L_InfixU7op { MplLanguage.AbsMPL.InfixU7op (mkPosToken $1) }
 
 Close :: { MplLanguage.AbsMPL.Close }
 Close  : L_Close { MplLanguage.AbsMPL.Close (mkPosToken $1) }
@@ -351,16 +375,19 @@ Expr0
 Expr1 :: { MplLanguage.AbsMPL.Expr }
 Expr1
   : Expr1 Infixl1op Expr2 { MplLanguage.AbsMPL.INFIXL1_EXPR $1 $2 $3 }
+  | Expr1 InfixU1op Expr2 { MplLanguage.AbsMPL.INFIXU1_EXPR $1 $2 $3 }
   | Expr2 { $1 }
 
 Expr2 :: { MplLanguage.AbsMPL.Expr }
 Expr2
   : Expr2 Infixl2op Expr3 { MplLanguage.AbsMPL.INFIXL2_EXPR $1 $2 $3 }
+  | Expr2 InfixU2op Expr3 { MplLanguage.AbsMPL.INFIXU2_EXPR $1 $2 $3 }
   | Expr3 { $1 }
 
 Expr3 :: { MplLanguage.AbsMPL.Expr }
 Expr3
   : Expr3 Infixl3op Expr4 { MplLanguage.AbsMPL.INFIXL3_EXPR $1 $2 $3 }
+  | Expr3 InfixU3op Expr4 { MplLanguage.AbsMPL.INFIXU3_EXPR $1 $2 $3 }
   | Expr4 { $1 }
 
 Expr4 :: { MplLanguage.AbsMPL.Expr }
@@ -371,16 +398,19 @@ Expr4
 Expr5 :: { MplLanguage.AbsMPL.Expr }
 Expr5
   : Expr5 Infixl5op Expr6 { MplLanguage.AbsMPL.INFIXL5_EXPR $1 $2 $3 }
+  | Expr5 InfixU5op Expr6 { MplLanguage.AbsMPL.INFIXU5_EXPR $1 $2 $3 }
   | Expr6 { $1 }
 
 Expr6 :: { MplLanguage.AbsMPL.Expr }
 Expr6
   : Expr6 Infixl6op Expr7 { MplLanguage.AbsMPL.INFIXL6_EXPR $1 $2 $3 }
+  | Expr6 InfixU6op Expr7 { MplLanguage.AbsMPL.INFIXU6_EXPR $1 $2 $3 }
   | Expr7 { $1 }
 
 Expr7 :: { MplLanguage.AbsMPL.Expr }
 Expr7
   : Expr8 Infixr7op Expr7 { MplLanguage.AbsMPL.INFIXR7_EXPR $1 $2 $3 }
+  | Expr8 InfixU7op Expr7 { MplLanguage.AbsMPL.INFIXU7_EXPR $1 $2 $3 }
   | Expr8 { $1 }
 
 Expr8 :: { MplLanguage.AbsMPL.Expr }
@@ -390,7 +420,8 @@ Expr8
 
 Expr10 :: { MplLanguage.AbsMPL.Expr }
 Expr10
-  : LSquareBracket ListExpr RSquareBracket { MplLanguage.AbsMPL.LIST_EXPR $1 $2 $3 }
+  : LBracket InfixUop RBracket LBracket Expr ',' Expr RBracket { MplLanguage.AbsMPL.INFIXU_SECT $1 $2 $3 $4 $5 $7 $8 }
+  | LSquareBracket ListExpr RSquareBracket { MplLanguage.AbsMPL.LIST_EXPR $1 $2 $3 }
   | PIdent { MplLanguage.AbsMPL.VAR_EXPR $1 }
   | PInteger { MplLanguage.AbsMPL.INT_EXPR $1 }
   | PString { MplLanguage.AbsMPL.STRING_EXPR $1 }
@@ -407,6 +438,15 @@ Expr10
   | PIdent LBracket ListExpr RBracket { MplLanguage.AbsMPL.FUN_EXPR $1 $2 $3 $4 }
   | LBracket ListRecordExprPhrase RBracket { MplLanguage.AbsMPL.RECORD_EXPR $1 $2 $3 }
   | LBracket Expr RBracket { MplLanguage.AbsMPL.BRACKETED_EXPR $1 $2 $3 }
+
+InfixUop :: { MplLanguage.AbsMPL.InfixUop }
+InfixUop
+  : InfixU1op { MplLanguage.AbsMPL.InfixUop1 $1 }
+  | InfixU2op { MplLanguage.AbsMPL.InfixUop2 $1 }
+  | InfixU3op { MplLanguage.AbsMPL.InfixUop3 $1 }
+  | InfixU5op { MplLanguage.AbsMPL.InfixUop5 $1 }
+  | InfixU6op { MplLanguage.AbsMPL.InfixUop6 $1 }
+  | InfixU7op { MplLanguage.AbsMPL.InfixUop7 $1 }
 
 UnfoldExprPhrase :: { MplLanguage.AbsMPL.UnfoldExprPhrase }
 UnfoldExprPhrase
@@ -521,6 +561,8 @@ FunctionDefn :: { MplLanguage.AbsMPL.FunctionDefn }
 FunctionDefn
   : 'fun' PIdent '::' ListMplType '->' MplType '=' '{' ListPattExprPhrase '}' { MplLanguage.AbsMPL.TYPED_FUNCTION_DEFN $2 $4 $6 $9 }
   | 'fun' PIdent '=' '{' ListPattExprPhrase '}' { MplLanguage.AbsMPL.FUNCTION_DEFN $2 $5 }
+  | 'fun' LBracket InfixUop RBracket '::' ListMplType '->' MplType '=' '{' ListPattExprPhrase '}' { MplLanguage.AbsMPL.TYPED_FUNCTION_DEFN_UINFIX $2 $3 $4 $6 $8 $11 }
+  | 'fun' LBracket InfixUop RBracket '=' '{' ListPattExprPhrase '}' { MplLanguage.AbsMPL.FUNCTION_DEFN_UINFIX $2 $3 $4 $7 }
 
 ListPattExprPhrase :: { [MplLanguage.AbsMPL.PattExprPhrase] }
 ListPattExprPhrase
@@ -576,6 +618,11 @@ OnPhrase
   : Put Expr { MplLanguage.AbsMPL.ON_PUT $1 $2 }
   | Get Pattern { MplLanguage.AbsMPL.ON_GET $1 $2 }
   | HPut UIdent { MplLanguage.AbsMPL.ON_HPUT $1 $2 }
+  | HCase 'of' '{' ListHCasePhrase '}' { MplLanguage.AbsMPL.ON_HCASE $1 $4 }
+  | Fork 'as' '{' ListForkPhrase '}' { MplLanguage.AbsMPL.ON_FORK $1 $4 }
+  | Split 'into' ListSplitChannel { MplLanguage.AbsMPL.ON_SPLIT $1 $3 }
+  | Close { MplLanguage.AbsMPL.ON_CLOSE $1 }
+  | Halt { MplLanguage.AbsMPL.ON_HALT $1 }
 
 ListOnPhrase :: { [MplLanguage.AbsMPL.OnPhrase] }
 ListOnPhrase
