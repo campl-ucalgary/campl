@@ -3,9 +3,15 @@ coprotocol S => Console =
     ConsoleGet :: S => Put( [Char] | S)
     ConsoleClose :: S => TopBot 
 
+fun (>>) :: Int,Int -> Int =
+    a,b -> a + b
+
+fun (<<) =
+    a,b -> a - b
 
 fun f :: Int,Int -> Int =
     n,m -> n == m
+
 
 proc helloworld :: | Console => = 
     | console => -> do

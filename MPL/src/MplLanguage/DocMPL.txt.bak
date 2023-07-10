@@ -356,7 +356,7 @@ All other symbols are terminals.
   |  |  **|**  | //DestructorPatternPhrase// ``,`` //[DestructorPatternPhrase]//
   | //FunctionDefn// | -> | ``fun`` //PIdent// ``::`` //[MplType]// ``->`` //MplType// ``=`` ``{`` //[PattExprPhrase]// ``}``
   |  |  **|**  | ``fun`` //PIdent// ``=`` ``{`` //[PattExprPhrase]// ``}``
-  |  |  **|**  | ``fun`` //LBracket// //InfixUop// //RBracket// ``::`` //[MplType]// ``->`` //MplType// ``=`` ``{`` //[PattExprPhrase]// ``}``
+  |  |  **|**  | ``fun`` //LBracket// //InfixUop// //RBracket// ``::`` //MplType// ``,`` //MplType// ``->`` //MplType// ``=`` ``{`` //[PattExprPhrase]// ``}``
   |  |  **|**  | ``fun`` //LBracket// //InfixUop// //RBracket// ``=`` ``{`` //[PattExprPhrase]// ``}``
   | //[PattExprPhrase]// | -> | //PattExprPhrase//
   |  |  **|**  | //PattExprPhrase// ``;`` //[PattExprPhrase]//

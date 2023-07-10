@@ -34,6 +34,7 @@ remDefs = map remDef
 
 remDef :: B.MplDefn -> B.MplDefn
 remDef (MPL_PROCESS_DEFN a) = MPL_PROCESS_DEFN (remProc a)
+remDef (MPL_FUNCTION_DEFN a) = MPL_FUNCTION_DEFN (remFunc a)
 remDef a = a -- anything except a process definition can be left as-is.
 
 remProc :: B.ProcessDefn -> B.ProcessDefn
@@ -47,6 +48,13 @@ remPhrases (b:bs) = (remPhrase b) : (remPhrases bs)
 
 remPhrase :: ProcessPhrase -> ProcessPhrase
 remPhrase (PROCESS_PHRASE a b c block) = PROCESS_PHRASE a b c (remBlock block)
+
+
+---------------------------------------------------------------------------
+-- Unwrapping the 'on' syntax
+---------------------------------------------------------------------------
+
+
 
 -- From this point forward, we are dealing with removing macros.
 -- Basically, we map each command with 'remC' to change it as needed,
@@ -141,3 +149,32 @@ onUnwrap channel@(PIdent (_,chan)) ((ON_CLOSE h@(Close (coords,_))):rs) =
     (PROCESS_CLOSE h (PIdent (coords,chan))) : (onUnwrap channel rs)
 onUnwrap channel@(PIdent (_,chan)) ((ON_HALT h@(Halt (coords,_))):rs) =
     (PROCESS_HALT h (PIdent (coords,chan))) : (onUnwrap channel rs)
+
+
+---------------------------------------------------------------------------
+-- Resolving instances of infix operators and declarations
+---------------------------------------------------------------------------
+
+-- Fixes up functions: converts prefix definitions to standard definitions,
+-- TODO fixes any internal references to infix things.
+remFunc :: FunctionDefn -> FunctionDefn
+remFunc (TYPED_FUNCTION_DEFN_UINFIX _ i _ t1 t2 t3 ps) =
+    (TYPED_FUNCTION_DEFN (convertToPIdent i) [t1,t2] t3 ps)
+remFunc (FUNCTION_DEFN_UINFIX _ i _ ps) =
+    FUNCTION_DEFN (convertToPIdent i) ps
+remFunc a = a -- TODO: go into functions and fix each pattern phrase.
+
+
+
+-- Converts a InfixUop to a PIdent.
+-- This allows infix function declarations/usages to become prefix instead.
+-- Basically just unwrapping and rewrapping.
+-- Note that 'a' is just an ((Int,Int),String), which is a coordinate followed by a string token.
+convertToPIdent :: InfixUop -> PIdent
+convertToPIdent (InfixUop1 (InfixU1op a)) = PIdent a
+convertToPIdent (InfixUop2 (InfixU2op a)) = PIdent a
+convertToPIdent (InfixUop3 (InfixU3op a)) = PIdent a
+convertToPIdent (InfixUop5 (InfixU5op a)) = PIdent a
+convertToPIdent (InfixUop6 (InfixU6op a)) = PIdent a
+convertToPIdent (InfixUop7 (InfixU7op a)) = PIdent a
+
