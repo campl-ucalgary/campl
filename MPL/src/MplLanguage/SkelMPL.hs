@@ -268,6 +268,16 @@ transExpr x = case x of
   MplLanguage.AbsMPL.INFIXU7_EXPR expr1 infixuop expr2 -> failure x
   MplLanguage.AbsMPL.INFIXL8_EXPR expr1 infixlop expr2 -> failure x
   MplLanguage.AbsMPL.INFIXU_SECT lbracket1 infixuop rbracket1 lbracket2 expr1 expr2 rbracket2 -> failure x
+  MplLanguage.AbsMPL.INFIXL1_SECT lbracket1 infixlop rbracket1 lbracket2 expr1 expr2 rbracket2 -> failure x
+  MplLanguage.AbsMPL.INFIXL2_SECT lbracket1 infixlop rbracket1 lbracket2 expr1 expr2 rbracket2 -> failure x
+  MplLanguage.AbsMPL.INFIXL3_SECT lbracket1 infixlop rbracket1 lbracket2 expr1 expr2 rbracket2 -> failure x
+  MplLanguage.AbsMPL.INFIXL4_SECT lbracket1 infixlop rbracket1 lbracket2 expr1 expr2 rbracket2 -> failure x
+  MplLanguage.AbsMPL.INFIXL5_SECT lbracket1 infixlop rbracket1 lbracket2 expr1 expr2 rbracket2 -> failure x
+  MplLanguage.AbsMPL.INFIXL6_SECT lbracket1 infixlop rbracket1 lbracket2 expr1 expr2 rbracket2 -> failure x
+  MplLanguage.AbsMPL.INFIXR7_SECT lbracket1 infixrop rbracket1 lbracket2 expr1 expr2 rbracket2 -> failure x
+  MplLanguage.AbsMPL.INFIXL8_SECT lbracket1 infixlop rbracket1 lbracket2 expr1 expr2 rbracket2 -> failure x
+  MplLanguage.AbsMPL.INFIXPR_SECT par lbracket expr1 expr2 rbracket -> failure x
+  MplLanguage.AbsMPL.INFIXTN_SECT tensor lbracket expr1 expr2 rbracket -> failure x
   MplLanguage.AbsMPL.LIST_EXPR lsquarebracket exprs rsquarebracket -> failure x
   MplLanguage.AbsMPL.VAR_EXPR pident -> failure x
   MplLanguage.AbsMPL.INT_EXPR pinteger -> failure x

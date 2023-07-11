@@ -561,7 +561,7 @@ FunctionDefn :: { MplLanguage.AbsMPL.FunctionDefn }
 FunctionDefn
   : 'fun' PIdent '::' ListMplType '->' MplType '=' '{' ListPattExprPhrase '}' { MplLanguage.AbsMPL.TYPED_FUNCTION_DEFN $2 $4 $6 $9 }
   | 'fun' PIdent '=' '{' ListPattExprPhrase '}' { MplLanguage.AbsMPL.FUNCTION_DEFN $2 $5 }
-  | 'fun' LBracket InfixUop RBracket '::' ListMplType '->' MplType '=' '{' ListPattExprPhrase '}' { MplLanguage.AbsMPL.TYPED_FUNCTION_DEFN_UINFIX $2 $3 $4 $6 $8 $11 }
+  | 'fun' LBracket InfixUop RBracket '::' MplType ',' MplType '->' MplType '=' '{' ListPattExprPhrase '}' { MplLanguage.AbsMPL.TYPED_FUNCTION_DEFN_UINFIX $2 $3 $4 $6 $8 $10 $13 }
   | 'fun' LBracket InfixUop RBracket '=' '{' ListPattExprPhrase '}' { MplLanguage.AbsMPL.FUNCTION_DEFN_UINFIX $2 $3 $4 $7 }
 
 ListPattExprPhrase :: { [MplLanguage.AbsMPL.PattExprPhrase] }

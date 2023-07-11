@@ -232,7 +232,18 @@ _            . Expr8 ::= Expr10 ;
 
 
 -- A couple rules for sectioned function calls.
-INFIXU_SECT . Expr10 ::= LBracket InfixUop RBracket LBracket Expr "," Expr RBracket ;
+INFIXU_SECT  . Expr10 ::= LBracket InfixUop RBracket LBracket Expr "," Expr RBracket ;
+INFIXL1_SECT . Expr10 ::= LBracket Infixl1op RBracket LBracket Expr "," Expr RBracket ;
+INFIXL2_SECT . Expr10 ::= LBracket Infixl2op RBracket LBracket Expr "," Expr RBracket ;
+INFIXL3_SECT . Expr10 ::= LBracket Infixl3op RBracket LBracket Expr "," Expr RBracket ;
+INFIXL4_SECT . Expr10 ::= LBracket Infixl4op RBracket LBracket Expr "," Expr RBracket ;
+INFIXL5_SECT . Expr10 ::= LBracket Infixl5op RBracket LBracket Expr "," Expr RBracket ;
+INFIXL6_SECT . Expr10 ::= LBracket Infixl6op RBracket LBracket Expr "," Expr RBracket ;
+INFIXR7_SECT . Expr10 ::= LBracket Infixr7op RBracket LBracket Expr "," Expr RBracket ;
+INFIXL8_SECT . Expr10 ::= LBracket Infixl8op RBracket LBracket Expr "," Expr RBracket ;
+-- Special cases for 'par' and 'tensor' tokens. (+) and (*)
+INFIXPR_SECT . Expr10 ::= Par LBracket Expr "," Expr RBracket ;
+INFIXTN_SECT . Expr10 ::= Tensor LBracket Expr "," Expr RBracket ;
 
 -- A generic rule for any sectioned infix operator.
 InfixUop1 . InfixUop ::= InfixU1op ;
@@ -241,6 +252,7 @@ InfixUop3 . InfixUop ::= InfixU3op ;
 InfixUop5 . InfixUop ::= InfixU5op ;
 InfixUop6 . InfixUop ::= InfixU6op ;
 InfixUop7 . InfixUop ::= InfixU7op ;
+
 
 -- Not too sure how to get this IF and LET precedence working!
 -- Problems of shift reduce errors, so we force explicit bracketing
@@ -332,8 +344,6 @@ CHAR_PATTERN                . Pattern1 ::=  PChar ;
 INT_PATTERN                 . Pattern1 ::=  PInteger ;
 NULL_PATTERN                . Pattern1 ::=  NullPattern ;
 BRACKETED_PATTERN           . Pattern1 ::=  LBracket Pattern RBracket ;
-
--- TODO add the sectioned infix notation.
 
 TUPLE_LIST_PATTERN . TupleListPattern ::= Pattern ;
 separator nonempty TupleListPattern "," ;

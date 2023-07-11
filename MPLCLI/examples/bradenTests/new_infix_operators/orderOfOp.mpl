@@ -5,6 +5,8 @@ coprotocol S => Console =
     ConsoleGet :: S => Put( [Char] | S)
     ConsoleClose :: S => TopBot 
 
+-- Some functions to show off order-of-operations in a printable way.
+
 fun (+++) = -- append, since '++' is already a thing.
     [],c -> c
     b:bs,c -> b:(bs +++ c)

@@ -11,8 +11,6 @@ import MplPasses.Parser.BnfcParse as B
 -- and turns user-defined infix operator definitions into standard function definitions.
 -- Finally, it turns sectioned function calls "(infixOperator)(a,b)" into standard function calls.
 
--- TODO: check if all contexts with expressions are working.
-
 removeMacros :: B.MplProg -> B.MplProg
 removeMacros (MPL_PROG ls) = MPL_PROG (remStmts ls)
 
@@ -273,6 +271,22 @@ remExp (INFIXU_SECT _ i _ lb e1 e2 rb) =
         lb
         [e1,e2]
         rb
+-- A sectioned built-in infix operator: convert from prefix to infix, throw away bracket tokens.
+-- Afterwards, recurse into each sub-expression
+remExp (INFIXL1_SECT _ iop _ _ e1 e2 _) = remExp $ INFIXL1_EXPR e1 iop e2
+remExp (INFIXL2_SECT _ iop _ _ e1 e2 _) = remExp $ INFIXL2_EXPR e1 iop e2 
+remExp (INFIXL3_SECT _ iop _ _ e1 e2 _) = remExp $ INFIXL3_EXPR e1 iop e2
+remExp (INFIXL4_SECT _ iop _ _ e1 e2 _) = remExp $ INFIXL4_EXPR e1 iop e2
+remExp (INFIXL5_SECT _ iop _ _ e1 e2 _) = remExp $ INFIXL5_EXPR e1 iop e2
+remExp (INFIXL6_SECT _ iop _ _ e1 e2 _) = remExp $ INFIXL6_EXPR e1 iop e2
+remExp (INFIXR7_SECT _ iop _ _ e1 e2 _) = remExp $ INFIXR7_EXPR e1 iop e2
+remExp (INFIXL8_SECT _ iop _ _ e1 e2 _) = remExp $ INFIXL8_EXPR e1 iop e2
+-- A sectioned '+' or '*' is harder, because they are interpreted as tensor and par.
+-- As a result, we need to change the 'x' coordinate on each token to make things work.
+remExp (INFIXPR_SECT (Par ((y,x), _)) _ e1 e2 _) =
+    remExp $ INFIXL5_EXPR e1 (Infixl5op ((y,x+1), "+")) e2
+remExp (INFIXTN_SECT (Tensor ((y,x), _)) _ e1 e2 _) =
+    remExp $ INFIXL6_EXPR e1 (Infixl6op ((y,x+1), "*")) e2
 -- Below are all of the infix operator replacements. They are all effectively the same,
 -- except for the constructor names in the first line of each definition.
 -- replace infix operator precedence 1

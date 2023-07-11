@@ -421,6 +421,16 @@ Expr8
 Expr10 :: { MplLanguage.AbsMPL.Expr }
 Expr10
   : LBracket InfixUop RBracket LBracket Expr ',' Expr RBracket { MplLanguage.AbsMPL.INFIXU_SECT $1 $2 $3 $4 $5 $7 $8 }
+  | LBracket Infixl1op RBracket LBracket Expr ',' Expr RBracket { MplLanguage.AbsMPL.INFIXL1_SECT $1 $2 $3 $4 $5 $7 $8 }
+  | LBracket Infixl2op RBracket LBracket Expr ',' Expr RBracket { MplLanguage.AbsMPL.INFIXL2_SECT $1 $2 $3 $4 $5 $7 $8 }
+  | LBracket Infixl3op RBracket LBracket Expr ',' Expr RBracket { MplLanguage.AbsMPL.INFIXL3_SECT $1 $2 $3 $4 $5 $7 $8 }
+  | LBracket Infixl4op RBracket LBracket Expr ',' Expr RBracket { MplLanguage.AbsMPL.INFIXL4_SECT $1 $2 $3 $4 $5 $7 $8 }
+  | LBracket Infixl5op RBracket LBracket Expr ',' Expr RBracket { MplLanguage.AbsMPL.INFIXL5_SECT $1 $2 $3 $4 $5 $7 $8 }
+  | LBracket Infixl6op RBracket LBracket Expr ',' Expr RBracket { MplLanguage.AbsMPL.INFIXL6_SECT $1 $2 $3 $4 $5 $7 $8 }
+  | LBracket Infixr7op RBracket LBracket Expr ',' Expr RBracket { MplLanguage.AbsMPL.INFIXR7_SECT $1 $2 $3 $4 $5 $7 $8 }
+  | LBracket Infixl8op RBracket LBracket Expr ',' Expr RBracket { MplLanguage.AbsMPL.INFIXL8_SECT $1 $2 $3 $4 $5 $7 $8 }
+  | Par LBracket Expr ',' Expr RBracket { MplLanguage.AbsMPL.INFIXPR_SECT $1 $2 $3 $5 $6 }
+  | Tensor LBracket Expr ',' Expr RBracket { MplLanguage.AbsMPL.INFIXTN_SECT $1 $2 $3 $5 $6 }
   | LSquareBracket ListExpr RSquareBracket { MplLanguage.AbsMPL.LIST_EXPR $1 $2 $3 }
   | PIdent { MplLanguage.AbsMPL.VAR_EXPR $1 }
   | PInteger { MplLanguage.AbsMPL.INT_EXPR $1 }

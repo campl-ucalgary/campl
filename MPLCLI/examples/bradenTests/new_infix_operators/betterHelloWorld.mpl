@@ -72,10 +72,10 @@ fun everyExpr =
     -}
     6 -> -- list operators, excluding '++'
         head([0 ^-^ 0])
-    7 -> -- folds
-        fold Cons(0^-^0,Nil) of
-            Nil: -> 1^-^1
-            Cons:n,ns -> 8^-^8
+    -- 7 -> -- folds (NOTE: not actually implemented)
+        -- fold Cons(0^-^0,Nil) of
+            -- Nil: -> 1^-^1
+            -- Cons:n,ns -> 8^-^8
     8 -> case (0^-^0) of
         0 -> (0^-^0)
         _ -> (0^-^0)
@@ -84,7 +84,7 @@ fun everyExpr =
         True -> (0^-^0)
     10 -> first((0^-^0,0^-^0,0^-^0)) -- testing tuples
     11 -> ((((((first((0^-^0,0^-^0,0^-^0)))))))) -- bracketed expressions.
-    a -> 0^-^0^-^0^-^0^-^0^-^0^-^0^-^0^-^0^-^0 -- Nothing special, we've already tested this.
+    a -> 0^-^0^-^0^-^0^-^0^-^0^-^0^-^0^-^0^-^0 -- Nothing special; we've already tested this.
 
 -- Testing valid names:
 fun (|@#$_?|:~=|&<>!+-*/%^) =
@@ -124,15 +124,44 @@ fun (^@#$_?|:~=|&<>!+-*/%^) =
 fun abc :: Int -> EList =
     n -> (Head := -> (n^-^n) , Tail := -> abc(n + 1))
 
--- unfolds
-fun abd =
-    n -> unfold (n^-^n) of
-        r of
-            Head : -> (r^-^r)
-            Tail : -> (r^-^r)
+-- unfolds (NOTE: not actually implemented)
+-- fun abd =
+    -- n -> unfold (n^-^n) of
+        -- r of
+            -- Head : -> (r^-^r)
+            -- Tail : -> (r^-^r)
+
+-- dummy process, for testing
+proc test2 =
+    a | => c1 -> do
+        put 0 on c1
+        halt c1
+
+-- process commands
+proc test =
+    | => c1, c2 -> do
+        on c1 do
+            put 0^-^0
+            close
+        if (0^-^0) < 0
+            then do
+                case 0^-^0 of
+                    0 -> do
+                        put 0^-^0 on c2
+                        halt c2
+                    n -> test2(0^-^0 | => c2)
+            else do
+                switch
+                    (0^-^0) < 0 -> on c2 do
+                        put (0^-^0)
+                        halt
+                    True -> on c2 do
+                        put 0
+                        halt
 
 
--- A couple tests on order-of-operations
+
+-- A simple-enough hello-world program. Just a stand-in, really.
 proc helloworld :: | Console => = 
     | console => -> do
         

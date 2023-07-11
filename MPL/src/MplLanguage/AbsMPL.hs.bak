@@ -182,7 +182,7 @@ data FunctionDefn
     = INTERNAL_TYPED_FUNCTION_DEFN PIdent MplType [PattExprPhrase]
     | TYPED_FUNCTION_DEFN PIdent [MplType] MplType [PattExprPhrase]
     | FUNCTION_DEFN PIdent [PattExprPhrase]
-    | TYPED_FUNCTION_DEFN_UINFIX LBracket InfixUop RBracket [MplType] MplType [PattExprPhrase]
+    | TYPED_FUNCTION_DEFN_UINFIX LBracket InfixUop RBracket MplType MplType MplType [PattExprPhrase]
     | FUNCTION_DEFN_UINFIX LBracket InfixUop RBracket [PattExprPhrase]
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
