@@ -112,22 +112,22 @@ Infixl8op literals are recognized by the regular expression
 `````{"!!"}`````
 
 InfixU1op literals are recognized by the regular expression
-`````'|' ["#$:=?@\_|~"]*`````
+`````'|' ["!#$%&*+-/:<=>?@\^_|~"]*`````
 
 InfixU2op literals are recognized by the regular expression
-`````'&' ["#$:=?@\_|~"]*`````
+`````'&' ["!#$%&*+-/:<=>?@\^_|~"]*`````
 
 InfixU3op literals are recognized by the regular expression
-`````["!<>"] ["#$:=?@\_|~"]*`````
+`````["!<>"] ["!#$%&*+-/:<=>?@\^_|~"]*`````
 
 InfixU5op literals are recognized by the regular expression
-`````["+-"] ["#$:=?@\_|~"]*`````
+`````["+-"] ["!#$%&*+-/:<=>?@\^_|~"]*`````
 
 InfixU6op literals are recognized by the regular expression
-`````["%*/"] ["#$:=?@\_|~"]*`````
+`````["%*/"] ["!#$%&*+-/:<=>?@\^_|~"]*`````
 
 InfixU7op literals are recognized by the regular expression
-`````'^' ["#$:=?@\_|~"]*`````
+`````'^' ["!#$%&*+-/:<=>?@\^_|~"]*`````
 
 Close literals are recognized by the regular expression
 `````{"close"}`````
