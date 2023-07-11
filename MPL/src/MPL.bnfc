@@ -57,17 +57,17 @@ position token Infixl8op ({"!!"}) ;
 --  * / %
 --  ^           (NOTE: this is the only one which is right-associative, meaning 'a ^ b ^ b' = 'a ^ (b ^ c)')
 -- The less-special characters include all special characters, as well as:
---  @ # $ _ ? \ | : ~ =
+--  @ # $ _ ? | : ~ =
 -- Please make sure that if you are changing this spec, change the comment too!
 -- Also, make sure to find-and-replace, since the less-special character string is used in each infixU rule!
 
 -- The user-defined infix operators.
-position token InfixU1op (('|') (["@#$_?\\|:~=|&<>!+-*/%^"])*) ;
-position token InfixU2op (('&') (["@#$_?\\|:~=|&<>!+-*/%^"])*) ;
-position token InfixU3op (('<' | '>' | '!') (["@#$_?\\|:~=|&<>!+-*/%^"])*) ;
-position token InfixU5op (('+' | '-') (["@#$_?\\|:~=|&<>!+-*/%^"])*) ;
-position token InfixU6op (('*' | '/' | '%') (["@#$_?\\|:~=|&<>!+-*/%^"])*) ;
-position token InfixU7op (('^') (["@#$_?\\|:~=|&<>!+-*/%^"])*) ; -- right-associative
+position token InfixU1op (('|') (["@#$_?|:~=|&<>!+-*/%^"])*) ;
+position token InfixU2op (('&') (["@#$_?|:~=|&<>!+-*/%^"])*) ;
+position token InfixU3op (('<' | '>' | '!') (["@#$_?|:~=|&<>!+-*/%^"])*) ;
+position token InfixU5op (('+' | '-') (["@#$_?|:~=|&<>!+-*/%^"])*) ;
+position token InfixU6op (('*' | '/' | '%') (["@#$_?|:~=|&<>!+-*/%^"])*) ;
+position token InfixU7op (('^') (["@#$_?|:~=|&<>!+-*/%^"])*) ; -- right-associative
 
 position token Close {"close"} ;
 position token Halt {"halt"} ;
