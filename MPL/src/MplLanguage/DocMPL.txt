@@ -111,8 +111,11 @@ Infixr7op literals are recognized by the regular expression
 Infixl8op literals are recognized by the regular expression
 `````{"!!"}`````
 
+ChId literals are recognized by the regular expression
+`````{"|=|"}`````
+
 InfixU1op literals are recognized by the regular expression
-`````'|' ["!#$%&*+-/:<=>?@^_|~"]*`````
+`````'|' ["!#$%&*+-/:<>?@^_|~"]*`````
 
 InfixU2op literals are recognized by the regular expression
 `````'&' ["!#$%&*+-/:<=>?@^_|~"]*`````
@@ -152,9 +155,6 @@ Split literals are recognized by the regular expression
 
 Fork literals are recognized by the regular expression
 `````{"fork"}`````
-
-ChId literals are recognized by the regular expression
-`````{"|=|"}`````
 
 Case literals are recognized by the regular expression
 `````{"case"}`````

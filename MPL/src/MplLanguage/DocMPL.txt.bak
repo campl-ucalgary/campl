@@ -285,6 +285,16 @@ All other symbols are terminals.
   | //Expr8// | -> | //Expr8// //Infixl8op// //Expr10//
   |  |  **|**  | //Expr10//
   | //Expr10// | -> | //LBracket// //InfixUop// //RBracket// //LBracket// //Expr// ``,`` //Expr// //RBracket//
+  |  |  **|**  | //LBracket// //Infixl1op// //RBracket// //LBracket// //Expr// ``,`` //Expr// //RBracket//
+  |  |  **|**  | //LBracket// //Infixl2op// //RBracket// //LBracket// //Expr// ``,`` //Expr// //RBracket//
+  |  |  **|**  | //LBracket// //Infixl3op// //RBracket// //LBracket// //Expr// ``,`` //Expr// //RBracket//
+  |  |  **|**  | //LBracket// //Infixl4op// //RBracket// //LBracket// //Expr// ``,`` //Expr// //RBracket//
+  |  |  **|**  | //LBracket// //Infixl5op// //RBracket// //LBracket// //Expr// ``,`` //Expr// //RBracket//
+  |  |  **|**  | //LBracket// //Infixl6op// //RBracket// //LBracket// //Expr// ``,`` //Expr// //RBracket//
+  |  |  **|**  | //LBracket// //Infixr7op// //RBracket// //LBracket// //Expr// ``,`` //Expr// //RBracket//
+  |  |  **|**  | //LBracket// //Infixl8op// //RBracket// //LBracket// //Expr// ``,`` //Expr// //RBracket//
+  |  |  **|**  | //Par// //LBracket// //Expr// ``,`` //Expr// //RBracket//
+  |  |  **|**  | //Tensor// //LBracket// //Expr// ``,`` //Expr// //RBracket//
   |  |  **|**  | //LSquareBracket// //[Expr]// //RSquareBracket//
   |  |  **|**  | //PIdent//
   |  |  **|**  | //PInteger//

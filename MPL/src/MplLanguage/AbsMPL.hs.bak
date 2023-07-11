@@ -102,6 +102,16 @@ data Expr
     | INFIXU7_EXPR Expr InfixU7op Expr
     | INFIXL8_EXPR Expr Infixl8op Expr
     | INFIXU_SECT LBracket InfixUop RBracket LBracket Expr Expr RBracket
+    | INFIXL1_SECT LBracket Infixl1op RBracket LBracket Expr Expr RBracket
+    | INFIXL2_SECT LBracket Infixl2op RBracket LBracket Expr Expr RBracket
+    | INFIXL3_SECT LBracket Infixl3op RBracket LBracket Expr Expr RBracket
+    | INFIXL4_SECT LBracket Infixl4op RBracket LBracket Expr Expr RBracket
+    | INFIXL5_SECT LBracket Infixl5op RBracket LBracket Expr Expr RBracket
+    | INFIXL6_SECT LBracket Infixl6op RBracket LBracket Expr Expr RBracket
+    | INFIXR7_SECT LBracket Infixr7op RBracket LBracket Expr Expr RBracket
+    | INFIXL8_SECT LBracket Infixl8op RBracket LBracket Expr Expr RBracket
+    | INFIXPR_SECT Par LBracket Expr Expr RBracket
+    | INFIXTN_SECT Tensor LBracket Expr Expr RBracket
     | LIST_EXPR LSquareBracket [Expr] RSquareBracket
     | VAR_EXPR PIdent
     | INT_EXPR PInteger

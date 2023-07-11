@@ -80,6 +80,7 @@ import MplLanguage.LexMPL
   L_Infixl6op      { PT _ (T_Infixl6op _)      }
   L_Infixr7op      { PT _ (T_Infixr7op _)      }
   L_Infixl8op      { PT _ (T_Infixl8op _)      }
+  L_ChId           { PT _ (T_ChId _)           }
   L_InfixU1op      { PT _ (T_InfixU1op _)      }
   L_InfixU2op      { PT _ (T_InfixU2op _)      }
   L_InfixU3op      { PT _ (T_InfixU3op _)      }
@@ -94,7 +95,6 @@ import MplLanguage.LexMPL
   L_HPut           { PT _ (T_HPut _)           }
   L_Split          { PT _ (T_Split _)          }
   L_Fork           { PT _ (T_Fork _)           }
-  L_ChId           { PT _ (T_ChId _)           }
   L_Case           { PT _ (T_Case _)           }
   L_UIdent         { PT _ (T_UIdent _)         }
   L_PIdent         { PT _ (T_PIdent _)         }
@@ -162,6 +162,9 @@ Infixr7op  : L_Infixr7op { MplLanguage.AbsMPL.Infixr7op (mkPosToken $1) }
 Infixl8op :: { MplLanguage.AbsMPL.Infixl8op }
 Infixl8op  : L_Infixl8op { MplLanguage.AbsMPL.Infixl8op (mkPosToken $1) }
 
+ChId :: { MplLanguage.AbsMPL.ChId }
+ChId  : L_ChId { MplLanguage.AbsMPL.ChId (mkPosToken $1) }
+
 InfixU1op :: { MplLanguage.AbsMPL.InfixU1op }
 InfixU1op  : L_InfixU1op { MplLanguage.AbsMPL.InfixU1op (mkPosToken $1) }
 
@@ -203,9 +206,6 @@ Split  : L_Split { MplLanguage.AbsMPL.Split (mkPosToken $1) }
 
 Fork :: { MplLanguage.AbsMPL.Fork }
 Fork  : L_Fork { MplLanguage.AbsMPL.Fork (mkPosToken $1) }
-
-ChId :: { MplLanguage.AbsMPL.ChId }
-ChId  : L_ChId { MplLanguage.AbsMPL.ChId (mkPosToken $1) }
 
 Case :: { MplLanguage.AbsMPL.Case }
 Case  : L_Case { MplLanguage.AbsMPL.Case (mkPosToken $1) }

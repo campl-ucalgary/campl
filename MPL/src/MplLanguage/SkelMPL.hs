@@ -95,6 +95,10 @@ transInfixl8op :: MplLanguage.AbsMPL.Infixl8op -> Result
 transInfixl8op x = case x of
   MplLanguage.AbsMPL.Infixl8op string -> failure x
 
+transChId :: MplLanguage.AbsMPL.ChId -> Result
+transChId x = case x of
+  MplLanguage.AbsMPL.ChId string -> failure x
+
 transInfixU1op :: MplLanguage.AbsMPL.InfixU1op -> Result
 transInfixU1op x = case x of
   MplLanguage.AbsMPL.InfixU1op string -> failure x
@@ -150,10 +154,6 @@ transSplit x = case x of
 transFork :: MplLanguage.AbsMPL.Fork -> Result
 transFork x = case x of
   MplLanguage.AbsMPL.Fork string -> failure x
-
-transChId :: MplLanguage.AbsMPL.ChId -> Result
-transChId x = case x of
-  MplLanguage.AbsMPL.ChId string -> failure x
 
 transCase :: MplLanguage.AbsMPL.Case -> Result
 transCase x = case x of

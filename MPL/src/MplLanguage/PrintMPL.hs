@@ -178,6 +178,8 @@ instance Print MplLanguage.AbsMPL.Infixr7op where
   prt _ (MplLanguage.AbsMPL.Infixr7op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Infixl8op where
   prt _ (MplLanguage.AbsMPL.Infixl8op (_,i)) = doc $ showString i
+instance Print MplLanguage.AbsMPL.ChId where
+  prt _ (MplLanguage.AbsMPL.ChId (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.InfixU1op where
   prt _ (MplLanguage.AbsMPL.InfixU1op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.InfixU2op where
@@ -206,8 +208,6 @@ instance Print MplLanguage.AbsMPL.Split where
   prt _ (MplLanguage.AbsMPL.Split (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Fork where
   prt _ (MplLanguage.AbsMPL.Fork (_,i)) = doc $ showString i
-instance Print MplLanguage.AbsMPL.ChId where
-  prt _ (MplLanguage.AbsMPL.ChId (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Case where
   prt _ (MplLanguage.AbsMPL.Case (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.UIdent where

@@ -332,6 +332,9 @@ newtype Infixr7op = Infixr7op ((C.Int, C.Int), String)
 newtype Infixl8op = Infixl8op ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
+newtype ChId = ChId ((C.Int, C.Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
 newtype InfixU1op = InfixU1op ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
@@ -372,9 +375,6 @@ newtype Split = Split ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype Fork = Fork ((C.Int, C.Int), String)
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
-newtype ChId = ChId ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype Case = Case ((C.Int, C.Int), String)
@@ -464,6 +464,9 @@ instance HasPosition Infixr7op where
 instance HasPosition Infixl8op where
   hasPosition (Infixl8op (p, _)) = C.Just p
 
+instance HasPosition ChId where
+  hasPosition (ChId (p, _)) = C.Just p
+
 instance HasPosition InfixU1op where
   hasPosition (InfixU1op (p, _)) = C.Just p
 
@@ -505,9 +508,6 @@ instance HasPosition Split where
 
 instance HasPosition Fork where
   hasPosition (Fork (p, _)) = C.Just p
-
-instance HasPosition ChId where
-  hasPosition (ChId (p, _)) = C.Just p
 
 instance HasPosition Case where
   hasPosition (Case (p, _)) = C.Just p

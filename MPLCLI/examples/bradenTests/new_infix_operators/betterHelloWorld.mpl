@@ -87,7 +87,7 @@ fun everyExpr =
     a -> 0^-^0^-^0^-^0^-^0^-^0^-^0^-^0^-^0^-^0 -- Nothing special; we've already tested this.
 
 -- Testing valid names:
-fun (|@#$_?|:~=|&<>!+-*/%^) =
+fun (|@#$_?|:~|&<>!+-*/%^) =
     a -> a
 
 fun (&@#$_?|:~=|&<>!+-*/%^) =

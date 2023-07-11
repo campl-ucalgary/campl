@@ -61,8 +61,11 @@ position token Infixl8op ({"!!"}) ;
 -- Please make sure that if you are changing this spec, change the comment too!
 -- Also, make sure to find-and-replace, since the less-special character string is used in each infixU rule!
 
+-- this definition is moved up so that it takes precedece over InfixU1op
+position token ChId {"|=|"} ;
+
 -- The user-defined infix operators.
-position token InfixU1op (('|') (["@#$_?|:~=|&<>!+-*/%^"])*) ;
+position token InfixU1op (('|') (["@#$_?|:~|&<>!+-*/%^"])*) ;
 position token InfixU2op (('&') (["@#$_?|:~=|&<>!+-*/%^"])*) ;
 position token InfixU3op (('<' | '>' | '!') (["@#$_?|:~=|&<>!+-*/%^"])*) ;
 position token InfixU5op (('+' | '-') (["@#$_?|:~=|&<>!+-*/%^"])*) ;
@@ -77,7 +80,6 @@ position token HCase {"hcase"} ;
 position token HPut {"hput"} ;
 position token Split {"split"} ;
 position token Fork {"fork"} ;
-position token ChId {"|=|"} ;
 
 position token Case {"case"} ;
 
