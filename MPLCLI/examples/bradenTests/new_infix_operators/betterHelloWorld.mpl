@@ -1,5 +1,4 @@
 -- A file for testing valid cases of infix operators.
--- TODO: also need to test infix operators inside unfolds, records.
 
 coprotocol S => Console = 
     ConsolePut :: S => Get( [Char] | S)
@@ -9,6 +8,11 @@ coprotocol S => Console =
 data List () -> Z =
     Cons :: Int,Z -> Z
     Nil :: -> Z
+
+-- An endless list
+codata Z -> EList() =
+    Head :: Z -> Int
+    Tail :: Z -> Z
 
 -- typed declaration and recursive application
 fun (>>) :: Int,Int -> Int =
@@ -116,14 +120,16 @@ fun (%@#$_?|:~=|&<>!+-*/%^) =
 fun (^@#$_?|:~=|&<>!+-*/%^) =
     a -> a
 
--- Some simple functions to help demonstrate order-of-operations.
+-- records
+fun abc :: Int -> EList =
+    n -> (Head := -> (n^-^n) , Tail := -> abc(n + 1))
 
-fun (+#) = -- append, since '++' is already a thing.
-    [],c -> c
-    b:bs,c -> b:(bs +# c)
-
-fun (|_) =
-    a,b -> ... -- TODO make this work.
+-- unfolds
+fun abd =
+    n -> unfold (n^-^n) of
+        r of
+            Head : -> (r^-^r)
+            Tail : -> (r^-^r)
 
 
 -- A couple tests on order-of-operations
