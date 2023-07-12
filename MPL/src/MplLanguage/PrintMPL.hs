@@ -162,22 +162,12 @@ instance Print MplLanguage.AbsMPL.NullPattern where
   prt _ (MplLanguage.AbsMPL.NullPattern (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Colon where
   prt _ (MplLanguage.AbsMPL.Colon (_,i)) = doc $ showString i
-instance Print MplLanguage.AbsMPL.Infixl1op where
-  prt _ (MplLanguage.AbsMPL.Infixl1op (_,i)) = doc $ showString i
-instance Print MplLanguage.AbsMPL.Infixl2op where
-  prt _ (MplLanguage.AbsMPL.Infixl2op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Infixl3op where
   prt _ (MplLanguage.AbsMPL.Infixl3op (_,i)) = doc $ showString i
-instance Print MplLanguage.AbsMPL.Infixl4op where
-  prt _ (MplLanguage.AbsMPL.Infixl4op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Infixl5op where
   prt _ (MplLanguage.AbsMPL.Infixl5op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Infixl6op where
   prt _ (MplLanguage.AbsMPL.Infixl6op (_,i)) = doc $ showString i
-instance Print MplLanguage.AbsMPL.Infixr7op where
-  prt _ (MplLanguage.AbsMPL.Infixr7op (_,i)) = doc $ showString i
-instance Print MplLanguage.AbsMPL.Infixl8op where
-  prt _ (MplLanguage.AbsMPL.Infixl8op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.ChId where
   prt _ (MplLanguage.AbsMPL.ChId (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.InfixU1op where
@@ -192,6 +182,16 @@ instance Print MplLanguage.AbsMPL.InfixU6op where
   prt _ (MplLanguage.AbsMPL.InfixU6op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.InfixU7op where
   prt _ (MplLanguage.AbsMPL.InfixU7op (_,i)) = doc $ showString i
+instance Print MplLanguage.AbsMPL.Infixl1op where
+  prt _ (MplLanguage.AbsMPL.Infixl1op (_,i)) = doc $ showString i
+instance Print MplLanguage.AbsMPL.Infixl2op where
+  prt _ (MplLanguage.AbsMPL.Infixl2op (_,i)) = doc $ showString i
+instance Print MplLanguage.AbsMPL.Infixl4op where
+  prt _ (MplLanguage.AbsMPL.Infixl4op (_,i)) = doc $ showString i
+instance Print MplLanguage.AbsMPL.Infixr7op where
+  prt _ (MplLanguage.AbsMPL.Infixr7op (_,i)) = doc $ showString i
+instance Print MplLanguage.AbsMPL.Infixl8op where
+  prt _ (MplLanguage.AbsMPL.Infixl8op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Close where
   prt _ (MplLanguage.AbsMPL.Close (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Halt where

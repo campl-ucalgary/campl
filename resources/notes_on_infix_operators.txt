@@ -6,9 +6,9 @@ USAGE
 Infix operators are operators that are placed between the things they operate on.
 For example:
 
-	fun (+++) =
+	fun (++) =
 		[],c -> c
-		b:bs,c -> b:(bs +++ c)
+		b:bs,c -> b:(bs ++ c)
 
 Infix operators are declared like normal functions, but the name is surrounded by brackets:
 (naming discussed later)
@@ -20,11 +20,11 @@ Infix operators can have an explicit type, but they must take exactly 2 paramete
 
 To use a user-defined infix operator, use it like any other infix operator:
 
-	"abc" +++ "def"
+	"abc" ++ "def"
 
 Or, use it in a 'sectioned' form:
 
-	(+++)("abc","def")
+	(++)("abc","def")
 
 Any user-defined or inbuilt infix operator can be sectioned.
 
@@ -37,21 +37,17 @@ Below is a list of every infix operator. Each line represents a precedence.
 All operators except the '^' row are left-associative.
 
 
-    || (not implemented), any user-defined op starting with '|'
+    any user-defined op starting with '|'
     
-    && (not implemented), any user-defined op starting with '&'
+    any user-defined op starting with '&'
     
-    > (NI), /= (NI), ==, >=, <=, <, any user-defined op starting with '>','<','!'
-    
-    ++ (NI)
+    > (not implemented), /= (not implemented), ==, >=, <=, <, any user-defined op starting with '>','<','!'
     
     +, -, any user-defined op starting with '+','-'
     
-    % (NI), *, /, any user-defined op starting with '*','/','%'
+    *, /, any user-defined op starting with '*','/','%'
     
-    ^ (NI), any user-defined op starting with '^'. NOTE: right-associative
-    
-    !! (NI)
+    any user-defined op starting with '^'. NOTE: right-associative
 
 operators closer to the bottom bind more tightly.
 
@@ -60,10 +56,13 @@ Naming:
 ------------------------------------------------
 
 An infix operator name must start with one of the aforementioned symbols,
-and be followed by a nonzero sequence of any of the following characters:
+and may optionally be followed by sequence containing any of the following characters: (no letters or numbers)
 
     @ # $ _ ? | : ~ = | & < > ! + - * / % ^
 
-Please note that a token starting with '|' cannot contain a '=',
-since this would cause any '|=>' to be treated as a single token.
-Instead, we want this to be treated like '| =>', as this is usually what the programmer means.
+Please note that an infix token may not start with '|=', as this would cause an issue with the tokenizer.
+Also note that custom-defined infix operators cannot override built-in tokens, which include:
+
+    + - * / <= >= /= |
+
+Attempting to create such infix operators will produce a syntax error, as these are reserved-words in the language.

@@ -72,14 +72,9 @@ import MplLanguage.LexMPL
   L_RSquareBracket { PT _ (T_RSquareBracket _) }
   L_NullPattern    { PT _ (T_NullPattern _)    }
   L_Colon          { PT _ (T_Colon _)          }
-  L_Infixl1op      { PT _ (T_Infixl1op _)      }
-  L_Infixl2op      { PT _ (T_Infixl2op _)      }
   L_Infixl3op      { PT _ (T_Infixl3op _)      }
-  L_Infixl4op      { PT _ (T_Infixl4op _)      }
   L_Infixl5op      { PT _ (T_Infixl5op _)      }
   L_Infixl6op      { PT _ (T_Infixl6op _)      }
-  L_Infixr7op      { PT _ (T_Infixr7op _)      }
-  L_Infixl8op      { PT _ (T_Infixl8op _)      }
   L_ChId           { PT _ (T_ChId _)           }
   L_InfixU1op      { PT _ (T_InfixU1op _)      }
   L_InfixU2op      { PT _ (T_InfixU2op _)      }
@@ -87,6 +82,11 @@ import MplLanguage.LexMPL
   L_InfixU5op      { PT _ (T_InfixU5op _)      }
   L_InfixU6op      { PT _ (T_InfixU6op _)      }
   L_InfixU7op      { PT _ (T_InfixU7op _)      }
+  L_Infixl1op      { PT _ (T_Infixl1op _)      }
+  L_Infixl2op      { PT _ (T_Infixl2op _)      }
+  L_Infixl4op      { PT _ (T_Infixl4op _)      }
+  L_Infixr7op      { PT _ (T_Infixr7op _)      }
+  L_Infixl8op      { PT _ (T_Infixl8op _)      }
   L_Close          { PT _ (T_Close _)          }
   L_Halt           { PT _ (T_Halt _)           }
   L_Get            { PT _ (T_Get _)            }
@@ -138,29 +138,14 @@ NullPattern  : L_NullPattern { MplLanguage.AbsMPL.NullPattern (mkPosToken $1) }
 Colon :: { MplLanguage.AbsMPL.Colon }
 Colon  : L_Colon { MplLanguage.AbsMPL.Colon (mkPosToken $1) }
 
-Infixl1op :: { MplLanguage.AbsMPL.Infixl1op }
-Infixl1op  : L_Infixl1op { MplLanguage.AbsMPL.Infixl1op (mkPosToken $1) }
-
-Infixl2op :: { MplLanguage.AbsMPL.Infixl2op }
-Infixl2op  : L_Infixl2op { MplLanguage.AbsMPL.Infixl2op (mkPosToken $1) }
-
 Infixl3op :: { MplLanguage.AbsMPL.Infixl3op }
 Infixl3op  : L_Infixl3op { MplLanguage.AbsMPL.Infixl3op (mkPosToken $1) }
-
-Infixl4op :: { MplLanguage.AbsMPL.Infixl4op }
-Infixl4op  : L_Infixl4op { MplLanguage.AbsMPL.Infixl4op (mkPosToken $1) }
 
 Infixl5op :: { MplLanguage.AbsMPL.Infixl5op }
 Infixl5op  : L_Infixl5op { MplLanguage.AbsMPL.Infixl5op (mkPosToken $1) }
 
 Infixl6op :: { MplLanguage.AbsMPL.Infixl6op }
 Infixl6op  : L_Infixl6op { MplLanguage.AbsMPL.Infixl6op (mkPosToken $1) }
-
-Infixr7op :: { MplLanguage.AbsMPL.Infixr7op }
-Infixr7op  : L_Infixr7op { MplLanguage.AbsMPL.Infixr7op (mkPosToken $1) }
-
-Infixl8op :: { MplLanguage.AbsMPL.Infixl8op }
-Infixl8op  : L_Infixl8op { MplLanguage.AbsMPL.Infixl8op (mkPosToken $1) }
 
 ChId :: { MplLanguage.AbsMPL.ChId }
 ChId  : L_ChId { MplLanguage.AbsMPL.ChId (mkPosToken $1) }
@@ -182,6 +167,21 @@ InfixU6op  : L_InfixU6op { MplLanguage.AbsMPL.InfixU6op (mkPosToken $1) }
 
 InfixU7op :: { MplLanguage.AbsMPL.InfixU7op }
 InfixU7op  : L_InfixU7op { MplLanguage.AbsMPL.InfixU7op (mkPosToken $1) }
+
+Infixl1op :: { MplLanguage.AbsMPL.Infixl1op }
+Infixl1op  : L_Infixl1op { MplLanguage.AbsMPL.Infixl1op (mkPosToken $1) }
+
+Infixl2op :: { MplLanguage.AbsMPL.Infixl2op }
+Infixl2op  : L_Infixl2op { MplLanguage.AbsMPL.Infixl2op (mkPosToken $1) }
+
+Infixl4op :: { MplLanguage.AbsMPL.Infixl4op }
+Infixl4op  : L_Infixl4op { MplLanguage.AbsMPL.Infixl4op (mkPosToken $1) }
+
+Infixr7op :: { MplLanguage.AbsMPL.Infixr7op }
+Infixr7op  : L_Infixr7op { MplLanguage.AbsMPL.Infixr7op (mkPosToken $1) }
+
+Infixl8op :: { MplLanguage.AbsMPL.Infixl8op }
+Infixl8op  : L_Infixl8op { MplLanguage.AbsMPL.Infixl8op (mkPosToken $1) }
 
 Close :: { MplLanguage.AbsMPL.Close }
 Close  : L_Close { MplLanguage.AbsMPL.Close (mkPosToken $1) }

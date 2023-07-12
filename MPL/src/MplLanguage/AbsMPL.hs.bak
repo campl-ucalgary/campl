@@ -12,6 +12,21 @@ import qualified Prelude as C
   , Int, Maybe(..)
   )
 
+data Infixl1op = NONTOKEN1 Colon
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+data Infixl2op = NONTOKEN2 Colon
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+data Infixl4op = NONTOKEN4 Colon
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+data Infixr7op = NONTOKEN7 Colon
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+data Infixl8op = NONTOKEN8 Colon
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
 data MplProg = MPL_PROG [MplStmt]
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
@@ -308,16 +323,7 @@ newtype NullPattern = NullPattern ((C.Int, C.Int), String)
 newtype Colon = Colon ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-newtype Infixl1op = Infixl1op ((C.Int, C.Int), String)
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
-newtype Infixl2op = Infixl2op ((C.Int, C.Int), String)
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
 newtype Infixl3op = Infixl3op ((C.Int, C.Int), String)
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
-newtype Infixl4op = Infixl4op ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype Infixl5op = Infixl5op ((C.Int, C.Int), String)
@@ -326,10 +332,7 @@ newtype Infixl5op = Infixl5op ((C.Int, C.Int), String)
 newtype Infixl6op = Infixl6op ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-newtype Infixr7op = Infixr7op ((C.Int, C.Int), String)
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
-newtype Infixl8op = Infixl8op ((C.Int, C.Int), String)
+newtype ChId = ChId ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype InfixU1op = InfixU1op ((C.Int, C.Int), String)
@@ -372,9 +375,6 @@ newtype Split = Split ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype Fork = Fork ((C.Int, C.Int), String)
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
-newtype ChId = ChId ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype Case = Case ((C.Int, C.Int), String)
@@ -440,17 +440,8 @@ instance HasPosition NullPattern where
 instance HasPosition Colon where
   hasPosition (Colon (p, _)) = C.Just p
 
-instance HasPosition Infixl1op where
-  hasPosition (Infixl1op (p, _)) = C.Just p
-
-instance HasPosition Infixl2op where
-  hasPosition (Infixl2op (p, _)) = C.Just p
-
 instance HasPosition Infixl3op where
   hasPosition (Infixl3op (p, _)) = C.Just p
-
-instance HasPosition Infixl4op where
-  hasPosition (Infixl4op (p, _)) = C.Just p
 
 instance HasPosition Infixl5op where
   hasPosition (Infixl5op (p, _)) = C.Just p
@@ -458,11 +449,8 @@ instance HasPosition Infixl5op where
 instance HasPosition Infixl6op where
   hasPosition (Infixl6op (p, _)) = C.Just p
 
-instance HasPosition Infixr7op where
-  hasPosition (Infixr7op (p, _)) = C.Just p
-
-instance HasPosition Infixl8op where
-  hasPosition (Infixl8op (p, _)) = C.Just p
+instance HasPosition ChId where
+  hasPosition (ChId (p, _)) = C.Just p
 
 instance HasPosition InfixU1op where
   hasPosition (InfixU1op (p, _)) = C.Just p
@@ -505,9 +493,6 @@ instance HasPosition Split where
 
 instance HasPosition Fork where
   hasPosition (Fork (p, _)) = C.Just p
-
-instance HasPosition ChId where
-  hasPosition (ChId (p, _)) = C.Just p
 
 instance HasPosition Case where
   hasPosition (Case (p, _)) = C.Just p

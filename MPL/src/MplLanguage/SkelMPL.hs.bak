@@ -63,21 +63,9 @@ transColon :: MplLanguage.AbsMPL.Colon -> Result
 transColon x = case x of
   MplLanguage.AbsMPL.Colon string -> failure x
 
-transInfixl1op :: MplLanguage.AbsMPL.Infixl1op -> Result
-transInfixl1op x = case x of
-  MplLanguage.AbsMPL.Infixl1op string -> failure x
-
-transInfixl2op :: MplLanguage.AbsMPL.Infixl2op -> Result
-transInfixl2op x = case x of
-  MplLanguage.AbsMPL.Infixl2op string -> failure x
-
 transInfixl3op :: MplLanguage.AbsMPL.Infixl3op -> Result
 transInfixl3op x = case x of
   MplLanguage.AbsMPL.Infixl3op string -> failure x
-
-transInfixl4op :: MplLanguage.AbsMPL.Infixl4op -> Result
-transInfixl4op x = case x of
-  MplLanguage.AbsMPL.Infixl4op string -> failure x
 
 transInfixl5op :: MplLanguage.AbsMPL.Infixl5op -> Result
 transInfixl5op x = case x of
@@ -87,13 +75,9 @@ transInfixl6op :: MplLanguage.AbsMPL.Infixl6op -> Result
 transInfixl6op x = case x of
   MplLanguage.AbsMPL.Infixl6op string -> failure x
 
-transInfixr7op :: MplLanguage.AbsMPL.Infixr7op -> Result
-transInfixr7op x = case x of
-  MplLanguage.AbsMPL.Infixr7op string -> failure x
-
-transInfixl8op :: MplLanguage.AbsMPL.Infixl8op -> Result
-transInfixl8op x = case x of
-  MplLanguage.AbsMPL.Infixl8op string -> failure x
+transChId :: MplLanguage.AbsMPL.ChId -> Result
+transChId x = case x of
+  MplLanguage.AbsMPL.ChId string -> failure x
 
 transInfixU1op :: MplLanguage.AbsMPL.InfixU1op -> Result
 transInfixU1op x = case x of
@@ -151,10 +135,6 @@ transFork :: MplLanguage.AbsMPL.Fork -> Result
 transFork x = case x of
   MplLanguage.AbsMPL.Fork string -> failure x
 
-transChId :: MplLanguage.AbsMPL.ChId -> Result
-transChId x = case x of
-  MplLanguage.AbsMPL.ChId string -> failure x
-
 transCase :: MplLanguage.AbsMPL.Case -> Result
 transCase x = case x of
   MplLanguage.AbsMPL.Case string -> failure x
@@ -170,6 +150,26 @@ transPIdent x = case x of
 transUPIdent :: MplLanguage.AbsMPL.UPIdent -> Result
 transUPIdent x = case x of
   MplLanguage.AbsMPL.UPIdent string -> failure x
+
+transInfixl1op :: MplLanguage.AbsMPL.Infixl1op -> Result
+transInfixl1op x = case x of
+  MplLanguage.AbsMPL.NONTOKEN1 colon -> failure x
+
+transInfixl2op :: MplLanguage.AbsMPL.Infixl2op -> Result
+transInfixl2op x = case x of
+  MplLanguage.AbsMPL.NONTOKEN2 colon -> failure x
+
+transInfixl4op :: MplLanguage.AbsMPL.Infixl4op -> Result
+transInfixl4op x = case x of
+  MplLanguage.AbsMPL.NONTOKEN4 colon -> failure x
+
+transInfixr7op :: MplLanguage.AbsMPL.Infixr7op -> Result
+transInfixr7op x = case x of
+  MplLanguage.AbsMPL.NONTOKEN7 colon -> failure x
+
+transInfixl8op :: MplLanguage.AbsMPL.Infixl8op -> Result
+transInfixl8op x = case x of
+  MplLanguage.AbsMPL.NONTOKEN8 colon -> failure x
 
 transMplProg :: MplLanguage.AbsMPL.MplProg -> Result
 transMplProg x = case x of

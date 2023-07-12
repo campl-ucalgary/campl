@@ -162,22 +162,14 @@ instance Print MplLanguage.AbsMPL.NullPattern where
   prt _ (MplLanguage.AbsMPL.NullPattern (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Colon where
   prt _ (MplLanguage.AbsMPL.Colon (_,i)) = doc $ showString i
-instance Print MplLanguage.AbsMPL.Infixl1op where
-  prt _ (MplLanguage.AbsMPL.Infixl1op (_,i)) = doc $ showString i
-instance Print MplLanguage.AbsMPL.Infixl2op where
-  prt _ (MplLanguage.AbsMPL.Infixl2op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Infixl3op where
   prt _ (MplLanguage.AbsMPL.Infixl3op (_,i)) = doc $ showString i
-instance Print MplLanguage.AbsMPL.Infixl4op where
-  prt _ (MplLanguage.AbsMPL.Infixl4op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Infixl5op where
   prt _ (MplLanguage.AbsMPL.Infixl5op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Infixl6op where
   prt _ (MplLanguage.AbsMPL.Infixl6op (_,i)) = doc $ showString i
-instance Print MplLanguage.AbsMPL.Infixr7op where
-  prt _ (MplLanguage.AbsMPL.Infixr7op (_,i)) = doc $ showString i
-instance Print MplLanguage.AbsMPL.Infixl8op where
-  prt _ (MplLanguage.AbsMPL.Infixl8op (_,i)) = doc $ showString i
+instance Print MplLanguage.AbsMPL.ChId where
+  prt _ (MplLanguage.AbsMPL.ChId (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.InfixU1op where
   prt _ (MplLanguage.AbsMPL.InfixU1op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.InfixU2op where
@@ -206,8 +198,6 @@ instance Print MplLanguage.AbsMPL.Split where
   prt _ (MplLanguage.AbsMPL.Split (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Fork where
   prt _ (MplLanguage.AbsMPL.Fork (_,i)) = doc $ showString i
-instance Print MplLanguage.AbsMPL.ChId where
-  prt _ (MplLanguage.AbsMPL.ChId (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Case where
   prt _ (MplLanguage.AbsMPL.Case (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.UIdent where
@@ -216,6 +206,26 @@ instance Print MplLanguage.AbsMPL.PIdent where
   prt _ (MplLanguage.AbsMPL.PIdent (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.UPIdent where
   prt _ (MplLanguage.AbsMPL.UPIdent (_,i)) = doc $ showString i
+instance Print MplLanguage.AbsMPL.Infixl1op where
+  prt i = \case
+    MplLanguage.AbsMPL.NONTOKEN1 colon -> prPrec i 0 (concatD [prt 0 colon])
+
+instance Print MplLanguage.AbsMPL.Infixl2op where
+  prt i = \case
+    MplLanguage.AbsMPL.NONTOKEN2 colon -> prPrec i 0 (concatD [prt 0 colon])
+
+instance Print MplLanguage.AbsMPL.Infixl4op where
+  prt i = \case
+    MplLanguage.AbsMPL.NONTOKEN4 colon -> prPrec i 0 (concatD [prt 0 colon])
+
+instance Print MplLanguage.AbsMPL.Infixr7op where
+  prt i = \case
+    MplLanguage.AbsMPL.NONTOKEN7 colon -> prPrec i 0 (concatD [prt 0 colon])
+
+instance Print MplLanguage.AbsMPL.Infixl8op where
+  prt i = \case
+    MplLanguage.AbsMPL.NONTOKEN8 colon -> prPrec i 0 (concatD [prt 0 colon])
+
 instance Print [MplLanguage.AbsMPL.PIdent] where
   prt _ [] = concatD []
   prt _ [x] = concatD [prt 0 x]

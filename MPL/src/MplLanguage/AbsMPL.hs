@@ -308,28 +308,13 @@ newtype NullPattern = NullPattern ((C.Int, C.Int), String)
 newtype Colon = Colon ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-newtype Infixl1op = Infixl1op ((C.Int, C.Int), String)
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
-newtype Infixl2op = Infixl2op ((C.Int, C.Int), String)
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
 newtype Infixl3op = Infixl3op ((C.Int, C.Int), String)
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
-newtype Infixl4op = Infixl4op ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype Infixl5op = Infixl5op ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype Infixl6op = Infixl6op ((C.Int, C.Int), String)
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
-newtype Infixr7op = Infixr7op ((C.Int, C.Int), String)
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
-newtype Infixl8op = Infixl8op ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype ChId = ChId ((C.Int, C.Int), String)
@@ -351,6 +336,21 @@ newtype InfixU6op = InfixU6op ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype InfixU7op = InfixU7op ((C.Int, C.Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+newtype Infixl1op = Infixl1op ((C.Int, C.Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+newtype Infixl2op = Infixl2op ((C.Int, C.Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+newtype Infixl4op = Infixl4op ((C.Int, C.Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+newtype Infixr7op = Infixr7op ((C.Int, C.Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+newtype Infixl8op = Infixl8op ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype Close = Close ((C.Int, C.Int), String)
@@ -440,29 +440,14 @@ instance HasPosition NullPattern where
 instance HasPosition Colon where
   hasPosition (Colon (p, _)) = C.Just p
 
-instance HasPosition Infixl1op where
-  hasPosition (Infixl1op (p, _)) = C.Just p
-
-instance HasPosition Infixl2op where
-  hasPosition (Infixl2op (p, _)) = C.Just p
-
 instance HasPosition Infixl3op where
   hasPosition (Infixl3op (p, _)) = C.Just p
-
-instance HasPosition Infixl4op where
-  hasPosition (Infixl4op (p, _)) = C.Just p
 
 instance HasPosition Infixl5op where
   hasPosition (Infixl5op (p, _)) = C.Just p
 
 instance HasPosition Infixl6op where
   hasPosition (Infixl6op (p, _)) = C.Just p
-
-instance HasPosition Infixr7op where
-  hasPosition (Infixr7op (p, _)) = C.Just p
-
-instance HasPosition Infixl8op where
-  hasPosition (Infixl8op (p, _)) = C.Just p
 
 instance HasPosition ChId where
   hasPosition (ChId (p, _)) = C.Just p
@@ -484,6 +469,21 @@ instance HasPosition InfixU6op where
 
 instance HasPosition InfixU7op where
   hasPosition (InfixU7op (p, _)) = C.Just p
+
+instance HasPosition Infixl1op where
+  hasPosition (Infixl1op (p, _)) = C.Just p
+
+instance HasPosition Infixl2op where
+  hasPosition (Infixl2op (p, _)) = C.Just p
+
+instance HasPosition Infixl4op where
+  hasPosition (Infixl4op (p, _)) = C.Just p
+
+instance HasPosition Infixr7op where
+  hasPosition (Infixr7op (p, _)) = C.Just p
+
+instance HasPosition Infixl8op where
+  hasPosition (Infixl8op (p, _)) = C.Just p
 
 instance HasPosition Close where
   hasPosition (Close (p, _)) = C.Just p

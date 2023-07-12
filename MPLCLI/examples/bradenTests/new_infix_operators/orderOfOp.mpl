@@ -7,27 +7,27 @@ coprotocol S => Console =
 
 -- Some functions to show off order-of-operations in a printable way.
 
-fun (+++) = -- append, since '++' is already a thing.
+fun (++) = -- append, since '++' is already a thing.
     [],c -> c
-    b:bs,c -> b:(bs +++ c)
+    b:bs,c -> b:(bs ++ c)
 
-fun (|_) =
-    a,b -> "(" +++ a +++ " |_ " +++ b +++ ")"
+fun (||) =
+    a,b -> "(" ++ a ++ " || " ++ b ++ ")"
 
-fun (&_) =
-    a,b -> "(" +++ a +++ " &_ " +++ b +++ ")"
+fun (&&) =
+    a,b -> "(" ++ a ++ " && " ++ b ++ ")"
 
-fun (>_) =
-    a,b -> "(" +++ a +++ " >_ " +++ b +++ ")"
+fun (>>) =
+    a,b -> "(" ++ a ++ " >> " ++ b ++ ")"
 
-fun (+_) =
-    a,b -> "(" +++ a +++ " +_ " +++ b +++ ")"
+fun (+_+) =
+    a,b -> "(" ++ a ++ " +_+ " ++ b ++ ")"
 
-fun (*_) =
-    a,b -> "(" +++ a +++ " *_ " +++ b +++ ")"
+fun (**) =
+    a,b -> "(" ++ a ++ " ** " ++ b ++ ")"
 
-fun (^_) =
-    a,b -> "(" +++ a +++ " ^_ " +++ b +++ ")"
+fun (^) =
+    a,b -> "(" ++ a ++ " ^ " ++ b ++ ")"
 
 
 -- A couple tests on order-of-operations
@@ -40,31 +40,31 @@ proc helloworld :: | Console => =
             put "Everything is left-associative, except '^', which is right-associative"
             
             hput ConsolePut
-            put "1" |_ "2" |_ "3"
+            put "1" || "2" || "3"
             
             hput ConsolePut
-            put "1" &_ "2" &_ "3"
+            put "1" && "2" && "3"
             
             hput ConsolePut
-            put "1" >_ "2" >_ "3"
+            put "1" >> "2" >> "3"
             
             hput ConsolePut
-            put "1" +_ "2" +_ "3"
+            put "1" +_+ "2" +_+ "3"
             
             hput ConsolePut
-            put "1" *_ "2" *_ "3"
+            put "1" ** "2" ** "3"
             
             hput ConsolePut
-            put "1" ^_ "2" ^_ "3"
+            put "1" ^ "2" ^ "3"
             
             hput ConsolePut
-            put "\nOrder of operations: smaller numbers should be in more layers of brackets"
+            put "\nOrder of operations: smaller numbers should be more tightly-bound."
             
             hput ConsolePut
-            put "6" |_ "5" &_ "4" >_ "3" +_ "2" *_ "1" ^_ "1"
+            put "6" || "5" && "4" >> "3" +_+ "2" ** "1" ^ "1"
             
             hput ConsolePut
-            put "1" ^_ "1" *_ "2" +_ "3" >_ "4" &_ "5" |_ "6"
+            put "1" ^ "1" ** "2" +_+ "3" >> "4" && "5" || "6"
         
             hput ConsolePut
             put "\nDone"

@@ -63,21 +63,9 @@ transColon :: MplLanguage.AbsMPL.Colon -> Result
 transColon x = case x of
   MplLanguage.AbsMPL.Colon string -> failure x
 
-transInfixl1op :: MplLanguage.AbsMPL.Infixl1op -> Result
-transInfixl1op x = case x of
-  MplLanguage.AbsMPL.Infixl1op string -> failure x
-
-transInfixl2op :: MplLanguage.AbsMPL.Infixl2op -> Result
-transInfixl2op x = case x of
-  MplLanguage.AbsMPL.Infixl2op string -> failure x
-
 transInfixl3op :: MplLanguage.AbsMPL.Infixl3op -> Result
 transInfixl3op x = case x of
   MplLanguage.AbsMPL.Infixl3op string -> failure x
-
-transInfixl4op :: MplLanguage.AbsMPL.Infixl4op -> Result
-transInfixl4op x = case x of
-  MplLanguage.AbsMPL.Infixl4op string -> failure x
 
 transInfixl5op :: MplLanguage.AbsMPL.Infixl5op -> Result
 transInfixl5op x = case x of
@@ -86,14 +74,6 @@ transInfixl5op x = case x of
 transInfixl6op :: MplLanguage.AbsMPL.Infixl6op -> Result
 transInfixl6op x = case x of
   MplLanguage.AbsMPL.Infixl6op string -> failure x
-
-transInfixr7op :: MplLanguage.AbsMPL.Infixr7op -> Result
-transInfixr7op x = case x of
-  MplLanguage.AbsMPL.Infixr7op string -> failure x
-
-transInfixl8op :: MplLanguage.AbsMPL.Infixl8op -> Result
-transInfixl8op x = case x of
-  MplLanguage.AbsMPL.Infixl8op string -> failure x
 
 transChId :: MplLanguage.AbsMPL.ChId -> Result
 transChId x = case x of
@@ -122,6 +102,26 @@ transInfixU6op x = case x of
 transInfixU7op :: MplLanguage.AbsMPL.InfixU7op -> Result
 transInfixU7op x = case x of
   MplLanguage.AbsMPL.InfixU7op string -> failure x
+
+transInfixl1op :: MplLanguage.AbsMPL.Infixl1op -> Result
+transInfixl1op x = case x of
+  MplLanguage.AbsMPL.Infixl1op string -> failure x
+
+transInfixl2op :: MplLanguage.AbsMPL.Infixl2op -> Result
+transInfixl2op x = case x of
+  MplLanguage.AbsMPL.Infixl2op string -> failure x
+
+transInfixl4op :: MplLanguage.AbsMPL.Infixl4op -> Result
+transInfixl4op x = case x of
+  MplLanguage.AbsMPL.Infixl4op string -> failure x
+
+transInfixr7op :: MplLanguage.AbsMPL.Infixr7op -> Result
+transInfixr7op x = case x of
+  MplLanguage.AbsMPL.Infixr7op string -> failure x
+
+transInfixl8op :: MplLanguage.AbsMPL.Infixl8op -> Result
+transInfixl8op x = case x of
+  MplLanguage.AbsMPL.Infixl8op string -> failure x
 
 transClose :: MplLanguage.AbsMPL.Close -> Result
 transClose x = case x of

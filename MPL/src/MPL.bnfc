@@ -38,14 +38,11 @@ position token Colon ':' ;
 -- both as cons, and as a seperator for fold phrases
 -- Instead, we have a Colon token (as above) and use that
 -- whereever we require a colon
-position token Infixl1op ({"||"});
-position token Infixl2op ({"&&"});
+-- NOTE: some infix operators are moved below the 'user-defined infix' section,
+--       so that the user-defined operators take precedence
 position token Infixl3op ({"=="}|{"/="}|'<'|'>'|{"<="}|{">="});
-position token Infixl4op ({"++"}) ;
 position token Infixl5op ('+'|'-');
-position token Infixl6op ('*'|'/' | '%');
-position token Infixr7op ('^') ;
-position token Infixl8op ({"!!"}) ;
+position token Infixl6op ('*'|'/'); --  | '%'
 
 -- Custom-defined infix operators.
 -- They begin with a special character, followed by a non-zero sequence of less-special characters.
@@ -61,16 +58,26 @@ position token Infixl8op ({"!!"}) ;
 -- Please make sure that if you are changing this spec, change the comment too!
 -- Also, make sure to find-and-replace, since the less-special character string is used in each infixU rule!
 
--- this definition is moved up so that it takes precedece over InfixU1op
+-- this definition is moved up so that it takes precedence over InfixU1op
 position token ChId {"|=|"} ;
 
 -- The user-defined infix operators.
-position token InfixU1op (('|') (["@#$_?|:~|&<>!+-*/%^"])*) ;
+-- Note: the first one is special. The '|' cannot be immediately followed by '=', to minimize conflicts
+position token InfixU1op (('|') ["@#$_?|:~|&<>!+-*/%^"] (["@#$_?|:~=|&<>!+-*/%^"])*) ;
 position token InfixU2op (('&') (["@#$_?|:~=|&<>!+-*/%^"])*) ;
 position token InfixU3op (('<' | '>' | '!') (["@#$_?|:~=|&<>!+-*/%^"])*) ;
 position token InfixU5op (('+' | '-') (["@#$_?|:~=|&<>!+-*/%^"])*) ;
 position token InfixU6op (('*' | '/' | '%') (["@#$_?|:~=|&<>!+-*/%^"])*) ;
 position token InfixU7op (('^') (["@#$_?|:~=|&<>!+-*/%^"])*) ; -- right-associative
+
+-- The built-in infix operators, which should be moved back up to be with the rest of them,
+-- if they are ever actually wanted.
+position token Infixl1op ({"||"});
+position token Infixl2op ({"&&"});
+position token Infixl4op ({"++"}) ;
+position token Infixr7op ('^') ;
+position token Infixl8op ({"!!"}) ;
+
 
 position token Close {"close"} ;
 position token Halt {"halt"} ;
@@ -200,11 +207,11 @@ LET_EXPR  . Expr  ::= "let" "{" [LetExprPhrase] "}" "in" Expr ;
 INFIXR0_EXPR . Expr0 ::=  Expr1 Colon Expr0 ;
 _            . Expr0 ::=  Expr1  ;
 
-INFIXL1_EXPR . Expr1 ::=  Expr1 Infixl1op Expr2 ; -- Predefined infix
+INFIXL1_EXPR . Expr1 ::=  Expr1 Infixl1op Expr2 ; -- Predefined infix, not used
 INFIXU1_EXPR . Expr1 ::=  Expr1 InfixU1op Expr2 ; -- Custom infix
 _            . Expr1 ::=  Expr2  ;
 
-INFIXL2_EXPR . Expr2 ::=  Expr2 Infixl2op Expr3 ; -- Predefined infix
+INFIXL2_EXPR . Expr2 ::=  Expr2 Infixl2op Expr3 ; -- Predefined infix, not used
 INFIXU2_EXPR . Expr2 ::=  Expr2 InfixU2op Expr3 ; -- Custom infix
 _            . Expr2 ::=  Expr3  ;
 
@@ -212,7 +219,7 @@ INFIXL3_EXPR . Expr3 ::=  Expr3 Infixl3op Expr4 ; -- Predefined infix
 INFIXU3_EXPR . Expr3 ::=  Expr3 InfixU3op Expr4 ; -- Custom infix
 _            . Expr3 ::=  Expr4  ;
 
-INFIXL4_EXPR . Expr4 ::=  Expr4 Infixl4op Expr5 ; -- Predefined infix
+INFIXL4_EXPR . Expr4 ::=  Expr4 Infixl4op Expr5 ; -- Predefined infix, not used
 -- No custom infix, since '+' is already used by prefix 5.
 _            . Expr4 ::=  Expr5  ;
 
@@ -224,12 +231,12 @@ INFIXL6_EXPR . Expr6 ::=  Expr6 Infixl6op Expr7 ; -- Predefined infix
 INFIXU6_EXPR . Expr6 ::=  Expr6 InfixU6op Expr7 ; -- Custom infix
 _            . Expr6 ::=  Expr7  ;
 
-INFIXR7_EXPR . Expr7 ::=  Expr8 Infixr7op Expr7 ; -- Predefined infix, right-associative
+INFIXR7_EXPR . Expr7 ::=  Expr8 Infixr7op Expr7 ; -- Predefined infix, right-associative, not used
 INFIXU7_EXPR . Expr7 ::=  Expr8 InfixU7op Expr7 ; -- Custom infix, right-associative
 _            . Expr7 ::=  Expr8  ;
 
 
-INFIXL8_EXPR . Expr8 ::= Expr8 Infixl8op Expr10 ;
+INFIXL8_EXPR . Expr8 ::= Expr8 Infixl8op Expr10 ; -- Predefined infix, not used
 _            . Expr8 ::= Expr10 ;
 
 
