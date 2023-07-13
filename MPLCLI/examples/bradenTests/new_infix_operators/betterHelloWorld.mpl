@@ -30,6 +30,11 @@ where
     fun (-_-) =
         a,b -> 0
 
+
+fun (++) =
+    a,b -> a + b
+
+
 -- inside every possible expression construct
 fun (^-^) =
     a,b -> 0
