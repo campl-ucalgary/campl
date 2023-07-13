@@ -162,18 +162,32 @@ instance Print MplLanguage.AbsMPL.NullPattern where
   prt _ (MplLanguage.AbsMPL.NullPattern (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Colon where
   prt _ (MplLanguage.AbsMPL.Colon (_,i)) = doc $ showString i
-instance Print MplLanguage.AbsMPL.Infixl1op where
-  prt _ (MplLanguage.AbsMPL.Infixl1op (_,i)) = doc $ showString i
-instance Print MplLanguage.AbsMPL.Infixl2op where
-  prt _ (MplLanguage.AbsMPL.Infixl2op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Infixl3op where
   prt _ (MplLanguage.AbsMPL.Infixl3op (_,i)) = doc $ showString i
-instance Print MplLanguage.AbsMPL.Infixl4op where
-  prt _ (MplLanguage.AbsMPL.Infixl4op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Infixl5op where
   prt _ (MplLanguage.AbsMPL.Infixl5op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Infixl6op where
   prt _ (MplLanguage.AbsMPL.Infixl6op (_,i)) = doc $ showString i
+instance Print MplLanguage.AbsMPL.ChId where
+  prt _ (MplLanguage.AbsMPL.ChId (_,i)) = doc $ showString i
+instance Print MplLanguage.AbsMPL.InfixU1op where
+  prt _ (MplLanguage.AbsMPL.InfixU1op (_,i)) = doc $ showString i
+instance Print MplLanguage.AbsMPL.InfixU2op where
+  prt _ (MplLanguage.AbsMPL.InfixU2op (_,i)) = doc $ showString i
+instance Print MplLanguage.AbsMPL.InfixU3op where
+  prt _ (MplLanguage.AbsMPL.InfixU3op (_,i)) = doc $ showString i
+instance Print MplLanguage.AbsMPL.InfixU5op where
+  prt _ (MplLanguage.AbsMPL.InfixU5op (_,i)) = doc $ showString i
+instance Print MplLanguage.AbsMPL.InfixU6op where
+  prt _ (MplLanguage.AbsMPL.InfixU6op (_,i)) = doc $ showString i
+instance Print MplLanguage.AbsMPL.InfixU7op where
+  prt _ (MplLanguage.AbsMPL.InfixU7op (_,i)) = doc $ showString i
+instance Print MplLanguage.AbsMPL.Infixl1op where
+  prt _ (MplLanguage.AbsMPL.Infixl1op (_,i)) = doc $ showString i
+instance Print MplLanguage.AbsMPL.Infixl2op where
+  prt _ (MplLanguage.AbsMPL.Infixl2op (_,i)) = doc $ showString i
+instance Print MplLanguage.AbsMPL.Infixl4op where
+  prt _ (MplLanguage.AbsMPL.Infixl4op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Infixr7op where
   prt _ (MplLanguage.AbsMPL.Infixr7op (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Infixl8op where
@@ -194,8 +208,6 @@ instance Print MplLanguage.AbsMPL.Split where
   prt _ (MplLanguage.AbsMPL.Split (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Fork where
   prt _ (MplLanguage.AbsMPL.Fork (_,i)) = doc $ showString i
-instance Print MplLanguage.AbsMPL.ChId where
-  prt _ (MplLanguage.AbsMPL.ChId (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Case where
   prt _ (MplLanguage.AbsMPL.Case (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.UIdent where
@@ -345,13 +357,30 @@ instance Print MplLanguage.AbsMPL.Expr where
     MplLanguage.AbsMPL.LET_EXPR letexprphrases expr -> prPrec i 0 (concatD [doc (showString "let"), doc (showString "{"), prt 0 letexprphrases, doc (showString "}"), doc (showString "in"), prt 0 expr])
     MplLanguage.AbsMPL.INFIXR0_EXPR expr1 colon expr2 -> prPrec i 0 (concatD [prt 1 expr1, prt 0 colon, prt 0 expr2])
     MplLanguage.AbsMPL.INFIXL1_EXPR expr1 infixlop expr2 -> prPrec i 1 (concatD [prt 1 expr1, prt 0 infixlop, prt 2 expr2])
+    MplLanguage.AbsMPL.INFIXU1_EXPR expr1 infixuop expr2 -> prPrec i 1 (concatD [prt 1 expr1, prt 0 infixuop, prt 2 expr2])
     MplLanguage.AbsMPL.INFIXL2_EXPR expr1 infixlop expr2 -> prPrec i 2 (concatD [prt 2 expr1, prt 0 infixlop, prt 3 expr2])
+    MplLanguage.AbsMPL.INFIXU2_EXPR expr1 infixuop expr2 -> prPrec i 2 (concatD [prt 2 expr1, prt 0 infixuop, prt 3 expr2])
     MplLanguage.AbsMPL.INFIXL3_EXPR expr1 infixlop expr2 -> prPrec i 3 (concatD [prt 3 expr1, prt 0 infixlop, prt 4 expr2])
+    MplLanguage.AbsMPL.INFIXU3_EXPR expr1 infixuop expr2 -> prPrec i 3 (concatD [prt 3 expr1, prt 0 infixuop, prt 4 expr2])
     MplLanguage.AbsMPL.INFIXL4_EXPR expr1 infixlop expr2 -> prPrec i 4 (concatD [prt 4 expr1, prt 0 infixlop, prt 5 expr2])
     MplLanguage.AbsMPL.INFIXL5_EXPR expr1 infixlop expr2 -> prPrec i 5 (concatD [prt 5 expr1, prt 0 infixlop, prt 6 expr2])
+    MplLanguage.AbsMPL.INFIXU5_EXPR expr1 infixuop expr2 -> prPrec i 5 (concatD [prt 5 expr1, prt 0 infixuop, prt 6 expr2])
     MplLanguage.AbsMPL.INFIXL6_EXPR expr1 infixlop expr2 -> prPrec i 6 (concatD [prt 6 expr1, prt 0 infixlop, prt 7 expr2])
+    MplLanguage.AbsMPL.INFIXU6_EXPR expr1 infixuop expr2 -> prPrec i 6 (concatD [prt 6 expr1, prt 0 infixuop, prt 7 expr2])
     MplLanguage.AbsMPL.INFIXR7_EXPR expr1 infixrop expr2 -> prPrec i 7 (concatD [prt 8 expr1, prt 0 infixrop, prt 7 expr2])
+    MplLanguage.AbsMPL.INFIXU7_EXPR expr1 infixuop expr2 -> prPrec i 7 (concatD [prt 8 expr1, prt 0 infixuop, prt 7 expr2])
     MplLanguage.AbsMPL.INFIXL8_EXPR expr1 infixlop expr2 -> prPrec i 8 (concatD [prt 8 expr1, prt 0 infixlop, prt 10 expr2])
+    MplLanguage.AbsMPL.INFIXU_SECT lbracket1 infixuop rbracket1 lbracket2 expr1 expr2 rbracket2 -> prPrec i 10 (concatD [prt 0 lbracket1, prt 0 infixuop, prt 0 rbracket1, prt 0 lbracket2, prt 0 expr1, doc (showString ","), prt 0 expr2, prt 0 rbracket2])
+    MplLanguage.AbsMPL.INFIXL1_SECT lbracket1 infixlop rbracket1 lbracket2 expr1 expr2 rbracket2 -> prPrec i 10 (concatD [prt 0 lbracket1, prt 0 infixlop, prt 0 rbracket1, prt 0 lbracket2, prt 0 expr1, doc (showString ","), prt 0 expr2, prt 0 rbracket2])
+    MplLanguage.AbsMPL.INFIXL2_SECT lbracket1 infixlop rbracket1 lbracket2 expr1 expr2 rbracket2 -> prPrec i 10 (concatD [prt 0 lbracket1, prt 0 infixlop, prt 0 rbracket1, prt 0 lbracket2, prt 0 expr1, doc (showString ","), prt 0 expr2, prt 0 rbracket2])
+    MplLanguage.AbsMPL.INFIXL3_SECT lbracket1 infixlop rbracket1 lbracket2 expr1 expr2 rbracket2 -> prPrec i 10 (concatD [prt 0 lbracket1, prt 0 infixlop, prt 0 rbracket1, prt 0 lbracket2, prt 0 expr1, doc (showString ","), prt 0 expr2, prt 0 rbracket2])
+    MplLanguage.AbsMPL.INFIXL4_SECT lbracket1 infixlop rbracket1 lbracket2 expr1 expr2 rbracket2 -> prPrec i 10 (concatD [prt 0 lbracket1, prt 0 infixlop, prt 0 rbracket1, prt 0 lbracket2, prt 0 expr1, doc (showString ","), prt 0 expr2, prt 0 rbracket2])
+    MplLanguage.AbsMPL.INFIXL5_SECT lbracket1 infixlop rbracket1 lbracket2 expr1 expr2 rbracket2 -> prPrec i 10 (concatD [prt 0 lbracket1, prt 0 infixlop, prt 0 rbracket1, prt 0 lbracket2, prt 0 expr1, doc (showString ","), prt 0 expr2, prt 0 rbracket2])
+    MplLanguage.AbsMPL.INFIXL6_SECT lbracket1 infixlop rbracket1 lbracket2 expr1 expr2 rbracket2 -> prPrec i 10 (concatD [prt 0 lbracket1, prt 0 infixlop, prt 0 rbracket1, prt 0 lbracket2, prt 0 expr1, doc (showString ","), prt 0 expr2, prt 0 rbracket2])
+    MplLanguage.AbsMPL.INFIXR7_SECT lbracket1 infixrop rbracket1 lbracket2 expr1 expr2 rbracket2 -> prPrec i 10 (concatD [prt 0 lbracket1, prt 0 infixrop, prt 0 rbracket1, prt 0 lbracket2, prt 0 expr1, doc (showString ","), prt 0 expr2, prt 0 rbracket2])
+    MplLanguage.AbsMPL.INFIXL8_SECT lbracket1 infixlop rbracket1 lbracket2 expr1 expr2 rbracket2 -> prPrec i 10 (concatD [prt 0 lbracket1, prt 0 infixlop, prt 0 rbracket1, prt 0 lbracket2, prt 0 expr1, doc (showString ","), prt 0 expr2, prt 0 rbracket2])
+    MplLanguage.AbsMPL.INFIXPR_SECT par lbracket expr1 expr2 rbracket -> prPrec i 10 (concatD [prt 0 par, prt 0 lbracket, prt 0 expr1, doc (showString ","), prt 0 expr2, prt 0 rbracket])
+    MplLanguage.AbsMPL.INFIXTN_SECT tensor lbracket expr1 expr2 rbracket -> prPrec i 10 (concatD [prt 0 tensor, prt 0 lbracket, prt 0 expr1, doc (showString ","), prt 0 expr2, prt 0 rbracket])
     MplLanguage.AbsMPL.LIST_EXPR lsquarebracket exprs rsquarebracket -> prPrec i 10 (concatD [prt 0 lsquarebracket, prt 0 exprs, prt 0 rsquarebracket])
     MplLanguage.AbsMPL.VAR_EXPR pident -> prPrec i 10 (concatD [prt 0 pident])
     MplLanguage.AbsMPL.INT_EXPR pinteger -> prPrec i 10 (concatD [prt 0 pinteger])
@@ -369,6 +398,15 @@ instance Print MplLanguage.AbsMPL.Expr where
     MplLanguage.AbsMPL.FUN_EXPR pident lbracket exprs rbracket -> prPrec i 10 (concatD [prt 0 pident, prt 0 lbracket, prt 0 exprs, prt 0 rbracket])
     MplLanguage.AbsMPL.RECORD_EXPR lbracket recordexprphrases rbracket -> prPrec i 10 (concatD [prt 0 lbracket, prt 0 recordexprphrases, prt 0 rbracket])
     MplLanguage.AbsMPL.BRACKETED_EXPR lbracket expr rbracket -> prPrec i 10 (concatD [prt 0 lbracket, prt 0 expr, prt 0 rbracket])
+
+instance Print MplLanguage.AbsMPL.InfixUop where
+  prt i = \case
+    MplLanguage.AbsMPL.InfixUop1 infixuop -> prPrec i 0 (concatD [prt 0 infixuop])
+    MplLanguage.AbsMPL.InfixUop2 infixuop -> prPrec i 0 (concatD [prt 0 infixuop])
+    MplLanguage.AbsMPL.InfixUop3 infixuop -> prPrec i 0 (concatD [prt 0 infixuop])
+    MplLanguage.AbsMPL.InfixUop5 infixuop -> prPrec i 0 (concatD [prt 0 infixuop])
+    MplLanguage.AbsMPL.InfixUop6 infixuop -> prPrec i 0 (concatD [prt 0 infixuop])
+    MplLanguage.AbsMPL.InfixUop7 infixuop -> prPrec i 0 (concatD [prt 0 infixuop])
 
 instance Print MplLanguage.AbsMPL.UnfoldExprPhrase where
   prt i = \case
@@ -480,6 +518,8 @@ instance Print MplLanguage.AbsMPL.FunctionDefn where
     MplLanguage.AbsMPL.INTERNAL_TYPED_FUNCTION_DEFN pident mpltype pattexprphrases -> prPrec i 0 (concatD [doc (showString "fun"), prt 0 pident, doc (showString "::"), prt 0 mpltype, doc (showString "="), doc (showString "{"), prt 0 pattexprphrases, doc (showString "}")])
     MplLanguage.AbsMPL.TYPED_FUNCTION_DEFN pident mpltypes mpltype pattexprphrases -> prPrec i 0 (concatD [doc (showString "fun"), prt 0 pident, doc (showString "::"), prt 0 mpltypes, doc (showString "->"), prt 0 mpltype, doc (showString "="), doc (showString "{"), prt 0 pattexprphrases, doc (showString "}")])
     MplLanguage.AbsMPL.FUNCTION_DEFN pident pattexprphrases -> prPrec i 0 (concatD [doc (showString "fun"), prt 0 pident, doc (showString "="), doc (showString "{"), prt 0 pattexprphrases, doc (showString "}")])
+    MplLanguage.AbsMPL.TYPED_FUNCTION_DEFN_UINFIX lbracket infixuop rbracket mpltype1 mpltype2 mpltype3 pattexprphrases -> prPrec i 0 (concatD [doc (showString "fun"), prt 0 lbracket, prt 0 infixuop, prt 0 rbracket, doc (showString "::"), prt 0 mpltype1, doc (showString ","), prt 0 mpltype2, doc (showString "->"), prt 0 mpltype3, doc (showString "="), doc (showString "{"), prt 0 pattexprphrases, doc (showString "}")])
+    MplLanguage.AbsMPL.FUNCTION_DEFN_UINFIX lbracket infixuop rbracket pattexprphrases -> prPrec i 0 (concatD [doc (showString "fun"), prt 0 lbracket, prt 0 infixuop, prt 0 rbracket, doc (showString "="), doc (showString "{"), prt 0 pattexprphrases, doc (showString "}")])
 
 instance Print [MplLanguage.AbsMPL.PattExprPhrase] where
   prt _ [] = concatD []

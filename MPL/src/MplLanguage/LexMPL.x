@@ -93,6 +93,46 @@ $d + \. $d + (e \- ? $d +)?
 \:
     { tok (eitherResIdent T_Colon) }
 
+-- token Infixl3op
+\= \= | \/ \= | \< | \> | \< \= | \> \=
+    { tok (eitherResIdent T_Infixl3op) }
+
+-- token Infixl5op
+[\+ \-]
+    { tok (eitherResIdent T_Infixl5op) }
+
+-- token Infixl6op
+[\* \/]
+    { tok (eitherResIdent T_Infixl6op) }
+
+-- token ChId
+\| \= \|
+    { tok (eitherResIdent T_ChId) }
+
+-- token InfixU1op
+\| [\! \# \$ \% \& \* \+ \- \/ \: \< \> \? \@ \^ \_ \| \~][\! \# \$ \% \& \* \+ \- \/ \: \< \= \> \? \@ \^ \_ \| \~]*
+    { tok (eitherResIdent T_InfixU1op) }
+
+-- token InfixU2op
+\& [\! \# \$ \% \& \* \+ \- \/ \: \< \= \> \? \@ \^ \_ \| \~]*
+    { tok (eitherResIdent T_InfixU2op) }
+
+-- token InfixU3op
+[\! \< \>][\! \# \$ \% \& \* \+ \- \/ \: \< \= \> \? \@ \^ \_ \| \~]*
+    { tok (eitherResIdent T_InfixU3op) }
+
+-- token InfixU5op
+[\+ \-][\! \# \$ \% \& \* \+ \- \/ \: \< \= \> \? \@ \^ \_ \| \~]*
+    { tok (eitherResIdent T_InfixU5op) }
+
+-- token InfixU6op
+[\% \* \/][\! \# \$ \% \& \* \+ \- \/ \: \< \= \> \? \@ \^ \_ \| \~]*
+    { tok (eitherResIdent T_InfixU6op) }
+
+-- token InfixU7op
+\^ [\! \# \$ \% \& \* \+ \- \/ \: \< \= \> \? \@ \^ \_ \| \~]*
+    { tok (eitherResIdent T_InfixU7op) }
+
 -- token Infixl1op
 \| \|
     { tok (eitherResIdent T_Infixl1op) }
@@ -101,21 +141,9 @@ $d + \. $d + (e \- ? $d +)?
 \& \&
     { tok (eitherResIdent T_Infixl2op) }
 
--- token Infixl3op
-\= \= | \/ \= | \< | \> | \< \= | \> \=
-    { tok (eitherResIdent T_Infixl3op) }
-
 -- token Infixl4op
 \+ \+
     { tok (eitherResIdent T_Infixl4op) }
-
--- token Infixl5op
-[\+ \-]
-    { tok (eitherResIdent T_Infixl5op) }
-
--- token Infixl6op
-[\% \* \/]
-    { tok (eitherResIdent T_Infixl6op) }
 
 -- token Infixr7op
 \^
@@ -156,10 +184,6 @@ s p l i t
 -- token Fork
 f o r k
     { tok (eitherResIdent T_Fork) }
-
--- token ChId
-\| \= \|
-    { tok (eitherResIdent T_ChId) }
 
 -- token Case
 c a s e
@@ -206,12 +230,19 @@ data Tok
   | T_RSquareBracket !String
   | T_NullPattern !String
   | T_Colon !String
-  | T_Infixl1op !String
-  | T_Infixl2op !String
   | T_Infixl3op !String
-  | T_Infixl4op !String
   | T_Infixl5op !String
   | T_Infixl6op !String
+  | T_ChId !String
+  | T_InfixU1op !String
+  | T_InfixU2op !String
+  | T_InfixU3op !String
+  | T_InfixU5op !String
+  | T_InfixU6op !String
+  | T_InfixU7op !String
+  | T_Infixl1op !String
+  | T_Infixl2op !String
+  | T_Infixl4op !String
   | T_Infixr7op !String
   | T_Infixl8op !String
   | T_Close !String
@@ -222,7 +253,6 @@ data Tok
   | T_HPut !String
   | T_Split !String
   | T_Fork !String
-  | T_ChId !String
   | T_Case !String
   | T_UIdent !String
   | T_PIdent !String
@@ -301,12 +331,19 @@ tokenText t = case t of
   PT _ (T_RSquareBracket s) -> s
   PT _ (T_NullPattern s) -> s
   PT _ (T_Colon s) -> s
-  PT _ (T_Infixl1op s) -> s
-  PT _ (T_Infixl2op s) -> s
   PT _ (T_Infixl3op s) -> s
-  PT _ (T_Infixl4op s) -> s
   PT _ (T_Infixl5op s) -> s
   PT _ (T_Infixl6op s) -> s
+  PT _ (T_ChId s) -> s
+  PT _ (T_InfixU1op s) -> s
+  PT _ (T_InfixU2op s) -> s
+  PT _ (T_InfixU3op s) -> s
+  PT _ (T_InfixU5op s) -> s
+  PT _ (T_InfixU6op s) -> s
+  PT _ (T_InfixU7op s) -> s
+  PT _ (T_Infixl1op s) -> s
+  PT _ (T_Infixl2op s) -> s
+  PT _ (T_Infixl4op s) -> s
   PT _ (T_Infixr7op s) -> s
   PT _ (T_Infixl8op s) -> s
   PT _ (T_Close s) -> s
@@ -317,7 +354,6 @@ tokenText t = case t of
   PT _ (T_HPut s) -> s
   PT _ (T_Split s) -> s
   PT _ (T_Fork s) -> s
-  PT _ (T_ChId s) -> s
   PT _ (T_Case s) -> s
   PT _ (T_UIdent s) -> s
   PT _ (T_PIdent s) -> s

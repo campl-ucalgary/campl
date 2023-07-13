@@ -6,16 +6,10 @@ import MplPasses.Parser.BnfcParse as B
 
 -- A module which resolves the 'on channel do x,y,z' syntax.
 -- This is done by turning every instance of this syntax into an instance of the standard syntax (macro expansion)
--- 'on _ do _' is just a macro.
 
--- The way this file does this is to replace every node "PROCESS_ON" with a series of nodes corresponding to
--- each of the sub-instructions. This substitution means that we don't have to deal with this structure
--- any other place in the project, which is nice. In exchange, whenever the AST rules are modified, this will also need to be.
--- (Though this code can also be used for other similar changes in the AST)
-
--- This code is essentially a map, which turns PROCESS_ON nodes into a list of nodes corresponding to each node in the block.
--- Most of the code is here because the AST is a giant mutually-recursive data structure, so mapping across it takes a lot of functions.
--- There are a couple special cases put in to make sure that the 'on' blocks are turned into multiple nodes, but apart from that, it's a regular map.
+-- Additionally, it converts instances of user-defined infix operators into standard function calls,
+-- and turns user-defined infix operator definitions into standard function definitions.
+-- Finally, it turns sectioned function calls "(infixOperator)(a,b)" into standard function calls.
 
 removeMacros :: B.MplProg -> B.MplProg
 removeMacros (MPL_PROG ls) = MPL_PROG (remStmts ls)
@@ -39,6 +33,7 @@ remDefs = map remDef
 
 remDef :: B.MplDefn -> B.MplDefn
 remDef (MPL_PROCESS_DEFN a) = MPL_PROCESS_DEFN (remProc a)
+remDef (MPL_FUNCTION_DEFN a) = MPL_FUNCTION_DEFN (remFunc a)
 remDef a = a -- anything except a process definition can be left as-is.
 
 remProc :: B.ProcessDefn -> B.ProcessDefn
@@ -52,6 +47,12 @@ remPhrases (b:bs) = (remPhrase b) : (remPhrases bs)
 
 remPhrase :: ProcessPhrase -> ProcessPhrase
 remPhrase (PROCESS_PHRASE a b c block) = PROCESS_PHRASE a b c (remBlock block)
+
+---------------------------------------------------------------------------
+-- Unwrapping the 'on' syntax
+---------------------------------------------------------------------------
+
+
 
 -- From this point forward, we are dealing with removing macros.
 -- Basically, we map each command with 'remC' to change it as needed,
@@ -80,6 +81,7 @@ remCs (r:rs) =
 -- Note that 'PROCESS_ON' is not included here, as it returns a list,
 -- and a list needs to be handled separately (since that changes the structure of the AST)
 remC :: ProcessCommand -> ProcessCommand
+-- Commands which can contain 'on' blocks inside
 remC (PROCESS_HCASE a b ps) =
     PROCESS_HCASE a b (map remHCP ps)
 remC (PROCESS_FORK a b ps) =
@@ -88,14 +90,20 @@ remC (PROCESS_RACE ps) =
     PROCESS_RACE (map remRP ps)
 remC (PROCESS_PLUG ps) =
     PROCESS_PLUG (map remPP ps)
-remC (PROCESS_CASE a b ps) =
-    PROCESS_CASE a b (map remPCP ps)
-remC (PROCESS_IF a b1 b2) =
-    PROCESS_IF a (remBlock b1) (remBlock b2)
+-- commands which can contain expressions inside.
+remC (PROCESS_RUN i lb es i1s i2s rb) =
+    PROCESS_RUN i lb (map remExp es) i1s i2s rb
+remC (PROCESS_PUT put e i) =
+    PROCESS_PUT put (remExp e) i
+-- commands which contain both command blocks and expressions
+remC (PROCESS_CASE cas e ps) =
+    PROCESS_CASE cas (remExp e) (map remPCP ps)
+remC (PROCESS_IF e b1 b2) =
+    PROCESS_IF (remExp e) (remBlock b1) (remBlock b2)
 remC (PROCESS_SWITCH ps) =
     PROCESS_SWITCH (map remPSP ps)
-remC a = a -- The default case. do nothing.
-
+-- The default case. do nothing.
+remC a = a
 
 
 remHCP :: HCasePhrase -> HCasePhrase
@@ -122,10 +130,6 @@ remPCP :: ProcessCasePhrase -> ProcessCasePhrase
 remPCP (PROCESS_CASE_PHRASE a block) =
     PROCESS_CASE_PHRASE a (remBlock block)
 
-remPSP :: ProcessSwitchPhrase -> ProcessSwitchPhrase
-remPSP (PROCESS_SWITCH_PHRASE a block) =
-    PROCESS_SWITCH_PHRASE a (remBlock block)
-
 -- Unwraps an 'on _ do x,y,z' to a series of discrete commands.
 -- Note: those commands may also need to be unwrapped, so be sure to call remCs on the result of onUnwrap!
 onUnwrap :: PIdent -> [OnPhrase] -> [ProcessCommand]
@@ -146,3 +150,184 @@ onUnwrap channel@(PIdent (_,chan)) ((ON_CLOSE h@(Close (coords,_))):rs) =
     (PROCESS_CLOSE h (PIdent (coords,chan))) : (onUnwrap channel rs)
 onUnwrap channel@(PIdent (_,chan)) ((ON_HALT h@(Halt (coords,_))):rs) =
     (PROCESS_HALT h (PIdent (coords,chan))) : (onUnwrap channel rs)
+
+
+---------------------------------------------------------------------------
+-- Resolving instances of infix operators and declarations
+---------------------------------------------------------------------------
+
+-- Several expression phrases.
+
+remLEP :: LetExprPhrase -> LetExprPhrase
+remLEP (LET_EXPR_PHRASE m) = LET_EXPR_PHRASE (remStmt m)
+
+remFEP :: FoldExprPhrase -> FoldExprPhrase
+remFEP (FOLD_EXPR_PHRASE i colon ps e) = 
+    FOLD_EXPR_PHRASE i colon ps (remExp e)
+
+remPEP :: PattExprPhrase -> PattExprPhrase
+remPEP (PATTERN_TO_EXPR ps e) =
+    PATTERN_TO_EXPR ps (remExp e)
+
+remUEP :: UnfoldExprPhrase -> UnfoldExprPhrase
+remUEP (UNFOLD_EXPR_PHRASE p feps) =
+    UNFOLD_EXPR_PHRASE p (map remFEP feps)
+
+remSEP :: SwitchExprPhrase -> SwitchExprPhrase
+remSEP (SWITCH_EXPR_PHRASE e1 e2) =
+    SWITCH_EXPR_PHRASE (remExp e1) (remExp e2)
+
+remREP :: RecordExprPhrase -> RecordExprPhrase
+remREP (RECORD_EXPR_PHRASE i e) =
+    RECORD_EXPR_PHRASE i (remExp e)
+remREP (RECORD_EXPR_HIGHER_ORDER_PHRASE i pep) =
+    RECORD_EXPR_HIGHER_ORDER_PHRASE i (remPEP pep)
+
+remTEL :: TupleExprList -> TupleExprList
+remTEL (TUPLE_EXPR_LIST e) =
+    TUPLE_EXPR_LIST (remExp e)
+
+-- This one is both for fixing 'on' blocks and expressions. 
+remPSP :: ProcessSwitchPhrase -> ProcessSwitchPhrase
+remPSP (PROCESS_SWITCH_PHRASE e block) =
+    PROCESS_SWITCH_PHRASE (remExp e) (remBlock block)
+
+-- Fixes up functions: converts prefix definitions to standard definitions,
+remFunc :: FunctionDefn -> FunctionDefn
+remFunc (TYPED_FUNCTION_DEFN_UINFIX _ i _ t1 t2 t3 ps) =
+    remFunc $ TYPED_FUNCTION_DEFN (convertToPIdent i) [t1,t2] t3 ps
+remFunc (FUNCTION_DEFN_UINFIX _ i _ ps) =
+    remFunc $ FUNCTION_DEFN (convertToPIdent i) ps
+remFunc (TYPED_FUNCTION_DEFN i t1s t2 ps) =
+    TYPED_FUNCTION_DEFN i t1s t2 (map remPEP ps)
+remFunc (FUNCTION_DEFN i ps) =
+    FUNCTION_DEFN i (map remPEP ps)
+
+
+
+
+
+-- Converts a user-defined infix operator to a generic function identifier.
+-- This allows infix function declarations/usages to become prefix instead.
+-- Basically just unwrapping and rewrapping.
+-- Note that 'a' is just an ((Int,Int),String), which is a coordinate followed by a string token.
+convertToPIdent :: InfixUop -> PIdent
+convertToPIdent (InfixUop1 (InfixU1op a)) = PIdent a
+convertToPIdent (InfixUop2 (InfixU2op a)) = PIdent a
+convertToPIdent (InfixUop3 (InfixU3op a)) = PIdent a
+convertToPIdent (InfixUop5 (InfixU5op a)) = PIdent a
+convertToPIdent (InfixUop6 (InfixU6op a)) = PIdent a
+convertToPIdent (InfixUop7 (InfixU7op a)) = PIdent a
+
+
+-- Traverses an expression, taking any instance of a user-defined infix operator
+-- and making it a function call. Because the user-defined infix definition is also converted to a function definition,
+-- the system behaves like infix operators are infix, and functions are functions,
+-- but secretly everything is just a function.
+-- IMPORTANT: make sure the 'remExp' function is being called on every 'Expr' node in the AST, because otherwise,
+--  the infix operators won't all be replaced, and you will get an error later on because an infix AST node wasn't replaced.
+remExp :: Expr -> Expr
+remExp (EXPR e) = EXPR (remExp e)
+remExp (TYPED_EXPR e tp) = TYPED_EXPR (remExp e) tp
+remExp (IF_EXPR e1 e2 e3) = IF_EXPR (remExp e1) (remExp e2) (remExp e3)
+remExp (LET_EXPR leps e) = LET_EXPR (map remLEP leps) (remExp e)
+remExp (INFIXR0_EXPR e1 colon e2) = INFIXR0_EXPR (remExp e1) colon (remExp e2)
+remExp (INFIXL1_EXPR e1 iop e2) = INFIXL1_EXPR (remExp e1) iop (remExp e2)
+remExp (INFIXL2_EXPR e1 iop e2) = INFIXL2_EXPR (remExp e1) iop (remExp e2)
+remExp (INFIXL3_EXPR e1 iop e2) = INFIXL3_EXPR (remExp e1) iop (remExp e2)
+remExp (INFIXL4_EXPR e1 iop e2) = INFIXL4_EXPR (remExp e1) iop (remExp e2)
+remExp (INFIXL5_EXPR e1 iop e2) = INFIXL5_EXPR (remExp e1) iop (remExp e2)
+remExp (INFIXL6_EXPR e1 iop e2) = INFIXL6_EXPR (remExp e1) iop (remExp e2)
+remExp (INFIXR7_EXPR e1 iop e2) = INFIXR7_EXPR (remExp e1) iop (remExp e2)
+remExp (INFIXL8_EXPR e1 iop e2) = INFIXL8_EXPR (remExp e1) iop (remExp e2)
+remExp (LIST_EXPR lb es rb) = LIST_EXPR lb (map remExp es) rb
+remExp (VAR_EXPR i) = VAR_EXPR i
+remExp (INT_EXPR i) = INT_EXPR i
+remExp (STRING_EXPR s) = STRING_EXPR s
+remExp (CHAR_EXPR c) = CHAR_EXPR c
+remExp (DOUBLE_EXPR d) = DOUBLE_EXPR d
+remExp (UNIT_EXPR lb rb) = UNIT_EXPR lb rb
+remExp (FOLD_EXPR e feps) = FOLD_EXPR (remExp e) (map remFEP feps)
+remExp (UNFOLD_EXPR e ueps) = UNFOLD_EXPR (remExp e) (map remUEP ueps)
+remExp (CASE_EXPR c e peps) = CASE_EXPR c (remExp e) (map remPEP peps)
+remExp (SWITCH_EXP seps) = SWITCH_EXP (map remSEP seps)
+remExp (DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR i lb es rb) =
+    DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR i lb (map remExp es) rb
+remExp (DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR i) =
+    DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR i
+remExp (TUPLE_EXPR lb e tels rb) =
+    TUPLE_EXPR lb (remExp e) (map remTEL tels) rb
+remExp (FUN_EXPR i lb es rb) =
+    FUN_EXPR i lb (map remExp es) rb
+remExp (RECORD_EXPR lb reps rb) =
+    RECORD_EXPR lb (map remREP reps) rb
+remExp (BRACKETED_EXPR lb e rb) =
+    BRACKETED_EXPR lb (remExp e) rb
+-- A sectioned infix operator: literally just ignore the extra brackets,
+-- and turn the InfixUop into a standard identifier. 
+remExp (INFIXU_SECT _ i _ lb e1 e2 rb) =
+    remExp $ FUN_EXPR
+        (convertToPIdent i)
+        lb
+        [e1,e2]
+        rb
+-- A sectioned built-in infix operator: convert from prefix to infix, throw away bracket tokens.
+-- Afterwards, recurse into each sub-expression
+remExp (INFIXL1_SECT _ iop _ _ e1 e2 _) = remExp $ INFIXL1_EXPR e1 iop e2
+remExp (INFIXL2_SECT _ iop _ _ e1 e2 _) = remExp $ INFIXL2_EXPR e1 iop e2 
+remExp (INFIXL3_SECT _ iop _ _ e1 e2 _) = remExp $ INFIXL3_EXPR e1 iop e2
+remExp (INFIXL4_SECT _ iop _ _ e1 e2 _) = remExp $ INFIXL4_EXPR e1 iop e2
+remExp (INFIXL5_SECT _ iop _ _ e1 e2 _) = remExp $ INFIXL5_EXPR e1 iop e2
+remExp (INFIXL6_SECT _ iop _ _ e1 e2 _) = remExp $ INFIXL6_EXPR e1 iop e2
+remExp (INFIXR7_SECT _ iop _ _ e1 e2 _) = remExp $ INFIXR7_EXPR e1 iop e2
+remExp (INFIXL8_SECT _ iop _ _ e1 e2 _) = remExp $ INFIXL8_EXPR e1 iop e2
+-- A sectioned '+' or '*' is harder, because they are interpreted as tensor and par.
+-- As a result, we need to change the 'x' coordinate on each token to make things work.
+remExp (INFIXPR_SECT (Par ((y,x), _)) _ e1 e2 _) =
+    remExp $ INFIXL5_EXPR e1 (Infixl5op ((y,x+1), "+")) e2
+remExp (INFIXTN_SECT (Tensor ((y,x), _)) _ e1 e2 _) =
+    remExp $ INFIXL6_EXPR e1 (Infixl6op ((y,x+1), "*")) e2
+-- Below are all of the infix operator replacements. They are all effectively the same,
+-- except for the constructor names in the first line of each definition.
+-- replace infix operator precedence 1
+remExp (INFIXU1_EXPR e1 (InfixU1op (coords,str)) e2) =
+    remExp $ FUN_EXPR
+        (PIdent (coords,str))
+        (LBracket (coords,"("))
+        [e1,e2] -- these expressions get resolved by the fact that we apply 'remExp' on the result of this.
+        (RBracket (coords,")"))
+-- replace infix operator precedence 2
+remExp (INFIXU2_EXPR e1 (InfixU2op (coords,str)) e2) =
+    remExp $ FUN_EXPR
+        (PIdent (coords,str))
+        (LBracket (coords,"("))
+        [e1,e2] -- these expressions get resolved by the fact that we apply 'remExp' on the result of this.
+        (RBracket (coords,")"))
+-- replace infix operator precedence 3
+remExp (INFIXU3_EXPR e1 (InfixU3op (coords,str)) e2) =
+    remExp $ FUN_EXPR
+        (PIdent (coords,str))
+        (LBracket (coords,"("))
+        [e1,e2] -- these expressions get resolved by the fact that we apply 'remExp' on the result of this.
+        (RBracket (coords,")"))
+-- replace infix operator precedence 5
+remExp (INFIXU5_EXPR e1 (InfixU5op (coords,str)) e2) =
+    remExp $ FUN_EXPR
+        (PIdent (coords,str))
+        (LBracket (coords,"("))
+        [e1,e2] -- these expressions get resolved by the fact that we apply 'remExp' on the result of this.
+        (RBracket (coords,")"))
+-- replace infix operator precedence 6
+remExp (INFIXU6_EXPR e1 (InfixU6op (coords,str)) e2) =
+    remExp $ FUN_EXPR
+        (PIdent (coords,str))
+        (LBracket (coords,"("))
+        [e1,e2] -- these expressions get resolved by the fact that we apply 'remExp' on the result of this.
+        (RBracket (coords,")"))
+-- replace infix operator precedence 7
+remExp (INFIXU7_EXPR e1 (InfixU7op (coords,str)) e2) =
+    remExp $ FUN_EXPR
+        (PIdent (coords,str))
+        (LBracket (coords,"("))
+        [e1,e2] -- these expressions get resolved by the fact that we apply 'remExp' on the result of this.
+        (RBracket (coords,")"))

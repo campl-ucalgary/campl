@@ -93,37 +93,45 @@ $d + \. $d + (e \- ? $d +)?
 \:
     { tok (eitherResIdent T_Colon) }
 
--- token Infixl1op
-\| \|
-    { tok (eitherResIdent T_Infixl1op) }
-
--- token Infixl2op
-\& \&
-    { tok (eitherResIdent T_Infixl2op) }
-
 -- token Infixl3op
 \= \= | \/ \= | \< | \> | \< \= | \> \=
     { tok (eitherResIdent T_Infixl3op) }
-
--- token Infixl4op
-\+ \+
-    { tok (eitherResIdent T_Infixl4op) }
 
 -- token Infixl5op
 [\+ \-]
     { tok (eitherResIdent T_Infixl5op) }
 
 -- token Infixl6op
-[\% \* \/]
+[\* \/]
     { tok (eitherResIdent T_Infixl6op) }
 
--- token Infixr7op
-\^
-    { tok (eitherResIdent T_Infixr7op) }
+-- token ChId
+\| \= \|
+    { tok (eitherResIdent T_ChId) }
 
--- token Infixl8op
-\! \!
-    { tok (eitherResIdent T_Infixl8op) }
+-- token InfixU1op
+\| [\! \# \$ \% \& \* \+ \- \/ \: \< \> \? \@ \^ \_ \| \~][\! \# \$ \% \& \* \+ \- \/ \: \< \= \> \? \@ \^ \_ \| \~]*
+    { tok (eitherResIdent T_InfixU1op) }
+
+-- token InfixU2op
+\& [\! \# \$ \% \& \* \+ \- \/ \: \< \= \> \? \@ \^ \_ \| \~]*
+    { tok (eitherResIdent T_InfixU2op) }
+
+-- token InfixU3op
+[\! \< \>][\! \# \$ \% \& \* \+ \- \/ \: \< \= \> \? \@ \^ \_ \| \~]*
+    { tok (eitherResIdent T_InfixU3op) }
+
+-- token InfixU5op
+[\+ \-][\! \# \$ \% \& \* \+ \- \/ \: \< \= \> \? \@ \^ \_ \| \~]*
+    { tok (eitherResIdent T_InfixU5op) }
+
+-- token InfixU6op
+[\% \* \/][\! \# \$ \% \& \* \+ \- \/ \: \< \= \> \? \@ \^ \_ \| \~]*
+    { tok (eitherResIdent T_InfixU6op) }
+
+-- token InfixU7op
+\^ [\! \# \$ \% \& \* \+ \- \/ \: \< \= \> \? \@ \^ \_ \| \~]*
+    { tok (eitherResIdent T_InfixU7op) }
 
 -- token Close
 c l o s e
@@ -156,10 +164,6 @@ s p l i t
 -- token Fork
 f o r k
     { tok (eitherResIdent T_Fork) }
-
--- token ChId
-\| \= \|
-    { tok (eitherResIdent T_ChId) }
 
 -- token Case
 c a s e
@@ -206,14 +210,16 @@ data Tok
   | T_RSquareBracket !String
   | T_NullPattern !String
   | T_Colon !String
-  | T_Infixl1op !String
-  | T_Infixl2op !String
   | T_Infixl3op !String
-  | T_Infixl4op !String
   | T_Infixl5op !String
   | T_Infixl6op !String
-  | T_Infixr7op !String
-  | T_Infixl8op !String
+  | T_ChId !String
+  | T_InfixU1op !String
+  | T_InfixU2op !String
+  | T_InfixU3op !String
+  | T_InfixU5op !String
+  | T_InfixU6op !String
+  | T_InfixU7op !String
   | T_Close !String
   | T_Halt !String
   | T_Get !String
@@ -222,7 +228,6 @@ data Tok
   | T_HPut !String
   | T_Split !String
   | T_Fork !String
-  | T_ChId !String
   | T_Case !String
   | T_UIdent !String
   | T_PIdent !String
@@ -301,14 +306,16 @@ tokenText t = case t of
   PT _ (T_RSquareBracket s) -> s
   PT _ (T_NullPattern s) -> s
   PT _ (T_Colon s) -> s
-  PT _ (T_Infixl1op s) -> s
-  PT _ (T_Infixl2op s) -> s
   PT _ (T_Infixl3op s) -> s
-  PT _ (T_Infixl4op s) -> s
   PT _ (T_Infixl5op s) -> s
   PT _ (T_Infixl6op s) -> s
-  PT _ (T_Infixr7op s) -> s
-  PT _ (T_Infixl8op s) -> s
+  PT _ (T_ChId s) -> s
+  PT _ (T_InfixU1op s) -> s
+  PT _ (T_InfixU2op s) -> s
+  PT _ (T_InfixU3op s) -> s
+  PT _ (T_InfixU5op s) -> s
+  PT _ (T_InfixU6op s) -> s
+  PT _ (T_InfixU7op s) -> s
   PT _ (T_Close s) -> s
   PT _ (T_Halt s) -> s
   PT _ (T_Get s) -> s
@@ -317,7 +324,6 @@ tokenText t = case t of
   PT _ (T_HPut s) -> s
   PT _ (T_Split s) -> s
   PT _ (T_Fork s) -> s
-  PT _ (T_ChId s) -> s
   PT _ (T_Case s) -> s
   PT _ (T_UIdent s) -> s
   PT _ (T_PIdent s) -> s
@@ -348,7 +354,7 @@ eitherResIdent tv s = treeFind resWords
 -- | The keywords and symbols of the language organized as binary search tree.
 resWords :: BTree
 resWords =
-  b "into" 20
+  b "in" 19
     (b "codata" 10
        (b ";" 5
           (b "::" 3 (b "->" 2 (b "," 1 N N) N) (b ":=" 4 N N))
@@ -356,16 +362,16 @@ resWords =
        (b "else" 15
           (b "defn" 13
              (b "data" 12 (b "coprotocol" 11 N N) N) (b "do" 14 N N))
-          (b "if" 18 (b "fun" 17 (b "fold" 16 N N) N) (b "in" 19 N N))))
-    (b "race" 30
-       (b "on" 25
-          (b "nylon" 23 (b "neg" 22 (b "let" 21 N N) N) (b "of" 24 N N))
-          (b "proc" 28
-             (b "potato" 27 (b "plug" 26 N N) N) (b "protocol" 29 N N)))
-       (b "with" 35
-          (b "unfold" 33
-             (b "then" 32 (b "switch" 31 N N) N) (b "where" 34 N N))
-          (b "|" 37 (b "{" 36 N N) (b "}" 38 N N))))
+          (b "fun" 17 (b "fold" 16 N N) (b "if" 18 N N))))
+    (b "race" 29
+       (b "on" 24
+          (b "neg" 22 (b "let" 21 (b "into" 20 N N) N) (b "of" 23 N N))
+          (b "proc" 27
+             (b "potato" 26 (b "plug" 25 N N) N) (b "protocol" 28 N N)))
+       (b "with" 34
+          (b "unfold" 32
+             (b "then" 31 (b "switch" 30 N N) N) (b "where" 33 N N))
+          (b "|" 36 (b "{" 35 N N) (b "}" 37 N N))))
   where
   b s n = B bs (TS bs n)
     where

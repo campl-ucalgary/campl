@@ -38,14 +38,46 @@ position token Colon ':' ;
 -- both as cons, and as a seperator for fold phrases
 -- Instead, we have a Colon token (as above) and use that
 -- whereever we require a colon
+-- NOTE: some infix operators are moved below the 'user-defined infix' section,
+--       so that the user-defined operators take precedence
+position token Infixl3op ({"=="}|{"/="}|'<'|'>'|{"<="}|{">="});
+position token Infixl5op ('+'|'-');
+position token Infixl6op ('*'|'/'); --  | '%'
+
+-- Custom-defined infix operators.
+-- They begin with a special character, followed by a non-zero sequence of less-special characters.
+-- Special characters are: (the first character chooses the precedence of an operator, so they are listed by precedence)
+--  |
+--  &
+--  < > !
+--  + -
+--  * / %
+--  ^           (NOTE: this is the only one which is right-associative, meaning 'a ^ b ^ b' = 'a ^ (b ^ c)')
+-- The less-special characters include all special characters, as well as:
+--  @ # $ _ ? | : ~ =
+-- Please make sure that if you are changing this spec, change the comment too!
+-- Also, make sure to find-and-replace, since the less-special character string is used in each infixU rule!
+
+-- this definition is moved up so that it takes precedence over InfixU1op
+position token ChId {"|=|"} ;
+
+-- The user-defined infix operators.
+-- Note: the first one is special. The '|' cannot be immediately followed by '=', to minimize conflicts
+position token InfixU1op (('|') ["@#$_?|:~|&<>!+-*/%^"] (["@#$_?|:~=|&<>!+-*/%^"])*) ;
+position token InfixU2op (('&') (["@#$_?|:~=|&<>!+-*/%^"])*) ;
+position token InfixU3op (('<' | '>' | '!') (["@#$_?|:~=|&<>!+-*/%^"])*) ;
+position token InfixU5op (('+' | '-') (["@#$_?|:~=|&<>!+-*/%^"])*) ;
+position token InfixU6op (('*' | '/' | '%') (["@#$_?|:~=|&<>!+-*/%^"])*) ;
+position token InfixU7op (('^') (["@#$_?|:~=|&<>!+-*/%^"])*) ; -- right-associative
+
+-- The built-in infix operators, which should be moved back up to be with the rest of them,
+-- if they are ever actually wanted.
 position token Infixl1op ({"||"});
 position token Infixl2op ({"&&"});
-position token Infixl3op ({"=="}|{"/="}|'<'|'>'|{"<="}|{">="});
 position token Infixl4op ({"++"}) ;
-position token Infixl5op ('+'|'-');
-position token Infixl6op ('*'|'/' | '%');
 position token Infixr7op ('^') ;
 position token Infixl8op ({"!!"}) ;
+
 
 position token Close {"close"} ;
 position token Halt {"halt"} ;
@@ -55,7 +87,6 @@ position token HCase {"hcase"} ;
 position token HPut {"hput"} ;
 position token Split {"split"} ;
 position token Fork {"fork"} ;
-position token ChId {"|=|"} ;
 
 position token Case {"case"} ;
 
@@ -176,30 +207,61 @@ LET_EXPR  . Expr  ::= "let" "{" [LetExprPhrase] "}" "in" Expr ;
 INFIXR0_EXPR . Expr0 ::=  Expr1 Colon Expr0 ;
 _            . Expr0 ::=  Expr1  ;
 
-INFIXL1_EXPR . Expr1 ::=  Expr1 Infixl1op Expr2 ;
+INFIXL1_EXPR . Expr1 ::=  Expr1 Infixl1op Expr2 ; -- Predefined infix, not used
+INFIXU1_EXPR . Expr1 ::=  Expr1 InfixU1op Expr2 ; -- Custom infix
 _            . Expr1 ::=  Expr2  ;
 
-INFIXL2_EXPR . Expr2 ::=  Expr2 Infixl2op Expr3 ;
+INFIXL2_EXPR . Expr2 ::=  Expr2 Infixl2op Expr3 ; -- Predefined infix, not used
+INFIXU2_EXPR . Expr2 ::=  Expr2 InfixU2op Expr3 ; -- Custom infix
 _            . Expr2 ::=  Expr3  ;
 
-INFIXL3_EXPR . Expr3 ::=  Expr3 Infixl3op Expr4 ;
+INFIXL3_EXPR . Expr3 ::=  Expr3 Infixl3op Expr4 ; -- Predefined infix
+INFIXU3_EXPR . Expr3 ::=  Expr3 InfixU3op Expr4 ; -- Custom infix
 _            . Expr3 ::=  Expr4  ;
 
-INFIXL4_EXPR . Expr4 ::=  Expr4 Infixl4op Expr5 ;
+INFIXL4_EXPR . Expr4 ::=  Expr4 Infixl4op Expr5 ; -- Predefined infix, not used
+-- No custom infix, since '+' is already used by prefix 5.
 _            . Expr4 ::=  Expr5  ;
 
-INFIXL5_EXPR . Expr5 ::=  Expr5 Infixl5op Expr6 ;
+INFIXL5_EXPR . Expr5 ::=  Expr5 Infixl5op Expr6 ; -- Predefined infix
+INFIXU5_EXPR . Expr5 ::=  Expr5 InfixU5op Expr6 ; -- Custom infix
 _            . Expr5 ::=  Expr6  ;
 
-INFIXL6_EXPR . Expr6 ::=  Expr6 Infixl6op Expr7 ;
+INFIXL6_EXPR . Expr6 ::=  Expr6 Infixl6op Expr7 ; -- Predefined infix
+INFIXU6_EXPR . Expr6 ::=  Expr6 InfixU6op Expr7 ; -- Custom infix
 _            . Expr6 ::=  Expr7  ;
 
-INFIXR7_EXPR . Expr7 ::=  Expr8 Infixr7op Expr7 ;
+INFIXR7_EXPR . Expr7 ::=  Expr8 Infixr7op Expr7 ; -- Predefined infix, right-associative, not used
+INFIXU7_EXPR . Expr7 ::=  Expr8 InfixU7op Expr7 ; -- Custom infix, right-associative
 _            . Expr7 ::=  Expr8  ;
 
 
-INFIXL8_EXPR . Expr8 ::= Expr8 Infixl8op Expr10 ;
+INFIXL8_EXPR . Expr8 ::= Expr8 Infixl8op Expr10 ; -- Predefined infix, not used
 _            . Expr8 ::= Expr10 ;
+
+
+-- A couple rules for sectioned function calls.
+INFIXU_SECT  . Expr10 ::= LBracket InfixUop RBracket LBracket Expr "," Expr RBracket ;
+INFIXL1_SECT . Expr10 ::= LBracket Infixl1op RBracket LBracket Expr "," Expr RBracket ;
+INFIXL2_SECT . Expr10 ::= LBracket Infixl2op RBracket LBracket Expr "," Expr RBracket ;
+INFIXL3_SECT . Expr10 ::= LBracket Infixl3op RBracket LBracket Expr "," Expr RBracket ;
+INFIXL4_SECT . Expr10 ::= LBracket Infixl4op RBracket LBracket Expr "," Expr RBracket ;
+INFIXL5_SECT . Expr10 ::= LBracket Infixl5op RBracket LBracket Expr "," Expr RBracket ;
+INFIXL6_SECT . Expr10 ::= LBracket Infixl6op RBracket LBracket Expr "," Expr RBracket ;
+INFIXR7_SECT . Expr10 ::= LBracket Infixr7op RBracket LBracket Expr "," Expr RBracket ;
+INFIXL8_SECT . Expr10 ::= LBracket Infixl8op RBracket LBracket Expr "," Expr RBracket ;
+-- Special cases for 'par' and 'tensor' tokens. (+) and (*)
+INFIXPR_SECT . Expr10 ::= Par LBracket Expr "," Expr RBracket ;
+INFIXTN_SECT . Expr10 ::= Tensor LBracket Expr "," Expr RBracket ;
+
+-- A generic rule for any sectioned infix operator.
+InfixUop1 . InfixUop ::= InfixU1op ;
+InfixUop2 . InfixUop ::= InfixU2op ;
+InfixUop3 . InfixUop ::= InfixU3op ;
+InfixUop5 . InfixUop ::= InfixU5op ;
+InfixUop6 . InfixUop ::= InfixU6op ;
+InfixUop7 . InfixUop ::= InfixU7op ;
+
 
 -- Not too sure how to get this IF and LET precedence working!
 -- Problems of shift reduce errors, so we force explicit bracketing
@@ -313,6 +375,15 @@ TYPED_FUNCTION_DEFN . FunctionDefn ::=
 
 FUNCTION_DEFN       . FunctionDefn ::= 
     "fun" PIdent "=" "{" [ PattExprPhrase ]"}" ;
+
+-- Two more function definitions for infix declarations
+
+TYPED_FUNCTION_DEFN_UINFIX . FunctionDefn ::= 
+    "fun" LBracket InfixUop RBracket "::" MplType "," MplType "->" MplType 
+        "=" "{" [ PattExprPhrase ]"}" ;
+
+FUNCTION_DEFN_UINFIX       . FunctionDefn ::= 
+    "fun" LBracket InfixUop RBracket "=" "{" [ PattExprPhrase ]"}" ;
 
 separator nonempty PattExprPhrase ";" ;
 

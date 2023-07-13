@@ -88,13 +88,30 @@ data Expr
     | LET_EXPR [LetExprPhrase] Expr
     | INFIXR0_EXPR Expr Colon Expr
     | INFIXL1_EXPR Expr Infixl1op Expr
+    | INFIXU1_EXPR Expr InfixU1op Expr
     | INFIXL2_EXPR Expr Infixl2op Expr
+    | INFIXU2_EXPR Expr InfixU2op Expr
     | INFIXL3_EXPR Expr Infixl3op Expr
+    | INFIXU3_EXPR Expr InfixU3op Expr
     | INFIXL4_EXPR Expr Infixl4op Expr
     | INFIXL5_EXPR Expr Infixl5op Expr
+    | INFIXU5_EXPR Expr InfixU5op Expr
     | INFIXL6_EXPR Expr Infixl6op Expr
+    | INFIXU6_EXPR Expr InfixU6op Expr
     | INFIXR7_EXPR Expr Infixr7op Expr
+    | INFIXU7_EXPR Expr InfixU7op Expr
     | INFIXL8_EXPR Expr Infixl8op Expr
+    | INFIXU_SECT LBracket InfixUop RBracket LBracket Expr Expr RBracket
+    | INFIXL1_SECT LBracket Infixl1op RBracket LBracket Expr Expr RBracket
+    | INFIXL2_SECT LBracket Infixl2op RBracket LBracket Expr Expr RBracket
+    | INFIXL3_SECT LBracket Infixl3op RBracket LBracket Expr Expr RBracket
+    | INFIXL4_SECT LBracket Infixl4op RBracket LBracket Expr Expr RBracket
+    | INFIXL5_SECT LBracket Infixl5op RBracket LBracket Expr Expr RBracket
+    | INFIXL6_SECT LBracket Infixl6op RBracket LBracket Expr Expr RBracket
+    | INFIXR7_SECT LBracket Infixr7op RBracket LBracket Expr Expr RBracket
+    | INFIXL8_SECT LBracket Infixl8op RBracket LBracket Expr Expr RBracket
+    | INFIXPR_SECT Par LBracket Expr Expr RBracket
+    | INFIXTN_SECT Tensor LBracket Expr Expr RBracket
     | LIST_EXPR LSquareBracket [Expr] RSquareBracket
     | VAR_EXPR PIdent
     | INT_EXPR PInteger
@@ -112,6 +129,15 @@ data Expr
     | FUN_EXPR PIdent LBracket [Expr] RBracket
     | RECORD_EXPR LBracket [RecordExprPhrase] RBracket
     | BRACKETED_EXPR LBracket Expr RBracket
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+data InfixUop
+    = InfixUop1 InfixU1op
+    | InfixUop2 InfixU2op
+    | InfixUop3 InfixU3op
+    | InfixUop5 InfixU5op
+    | InfixUop6 InfixU6op
+    | InfixUop7 InfixU7op
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data UnfoldExprPhrase = UNFOLD_EXPR_PHRASE Pattern [FoldExprPhrase]
@@ -166,6 +192,8 @@ data FunctionDefn
     = INTERNAL_TYPED_FUNCTION_DEFN PIdent MplType [PattExprPhrase]
     | TYPED_FUNCTION_DEFN PIdent [MplType] MplType [PattExprPhrase]
     | FUNCTION_DEFN PIdent [PattExprPhrase]
+    | TYPED_FUNCTION_DEFN_UINFIX LBracket InfixUop RBracket MplType MplType MplType [PattExprPhrase]
+    | FUNCTION_DEFN_UINFIX LBracket InfixUop RBracket [PattExprPhrase]
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data ProcessDefn
@@ -280,22 +308,43 @@ newtype NullPattern = NullPattern ((C.Int, C.Int), String)
 newtype Colon = Colon ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-newtype Infixl1op = Infixl1op ((C.Int, C.Int), String)
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
-newtype Infixl2op = Infixl2op ((C.Int, C.Int), String)
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
 newtype Infixl3op = Infixl3op ((C.Int, C.Int), String)
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
-newtype Infixl4op = Infixl4op ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype Infixl5op = Infixl5op ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype Infixl6op = Infixl6op ((C.Int, C.Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+newtype ChId = ChId ((C.Int, C.Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+newtype InfixU1op = InfixU1op ((C.Int, C.Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+newtype InfixU2op = InfixU2op ((C.Int, C.Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+newtype InfixU3op = InfixU3op ((C.Int, C.Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+newtype InfixU5op = InfixU5op ((C.Int, C.Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+newtype InfixU6op = InfixU6op ((C.Int, C.Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+newtype InfixU7op = InfixU7op ((C.Int, C.Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+newtype Infixl1op = Infixl1op ((C.Int, C.Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+newtype Infixl2op = Infixl2op ((C.Int, C.Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+newtype Infixl4op = Infixl4op ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype Infixr7op = Infixr7op ((C.Int, C.Int), String)
@@ -326,9 +375,6 @@ newtype Split = Split ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype Fork = Fork ((C.Int, C.Int), String)
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
-newtype ChId = ChId ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype Case = Case ((C.Int, C.Int), String)
@@ -394,23 +440,44 @@ instance HasPosition NullPattern where
 instance HasPosition Colon where
   hasPosition (Colon (p, _)) = C.Just p
 
-instance HasPosition Infixl1op where
-  hasPosition (Infixl1op (p, _)) = C.Just p
-
-instance HasPosition Infixl2op where
-  hasPosition (Infixl2op (p, _)) = C.Just p
-
 instance HasPosition Infixl3op where
   hasPosition (Infixl3op (p, _)) = C.Just p
-
-instance HasPosition Infixl4op where
-  hasPosition (Infixl4op (p, _)) = C.Just p
 
 instance HasPosition Infixl5op where
   hasPosition (Infixl5op (p, _)) = C.Just p
 
 instance HasPosition Infixl6op where
   hasPosition (Infixl6op (p, _)) = C.Just p
+
+instance HasPosition ChId where
+  hasPosition (ChId (p, _)) = C.Just p
+
+instance HasPosition InfixU1op where
+  hasPosition (InfixU1op (p, _)) = C.Just p
+
+instance HasPosition InfixU2op where
+  hasPosition (InfixU2op (p, _)) = C.Just p
+
+instance HasPosition InfixU3op where
+  hasPosition (InfixU3op (p, _)) = C.Just p
+
+instance HasPosition InfixU5op where
+  hasPosition (InfixU5op (p, _)) = C.Just p
+
+instance HasPosition InfixU6op where
+  hasPosition (InfixU6op (p, _)) = C.Just p
+
+instance HasPosition InfixU7op where
+  hasPosition (InfixU7op (p, _)) = C.Just p
+
+instance HasPosition Infixl1op where
+  hasPosition (Infixl1op (p, _)) = C.Just p
+
+instance HasPosition Infixl2op where
+  hasPosition (Infixl2op (p, _)) = C.Just p
+
+instance HasPosition Infixl4op where
+  hasPosition (Infixl4op (p, _)) = C.Just p
 
 instance HasPosition Infixr7op where
   hasPosition (Infixr7op (p, _)) = C.Just p
@@ -441,9 +508,6 @@ instance HasPosition Split where
 
 instance HasPosition Fork where
   hasPosition (Fork (p, _)) = C.Just p
-
-instance HasPosition ChId where
-  hasPosition (ChId (p, _)) = C.Just p
 
 instance HasPosition Case where
   hasPosition (Case (p, _)) = C.Just p
