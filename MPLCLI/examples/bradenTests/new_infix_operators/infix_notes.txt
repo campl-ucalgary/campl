@@ -1,0 +1,1 @@
+Please see the 'notes_on_infix_operators.txt' in 'campl\resources' for an explaination of syntax/semantics.

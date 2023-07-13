@@ -55,9 +55,13 @@ and may optionally be followed by sequence containing any of the following chara
 
     @ # $ _ ? | : ~ = | & < > ! + - * / % ^
 
-Please note that an infix token may not start with '|=', as this would cause an issue with the tokenizer.
-Also note that custom-defined infix operators cannot override built-in tokens, which include:
+
+Please note that custom-defined infix operators cannot override built-in tokens, which include:
 
     + - * / <= >= /= |
+
+Additionally, to keep the tokenizer working, you cannot define:
+
+    |=> |=
 
 Attempting to create such infix operators will produce a syntax error, as these are reserved-words in the language.

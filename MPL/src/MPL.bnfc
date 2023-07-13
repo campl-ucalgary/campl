@@ -63,12 +63,17 @@ position token ChId {"|=|"} ;
 
 -- The user-defined infix operators.
 -- Note: the first one is special. The '|' cannot be immediately followed by '=', to minimize conflicts
-position token InfixU1op (('|') ["@#$_?|:~&<>!+-*/%^"] (["@#$_?:~=|&<>!+-*/%^"])*) ;
-position token InfixU2op (('&') (["@#$_?:~=|&<>!+-*/%^"])*) ;
-position token InfixU3op (('<' | '>' | '!') (["@#$_?:~=|&<>!+-*/%^"])*) ;
-position token InfixU5op (('+' | '-') (["@#$_?:~=|&<>!+-*/%^"])*) ;
-position token InfixU6op (('*' | '/' | '%') (["@#$_?:~=|&<>!+-*/%^"])*) ;
-position token InfixU7op (('^') (["@#$_?:~=|&<>!+-*/%^"])*) ; -- right-associative
+position token InfixU1op '|'
+                (
+                      (["@#$_?|:~&<>!+-*/%^"] ["@#$_?:~=|&<>!+-*/%^"]*)
+                    | ('=' ["@#$_?:~=|&<!+-*/%^"] ["@#$_?:~=|&<>!+-*/%^"]*)
+                    | ('=' '>' ["@#$_?:~=|&<>!+-*/%^"]+)
+                );
+position token InfixU2op ('&' ["@#$_?:~=|&<>!+-*/%^"]*) ;
+position token InfixU3op (('<' | '>' | '!') ["@#$_?:~=|&<>!+-*/%^"]*) ;
+position token InfixU5op (('+' | '-') ["@#$_?:~=|&<>!+-*/%^"]*) ;
+position token InfixU6op (('*' | '/' | '%') ["@#$_?:~=|&<>!+-*/%^"]*) ;
+position token InfixU7op ('^' ["@#$_?:~=|&<>!+-*/%^"]*) ; -- right-associative
 
 -- The built-in infix operators, which should be moved back up to be with the rest of them,
 -- if they are ever actually wanted.

@@ -34,6 +34,8 @@ where
 fun (++) =
     a,b -> a + b
 
+fun (|=>>) =
+    a,b -> a
 
 -- inside every possible expression construct
 fun (^-^) =

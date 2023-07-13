@@ -100,7 +100,7 @@ ChId literals are recognized by the regular expression
 `````{"|=|"}`````
 
 InfixU1op literals are recognized by the regular expression
-`````'|' ["!#$%&*+-/:<>?@^_|~"] ["!#$%&*+-/:<=>?@^_|~"]*`````
+`````'|' (["!#$%&*+-/:<>?@^_|~"] ["!#$%&*+-/:<=>?@^_|~"]* | '=' ["!#$%&*+-/:<=?@^_|~"] ["!#$%&*+-/:<=>?@^_|~"]* | {"=>"} ["!#$%&*+-/:<=>?@^_|~"]+)`````
 
 InfixU2op literals are recognized by the regular expression
 `````'&' ["!#$%&*+-/:<=>?@^_|~"]*`````
