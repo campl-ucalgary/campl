@@ -7,7 +7,7 @@ coprotocol S => Console =
 
 -- Some functions to show off order-of-operations in a printable way.
 
-fun (++) = -- append, since '++' is already a thing.
+fun (++) = -- append
     [],c -> c
     b:bs,c -> b:(bs ++ c)
 
