@@ -36,18 +36,13 @@ Infix operators have the same precedence as the built-in operator corresponding 
 Below is a list of every infix operator. Each line represents a precedence.
 All operators except the '^' row are left-associative.
 
-
-    any user-defined op starting with '|'
-    
-    any user-defined op starting with '&'
-    
-    > (not implemented), /= (not implemented), ==, >=, <=, <, any user-defined op starting with '>','<','!'
-    
-    +, -, any user-defined op starting with '+','-'
-    
-    *, /, any user-defined op starting with '*','/','%'
-    
-    any user-defined op starting with '^'. NOTE: right-associative
+    User-defined starting with:          Built-in
+    |
+    &
+    > < !                               == >= <= <       (not implemented: '>' '/=')
+    + -                                 + -
+    * / %                               * /
+    ^ (NOTE: right-associative)
 
 operators closer to the bottom bind more tightly.
 
