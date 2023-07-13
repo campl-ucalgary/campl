@@ -11,6 +11,7 @@ coprotocol S => Console =
 proc goodbyeWorld =
     |=> -> halt a -- this should parse correctly.
 
+
 -- A simple function.
 proc helloworld :: | Console => = 
     | console => -> on console do
@@ -25,6 +26,22 @@ proc run =
     | console => -> helloworld( |console=>)
 
 fun (|>=) = -- this should work too.
+    a,b -> a + b
+
+fun (|=%) =
+    0,b -> 1 |=% b
+    a,b -> a + b
+
+fun (|=>|) =
+    0,b -> 1 |=>| b
+    a,b -> a + b
+
+fun (|>) =
+    0,b -> 1 |> b
+    a,b -> a + b
+
+fun (->||) =
+    0,b -> 1 + b
     a,b -> a + b
 
 fun (|=>) = -- this should give a parse error.
