@@ -1,0 +1,1 @@
+A test that shows that if a two modules are imported with the same name, a clear error is thrown.

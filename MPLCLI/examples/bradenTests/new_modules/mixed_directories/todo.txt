@@ -1,0 +1,1 @@
+A test of mixing directories of modules, to confirm that things still work.
