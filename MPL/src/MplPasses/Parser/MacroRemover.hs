@@ -102,6 +102,11 @@ remC (PROCESS_IF e b1 b2) =
     PROCESS_IF (remExp e) (remBlock b1) (remBlock b2)
 remC (PROCESS_SWITCH ps) =
     PROCESS_SWITCH (map remPSP ps)
+-- Removing qualified function calls
+remC (PROCESS_QRUN modName objName lb es i1s i2s rb) =
+    remC $ PROCESS_RUN
+        (mergeQualifiedName modName objName)
+        lb es i1s i2s rb
 -- The default case. do nothing.
 remC a = a
 
@@ -263,6 +268,11 @@ remExp (RECORD_EXPR lb reps rb) =
     RECORD_EXPR lb (map remREP reps) rb
 remExp (BRACKETED_EXPR lb e rb) =
     BRACKETED_EXPR lb (remExp e) rb
+-- A qualified function call: merge the module name and function name.
+remExp (FUNQ_EXPR modName funcName lb es rb) =
+    remExp $ FUN_EXPR
+        (mergeQualifiedName modName funcName)
+        lb es rb
 -- A sectioned infix operator: literally just ignore the extra brackets,
 -- and turn the InfixUop into a standard identifier. 
 remExp (INFIXU_SECT _ i _ lb e1 e2 rb) =
@@ -331,3 +341,16 @@ remExp (INFIXU7_EXPR e1 (InfixU7op (coords,str)) e2) =
         (LBracket (coords,"("))
         [e1,e2] -- these expressions get resolved by the fact that we apply 'remExp' on the result of this.
         (RBracket (coords,")"))
+
+---------------------------------------------------------------------------
+-- Resolving qualified functions/processes
+---------------------------------------------------------------------------
+
+-- turns a:
+--   "Module" "." "obj"
+-- into:
+--   "Module.obj"
+-- that way, we can get rid of the new AST nodes for the qualified references.
+mergeQualifiedName :: UIdent -> PIdent -> PIdent
+mergeQualifiedName (UIdent (pos,modName)) (PIdent (_,objName)) =
+    PIdent (pos,modName ++ ('.':objName))

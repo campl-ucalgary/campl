@@ -1,5 +1,0 @@
-3096329 = 7919 * 17 * 23
-1765937 = 7919 * 223
-1765949 (prime)
-
-Why are print times on these so similar? Check thread count.

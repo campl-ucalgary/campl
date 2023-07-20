@@ -128,6 +128,7 @@ data Expr
     | TUPLE_EXPR LBracket Expr [TupleExprList] RBracket
     | FUN_EXPR PIdent LBracket [Expr] RBracket
     | RECORD_EXPR LBracket [RecordExprPhrase] RBracket
+    | FUNQ_EXPR UIdent PIdent LBracket [Expr] RBracket
     | BRACKETED_EXPR LBracket Expr RBracket
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
@@ -215,6 +216,7 @@ data ProcessCommand
     = PROCESS_RUN PIdent LBracket [Expr] [PIdent] [PIdent] RBracket
     | PROCESS_CLOSE Close PIdent
     | PROCESS_HALT Halt PIdent
+    | PROCESS_QRUN UIdent PIdent LBracket [Expr] [PIdent] [PIdent] RBracket
     | PROCESS_GET Get Pattern PIdent
     | PROCESS_PUT Put Expr PIdent
     | PROCESS_HCASE HCase PIdent [HCasePhrase]

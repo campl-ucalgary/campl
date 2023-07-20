@@ -294,6 +294,7 @@ transExpr x = case x of
   MplLanguage.AbsMPL.TUPLE_EXPR lbracket expr tupleexprlists rbracket -> failure x
   MplLanguage.AbsMPL.FUN_EXPR pident lbracket exprs rbracket -> failure x
   MplLanguage.AbsMPL.RECORD_EXPR lbracket recordexprphrases rbracket -> failure x
+  MplLanguage.AbsMPL.FUNQ_EXPR uident pident lbracket exprs rbracket -> failure x
   MplLanguage.AbsMPL.BRACKETED_EXPR lbracket expr rbracket -> failure x
 
 transInfixUop :: MplLanguage.AbsMPL.InfixUop -> Result
@@ -388,6 +389,7 @@ transProcessCommand x = case x of
   MplLanguage.AbsMPL.PROCESS_RUN pident lbracket exprs pidents1 pidents2 rbracket -> failure x
   MplLanguage.AbsMPL.PROCESS_CLOSE close pident -> failure x
   MplLanguage.AbsMPL.PROCESS_HALT halt pident -> failure x
+  MplLanguage.AbsMPL.PROCESS_QRUN uident pident lbracket exprs pidents1 pidents2 rbracket -> failure x
   MplLanguage.AbsMPL.PROCESS_GET get pattern_ pident -> failure x
   MplLanguage.AbsMPL.PROCESS_PUT put expr pident -> failure x
   MplLanguage.AbsMPL.PROCESS_HCASE hcase pident hcasephrases -> failure x

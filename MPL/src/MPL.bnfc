@@ -294,6 +294,9 @@ DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR . Expr10 ::= UIdent ;
 TUPLE_EXPR       . Expr10 ::= LBracket Expr "," [TupleExprList] RBracket ;
 FUN_EXPR         . Expr10 ::= PIdent LBracket [Expr] RBracket ;
 RECORD_EXPR      . Expr10 ::= LBracket [RecordExprPhrase] RBracket ;
+-- A second version of a FUN_EXPR, for qualified function names
+FUNQ_EXPR        . Expr10 ::= UIdent "." PIdent LBracket [Expr] RBracket ;
+
 
 BRACKETED_EXPR   . Expr10 ::= LBracket Expr RBracket ;
 
@@ -451,6 +454,9 @@ separator nonempty ProcessCommand ";" ;
 PROCESS_RUN   .   ProcessCommand ::= PIdent LBracket [Expr] "|" [PIdent] "=>" [PIdent] RBracket ;
 PROCESS_CLOSE .   ProcessCommand ::= Close PIdent ;
 PROCESS_HALT  .   ProcessCommand ::= Halt PIdent ;
+-- Process run, for qualified names
+PROCESS_QRUN  .   ProcessCommand ::= UIdent "." PIdent LBracket [Expr] "|" [PIdent] "=>" [PIdent] RBracket ;
+
 
 PROCESS_GET   .   ProcessCommand ::= Get Pattern "on" PIdent ;
 PROCESS_PUT   .   ProcessCommand ::= Put Expr "on" PIdent ;

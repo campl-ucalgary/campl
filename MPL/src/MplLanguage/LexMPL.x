@@ -28,7 +28,7 @@ $u = [. \n]          -- universal: any character
 
 -- Symbols and non-identifier-like reserved words
 
-@rsyms = \, | \{ | \} | \; | \| | \- \> | \= | \: \: | \= \> | \: \=
+@rsyms = \, | \{ | \} | \; | \| | \- \> | \= | \: \: | \= \> | \. | \: \=
 
 :-
 
@@ -384,24 +384,24 @@ eitherResIdent tv s = treeFind resWords
 -- | The keywords and symbols of the language organized as binary search tree.
 resWords :: BTree
 resWords =
-  b "in" 19
-    (b "codata" 10
-       (b ";" 5
-          (b "::" 3 (b "->" 2 (b "," 1 N N) N) (b ":=" 4 N N))
-          (b "and" 8 (b "=>" 7 (b "=" 6 N N) N) (b "as" 9 N N)))
-       (b "else" 15
-          (b "defn" 13
-             (b "data" 12 (b "coprotocol" 11 N N) N) (b "do" 14 N N))
-          (b "fun" 17 (b "fold" 16 N N) (b "if" 18 N N))))
-    (b "race" 29
-       (b "on" 24
-          (b "neg" 22 (b "let" 21 (b "into" 20 N N) N) (b "of" 23 N N))
-          (b "proc" 27
-             (b "potato" 26 (b "plug" 25 N N) N) (b "protocol" 28 N N)))
-       (b "with" 34
-          (b "unfold" 32
-             (b "then" 31 (b "switch" 30 N N) N) (b "where" 33 N N))
-          (b "|" 36 (b "{" 35 N N) (b "}" 37 N N))))
+  b "in" 20
+    (b "as" 10
+       (b ":=" 5
+          (b "." 3 (b "->" 2 (b "," 1 N N) N) (b "::" 4 N N))
+          (b "=>" 8 (b "=" 7 (b ";" 6 N N) N) (b "and" 9 N N)))
+       (b "do" 15
+          (b "data" 13
+             (b "coprotocol" 12 (b "codata" 11 N N) N) (b "defn" 14 N N))
+          (b "fun" 18 (b "fold" 17 (b "else" 16 N N) N) (b "if" 19 N N))))
+    (b "race" 30
+       (b "on" 25
+          (b "neg" 23 (b "let" 22 (b "into" 21 N N) N) (b "of" 24 N N))
+          (b "proc" 28
+             (b "potato" 27 (b "plug" 26 N N) N) (b "protocol" 29 N N)))
+       (b "with" 35
+          (b "unfold" 33
+             (b "then" 32 (b "switch" 31 N N) N) (b "where" 34 N N))
+          (b "|" 37 (b "{" 36 N N) (b "}" 38 N N))))
   where
   b s n = B bs (TS bs n)
     where

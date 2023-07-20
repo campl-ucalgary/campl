@@ -397,6 +397,7 @@ instance Print MplLanguage.AbsMPL.Expr where
     MplLanguage.AbsMPL.TUPLE_EXPR lbracket expr tupleexprlists rbracket -> prPrec i 10 (concatD [prt 0 lbracket, prt 0 expr, doc (showString ","), prt 0 tupleexprlists, prt 0 rbracket])
     MplLanguage.AbsMPL.FUN_EXPR pident lbracket exprs rbracket -> prPrec i 10 (concatD [prt 0 pident, prt 0 lbracket, prt 0 exprs, prt 0 rbracket])
     MplLanguage.AbsMPL.RECORD_EXPR lbracket recordexprphrases rbracket -> prPrec i 10 (concatD [prt 0 lbracket, prt 0 recordexprphrases, prt 0 rbracket])
+    MplLanguage.AbsMPL.FUNQ_EXPR uident pident lbracket exprs rbracket -> prPrec i 10 (concatD [prt 0 uident, doc (showString "."), prt 0 pident, prt 0 lbracket, prt 0 exprs, prt 0 rbracket])
     MplLanguage.AbsMPL.BRACKETED_EXPR lbracket expr rbracket -> prPrec i 10 (concatD [prt 0 lbracket, prt 0 expr, prt 0 rbracket])
 
 instance Print MplLanguage.AbsMPL.InfixUop where
@@ -556,6 +557,7 @@ instance Print MplLanguage.AbsMPL.ProcessCommand where
     MplLanguage.AbsMPL.PROCESS_RUN pident lbracket exprs pidents1 pidents2 rbracket -> prPrec i 0 (concatD [prt 0 pident, prt 0 lbracket, prt 0 exprs, doc (showString "|"), prt 0 pidents1, doc (showString "=>"), prt 0 pidents2, prt 0 rbracket])
     MplLanguage.AbsMPL.PROCESS_CLOSE close pident -> prPrec i 0 (concatD [prt 0 close, prt 0 pident])
     MplLanguage.AbsMPL.PROCESS_HALT halt pident -> prPrec i 0 (concatD [prt 0 halt, prt 0 pident])
+    MplLanguage.AbsMPL.PROCESS_QRUN uident pident lbracket exprs pidents1 pidents2 rbracket -> prPrec i 0 (concatD [prt 0 uident, doc (showString "."), prt 0 pident, prt 0 lbracket, prt 0 exprs, doc (showString "|"), prt 0 pidents1, doc (showString "=>"), prt 0 pidents2, prt 0 rbracket])
     MplLanguage.AbsMPL.PROCESS_GET get pattern_ pident -> prPrec i 0 (concatD [prt 0 get, prt 0 pattern_, doc (showString "on"), prt 0 pident])
     MplLanguage.AbsMPL.PROCESS_PUT put expr pident -> prPrec i 0 (concatD [prt 0 put, prt 0 expr, doc (showString "on"), prt 0 pident])
     MplLanguage.AbsMPL.PROCESS_HCASE hcase pident hcasephrases -> prPrec i 0 (concatD [prt 0 hcase, prt 0 pident, doc (showString "of"), doc (showString "{"), prt 0 hcasephrases, doc (showString "}")])
