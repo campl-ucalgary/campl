@@ -128,6 +128,7 @@ MPL_SEQUENTIAL_TYPE_DEFN . MplDefn ::= SequentialTypeDefn ;
 MPL_CONCURRENT_TYPE_DEFN . MplDefn ::= ConcurrentTypeDefn ;
 MPL_FUNCTION_DEFN        . MplDefn ::= FunctionDefn ;
 MPL_PROCESS_DEFN         . MplDefn ::= ProcessDefn ;
+MPL_IMPORT_DEFN          . MplDefn ::= ImportDefn ;
 
 MPL_DEFNTEST . MplDefn ::= "potato" ;
 
@@ -525,3 +526,17 @@ separator nonempty ProcessCasePhrase ";" ;
 
 PROCESS_SWITCH_PHRASE . ProcessSwitchPhrase ::= Expr "->" ProcessCommandsBlock ;
 separator nonempty ProcessSwitchPhrase ";" ;
+
+
+-- ====================================================================
+--  MPL Import definition
+-- ====================================================================
+
+-- variations for with or without directory, with or without specific imports
+
+IMPORT_DIR_SPEC_DEFN  . ImportDefn ::= "include" PString Colon UIdent LBracket [PIdent] "|" [PIdent] RBracket ;
+IMPORT_DIR_DEFN       . ImportDefn ::= "include" PString Colon UIdent                                         ;
+IMPORT_SPEC_DEFN      . ImportDefn ::= "include"               UIdent LBracket [PIdent] "|" [PIdent] RBracket ;
+IMPORT_DEFN           . ImportDefn ::= "include"               UIdent                                         ;
+
+-- separator for list is ','

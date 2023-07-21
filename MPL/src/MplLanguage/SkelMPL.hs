@@ -191,6 +191,7 @@ transMplDefn x = case x of
   MplLanguage.AbsMPL.MPL_CONCURRENT_TYPE_DEFN concurrenttypedefn -> failure x
   MplLanguage.AbsMPL.MPL_FUNCTION_DEFN functiondefn -> failure x
   MplLanguage.AbsMPL.MPL_PROCESS_DEFN processdefn -> failure x
+  MplLanguage.AbsMPL.MPL_IMPORT_DEFN importdefn -> failure x
   MplLanguage.AbsMPL.MPL_DEFNTEST -> failure x
 
 transMplType :: MplLanguage.AbsMPL.MplType -> Result
@@ -449,3 +450,10 @@ transProcessCasePhrase x = case x of
 transProcessSwitchPhrase :: MplLanguage.AbsMPL.ProcessSwitchPhrase -> Result
 transProcessSwitchPhrase x = case x of
   MplLanguage.AbsMPL.PROCESS_SWITCH_PHRASE expr processcommandsblock -> failure x
+
+transImportDefn :: MplLanguage.AbsMPL.ImportDefn -> Result
+transImportDefn x = case x of
+  MplLanguage.AbsMPL.IMPORT_DIR_SPEC_DEFN pstring colon uident lbracket pidents1 pidents2 rbracket -> failure x
+  MplLanguage.AbsMPL.IMPORT_DIR_DEFN pstring colon uident -> failure x
+  MplLanguage.AbsMPL.IMPORT_SPEC_DEFN uident lbracket pidents1 pidents2 rbracket -> failure x
+  MplLanguage.AbsMPL.IMPORT_DEFN uident -> failure x

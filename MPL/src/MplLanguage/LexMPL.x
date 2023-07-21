@@ -393,15 +393,14 @@ resWords =
           (b "data" 13
              (b "coprotocol" 12 (b "codata" 11 N N) N) (b "defn" 14 N N))
           (b "fun" 18 (b "fold" 17 (b "else" 16 N N) N) (b "if" 19 N N))))
-    (b "race" 30
-       (b "on" 25
-          (b "neg" 23 (b "let" 22 (b "into" 21 N N) N) (b "of" 24 N N))
-          (b "proc" 28
-             (b "potato" 27 (b "plug" 26 N N) N) (b "protocol" 29 N N)))
-       (b "with" 35
-          (b "unfold" 33
-             (b "then" 32 (b "switch" 31 N N) N) (b "where" 34 N N))
-          (b "|" 37 (b "{" 36 N N) (b "}" 38 N N))))
+    (b "protocol" 30
+       (b "of" 25
+          (b "let" 23 (b "into" 22 (b "include" 21 N N) N) (b "neg" 24 N N))
+          (b "potato" 28 (b "plug" 27 (b "on" 26 N N) N) (b "proc" 29 N N)))
+       (b "where" 35
+          (b "then" 33
+             (b "switch" 32 (b "race" 31 N N) N) (b "unfold" 34 N N))
+          (b "|" 38 (b "{" 37 (b "with" 36 N N) N) (b "}" 39 N N))))
   where
   b s n = B bs (TS bs n)
     where

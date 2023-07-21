@@ -29,34 +29,34 @@ data LayoutDelimiters
 layoutWords :: [(TokSymbol, LayoutDelimiters)]
 layoutWords =
   [ ( TokSymbol "defn" 14
-    , LayoutDelimiters (TokSymbol ";" 6) (Just (TokSymbol "{" 36)) (Just (TokSymbol "}" 38))
+    , LayoutDelimiters (TokSymbol ";" 6) (Just (TokSymbol "{" 37)) (Just (TokSymbol "}" 39))
     )
-  , ( TokSymbol "where" 34
-    , LayoutDelimiters (TokSymbol ";" 6) (Just (TokSymbol "{" 36)) (Just (TokSymbol "}" 38))
+  , ( TokSymbol "where" 35
+    , LayoutDelimiters (TokSymbol ";" 6) (Just (TokSymbol "{" 37)) (Just (TokSymbol "}" 39))
     )
   , ( TokSymbol "=" 7
-    , LayoutDelimiters (TokSymbol ";" 6) (Just (TokSymbol "{" 36)) (Just (TokSymbol "}" 38))
+    , LayoutDelimiters (TokSymbol ";" 6) (Just (TokSymbol "{" 37)) (Just (TokSymbol "}" 39))
     )
-  , ( TokSymbol "let" 22
-    , LayoutDelimiters (TokSymbol ";" 6) (Just (TokSymbol "{" 36)) (Just (TokSymbol "}" 38))
+  , ( TokSymbol "let" 23
+    , LayoutDelimiters (TokSymbol ";" 6) (Just (TokSymbol "{" 37)) (Just (TokSymbol "}" 39))
     )
-  , ( TokSymbol "of" 24
-    , LayoutDelimiters (TokSymbol ";" 6) (Just (TokSymbol "{" 36)) (Just (TokSymbol "}" 38))
+  , ( TokSymbol "of" 25
+    , LayoutDelimiters (TokSymbol ";" 6) (Just (TokSymbol "{" 37)) (Just (TokSymbol "}" 39))
     )
-  , ( TokSymbol "switch" 31
-    , LayoutDelimiters (TokSymbol ";" 6) (Just (TokSymbol "{" 36)) (Just (TokSymbol "}" 38))
+  , ( TokSymbol "switch" 32
+    , LayoutDelimiters (TokSymbol ";" 6) (Just (TokSymbol "{" 37)) (Just (TokSymbol "}" 39))
     )
   , ( TokSymbol "do" 15
-    , LayoutDelimiters (TokSymbol ";" 6) (Just (TokSymbol "{" 36)) (Just (TokSymbol "}" 38))
+    , LayoutDelimiters (TokSymbol ";" 6) (Just (TokSymbol "{" 37)) (Just (TokSymbol "}" 39))
     )
   , ( TokSymbol "as" 10
-    , LayoutDelimiters (TokSymbol ";" 6) (Just (TokSymbol "{" 36)) (Just (TokSymbol "}" 38))
+    , LayoutDelimiters (TokSymbol ";" 6) (Just (TokSymbol "{" 37)) (Just (TokSymbol "}" 39))
     )
-  , ( TokSymbol "race" 30
-    , LayoutDelimiters (TokSymbol ";" 6) (Just (TokSymbol "{" 36)) (Just (TokSymbol "}" 38))
+  , ( TokSymbol "race" 31
+    , LayoutDelimiters (TokSymbol ";" 6) (Just (TokSymbol "{" 37)) (Just (TokSymbol "}" 39))
     )
-  , ( TokSymbol "plug" 26
-    , LayoutDelimiters (TokSymbol ";" 6) (Just (TokSymbol "{" 36)) (Just (TokSymbol "}" 38))
+  , ( TokSymbol "plug" 27
+    , LayoutDelimiters (TokSymbol ";" 6) (Just (TokSymbol "{" 37)) (Just (TokSymbol "}" 39))
     )
   ]
 

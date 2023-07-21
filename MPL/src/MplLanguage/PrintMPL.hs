@@ -255,6 +255,7 @@ instance Print MplLanguage.AbsMPL.MplDefn where
     MplLanguage.AbsMPL.MPL_CONCURRENT_TYPE_DEFN concurrenttypedefn -> prPrec i 0 (concatD [prt 0 concurrenttypedefn])
     MplLanguage.AbsMPL.MPL_FUNCTION_DEFN functiondefn -> prPrec i 0 (concatD [prt 0 functiondefn])
     MplLanguage.AbsMPL.MPL_PROCESS_DEFN processdefn -> prPrec i 0 (concatD [prt 0 processdefn])
+    MplLanguage.AbsMPL.MPL_IMPORT_DEFN importdefn -> prPrec i 0 (concatD [prt 0 importdefn])
     MplLanguage.AbsMPL.MPL_DEFNTEST -> prPrec i 0 (concatD [doc (showString "potato")])
 
 instance Print MplLanguage.AbsMPL.MplType where
@@ -662,3 +663,10 @@ instance Print [MplLanguage.AbsMPL.ProcessSwitchPhrase] where
   prt _ [] = concatD []
   prt _ [x] = concatD [prt 0 x]
   prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
+
+instance Print MplLanguage.AbsMPL.ImportDefn where
+  prt i = \case
+    MplLanguage.AbsMPL.IMPORT_DIR_SPEC_DEFN pstring colon uident lbracket pidents1 pidents2 rbracket -> prPrec i 0 (concatD [doc (showString "include"), prt 0 pstring, prt 0 colon, prt 0 uident, prt 0 lbracket, prt 0 pidents1, doc (showString "|"), prt 0 pidents2, prt 0 rbracket])
+    MplLanguage.AbsMPL.IMPORT_DIR_DEFN pstring colon uident -> prPrec i 0 (concatD [doc (showString "include"), prt 0 pstring, prt 0 colon, prt 0 uident])
+    MplLanguage.AbsMPL.IMPORT_SPEC_DEFN uident lbracket pidents1 pidents2 rbracket -> prPrec i 0 (concatD [doc (showString "include"), prt 0 uident, prt 0 lbracket, prt 0 pidents1, doc (showString "|"), prt 0 pidents2, prt 0 rbracket])
+    MplLanguage.AbsMPL.IMPORT_DEFN uident -> prPrec i 0 (concatD [doc (showString "include"), prt 0 uident])

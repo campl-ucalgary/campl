@@ -29,6 +29,7 @@ data MplDefn
     | MPL_CONCURRENT_TYPE_DEFN ConcurrentTypeDefn
     | MPL_FUNCTION_DEFN FunctionDefn
     | MPL_PROCESS_DEFN ProcessDefn
+    | MPL_IMPORT_DEFN ImportDefn
     | MPL_DEFNTEST
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
@@ -272,6 +273,13 @@ data ProcessCasePhrase
 
 data ProcessSwitchPhrase
     = PROCESS_SWITCH_PHRASE Expr ProcessCommandsBlock
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+data ImportDefn
+    = IMPORT_DIR_SPEC_DEFN PString Colon UIdent LBracket [PIdent] [PIdent] RBracket
+    | IMPORT_DIR_DEFN PString Colon UIdent
+    | IMPORT_SPEC_DEFN UIdent LBracket [PIdent] [PIdent] RBracket
+    | IMPORT_DEFN UIdent
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype PInteger = PInteger ((C.Int, C.Int), String)
