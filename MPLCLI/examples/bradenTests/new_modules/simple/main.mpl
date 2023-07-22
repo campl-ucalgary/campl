@@ -3,31 +3,21 @@ coprotocol S => Console =
     ConsoleGet :: S => Put( [Char] | S)
     ConsoleClose :: S => TopBot 
 
-include "folder/file.mpl" : M1
-include M2
-include "folder/file.mpl" : M3 (a,b|c,d)
-include M4 (e,f|g,h)
-include "folder/file.mpl" : M3 (|)
-include M4 (|)
+-- include "folder/file.mpl" : M1
+-- include M1
+-- include "folder/file.mpl" : M1 (a,b|c,d)
+-- include M1 (e,f|g,h)
+-- include "folder/file.mpl" : M1 (|)
+-- include M1 (|)
 
-fun f :: Int -> Int =
-    a -> M.f(a)
+include "second.mpl" : M1
+
+fun f :: Int -> [Char] =
+    a -> "hi there. " ++ M1.f(a)
 
 
 proc run :: | Console => = 
     | console => -> do
-        
-        hput ConsolePut on console
-        put "Enter your name" on console
-        
-        on console do
-            hput ConsoleGet
-            get name
-            
-            hput ConsolePut
-            put "Hello,"
-            hput ConsolePut
-            put name
         
         hput ConsolePut on console 
         put "Done" on console

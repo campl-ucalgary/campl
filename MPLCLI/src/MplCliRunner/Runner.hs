@@ -75,22 +75,40 @@ cliRunPipelineInputProg ::
     -- | all done.
     MplCli ()
 cliRunPipelineInputProg inp = do
-    flags <- gview mplCliFlags 
-
+    -- the input flags
+    flags <- gview mplCliFlags
+    -- the input file. 'inp' already contains the input file as a string,
+    -- so this is just to use as a name for the module system.
+    inpFile <- gview mplCliInpFile
+    
     Passes.MplPassesEnv
         { Passes.mplPassesEnvUniqueSupply = supply
         , Passes.mplPassesTopLevel = toplvl } <- liftIO Passes.mplPassesEnv
     let ~(s0:s1:s2:s3:_) = uniqueSupplies supply
-
-    -- parsed
+    
+    -- parsed by the raw BNFC, but not by the 'parse' stage from 'passes'.
+    -- parsed_1 is just the raw AST from the main file
+    mainAST <- liftEither 
+        $ Bifunctor.first 
+            ( ParsedException 
+            . show 
+            . (PassesErrors.pprintMplPassesErrors :: [PassesErrors.MplPassesErrors] -> PassesErrors.MplDoc) 
+            )
+        $ B.runBnfc 
+        $ inp
+    
+    
+    
+    -- Advanced parsing: combines a bunch of AST nodes and removes macros.
     parsed <- liftEither 
         $ Bifunctor.first 
             ( ParsedException 
             . show 
             . (PassesErrors.pprintMplPassesErrors :: [PassesErrors.MplPassesErrors] -> PassesErrors.MplDoc) 
             )
-        $ Passes.runParse' <=< B.runBnfc 
-        $ inp
+        $ Passes.runParse'
+        $ parsed_1
+    
 
     for_ flags $ \case
         Dump opt@Parsed dpoutput -> liftIO 
