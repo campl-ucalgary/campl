@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.35.1.
 --
 -- see: https://github.com/sol/hpack
 
@@ -27,6 +27,9 @@ library
   exposed-modules:
       MplCliMain
       MplCliRunner.Flags
+      MplCliRunner.Modules.Aliasing
+      MplCliRunner.Modules.ListOps
+      MplCliRunner.Modules.Renamer
       MplCliRunner.Runner
       MplCliRunner.Stack
   other-modules:
@@ -40,6 +43,7 @@ library
     , MPLASM
     , MPLMACH
     , base >=4.7 && <5
+    , directory
     , filepath
     , mtl
     , optics
@@ -64,6 +68,7 @@ executable mpl
     , MPLCLI
     , MPLMACH
     , base >=4.7 && <5
+    , directory
     , filepath
     , mtl
     , optics
@@ -128,6 +133,7 @@ benchmark MPLCLI-bench
     , containers
     , criterion
     , deepseq
+    , directory
     , filepath
     , mtl
     , optics

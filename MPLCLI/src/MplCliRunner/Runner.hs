@@ -107,7 +107,7 @@ cliRunPipelineInputProg inp = do
             . (PassesErrors.pprintMplPassesErrors :: [PassesErrors.MplPassesErrors] -> PassesErrors.MplDoc) 
             )
         $ Passes.runParse'
-        $ parsed_1
+        $ mainAST
     
 
     for_ flags $ \case
