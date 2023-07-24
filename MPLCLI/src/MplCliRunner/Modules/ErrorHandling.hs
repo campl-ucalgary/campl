@@ -5,7 +5,10 @@ module MplCliRunner.Modules.ErrorHandling (
     moduleInsideWhere,
     localNameError,
     aliasClashError,
-    aliasDefClashError
+    aliasDefClashError,
+    cycleFound,
+    cyclePrepend,
+    cycleBase
     ) where
 
 -- for the FrontEndException constructor 'ModuleException String'
@@ -68,3 +71,20 @@ aliasDefClashError objType (objName,modName,line1,line2) = concat
     [objType, " '", objName, "' is ambiguous, referring either to:\n\t'", 
     modName, ".", objName, "' (imported on line ", show line1, "), or\n\t'",
     objName, "' (declared on line ", show line2, ")"]
+
+-- Takes a cycle error message and adds a line at the start saying that a cycle was found.
+cycleFound :: String -> String
+cycleFound str =
+    "Module cycle detected:\n" ++ str
+
+
+-- Adds a new entry in a list of files that are part of a cycle.
+cyclePrepend :: String -> String -> String
+cyclePrepend file rest =
+    concat ["\t'", file, "' ->\n"]
+
+
+-- Takes a file and turns it into the last line of a cycle error message.
+cycleBase :: String -> String
+cycleBase str =
+    concat ["\t'", str, "'"]

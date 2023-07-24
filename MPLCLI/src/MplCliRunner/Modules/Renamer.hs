@@ -1,6 +1,6 @@
 
 
-module MplCliRunner.Modules.Renamer (astRefactor,astDefRefactor) where
+module MplCliRunner.Modules.Renamer (astRefactor,astDefRefactor,refToModule) where
 
 -- For the ast
 import MplPasses.Parser.BnfcParse as B
@@ -17,8 +17,6 @@ type QFunc = ((String,String) -> Either String (String,String))
 type UFunc = (String -> Either String (String,String))
 -- A tuple of the four functions. See the 'astRefactor' definition for which is which.
 type UQFuncs = (UFunc,QFunc,UFunc,QFunc)
--- A tupe of two functions, for function/process definitons only
-type UFuncs = (UFunc,UFunc)
 
 -- a function which takes four input functions and returns a function.
 -- See the definitions of QFunc and UFunc for how the functions work.
@@ -346,10 +344,13 @@ refREP fs (RECORD_EXPR_HIGHER_ORDER_PHRASE name pep) =
 ------------------------------------------------------
 ------------------------------------------------------
 
+-- The type of a function pair for renaming things.
+type UFuncs = ((String->String),(String->String))
+
 -- changes the names of function and process definitions.
 astDefRefactor ::
-    UFunc -> -- convert unqualified function names
-    UFunc -> -- convert unqualified process  names
+    (String -> String) -> -- convert unqualified function names
+    (String -> String) -> -- convert unqualified process  names
     B.MplProg -> B.MplProg -- The function which renames things
 astDefRefactor f p (MPL_PROG ls) =
     MPL_PROG $ map (refDefStmt (f,p)) ls
@@ -378,16 +379,42 @@ refDefDefn _ a = a -- type definitions, test definition, imports
 
 
 refDefFuncDefn :: UFuncs -> FunctionDefn -> FunctionDefn
-refDefFuncDefn (f,p) (TYPED_FUNCTION_DEFN name ts t peps) =
-    TYPED_FUNCTION_DEFN name ts t peps
-refDefFuncDefn (f,p) (FUNCTION_DEFN name peps) =
-    FUNCTION_DEFN name peps
+refDefFuncDefn (f,_) (TYPED_FUNCTION_DEFN name ts t peps) =
+    TYPED_FUNCTION_DEFN (unReWrap f name) ts t peps
+refDefFuncDefn (f,_) (FUNCTION_DEFN name peps) =
+    FUNCTION_DEFN (unReWrap f name) peps
 refDefFuncDefn _ a = a -- ignore infix operators
 
 
 refDefProcDefn :: UFuncs -> ProcessDefn -> ProcessDefn
-refDefProcDefn (f,p) (TYPED_PROCESS_DEFN name t1s t2s t3s pps) =
-    TYPED_PROCESS_DEFN name t1s t2s t3s pps
-refDefProcDefn (f,p) (PROCESS_DEFN name pps) =
-    PROCESS_DEFN name pps
+refDefProcDefn (_,p) (TYPED_PROCESS_DEFN name t1s t2s t3s pps) =
+    TYPED_PROCESS_DEFN (unReWrap p name) t1s t2s t3s pps
+refDefProcDefn (_,p) (PROCESS_DEFN name pps) =
+    PROCESS_DEFN (unReWrap p name) pps
 refDefProcDefn _ a = a
+
+unReWrap :: (String -> String) -> PIdent -> PIdent
+unReWrap f (PIdent (xy,n)) = PIdent (xy,f n)
+
+------------------------------------------------------
+------------------------------------------------------
+-- Part 3: Refactoring an AST to a module
+------------------------------------------------------
+------------------------------------------------------
+
+-- Takes:
+--   the module name
+--   The AST
+-- refactors the AST to make it a module. The main module does not need to be refactored.
+refToModule :: String -> B.MplProg -> B.MplProg
+refToModule modName ast = -- For non-main modules
+    astDefRefactor
+        (\objName -> modName ++ ('.':objName))
+        (\objName -> modName ++ ('.':objName))
+    $ astRefactor
+        (\objName -> Right (modName,objName))
+        Right
+        (\objName -> Right (modName,objName))
+        Right
+    $ ast
+
