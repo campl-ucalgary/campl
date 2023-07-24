@@ -13,10 +13,14 @@ import Control.Monad.IO.Class
 import MplCliRunner.Stack
 -- For errors
 import Data.Either
--- For MplCli types
-import qualified MplCliRunner.Stack as Stack
 -- For liftEither
 import Control.Monad.Except
+-- for aliasing operations
+import MplCliRunner.Modules.Aliasing
+-- for error messages
+import MplCliRunner.Modules.ErrorHandling
+
+
 
 -- this module handles list operations on lists of modules.
 -- This is the main file used for the 'include modules' step of the compiler
@@ -56,11 +60,35 @@ makeModuleList ast path = return [] -- TODO
 -- there's an aliasing error (since the imports are just aliasing)
 generateModule :: B.MplProg -> String -> MplCli Module
 generateModule ast dir = do
-    
-    
-    return 
-    -- TODO
-    
+    -- Get a full file directory, nicely formatted.
+    fullDir <- liftIO $ makeAbsolute $ cleanDir dir
+    -- get list of aliases 
+    aliasLists <- return $ defProg ast
+    -- get list of local names
+    (impList,newAst) <- return $ modListProg ast 
+    -- check for imports in the wrong places
+    liftEither $ moduleInsideWhere $ findBadProg newAst
+    -- check for local-name conflicts
+    liftEither $ checkLocalClash impList
+    -- check for alias conflicts
+    liftEither $ checkForAliasClash aliasLists
+    -- remove aliases
+    finalAst <- return $ deAliasAll aliasLists newAst
+    -- Return the completed structure.
+    return (fullDir,finalAst,impList)
+
+
+-- Takes a raw list of module local-names and makes them global.
+cleanLocals :: [(String,String)] -> IO [(String,String)]
+cleanLocals [] = return []
+cleanLocals ((dir,name):bs) = do
+    -- Clean up this directory.
+    dir2 <- liftIO $ makeAbsolute $ cleanDir dir
+    -- Clean up the rest
+    b2s <- cleanLocals bs
+    -- Return the result
+    return ((dir2,name):b2s)
+
 
 -- Turns double back-slashes into single back-slashes,
 -- silently ignores quotation marks.

@@ -28,6 +28,7 @@ library
       MplCliMain
       MplCliRunner.Flags
       MplCliRunner.Modules.Aliasing
+      MplCliRunner.Modules.ErrorHandling
       MplCliRunner.Modules.ListOps
       MplCliRunner.Modules.Renamer
       MplCliRunner.Runner
