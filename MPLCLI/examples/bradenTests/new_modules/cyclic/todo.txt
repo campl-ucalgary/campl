@@ -1,1 +1,0 @@
-A confirmation that cyclic directory names produces a proper error.

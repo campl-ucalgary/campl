@@ -26,6 +26,9 @@ import qualified MplAsmPasses.PassesErrorsPprint as Asm
 -- from cli
 import MplCliRunner.Flags
 import MplCliRunner.Stack
+-- the module system
+import qualified MplCliRunner.Modules.ListOps as Modules
+
 
 -- abstract machine
 import qualified MplMach.MplMachTypes as MplMach
@@ -98,6 +101,21 @@ cliRunPipelineInputProg inp = do
         $ inp
     
     
+    -- Module section
+    
+    -- Generate the full list of modules
+    modList <- Modules.makeModuleList mainAST inpFile
+    
+    -- order the modules according to compilation order.
+    -- also catches circular dependency errors.
+    modListOrd <- Modules.orderModules modList
+    
+    -- gives modules unique global names, based on the names of the files
+    modListUnq <- return $ Modules.uniqueModNames modListOrd
+    
+    -- reduce the list back to a single AST,
+    -- resolving all names to global names and modifying definitions as needed.
+    combinedAST <- return $ Modules.resolveList modListUnq
     
     -- Advanced parsing: combines a bunch of AST nodes and removes macros.
     parsed <- liftEither 
@@ -107,7 +125,7 @@ cliRunPipelineInputProg inp = do
             . (PassesErrors.pprintMplPassesErrors :: [PassesErrors.MplPassesErrors] -> PassesErrors.MplDoc) 
             )
         $ Passes.runParse'
-        $ mainAST
+        $ combinedAST
     
 
     for_ flags $ \case

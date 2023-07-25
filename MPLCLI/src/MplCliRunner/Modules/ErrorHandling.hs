@@ -81,7 +81,7 @@ cycleFound str =
 -- Adds a new entry in a list of files that are part of a cycle.
 cyclePrepend :: String -> String -> String
 cyclePrepend file rest =
-    concat ["\t'", file, "' ->\n"]
+    concat ["\t'", file, "' ->\n", rest]
 
 
 -- Takes a file and turns it into the last line of a cycle error message.

@@ -177,7 +177,7 @@ loadFiles (n:ns) = do
 orderModules :: [Module] -> MplCli [Module]
 orderModules ls = do
     catchModuleCycles ls -- check for cycles, and print an error if any exist.
-    orderModules ls -- orders the modules correctly.
+    return $ orderModulesSafe ls [] -- orders the modules correctly.
     
 
 
@@ -329,7 +329,7 @@ applySub a ((b,bNew):bs)
 -- Takes a module list. Assumes the first module is the main module,
 -- and modules are ordered such that any module is before its dependencies.
 resolveList :: [Module] -> B.MplProg
-resolveList ms =
+resolveList ms = 
     concatProgs $ reverse $ globalNameEverything ms
 
 
