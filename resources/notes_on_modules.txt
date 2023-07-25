@@ -74,14 +74,11 @@ This applies to:
 	- (co)data
 
 --------------------------------------------------
--- Odd errors
+-- Forgetting imports
 --------------------------------------------------
-
-The main unhandled error within the module system is using a module you haven't imported.
-For example, using "M.f" without importing "M".
-Typically, this will simply produce an out-of-scope identifier, but if "M.mpl" is the name of a file in the project,
-there is a chance that it will try and access 'M.f' from that file instead.
-The behavior in this case is undefined.
+The following error sometimes occurs:
+    mpl.EXE: Module used without being imported: 'Second'
+This means you forgot to import 'Second', and used 'Second.something' inside a program.
 
 
 --------------------------------------------------

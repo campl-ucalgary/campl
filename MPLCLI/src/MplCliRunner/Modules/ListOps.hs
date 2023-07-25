@@ -25,6 +25,8 @@ import MplCliRunner.Modules.ErrorHandling
 import qualified Data.Bifunctor as Bifunctor
 -- for file parsing errors
 import qualified MplPasses.PassesErrors as PassesErrors
+-- for uncaught exceptions
+import Control.Exception as Exception
 
 
 -- this module handles list operations on lists of modules.
@@ -312,9 +314,21 @@ applySubs subs ((name,ast,deps):rest) =
         : (applySubs subs rest)
 
 
+-- A special exception for if someone forgets to import a module.
+-- (Because I don't really want to add error-propagation to everythin)
+data ModuleNotImportedException = ModuleNotImportedException String
+
+instance Show ModuleNotImportedException where
+    show (ModuleNotImportedException str) =
+        concat ["Module used without being imported: '", str, "'\n"]
+
+instance Exception.Exception ModuleNotImportedException
+
 -- Applies a single substitution to a single string.
+-- Failure to apply a substitution means 'a' corresponds to an unimported module,
+-- so throw an error
 applySub :: String -> [(String,String)] -> String
-applySub a [] = a -- should never happen (unless someone uses a module they forgot to import)
+applySub a [] = throw $ ModuleNotImportedException a 
 applySub a ((b,bNew):bs)
     | a == b    = bNew
     | otherwise = applySub a bs
