@@ -1,0 +1,97 @@
+
+The module system allows a file to import other files and use the code contained within.
+
+
+--------------------------------------------------
+-- A simple example
+--------------------------------------------------
+
+
+For example:
+
+	include "./myFolder/MyFile.mpl" : MathModule (add, subtract | counter, memcell)
+
+The quoted string is the file to be loaded. This can be a relative or absolute directory.
+If you use backslashes, remember to escape them! eg: "myfolder\\File.mpl"
+Also keep in mind that these strings are case-sensitive. If you mess up capitalization,
+you may get very strange errors, like "Module1.Tree != module1.Tree"
+The suggested practice is to make sure the case of the files are correct, and to use forward-slashes always.
+This also ensures posix/linux compatibility.
+
+
+'MathModule' is the local name of the module. It can be any uppercase identifier.
+This name specifies that to access a function or process declared in this module,
+you must reference it as "MathModule.sort" or "MathModule.enumerate", instead of
+just "sort" or "enumerate".
+You cannot import two modules with the same local name, as this would create ambiguity.
+
+
+The list '(functions | processes)', lists which functions and processes can be accessed in an unqualified way.
+So, any reference to "add" from our example automatically becomes "MathModule.add".
+Behind-the-scenes, this is managed as a file-wide alias.
+Aliases can conflict (you cannot import '(f|)' from multiple modules at once).
+Aliases can also conflict with definitions. If you import '(f|)' you cannot declare a local function 'f'
+
+
+--------------------------------------------------
+-- Variations on 'include'
+--------------------------------------------------
+
+
+The 'include' syntax permits the file directory and unqualified lists to be excluded.
+The below examples are all equivalent to:
+	include "./M2.mpl" : M2 (|)
+
+
+include M2
+include M2 (|)
+include "M2.mpl" : M2
+include "M2.mpl" : M2 (|)
+
+
+--------------------------------------------------
+-- Dependency
+--------------------------------------------------
+
+Modules may not be circularily dependent. This means a module cannot import itself,
+and a module cannot import any module which imports itself, etc.
+If you accidentally create a cycle, the compiler will display
+a list of what files are part of the cycle, and halt.
+
+
+--------------------------------------------------
+-- Namespaces
+--------------------------------------------------
+
+With the exception of functions and processes, all imports are transitive, unqualified, and unconditional.
+Meaning:
+	- If A imports B, and B imports C, then A imports those aspects of C
+	- If A imports B, then protocols from B are referenced as though they were local
+	- If A imports B, all protocols from B are automatically imported.
+This applies to:
+	- infix operators
+	- (co)protocols
+	- (co)data
+
+--------------------------------------------------
+-- Odd errors
+--------------------------------------------------
+
+The main unhandled error within the module system is using a module you haven't imported.
+For example, using "M.f" without importing "M".
+Typically, this will simply produce an out-of-scope identifier, but if "M.mpl" is the name of a file in the project,
+there is a chance that it will try and access 'M.f' from that file instead.
+The behavior in this case is undefined.
+
+
+--------------------------------------------------
+-- Errors later-on in compilation
+--------------------------------------------------
+
+Since the compiler merges the ASTs from each file together,
+it can be hard to determine where an error is coming from.
+Keep in mind that functions in module "MName.mpl" will be renamed to "MName.FunctionName", and likewise for processes.
+The main module will not be renamed in this way. As a result, it shouldn't be too
+difficult to track down errors in most cases.
+Line numbers will match with what they were in the original file.
+

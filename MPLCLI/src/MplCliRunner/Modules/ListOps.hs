@@ -314,7 +314,7 @@ applySubs subs ((name,ast,deps):rest) =
 
 -- Applies a single substitution to a single string.
 applySub :: String -> [(String,String)] -> String
-applySub a [] = undefined -- error, substitution should exist.
+applySub a [] = a -- should never happen (unless someone uses a module they forgot to import)
 applySub a ((b,bNew):bs)
     | a == b    = bNew
     | otherwise = applySub a bs
