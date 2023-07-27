@@ -28,7 +28,7 @@ $u = [. \n]          -- universal: any character
 
 -- Symbols and non-identifier-like reserved words
 
-@rsyms = \, | \{ | \} | \; | \| | \- \> | \= | \: \: | \= \> | \: \=
+@rsyms = \, | \{ | \} | \; | \| | \- \> | \= | \: \: | \= \> | \. | \: \= | \( | \)
 
 :-
 
@@ -110,7 +110,7 @@ $d + \. $d + (e \- ? $d +)?
     { tok (eitherResIdent T_ChId) }
 
 -- token InfixU1op
-\| ([\! \# \$ \% \& \* \+ \- \/ \: \< \> \? \@ \^ \_ \| \~][\! \# \$ \% \& \* \+ \- \/ \: \< \= \> \? \@ \^ \_ \| \~]* | \= [\! \# \$ \% \& \* \+ \- \/ \: \< \= \? \@ \^ \_ \| \~][\! \# \$ \% \& \* \+ \- \/ \: \< \= \> \? \@ \^ \_ \| \~]*)
+\| ([\! \# \$ \% \& \* \+ \- \/ \: \< \> \? \@ \^ \_ \| \~][\! \# \$ \% \& \* \+ \- \/ \: \< \= \> \? \@ \^ \_ \| \~]* | \= [\! \# \$ \% \& \* \+ \- \/ \: \< \= \? \@ \^ \_ \| \~][\! \# \$ \% \& \* \+ \- \/ \: \< \= \> \? \@ \^ \_ \| \~]* | \= \> [\! \# \$ \% \& \* \+ \- \/ \: \< \= \> \? \@ \^ \_ \| \~]+)
     { tok (eitherResIdent T_InfixU1op) }
 
 -- token InfixU2op
@@ -384,24 +384,24 @@ eitherResIdent tv s = treeFind resWords
 -- | The keywords and symbols of the language organized as binary search tree.
 resWords :: BTree
 resWords =
-  b "in" 19
-    (b "codata" 10
-       (b ";" 5
-          (b "::" 3 (b "->" 2 (b "," 1 N N) N) (b ":=" 4 N N))
-          (b "and" 8 (b "=>" 7 (b "=" 6 N N) N) (b "as" 9 N N)))
-       (b "else" 15
-          (b "defn" 13
-             (b "data" 12 (b "coprotocol" 11 N N) N) (b "do" 14 N N))
-          (b "fun" 17 (b "fold" 16 N N) (b "if" 18 N N))))
-    (b "race" 29
-       (b "on" 24
-          (b "neg" 22 (b "let" 21 (b "into" 20 N N) N) (b "of" 23 N N))
-          (b "proc" 27
-             (b "potato" 26 (b "plug" 25 N N) N) (b "protocol" 28 N N)))
-       (b "with" 34
-          (b "unfold" 32
-             (b "then" 31 (b "switch" 30 N N) N) (b "where" 33 N N))
-          (b "|" 36 (b "{" 35 N N) (b "}" 37 N N))))
+  b "if" 21
+    (b "and" 11
+       (b "::" 6
+          (b "," 3 (b ")" 2 (b "(" 1 N N) N) (b "." 5 (b "->" 4 N N) N))
+          (b "=" 9 (b ";" 8 (b ":=" 7 N N) N) (b "=>" 10 N N)))
+       (b "defn" 16
+          (b "coprotocol" 14
+             (b "codata" 13 (b "as" 12 N N) N) (b "data" 15 N N))
+          (b "fold" 19 (b "else" 18 (b "do" 17 N N) N) (b "fun" 20 N N))))
+    (b "protocol" 32
+       (b "of" 27
+          (b "into" 24
+             (b "include" 23 (b "in" 22 N N) N) (b "neg" 26 (b "let" 25 N N) N))
+          (b "potato" 30 (b "plug" 29 (b "on" 28 N N) N) (b "proc" 31 N N)))
+       (b "where" 37
+          (b "then" 35
+             (b "switch" 34 (b "race" 33 N N) N) (b "unfold" 36 N N))
+          (b "|" 40 (b "{" 39 (b "with" 38 N N) N) (b "}" 41 N N))))
   where
   b s n = B bs (TS bs n)
     where

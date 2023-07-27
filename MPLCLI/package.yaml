@@ -30,6 +30,7 @@ dependencies:
 - optics
 - recursion-schemes
 - pretty-show
+- directory
 
 - MPL
 - MPLASM

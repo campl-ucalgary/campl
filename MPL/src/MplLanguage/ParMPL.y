@@ -25,41 +25,43 @@ import MplLanguage.LexMPL
 %token
   ','              { PT _ (TS _ 1)             }
   '->'             { PT _ (TS _ 2)             }
-  '::'             { PT _ (TS _ 3)             }
-  ':='             { PT _ (TS _ 4)             }
-  ';'              { PT _ (TS _ 5)             }
-  '='              { PT _ (TS _ 6)             }
-  '=>'             { PT _ (TS _ 7)             }
-  'and'            { PT _ (TS _ 8)             }
-  'as'             { PT _ (TS _ 9)             }
-  'codata'         { PT _ (TS _ 10)            }
-  'coprotocol'     { PT _ (TS _ 11)            }
-  'data'           { PT _ (TS _ 12)            }
-  'defn'           { PT _ (TS _ 13)            }
-  'do'             { PT _ (TS _ 14)            }
-  'else'           { PT _ (TS _ 15)            }
-  'fold'           { PT _ (TS _ 16)            }
-  'fun'            { PT _ (TS _ 17)            }
-  'if'             { PT _ (TS _ 18)            }
-  'in'             { PT _ (TS _ 19)            }
-  'into'           { PT _ (TS _ 20)            }
-  'let'            { PT _ (TS _ 21)            }
-  'neg'            { PT _ (TS _ 22)            }
-  'of'             { PT _ (TS _ 23)            }
-  'on'             { PT _ (TS _ 24)            }
-  'plug'           { PT _ (TS _ 25)            }
-  'potato'         { PT _ (TS _ 26)            }
-  'proc'           { PT _ (TS _ 27)            }
-  'protocol'       { PT _ (TS _ 28)            }
-  'race'           { PT _ (TS _ 29)            }
-  'switch'         { PT _ (TS _ 30)            }
-  'then'           { PT _ (TS _ 31)            }
-  'unfold'         { PT _ (TS _ 32)            }
-  'where'          { PT _ (TS _ 33)            }
-  'with'           { PT _ (TS _ 34)            }
-  '{'              { PT _ (TS _ 35)            }
-  '|'              { PT _ (TS _ 36)            }
-  '}'              { PT _ (TS _ 37)            }
+  '.'              { PT _ (TS _ 3)             }
+  '::'             { PT _ (TS _ 4)             }
+  ':='             { PT _ (TS _ 5)             }
+  ';'              { PT _ (TS _ 6)             }
+  '='              { PT _ (TS _ 7)             }
+  '=>'             { PT _ (TS _ 8)             }
+  'and'            { PT _ (TS _ 9)             }
+  'as'             { PT _ (TS _ 10)            }
+  'codata'         { PT _ (TS _ 11)            }
+  'coprotocol'     { PT _ (TS _ 12)            }
+  'data'           { PT _ (TS _ 13)            }
+  'defn'           { PT _ (TS _ 14)            }
+  'do'             { PT _ (TS _ 15)            }
+  'else'           { PT _ (TS _ 16)            }
+  'fold'           { PT _ (TS _ 17)            }
+  'fun'            { PT _ (TS _ 18)            }
+  'if'             { PT _ (TS _ 19)            }
+  'in'             { PT _ (TS _ 20)            }
+  'include'        { PT _ (TS _ 21)            }
+  'into'           { PT _ (TS _ 22)            }
+  'let'            { PT _ (TS _ 23)            }
+  'neg'            { PT _ (TS _ 24)            }
+  'of'             { PT _ (TS _ 25)            }
+  'on'             { PT _ (TS _ 26)            }
+  'plug'           { PT _ (TS _ 27)            }
+  'potato'         { PT _ (TS _ 28)            }
+  'proc'           { PT _ (TS _ 29)            }
+  'protocol'       { PT _ (TS _ 30)            }
+  'race'           { PT _ (TS _ 31)            }
+  'switch'         { PT _ (TS _ 32)            }
+  'then'           { PT _ (TS _ 33)            }
+  'unfold'         { PT _ (TS _ 34)            }
+  'where'          { PT _ (TS _ 35)            }
+  'with'           { PT _ (TS _ 36)            }
+  '{'              { PT _ (TS _ 37)            }
+  '|'              { PT _ (TS _ 38)            }
+  '}'              { PT _ (TS _ 39)            }
   L_PInteger       { PT _ (T_PInteger _)       }
   L_PDouble        { PT _ (T_PDouble _)        }
   L_PChar          { PT _ (T_PChar _)          }
@@ -257,6 +259,7 @@ MplDefn
   | ConcurrentTypeDefn { MplLanguage.AbsMPL.MPL_CONCURRENT_TYPE_DEFN $1 }
   | FunctionDefn { MplLanguage.AbsMPL.MPL_FUNCTION_DEFN $1 }
   | ProcessDefn { MplLanguage.AbsMPL.MPL_PROCESS_DEFN $1 }
+  | ImportDefn { MplLanguage.AbsMPL.MPL_IMPORT_DEFN $1 }
   | 'potato' { MplLanguage.AbsMPL.MPL_DEFNTEST }
 
 MplType :: { MplLanguage.AbsMPL.MplType }
@@ -447,6 +450,7 @@ Expr10
   | LBracket Expr ',' ListTupleExprList RBracket { MplLanguage.AbsMPL.TUPLE_EXPR $1 $2 $4 $5 }
   | PIdent LBracket ListExpr RBracket { MplLanguage.AbsMPL.FUN_EXPR $1 $2 $3 $4 }
   | LBracket ListRecordExprPhrase RBracket { MplLanguage.AbsMPL.RECORD_EXPR $1 $2 $3 }
+  | UIdent '.' PIdent LBracket ListExpr RBracket { MplLanguage.AbsMPL.FUNQ_EXPR $1 $3 $4 $5 $6 }
   | LBracket Expr RBracket { MplLanguage.AbsMPL.BRACKETED_EXPR $1 $2 $3 }
 
 InfixUop :: { MplLanguage.AbsMPL.InfixUop }
@@ -608,6 +612,7 @@ ProcessCommand
   : PIdent LBracket ListExpr '|' ListPIdent '=>' ListPIdent RBracket { MplLanguage.AbsMPL.PROCESS_RUN $1 $2 $3 $5 $7 $8 }
   | Close PIdent { MplLanguage.AbsMPL.PROCESS_CLOSE $1 $2 }
   | Halt PIdent { MplLanguage.AbsMPL.PROCESS_HALT $1 $2 }
+  | UIdent '.' PIdent LBracket ListExpr '|' ListPIdent '=>' ListPIdent RBracket { MplLanguage.AbsMPL.PROCESS_QRUN $1 $3 $4 $5 $7 $9 $10 }
   | Get Pattern 'on' PIdent { MplLanguage.AbsMPL.PROCESS_GET $1 $2 $4 }
   | Put Expr 'on' PIdent { MplLanguage.AbsMPL.PROCESS_PUT $1 $2 $4 }
   | HCase PIdent 'of' '{' ListHCasePhrase '}' { MplLanguage.AbsMPL.PROCESS_HCASE $1 $2 $5 }
@@ -714,6 +719,13 @@ ListProcessSwitchPhrase :: { [MplLanguage.AbsMPL.ProcessSwitchPhrase] }
 ListProcessSwitchPhrase
   : ProcessSwitchPhrase { (:[]) $1 }
   | ProcessSwitchPhrase ';' ListProcessSwitchPhrase { (:) $1 $3 }
+
+ImportDefn :: { MplLanguage.AbsMPL.ImportDefn }
+ImportDefn
+  : 'include' PString Colon UIdent LBracket ListPIdent '|' ListPIdent RBracket { MplLanguage.AbsMPL.IMPORT_DIR_SPEC_DEFN $2 $3 $4 $5 $6 $8 $9 }
+  | 'include' PString Colon UIdent { MplLanguage.AbsMPL.IMPORT_DIR_DEFN $2 $3 $4 }
+  | 'include' UIdent LBracket ListPIdent '|' ListPIdent RBracket { MplLanguage.AbsMPL.IMPORT_SPEC_DEFN $2 $3 $4 $6 $7 }
+  | 'include' UIdent { MplLanguage.AbsMPL.IMPORT_DEFN $2 }
 
 {
 

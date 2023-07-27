@@ -26,6 +26,9 @@ import qualified MplAsmPasses.PassesErrorsPprint as Asm
 -- from cli
 import MplCliRunner.Flags
 import MplCliRunner.Stack
+-- the module system
+import qualified MplCliRunner.Modules.ListOps as Modules
+
 
 -- abstract machine
 import qualified MplMach.MplMachTypes as MplMach
@@ -75,22 +78,55 @@ cliRunPipelineInputProg ::
     -- | all done.
     MplCli ()
 cliRunPipelineInputProg inp = do
-    flags <- gview mplCliFlags 
-
+    -- the input flags
+    flags <- gview mplCliFlags
+    -- the input file. 'inp' already contains the input file as a string,
+    -- so this is just to use as a name for the module system.
+    inpFile <- gview mplCliInpFile
+    
     Passes.MplPassesEnv
         { Passes.mplPassesEnvUniqueSupply = supply
         , Passes.mplPassesTopLevel = toplvl } <- liftIO Passes.mplPassesEnv
     let ~(s0:s1:s2:s3:_) = uniqueSupplies supply
-
-    -- parsed
+    
+    -- parsed by the raw BNFC, but not by the 'parse' stage from 'passes'.
+    -- parsed_1 is just the raw AST from the main file
+    mainAST <- liftEither 
+        $ Bifunctor.first 
+            ( ParsedException 
+            . show 
+            . (PassesErrors.pprintMplPassesErrors :: [PassesErrors.MplPassesErrors] -> PassesErrors.MplDoc) 
+            )
+        $ B.runBnfc 
+        $ inp
+    
+    
+    -- Module section
+    
+    -- Generate the full list of modules
+    modList <- Modules.makeModuleList mainAST inpFile
+    
+    -- order the modules according to compilation order.
+    -- also catches circular dependency errors.
+    modListOrd <- Modules.orderModules modList
+    
+    -- gives modules unique global names, based on the names of the files
+    modListUnq <- return $ Modules.uniqueModNames modListOrd
+    
+    -- reduce the list back to a single AST,
+    -- resolving all names to global names and modifying definitions as needed.
+    combinedAST <- return $ Modules.resolveList modListUnq
+    
+    -- Advanced parsing: combines a bunch of AST nodes and removes macros.
     parsed <- liftEither 
         $ Bifunctor.first 
             ( ParsedException 
             . show 
             . (PassesErrors.pprintMplPassesErrors :: [PassesErrors.MplPassesErrors] -> PassesErrors.MplDoc) 
             )
-        $ Passes.runParse' <=< B.runBnfc 
-        $ inp
+        $ Passes.runParse'
+        $ combinedAST
+    
 
     for_ flags $ \case
         Dump opt@Parsed dpoutput -> liftIO 

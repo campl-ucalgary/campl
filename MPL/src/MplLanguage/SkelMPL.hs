@@ -191,6 +191,7 @@ transMplDefn x = case x of
   MplLanguage.AbsMPL.MPL_CONCURRENT_TYPE_DEFN concurrenttypedefn -> failure x
   MplLanguage.AbsMPL.MPL_FUNCTION_DEFN functiondefn -> failure x
   MplLanguage.AbsMPL.MPL_PROCESS_DEFN processdefn -> failure x
+  MplLanguage.AbsMPL.MPL_IMPORT_DEFN importdefn -> failure x
   MplLanguage.AbsMPL.MPL_DEFNTEST -> failure x
 
 transMplType :: MplLanguage.AbsMPL.MplType -> Result
@@ -294,6 +295,7 @@ transExpr x = case x of
   MplLanguage.AbsMPL.TUPLE_EXPR lbracket expr tupleexprlists rbracket -> failure x
   MplLanguage.AbsMPL.FUN_EXPR pident lbracket exprs rbracket -> failure x
   MplLanguage.AbsMPL.RECORD_EXPR lbracket recordexprphrases rbracket -> failure x
+  MplLanguage.AbsMPL.FUNQ_EXPR uident pident lbracket exprs rbracket -> failure x
   MplLanguage.AbsMPL.BRACKETED_EXPR lbracket expr rbracket -> failure x
 
 transInfixUop :: MplLanguage.AbsMPL.InfixUop -> Result
@@ -388,6 +390,7 @@ transProcessCommand x = case x of
   MplLanguage.AbsMPL.PROCESS_RUN pident lbracket exprs pidents1 pidents2 rbracket -> failure x
   MplLanguage.AbsMPL.PROCESS_CLOSE close pident -> failure x
   MplLanguage.AbsMPL.PROCESS_HALT halt pident -> failure x
+  MplLanguage.AbsMPL.PROCESS_QRUN uident pident lbracket exprs pidents1 pidents2 rbracket -> failure x
   MplLanguage.AbsMPL.PROCESS_GET get pattern_ pident -> failure x
   MplLanguage.AbsMPL.PROCESS_PUT put expr pident -> failure x
   MplLanguage.AbsMPL.PROCESS_HCASE hcase pident hcasephrases -> failure x
@@ -447,3 +450,10 @@ transProcessCasePhrase x = case x of
 transProcessSwitchPhrase :: MplLanguage.AbsMPL.ProcessSwitchPhrase -> Result
 transProcessSwitchPhrase x = case x of
   MplLanguage.AbsMPL.PROCESS_SWITCH_PHRASE expr processcommandsblock -> failure x
+
+transImportDefn :: MplLanguage.AbsMPL.ImportDefn -> Result
+transImportDefn x = case x of
+  MplLanguage.AbsMPL.IMPORT_DIR_SPEC_DEFN pstring colon uident lbracket pidents1 pidents2 rbracket -> failure x
+  MplLanguage.AbsMPL.IMPORT_DIR_DEFN pstring colon uident -> failure x
+  MplLanguage.AbsMPL.IMPORT_SPEC_DEFN uident lbracket pidents1 pidents2 rbracket -> failure x
+  MplLanguage.AbsMPL.IMPORT_DEFN uident -> failure x

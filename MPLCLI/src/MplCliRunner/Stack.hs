@@ -35,6 +35,7 @@ import MplCliRunner.Flags
 
 data FrontEndException 
     = ParsedException String
+    | ModuleException String
     | RenamedException String
     | TypeCheckedException String
     | PatternCompiledException String
@@ -43,6 +44,7 @@ data FrontEndException
 instance Show FrontEndException where
     show fee = case fee of
         ParsedException str -> concat [ "parse error:" , "\n" , str ]
+        ModuleException str -> concat [ "module error:" , "\n" , str ]
         RenamedException str -> concat [ "rename error:" , "\n" , str ]
         TypeCheckedException str -> concat [ "type check / semantic error:" , "\n" , str ]
         PatternCompiledException str -> concat [ "pattern compilation error:" , "\n" , str ]

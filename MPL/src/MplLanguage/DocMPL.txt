@@ -176,15 +176,15 @@ The reserved words used in MPL are the following:
   | ``and`` | ``as`` | ``codata`` | ``coprotocol``
   | ``data`` | ``defn`` | ``do`` | ``else``
   | ``fold`` | ``fun`` | ``if`` | ``in``
-  | ``into`` | ``let`` | ``neg`` | ``of``
-  | ``on`` | ``plug`` | ``potato`` | ``proc``
-  | ``protocol`` | ``race`` | ``switch`` | ``then``
-  | ``unfold`` | ``where`` | ``with`` |
+  | ``include`` | ``into`` | ``let`` | ``neg``
+  | ``of`` | ``on`` | ``plug`` | ``potato``
+  | ``proc`` | ``protocol`` | ``race`` | ``switch``
+  | ``then`` | ``unfold`` | ``where`` | ``with``
 
 The symbols used in MPL are the following:
   | , | { | } | ;
   | | | -> | = | ::
-  | => | := |  |
+  | => | . | := |
 
 ===Comments===
 Single-line comments begin with --.Multiple-line comments are  enclosed with {- and -}.
@@ -214,6 +214,7 @@ All other symbols are terminals.
   |  |  **|**  | //ConcurrentTypeDefn//
   |  |  **|**  | //FunctionDefn//
   |  |  **|**  | //ProcessDefn//
+  |  |  **|**  | //ImportDefn//
   |  |  **|**  | ``potato``
   | //MplType// | -> | //MplType0//
   | //MplType0// | -> | //MplType1// //Par// //MplType1//
@@ -311,6 +312,7 @@ All other symbols are terminals.
   |  |  **|**  | //LBracket// //Expr// ``,`` //[TupleExprList]// //RBracket//
   |  |  **|**  | //PIdent// //LBracket// //[Expr]// //RBracket//
   |  |  **|**  | //LBracket// //[RecordExprPhrase]// //RBracket//
+  |  |  **|**  | //UIdent// ``.`` //PIdent// //LBracket// //[Expr]// //RBracket//
   |  |  **|**  | //LBracket// //Expr// //RBracket//
   | //InfixUop// | -> | //InfixU1op//
   |  |  **|**  | //InfixU2op//
@@ -382,6 +384,7 @@ All other symbols are terminals.
   | //ProcessCommand// | -> | //PIdent// //LBracket// //[Expr]// ``|`` //[PIdent]// ``=>`` //[PIdent]// //RBracket//
   |  |  **|**  | //Close// //PIdent//
   |  |  **|**  | //Halt// //PIdent//
+  |  |  **|**  | //UIdent// ``.`` //PIdent// //LBracket// //[Expr]// ``|`` //[PIdent]// ``=>`` //[PIdent]// //RBracket//
   |  |  **|**  | //Get// //Pattern// ``on`` //PIdent//
   |  |  **|**  | //Put// //Expr// ``on`` //PIdent//
   |  |  **|**  | //HCase// //PIdent// ``of`` ``{`` //[HCasePhrase]// ``}``
@@ -436,6 +439,10 @@ All other symbols are terminals.
   | //ProcessSwitchPhrase// | -> | //Expr// ``->`` //ProcessCommandsBlock//
   | //[ProcessSwitchPhrase]// | -> | //ProcessSwitchPhrase//
   |  |  **|**  | //ProcessSwitchPhrase// ``;`` //[ProcessSwitchPhrase]//
+  | //ImportDefn// | -> | ``include`` //PString// //Colon// //UIdent// //LBracket// //[PIdent]// ``|`` //[PIdent]// //RBracket//
+  |  |  **|**  | ``include`` //PString// //Colon// //UIdent//
+  |  |  **|**  | ``include`` //UIdent// //LBracket// //[PIdent]// ``|`` //[PIdent]// //RBracket//
+  |  |  **|**  | ``include`` //UIdent//
 
 
 

@@ -28,40 +28,40 @@ data LayoutDelimiters
 
 layoutWords :: [(TokSymbol, LayoutDelimiters)]
 layoutWords =
-  [ ( TokSymbol "defn" 13
-    , LayoutDelimiters (TokSymbol ";" 5) (Just (TokSymbol "{" 36)) (Just (TokSymbol "}" 38))
+  [ ( TokSymbol "defn" 16
+    , LayoutDelimiters (TokSymbol ";" 8) (Just (TokSymbol "{" 39)) (Just (TokSymbol "}" 41))
     )
-  , ( TokSymbol "where" 34
-    , LayoutDelimiters (TokSymbol ";" 5) (Just (TokSymbol "{" 36)) (Just (TokSymbol "}" 38))
+  , ( TokSymbol "where" 37
+    , LayoutDelimiters (TokSymbol ";" 8) (Just (TokSymbol "{" 39)) (Just (TokSymbol "}" 41))
     )
-  , ( TokSymbol "=" 6
-    , LayoutDelimiters (TokSymbol ";" 5) (Just (TokSymbol "{" 36)) (Just (TokSymbol "}" 38))
+  , ( TokSymbol "=" 9
+    , LayoutDelimiters (TokSymbol ";" 8) (Just (TokSymbol "{" 39)) (Just (TokSymbol "}" 41))
     )
-  , ( TokSymbol "let" 21
-    , LayoutDelimiters (TokSymbol ";" 5) (Just (TokSymbol "{" 36)) (Just (TokSymbol "}" 38))
+  , ( TokSymbol "let" 25
+    , LayoutDelimiters (TokSymbol ";" 8) (Just (TokSymbol "{" 39)) (Just (TokSymbol "}" 41))
     )
-  , ( TokSymbol "of" 24
-    , LayoutDelimiters (TokSymbol ";" 5) (Just (TokSymbol "{" 36)) (Just (TokSymbol "}" 38))
+  , ( TokSymbol "of" 27
+    , LayoutDelimiters (TokSymbol ";" 8) (Just (TokSymbol "{" 39)) (Just (TokSymbol "}" 41))
     )
-  , ( TokSymbol "switch" 31
-    , LayoutDelimiters (TokSymbol ";" 5) (Just (TokSymbol "{" 36)) (Just (TokSymbol "}" 38))
+  , ( TokSymbol "switch" 34
+    , LayoutDelimiters (TokSymbol ";" 8) (Just (TokSymbol "{" 39)) (Just (TokSymbol "}" 41))
     )
-  , ( TokSymbol "do" 14
-    , LayoutDelimiters (TokSymbol ";" 5) (Just (TokSymbol "{" 36)) (Just (TokSymbol "}" 38))
+  , ( TokSymbol "do" 17
+    , LayoutDelimiters (TokSymbol ";" 8) (Just (TokSymbol "{" 39)) (Just (TokSymbol "}" 41))
     )
-  , ( TokSymbol "as" 9
-    , LayoutDelimiters (TokSymbol ";" 5) (Just (TokSymbol "{" 36)) (Just (TokSymbol "}" 38))
+  , ( TokSymbol "as" 12
+    , LayoutDelimiters (TokSymbol ";" 8) (Just (TokSymbol "{" 39)) (Just (TokSymbol "}" 41))
     )
-  , ( TokSymbol "race" 30
-    , LayoutDelimiters (TokSymbol ";" 5) (Just (TokSymbol "{" 36)) (Just (TokSymbol "}" 38))
+  , ( TokSymbol "race" 33
+    , LayoutDelimiters (TokSymbol ";" 8) (Just (TokSymbol "{" 39)) (Just (TokSymbol "}" 41))
     )
-  , ( TokSymbol "plug" 26
-    , LayoutDelimiters (TokSymbol ";" 5) (Just (TokSymbol "{" 36)) (Just (TokSymbol "}" 38))
+  , ( TokSymbol "plug" 29
+    , LayoutDelimiters (TokSymbol ";" 8) (Just (TokSymbol "{" 39)) (Just (TokSymbol "}" 41))
     )
   ]
 
 layoutStopWords :: [TokSymbol]
-layoutStopWords = [TokSymbol "in" 19]
+layoutStopWords = [TokSymbol "in" 22]
 
 -- layout separators
 
@@ -71,8 +71,8 @@ layoutClose = List.nub $ mapMaybe (delimClose . snd) layoutWords
 layoutSep   = List.nub $ map (delimSep . snd) layoutWords
 
 parenOpen, parenClose :: [TokSymbol]
-parenOpen  = []
-parenClose = []
+parenOpen  = [TokSymbol "(" 1]
+parenClose = [TokSymbol ")" 2]
 
 -- | Report an error during layout resolution.
 layoutError

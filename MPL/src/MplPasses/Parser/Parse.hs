@@ -44,7 +44,7 @@ runParse' =
     . runWriter 
     . runExceptT 
     . runParse
-    . MplPasses.Parser.MacroRemover.removeMacros -- Gets rid of 'on _ do _' syntax.
+    . MplPasses.Parser.MacroRemover.removeMacros -- Gets rid of 'on' blocks and infix operators.
 
 -- | Parses an Mpl program
 runParse :: BnfcParse B.MplProg (MplProg MplParsed)

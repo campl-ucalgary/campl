@@ -255,6 +255,7 @@ instance Print MplLanguage.AbsMPL.MplDefn where
     MplLanguage.AbsMPL.MPL_CONCURRENT_TYPE_DEFN concurrenttypedefn -> prPrec i 0 (concatD [prt 0 concurrenttypedefn])
     MplLanguage.AbsMPL.MPL_FUNCTION_DEFN functiondefn -> prPrec i 0 (concatD [prt 0 functiondefn])
     MplLanguage.AbsMPL.MPL_PROCESS_DEFN processdefn -> prPrec i 0 (concatD [prt 0 processdefn])
+    MplLanguage.AbsMPL.MPL_IMPORT_DEFN importdefn -> prPrec i 0 (concatD [prt 0 importdefn])
     MplLanguage.AbsMPL.MPL_DEFNTEST -> prPrec i 0 (concatD [doc (showString "potato")])
 
 instance Print MplLanguage.AbsMPL.MplType where
@@ -397,6 +398,7 @@ instance Print MplLanguage.AbsMPL.Expr where
     MplLanguage.AbsMPL.TUPLE_EXPR lbracket expr tupleexprlists rbracket -> prPrec i 10 (concatD [prt 0 lbracket, prt 0 expr, doc (showString ","), prt 0 tupleexprlists, prt 0 rbracket])
     MplLanguage.AbsMPL.FUN_EXPR pident lbracket exprs rbracket -> prPrec i 10 (concatD [prt 0 pident, prt 0 lbracket, prt 0 exprs, prt 0 rbracket])
     MplLanguage.AbsMPL.RECORD_EXPR lbracket recordexprphrases rbracket -> prPrec i 10 (concatD [prt 0 lbracket, prt 0 recordexprphrases, prt 0 rbracket])
+    MplLanguage.AbsMPL.FUNQ_EXPR uident pident lbracket exprs rbracket -> prPrec i 10 (concatD [prt 0 uident, doc (showString "."), prt 0 pident, prt 0 lbracket, prt 0 exprs, prt 0 rbracket])
     MplLanguage.AbsMPL.BRACKETED_EXPR lbracket expr rbracket -> prPrec i 10 (concatD [prt 0 lbracket, prt 0 expr, prt 0 rbracket])
 
 instance Print MplLanguage.AbsMPL.InfixUop where
@@ -556,6 +558,7 @@ instance Print MplLanguage.AbsMPL.ProcessCommand where
     MplLanguage.AbsMPL.PROCESS_RUN pident lbracket exprs pidents1 pidents2 rbracket -> prPrec i 0 (concatD [prt 0 pident, prt 0 lbracket, prt 0 exprs, doc (showString "|"), prt 0 pidents1, doc (showString "=>"), prt 0 pidents2, prt 0 rbracket])
     MplLanguage.AbsMPL.PROCESS_CLOSE close pident -> prPrec i 0 (concatD [prt 0 close, prt 0 pident])
     MplLanguage.AbsMPL.PROCESS_HALT halt pident -> prPrec i 0 (concatD [prt 0 halt, prt 0 pident])
+    MplLanguage.AbsMPL.PROCESS_QRUN uident pident lbracket exprs pidents1 pidents2 rbracket -> prPrec i 0 (concatD [prt 0 uident, doc (showString "."), prt 0 pident, prt 0 lbracket, prt 0 exprs, doc (showString "|"), prt 0 pidents1, doc (showString "=>"), prt 0 pidents2, prt 0 rbracket])
     MplLanguage.AbsMPL.PROCESS_GET get pattern_ pident -> prPrec i 0 (concatD [prt 0 get, prt 0 pattern_, doc (showString "on"), prt 0 pident])
     MplLanguage.AbsMPL.PROCESS_PUT put expr pident -> prPrec i 0 (concatD [prt 0 put, prt 0 expr, doc (showString "on"), prt 0 pident])
     MplLanguage.AbsMPL.PROCESS_HCASE hcase pident hcasephrases -> prPrec i 0 (concatD [prt 0 hcase, prt 0 pident, doc (showString "of"), doc (showString "{"), prt 0 hcasephrases, doc (showString "}")])
@@ -660,3 +663,10 @@ instance Print [MplLanguage.AbsMPL.ProcessSwitchPhrase] where
   prt _ [] = concatD []
   prt _ [x] = concatD [prt 0 x]
   prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
+
+instance Print MplLanguage.AbsMPL.ImportDefn where
+  prt i = \case
+    MplLanguage.AbsMPL.IMPORT_DIR_SPEC_DEFN pstring colon uident lbracket pidents1 pidents2 rbracket -> prPrec i 0 (concatD [doc (showString "include"), prt 0 pstring, prt 0 colon, prt 0 uident, prt 0 lbracket, prt 0 pidents1, doc (showString "|"), prt 0 pidents2, prt 0 rbracket])
+    MplLanguage.AbsMPL.IMPORT_DIR_DEFN pstring colon uident -> prPrec i 0 (concatD [doc (showString "include"), prt 0 pstring, prt 0 colon, prt 0 uident])
+    MplLanguage.AbsMPL.IMPORT_SPEC_DEFN uident lbracket pidents1 pidents2 rbracket -> prPrec i 0 (concatD [doc (showString "include"), prt 0 uident, prt 0 lbracket, prt 0 pidents1, doc (showString "|"), prt 0 pidents2, prt 0 rbracket])
+    MplLanguage.AbsMPL.IMPORT_DEFN uident -> prPrec i 0 (concatD [doc (showString "include"), prt 0 uident])

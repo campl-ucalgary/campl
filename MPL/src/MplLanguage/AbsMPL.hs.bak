@@ -12,21 +12,6 @@ import qualified Prelude as C
   , Int, Maybe(..)
   )
 
-data Infixl1op = NONTOKEN1 Colon
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
-data Infixl2op = NONTOKEN2 Colon
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
-data Infixl4op = NONTOKEN4 Colon
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
-data Infixr7op = NONTOKEN7 Colon
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
-data Infixl8op = NONTOKEN8 Colon
-  deriving (C.Eq, C.Ord, C.Show, C.Read)
-
 data MplProg = MPL_PROG [MplStmt]
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
@@ -44,6 +29,7 @@ data MplDefn
     | MPL_CONCURRENT_TYPE_DEFN ConcurrentTypeDefn
     | MPL_FUNCTION_DEFN FunctionDefn
     | MPL_PROCESS_DEFN ProcessDefn
+    | MPL_IMPORT_DEFN ImportDefn
     | MPL_DEFNTEST
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
@@ -143,6 +129,7 @@ data Expr
     | TUPLE_EXPR LBracket Expr [TupleExprList] RBracket
     | FUN_EXPR PIdent LBracket [Expr] RBracket
     | RECORD_EXPR LBracket [RecordExprPhrase] RBracket
+    | FUNQ_EXPR UIdent PIdent LBracket [Expr] RBracket
     | BRACKETED_EXPR LBracket Expr RBracket
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
@@ -230,6 +217,7 @@ data ProcessCommand
     = PROCESS_RUN PIdent LBracket [Expr] [PIdent] [PIdent] RBracket
     | PROCESS_CLOSE Close PIdent
     | PROCESS_HALT Halt PIdent
+    | PROCESS_QRUN UIdent PIdent LBracket [Expr] [PIdent] [PIdent] RBracket
     | PROCESS_GET Get Pattern PIdent
     | PROCESS_PUT Put Expr PIdent
     | PROCESS_HCASE HCase PIdent [HCasePhrase]
@@ -285,6 +273,13 @@ data ProcessCasePhrase
 
 data ProcessSwitchPhrase
     = PROCESS_SWITCH_PHRASE Expr ProcessCommandsBlock
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+data ImportDefn
+    = IMPORT_DIR_SPEC_DEFN PString UIdent LBracket [PIdent] [PIdent] RBracket
+    | IMPORT_DIR_DEFN PString UIdent
+    | IMPORT_SPEC_DEFN UIdent LBracket [PIdent] [PIdent] RBracket
+    | IMPORT_DEFN UIdent
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype PInteger = PInteger ((C.Int, C.Int), String)
@@ -351,6 +346,21 @@ newtype InfixU6op = InfixU6op ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype InfixU7op = InfixU7op ((C.Int, C.Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+newtype Infixl1op = Infixl1op ((C.Int, C.Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+newtype Infixl2op = Infixl2op ((C.Int, C.Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+newtype Infixl4op = Infixl4op ((C.Int, C.Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+newtype Infixr7op = Infixr7op ((C.Int, C.Int), String)
+  deriving (C.Eq, C.Ord, C.Show, C.Read)
+
+newtype Infixl8op = Infixl8op ((C.Int, C.Int), String)
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 newtype Close = Close ((C.Int, C.Int), String)
@@ -469,6 +479,21 @@ instance HasPosition InfixU6op where
 
 instance HasPosition InfixU7op where
   hasPosition (InfixU7op (p, _)) = C.Just p
+
+instance HasPosition Infixl1op where
+  hasPosition (Infixl1op (p, _)) = C.Just p
+
+instance HasPosition Infixl2op where
+  hasPosition (Infixl2op (p, _)) = C.Just p
+
+instance HasPosition Infixl4op where
+  hasPosition (Infixl4op (p, _)) = C.Just p
+
+instance HasPosition Infixr7op where
+  hasPosition (Infixr7op (p, _)) = C.Just p
+
+instance HasPosition Infixl8op where
+  hasPosition (Infixl8op (p, _)) = C.Just p
 
 instance HasPosition Close where
   hasPosition (Close (p, _)) = C.Just p
