@@ -192,7 +192,7 @@ catchModuleCycles [] = liftIO $ ioError $ userError "bad input to 'catchModuleCy
 catchModuleCycles (main:rest) = -- Handles the return type of cycle traversal
     case (cycleTraverse main rest) of
         Right () -> return ()
-        Left str -> liftEither $ Left $ ModuleException str
+        Left str -> liftEither $ Left $ ModuleException $ cycleFound str
 
 -- cycle traversal works as follows:
 -- Each step, a module is chosen (main first)
