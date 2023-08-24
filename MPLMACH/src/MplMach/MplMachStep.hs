@@ -765,7 +765,7 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
 
 
 serviceManager :: 
-    HasMplMachServicesEnv r =>
+    (HasMplMachServicesEnv r, MonadFail (MplMach r)) =>
     Socket ->
     MplMach r ()
 serviceManager s = forever $ gview equality >>= \env -> liftIO $ do
@@ -781,7 +781,7 @@ serviceManager s = forever $ gview equality >>= \env -> liftIO $ do
 {- | Honestly, literally everything about services is a silly mess. They make the 
 language frankly unusable for anything. well actually io in general is a mess.... -}
 serviceClient  ::
-    HasMplMachServicesEnv r =>
+    (HasMplMachServicesEnv r, MonadFail (MplMach r)) =>
     Socket ->
     MplMach r ()
 serviceClient s = gview equality >>= \env -> do
