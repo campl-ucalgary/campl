@@ -48,6 +48,7 @@ newtype MplMach r a = MplMach { unwrapMplMach :: ReaderT r IO a }
     , Monad
     , MonadIO
     , MonadReader r 
+    , MonadFail
     )
 
 data MplMachEnv = MplMachEnv 

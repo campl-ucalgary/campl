@@ -8,6 +8,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveFunctor #-}
@@ -42,7 +43,6 @@ import Data.Kind
 newtype MplProg x = MplProg { _prog :: [MplStmt x] }
   deriving (Semigroup, Monoid )
 
-deriving instance (ForallDefn Show x ) => Show (MplProg x)
 
 
 data MplStmt x = MplStmt {
@@ -54,7 +54,6 @@ data MplStmt x = MplStmt {
 -- type MplChType x = ([TypeP x], XMplType x) 
 
 
-deriving instance ( ForallDefn Show x ) => Show (MplStmt x)
 
 type family XDataDefn x 
 type family XCodataDefn x 
@@ -136,6 +135,9 @@ instance AsMplConcObjDefn (MplObjectDefn x) x where
     _MplConcObjDefn = _ConcObjDefn 
 
 deriving instance (ForallDefn Show x) => Show (MplDefn x)
+deriving instance ( ForallDefn Show x ) => Show (MplStmt x)
+deriving instance (ForallDefn Show x ) => Show (MplProg x)
+
 deriving instance (ForallObjDefn Show x) => Show (MplObjectDefn x) 
 deriving instance (ForallObjDefn Show x) => Show (MplSeqObjDefn x)
 deriving instance (ForallObjDefn Show x) => Show (MplConcObjDefn x)
