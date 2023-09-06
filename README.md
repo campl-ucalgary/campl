@@ -1,4 +1,4 @@
-<span style="font-size: 80px; display: inline; color: #abc9ad"><img src="./LOGO2232-final-trans.png" alt="campl logo" width="80"/><b>aMPL</b><span>
+<img src="./LOGO2232-w-text.png" alt="campl logo" width="250"/>
 
 ## Introduction
 **Ca**tegorical **M**essage **P**assing **L**anguage (CaMPL) is a typed functional-style concurrent language in which processes
@@ -37,4 +37,8 @@ https://raw.githubusercontent.com/campl-ucalgary/campl/main/install
 
 ```sh
 export PATH="$HOME/.campl/bin:$PATH"
+```
+### Run Your Program:
+```sh
+stack exec -- mpl --run YOUR_PROGRAM.mpl
 ```
