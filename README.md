@@ -28,9 +28,7 @@ interactions with users. You can learn more about Alacritty [here](https://alacr
 1. Download the installation script and run it by running the following command in your terminal:
 
 ```sh
-mkdir ~/.campl && cd ~/.campl && curl -LJO
-https://raw.githubusercontent.com/campl-ucalgary/campl/main/install
-&& chmod +x install && ./install
+mkdir ~/.campl && cd ~/.campl && curl -LJO https://raw.githubusercontent.com/campl-ucalgary/campl/main/install && chmod +x install && ./install
 ```
 
 2. Add campl to your `PATH` variable:
