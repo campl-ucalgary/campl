@@ -115,7 +115,7 @@ instance HasNamespace ChIdentT where
 data ExprCallDef = 
     ExprCallPattern (MplPattern MplTypeChecked)
     | ExprCallFun (MplFunction MplTypeChecked)
-  deriving Show 
+deriving instance (Show (MplPattern MplTypeChecked), Show (MplFunction MplTypeChecked)) => Show ExprCallDef
 
 
 type instance IdP MplTypeChecked = IdentT
@@ -183,6 +183,8 @@ type instance XEUnfoldSubPhrase MplTypeChecked =
     MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag)
     -- (MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag), XMplType MplTypeChecked)
 type instance XESwitch MplTypeChecked = XMplType MplTypeChecked
+type instance XEStore MplTypeChecked = XMplType MplTypeChecked
+
 type instance XEIllegalInstr MplTypeChecked = Void
 
 -- Pattern instances..
@@ -216,7 +218,8 @@ type instance XPSimpleUnit MplTypeChecked = Void
 
 -- Process Command
 type instance XMplCmd MplTypeChecked = MplCmd MplTypeChecked
-type instance XCRun MplTypeChecked = MplProcess MplTypeChecked
+type instance XCRun MplTypeChecked = Maybe (MplProcess MplTypeChecked)
+
 type instance XCClose MplTypeChecked = KeyWordNameOcc
 type instance XCHalt MplTypeChecked = KeyWordNameOcc
 type instance XCGet MplTypeChecked = KeyWordNameOcc
@@ -287,6 +290,7 @@ type instance XTypeUnitF MplTypeChecked = Maybe NameOcc
 type instance XTypeBoolF MplTypeChecked = Maybe NameOcc
 type instance XTypeListF MplTypeChecked = Maybe NameOcc
 type instance XTypeTupleF MplTypeChecked = Maybe NameOcc
+type instance XTypeStoreF MplTypeChecked = Maybe NameOcc
 
 type instance XTypeGet MplTypeChecked = Maybe NameOcc
 type instance XTypePut MplTypeChecked = Maybe NameOcc

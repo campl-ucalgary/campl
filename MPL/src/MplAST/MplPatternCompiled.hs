@@ -248,6 +248,7 @@ type instance XTypeUnitF MplPatternCompiled = XTypeUnitF MplTypeChecked
 type instance XTypeBoolF MplPatternCompiled = XTypeBoolF MplTypeChecked
 type instance XTypeListF MplPatternCompiled = XTypeListF MplTypeChecked
 type instance XTypeTupleF MplPatternCompiled = XTypeTupleF MplTypeChecked
+type instance XTypeStoreF MplPatternCompiled = XTypeStoreF MplTypeChecked
 
 type instance XTypeGet MplPatternCompiled = XTypeGet MplTypeChecked
 type instance XTypePut MplPatternCompiled = XTypePut MplTypeChecked

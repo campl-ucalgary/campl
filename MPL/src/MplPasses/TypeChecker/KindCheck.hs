@@ -408,7 +408,48 @@ primitiveKindCheck = para f
 
                 return $ bool Nothing (review _TypeListF . (Just cxt,) <$> rst') 
                     $ noerr && has _Empty lg
-
+            TypeStoreF cxt tp -> do
+                ekd <- guse kindCheckExpectedPrimitiveKind
+                let noerr = _SeqKind # () == ekd
+                tell $ review _ExternalError $ bool
+                    [_KindPrimtiveMismatchExpectedButGot # 
+                        ( ekd
+                        , _SeqKind # ()
+                        , _TypeStoreF # (cxt, fst tp)
+                        )
+                    ] [] $ noerr
+                kindCheckExpectedPrimitiveKind .= ConcKind ()
+                ~(tp', lg) <- listen $ snd tp
+                return $ bool Nothing (review _TypeStoreF . (Just cxt,) <$> tp') 
+                    $ noerr && has _Empty lg
+            TypeConcArrF ann ss is os -> do
+                ekd <- guse kindCheckExpectedPrimitiveKind
+                let noerr = ekd == _ConcKind # ()
+                tell $ review _ExternalError $ bool
+                    [_KindPrimtiveMismatchExpectedButGot # 
+                        ( ekd
+                        , _ConcKind # ()
+                        , _TypeConcArrF # ((), fst <$> ss, fst <$> is, fst <$> os))
+                    ] [] $ noerr
+                ~(ss', sslg) <- fmap (second and . unzip) $ for ss $ \t -> do
+                    kindCheckExpectedPrimitiveKind .= _SeqKind # ()
+                    (t', tlg) <- listen $ snd t
+                    return (t', has _Empty tlg)
+                ~(is', islg) <- fmap (second and . unzip) $ for is $ \t -> do
+                    kindCheckExpectedPrimitiveKind .= _ConcKind # ()
+                    (t', tlg) <- listen $ snd t
+                    return (t', has _Empty tlg)
+                ~(os', oslg) <- fmap (second and . unzip) $ for os $ \t -> do
+                    kindCheckExpectedPrimitiveKind .= _ConcKind # ()
+                    (t', tlg) <- listen $ snd t
+                    return (t', has _Empty tlg)
+                let ss'' = sequenceA ss'
+                let is'' = sequenceA is'
+                let os'' = sequenceA os'
+                return $ bool 
+                    Nothing
+                    (review _TypeConcArrF <$>  (((),,,) <$> ss'' <*> is'' <*> os''))
+                    $ noerr && sslg && islg && oslg
             TypeGetF ann (lr, l) (rr, r) -> do
                 ekd <- guse kindCheckExpectedPrimitiveKind 
                 let noerr = ekd == _ConcKind # ()

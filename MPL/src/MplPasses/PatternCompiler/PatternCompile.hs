@@ -374,10 +374,10 @@ patternCompileCmds = fmap (second NE.fromList) . go . NE.toList
         ([MplDefn MplPatternCompiled], [MplCmd MplPatternCompiled])
     go [] = pure mempty
     go (cmd:cmds) = case cmd of
-        CRun ann idp seqs ins outs -> assert (null cmds) $ do
+        CRun ann (Left idp) seqs ins outs -> assert (null cmds) $ do
             (ndefns, seqs') <- fmap (first fold . unzip) $ traverse patternCompileExpr seqs
             -- second (CRun ann idp seqs' ins outs:) <$> go cmds
-            return (ndefns, [CRun () idp seqs' ins outs])
+            return (ndefns, [CRun () (Left idp) seqs' ins outs])
             -- @CRun@ should be the lsat command, so no need to do @go cmds@
         CClose ann chp -> deleteChFromContext chp >> second (CClose ann chp:) <$> go cmds
         CHalt ann chp -> assert (null cmds) $ deleteChFromContext chp >> return (mempty, [CHalt ann chp]) 
@@ -623,7 +623,7 @@ patternCompileCmds = fmap (second NE.fromList) . go . NE.toList
                 , 
                     [ CRun 
                         ()
-                        casep 
+                        (Left casep)
                         (map (\(PVar ann v) -> EVar ann v) seqs ++ [expr'])
                         ins 
                         outs

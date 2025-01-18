@@ -15,6 +15,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
 module MplAST.MplParsed where
 
 import Optics
@@ -118,6 +119,7 @@ type instance XEUnfold MplParsed = ()
 type instance XEUnfoldPhrase MplParsed = ()
 type instance XEUnfoldSubPhrase MplParsed = ()
 type instance XESwitch MplParsed = ()
+type instance XEStore MplParsed = ()
 type instance XEIllegalInstr MplParsed = Void
 
 -- Pattern instances..
@@ -217,6 +219,7 @@ type instance XTypeUnitF MplParsed = NameOcc
 type instance XTypeBoolF MplParsed = NameOcc
 type instance XTypeListF MplParsed = NameOcc
 type instance XTypeTupleF MplParsed = NameOcc
+type instance XTypeStoreF MplParsed = NameOcc
 
 type instance XTypeGet MplParsed = NameOcc
 type instance XTypePut MplParsed = NameOcc
@@ -225,7 +228,7 @@ type instance XTypePar MplParsed = NameOcc
 type instance XTypeTopBot MplParsed = NameOcc
 type instance XTypeNeg MplParsed = NameOcc
 type instance XTypeSeqArrF MplParsed = Void
-type instance XTypeConcArrF MplParsed = Void
+type instance XTypeConcArrF MplParsed = ()
 
 type instance XXMplBuiltInTypesF MplParsed = Void
 

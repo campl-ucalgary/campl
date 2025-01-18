@@ -61,7 +61,7 @@ instance HasUniqueTag IdentR where
     uniqueTag = identRUniqueTag 
 
 instance HasIdentP IdentR where
-    identP = identRIdentP 
+    identP = identRIdentP
 
 instance HasName IdentR where
     name = identP % name
@@ -162,6 +162,7 @@ type instance XEUnfold MplRenamed = ()
 type instance XEUnfoldSubPhrase MplRenamed = ()
 type instance XEUnfoldPhrase MplRenamed = ()
 type instance XESwitch MplRenamed = ()
+type instance XEStore MplRenamed = ()
 type instance XEIllegalInstr MplRenamed = Void
 
 -- Pattern instances..
@@ -265,6 +266,7 @@ type instance XTypeUnitF MplRenamed = NameOcc
 type instance XTypeBoolF MplRenamed = NameOcc
 type instance XTypeListF MplRenamed = NameOcc
 type instance XTypeTupleF MplRenamed = NameOcc
+type instance XTypeStoreF MplRenamed = NameOcc
 
 type instance XTypeGet MplRenamed = NameOcc
 type instance XTypePut MplRenamed = NameOcc
@@ -273,6 +275,6 @@ type instance XTypePar MplRenamed = NameOcc
 type instance XTypeTopBot MplRenamed = NameOcc
 type instance XTypeNeg MplRenamed = NameOcc
 type instance XTypeSeqArrF MplRenamed = Void
-type instance XTypeConcArrF MplRenamed = Void
+type instance XTypeConcArrF MplRenamed = ()
 
 type instance XXMplBuiltInTypesF MplRenamed = Void

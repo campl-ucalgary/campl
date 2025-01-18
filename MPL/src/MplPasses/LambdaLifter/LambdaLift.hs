@@ -218,9 +218,9 @@ lambdaLiftCmd = cata go
   where
     go :: MplCmdF MplPatternCompiled (_ (MplCmd MplLambdaLifted)) -> _ (MplCmd MplLambdaLifted)
     go = \case 
-        CRunF ann idp seqs ins outs -> do
+        CRunF ann (Left idp) seqs ins outs -> do
             seqs' <- traverse lambdaLiftExpr seqs
-            return $ CRun ann idp seqs' ins outs 
+            return $ CRun ann (Left idp) seqs' ins outs 
         CCloseF ann chp -> pure $ CClose ann chp
         CHaltF ann chp -> pure $ CHalt ann chp
         CGetF ann patt chp -> pure $ CGet ann patt chp

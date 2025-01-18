@@ -208,6 +208,7 @@ type instance XTypeUnitF MplLambdaLifted = XTypeUnitF MplTypeChecked
 type instance XTypeBoolF MplLambdaLifted = XTypeBoolF MplTypeChecked
 type instance XTypeListF MplLambdaLifted = XTypeListF MplTypeChecked
 type instance XTypeTupleF MplLambdaLifted = XTypeTupleF MplTypeChecked
+type instance XTypeStoreF MplLambdaLifted = XTypeStoreF MplTypeChecked
 
 type instance XTypeGet MplLambdaLifted = XTypeGet MplTypeChecked
 type instance XTypePut MplLambdaLifted = XTypePut MplTypeChecked
