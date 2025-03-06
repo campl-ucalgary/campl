@@ -1209,16 +1209,32 @@ sOpenTerm chlkup = void $ do
         -- -- , "; read"
         -- -- , "'"
         -- ]
-	
-        [ "alacritty -e "
-        -- , "'"
+
+        -- instead of automatically spawning the terminal, we just echo this command
+        -- this gives us the service channel ID that we need to connect to the service client process
+        -- note that the host this prints is just local host. 
+        -- to connect from a different device, you need the IP address of the "main" device
+        [ "echo \""
+        ,"alacritty -e "
         , "mpl-client"
         , " --hostname=" ++ show hn
         , " --port=" ++ show pn
         , " --service-ch=" ++ show (show $ coerce @ServiceCh @Int svch)
-        -- , "; read"
-        -- , "'"
+        , "\""
         ]
+
+        
+        -- ORIGINAL
+        -- [ "alacritty -e "
+        -- -- , "'"
+        -- , "mpl-client"
+        -- , " --hostname=" ++ show hn
+        -- , " --port=" ++ show pn
+        -- , " --service-ch=" ++ show (show $ coerce @ServiceCh @Int svch)
+        -- -- , "; read"
+        -- -- , "'"
+        -- ]
+        -- ORIGINAL
 
         {-
         [ "xterm -e "

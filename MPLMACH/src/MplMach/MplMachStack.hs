@@ -79,7 +79,7 @@ initMplMachEnv sp = do
         MplMachEnv 
             { _supercombinatorEnv = sp
             , _servicesEnv = MplMachServicesEnv 
-                { _serviceHostName = "127.0.0.1"
+                { _serviceHostName = "0.0.0.0"
                 , _servicePortName = "3000"
                 , _serviceChGen = svch
                 , _serviceMap = mp
