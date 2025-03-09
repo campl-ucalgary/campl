@@ -51,6 +51,17 @@ data IdentR = IdentR {
 $(makeClassy ''IdentR)
 $(makePrisms ''IdentR)
 
+
+modifyIdentRString :: (String -> String) -> IdentR -> IdentR
+modifyIdentRString f (IdentR idp tag) =
+    let IdentP nocc nspc = idp
+        NameOcc n occ = nocc 
+        Name str = n
+        newStr = f str
+    in _IdentR # (_IdentP # (_NameOcc # (_Name # newStr, occ), nspc), tag)
+
+getUniqueTag :: IdentR -> UniqueTag
+getUniqueTag (IdentR idp tag) = tag
 instance Eq IdentR where
     a == b = a ^. identRUniqueTag == b ^. identRUniqueTag
 
@@ -162,7 +173,7 @@ type instance XEUnfold MplRenamed = ()
 type instance XEUnfoldSubPhrase MplRenamed = ()
 type instance XEUnfoldPhrase MplRenamed = ()
 type instance XESwitch MplRenamed = ()
-type instance XEStore MplRenamed = ()
+type instance XEStore MplRenamed = IdentR
 type instance XEIllegalInstr MplRenamed = Void
 
 -- Pattern instances..

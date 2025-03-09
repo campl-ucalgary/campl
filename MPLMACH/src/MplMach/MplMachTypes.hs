@@ -235,7 +235,7 @@ data IConc
 
 
     -- | Translation mappings, FunctionID and number of arguments to call with this function..
-    | IRun LocalChanToLocalChanMapping CallIx Int
+    | IRun (Either LocalChanToLocalChanMapping ([LocalChan], [LocalChan])) (Maybe CallIx) Int
 
     | IHPut LocalChan HCaseIx
 
@@ -300,6 +300,7 @@ data ISeq
     | ITuple Int
     -- | get the n'th element from a tuple
     | ITupleElem TupleIx
+    | IStoreProc [LocalChan] [LocalChan] (Either CallIx [Instr])
 
     | IErrorMsg String
     deriving Show
@@ -311,7 +312,7 @@ data Val
     | VBool !Bool
     | VChar !Char
     | VTuple !(Array TupleIx Val)
-
+    | VProc !([LocalChan], [LocalChan]) ![Instr]
     | VCons !CaseIx ![Val]
     | VRec !(Array CaseIx [Instr]) [Val]
   deriving Show

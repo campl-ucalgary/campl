@@ -269,7 +269,7 @@ mplAsmComToBnfcCom = cata go
                     (map toBnfcIdent withsouts1)
                         (B.Prog cmds1)
 
-        CRunF _ runner (seqs, ins, outs) -> 
+        CRunF _ _ runner (seqs, ins, outs) -> 
             B.AC_RUN 
                 bnfcKeyword
                 (toBnfcIdent runner)
@@ -290,6 +290,7 @@ mplAsmComToBnfcCom = cata go
                 (B.Prog coms)
         CCloseF _ idp -> B.AC_CLOSE bnfcKeyword (toBnfcIdent idp)
         CHaltF _ idp -> B.AC_HALT bnfcKeyword (toBnfcIdent idp)
+        CStoreProcF _ (Left id) -> B.AC_STOREPROC bnfcKeyword (toBnfcIdent id)
 
 
     toLabelledSeqComs (TypeAndSpec a b, args, coms) = 
@@ -404,3 +405,6 @@ instance BnfcKeyword B.Shput where
 
 instance BnfcKeyword B.LeqI where
     bnfcKeyword = B.LeqI (invalidPosition, "leq")
+
+instance BnfcKeyword B.StoreProc where
+    bnfcKeyword = B.StoreProc (invalidPosition, "sotre_proc")

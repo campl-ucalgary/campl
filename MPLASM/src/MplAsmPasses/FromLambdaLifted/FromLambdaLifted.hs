@@ -354,9 +354,10 @@ mplAssembleProcDefn procdefn = assert (lengthOf (procDefn % folded) procdefn == 
         )
         
 mplAssembleExpr :: 
-    forall s m.
-    ( HasUniqueSupply s
-    , MonadState s m ) =>
+    forall s m e.
+    ( HasUniqueSupply s,
+    AsFromLambdaLiftedError e 
+    , MonadState s m, MonadWriter [e] m) =>
     MplExpr MplLambdaLifted -> 
     m (Asm.MplAsmComs MplAsmFromLambdaLifted)
 mplAssembleExpr = para go
@@ -492,7 +493,17 @@ mplAssembleExpr = para go
 
             z :: [Asm.MplAsmCom MplAsmFromLambdaLifted]
             z = [Asm.CConstructor () (Asm.TypeAndSpec lIST_INTERNAL__ lIST_INTERNAL_EMPTY__) []]
+        EStoreF _ (Right procdefn) -> do
+            cmds' <- procdefn ^. _2 % to mplAssembleCmds 
 
+            ins' <- for (procdefn ^.. _1 % _2 % folded) $ \ch -> do
+                return $ toAsmIdP ch
+
+            outs' <- for (procdefn ^.. _1 % _3 % folded) $ \ch -> do
+                return $ toAsmIdP ch
+            
+            return [Asm.CStoreProc () (Right ((procdefn ^.. _1 % _1 % folded % to (\(PVar _ v) -> toAsmIdP v), ins', outs'), cmds'))]
+        EStoreF _ (Left id) -> return [Asm.CStoreProc () (Left $ toAsmIdP id)]
         EStringF _ str -> foldrM f z str
           where
             f :: Char -> [Asm.MplAsmCom MplAsmFromLambdaLifted] -> m [Asm.MplAsmCom MplAsmFromLambdaLifted]
@@ -615,13 +626,21 @@ mplAssembleCmd ::
 mplAssembleCmd = cata go
   where
     go = \case
-        CRunF _ callid seqs ins outs -> do
+        CRunF _ call seqs ins outs -> do
             (seqs', es) <- fmap unzip $ for seqs $ \seq -> do
                 e <- freshTmpName
                 seq' <- mplAssembleExpr seq
                 return $ (seq' ++ [Asm.CStore () e], e)
                 
-            return $ concat seqs' <> [ Asm.CRun () (toAsmIdP callid) (es, map toAsmIdP ins, map toAsmIdP outs) ]
+            case call of
+                Left callId -> return $ concat seqs' <> [ Asm.CRun () False (toAsmIdP callId) (es, map toAsmIdP ins, map toAsmIdP outs) ]
+                Right expr -> do
+                    (expr', e) <- do
+                        e <- freshTmpName
+                        expr' <- mplAssembleExpr expr
+                        return (expr' ++ [Asm.CStore () e], e)
+                    return $ concat seqs' <> expr' <> [ Asm.CRun () True e (es, map toAsmIdP ins, map toAsmIdP outs) ]
+
         CCloseF _ ch -> return [Asm.CClose () $ toAsmIdP ch]
         CHaltF _ ch -> return [Asm.CHalt () $ toAsmIdP ch]
         CGetF _ (PVar _ v) ch -> return [ Asm.CGet () (toAsmIdP v) (toAsmIdP ch) ]
@@ -1042,6 +1061,7 @@ getExprType = \case
     EProj ann _ _ -> ann
     EBuiltInOp ann _ _ _ -> ann
     EIf ann _ _ _ -> ann
+    EStore ann _ -> ann
     {-
     EFold _ _ _ -> undefined
     EUnfold _ _ _ -> undefined

@@ -11,41 +11,35 @@
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
 module MplPasses.LambdaLifter.LambdaLift where
 
-import MplAST.MplCore
-import MplAST.MplParsed
-import MplAST.MplRenamed
-import MplAST.MplTypeChecked
-import MplAST.MplPatternCompiled
-import MplAST.MplLambdaLifted
-import MplAST.MplProgUtil 
-
+import Control.Arrow
+import Control.Exception
+import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer
-import Control.Monad.Reader
-import Data.Functor.Foldable hiding  (fold)
-import Control.Arrow
-
 import Data.Foldable
-import Data.Traversable
-import Optics
-
-import Data.Maybe
 import Data.Functor.Const
-
-import Data.List.NonEmpty ( NonEmpty (..))
+import Data.Functor.Foldable hiding (fold)
+import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
-
-import MplPasses.LambdaLifter.LambdaLiftUtil
-
-import Data.Set (Set)
-import qualified Data.Set as Set
-
 import Data.Map (Map)
 import qualified Data.Map as Map
-
-import Control.Exception
+import Data.Maybe
+import Data.Set (Set)
+import qualified Data.Set as Set
+import Data.Traversable
 import Debug.Trace
+import MplAST.MplCore
+import MplAST.MplLambdaLifted
+import MplAST.MplParsed
+import MplAST.MplPatternCompiled
+import MplAST.MplProgUtil
+import MplAST.MplRenamed
+import MplAST.MplTypeChecked
 
+import MplPasses.LambdaLifter.LambdaLiftUtil
+import MplPasses.Parser.ParseUtils
+import MplPasses.Renamer.RenameUtils
+import Optics
 import Unsafe.Coerce
 
 runLambdaLiftProg ::
@@ -108,7 +102,7 @@ lambdaLiftDefn defn  = case defn of
         let nfrees = Set.toList $ free `Set.difference` bound
         nfreestps <- magnify lambdaLiftTpMap $ for nfrees $ \nvar -> 
             fmap fromJust $ gview (at nvar)
-            
+
         expr' <- lambdaLiftExpr expr
 
         return $ FunctionDefn $ MplFunction 
@@ -173,6 +167,11 @@ lambdaLiftExpr = cata go
             records' <- sequenceOf (traversed % _3 % _2) records
             return $ ERecord ann records'
         EListF ann exprs -> EList ann <$> sequenceA exprs
+        EStoreF (nameOcc, tp) p -> case p of
+          Left idp -> pure $ EStore tp (Left idp)
+          Right ((patts, ins, outs), cmds) -> do
+            cmds' <- traverse lambdaLiftCmd cmds
+            return $ EStore tp (Right ((patts, ins, outs), cmds'))
         EStringF ann str -> pure $ EString ann str
         EUnitF ann -> pure $ EUnit ann
         ETupleF ann (t0,t1,ts) -> do
@@ -197,18 +196,18 @@ lambdaLiftExpr = cata go
                 traverse_ (tell . pure <=< lambdaLiftDefn) $ NE.filter (hasn't _ProcessDefn) $ stmt ^. stmtDefns
         -- ESwitch !(XESwitch x) (NonEmpty (MplExpr x, MplExpr x))
         EIllegalInstrF ann -> pure $ EIllegalInstr ann
-        -- XExpr !(XXExpr x)
-        {-
-  | EFold !(XEFold x)
-          (MplExpr x)
-          (NonEmpty (XEFoldPhrase x, IdP x, [XMplPattern x], MplExpr x))
-  | EUnfold !(XEUnfold x)
-            (MplExpr x)
-            (NonEmpty
-               (XEUnfoldPhrase x, XMplPattern x,
-                NonEmpty (XEUnfoldSubPhrase x, IdP x, [XMplPattern x], MplExpr x)))
-        -}
 
+-- XExpr !(XXExpr x)
+{-
+\| EFold !(XEFold x)
+        (MplExpr x)
+        (NonEmpty (XEFoldPhrase x, IdP x, [XMplPattern x], MplExpr x))
+\| EUnfold !(XEUnfold x)
+          (MplExpr x)
+          (NonEmpty
+             (XEUnfoldPhrase x, XMplPattern x,
+              NonEmpty (XEUnfoldSubPhrase x, IdP x, [XMplPattern x], MplExpr x)))
+      -}
 
 lambdaLiftCmd :: 
     LambdaLift
@@ -218,9 +217,13 @@ lambdaLiftCmd = cata go
   where
     go :: MplCmdF MplPatternCompiled (_ (MplCmd MplLambdaLifted)) -> _ (MplCmd MplLambdaLifted)
     go = \case 
-        CRunF ann (Left idp) seqs ins outs -> do
+        CRunF ann (Right expr) seqs ins outs -> do
+          expr' <- lambdaLiftExpr expr
+          seqs' <- traverse lambdaLiftExpr seqs
+          return $ CRun ann (Right expr') seqs' ins outs
+        CRunF ann (Left id) seqs ins outs -> do
             seqs' <- traverse lambdaLiftExpr seqs
-            return $ CRun ann (Left idp) seqs' ins outs 
+            return $ CRun ann (Left id) seqs' ins outs 
         CCloseF ann chp -> pure $ CClose ann chp
         CHaltF ann chp -> pure $ CHalt ann chp
         CGetF ann patt chp -> pure $ CGet ann patt chp
@@ -243,13 +246,11 @@ lambdaLiftCmd = cata go
             expr' <- lambdaLiftExpr expr
             cases' <- sequenceOf (traversed % _2 % traversed) cases
             return $ CCase ann expr' cases'
-            
         CIfF ann cond thenc elsec -> 
             CIf ann 
                 <$> lambdaLiftExpr cond
                 <*> sequenceA thenc 
                 <*> sequenceA elsec 
-
         CIllegalInstrF ann -> pure $ CIllegalInstr ann
     {-
   | CPlugF !(XCPlug x)
@@ -260,8 +261,8 @@ lambdaLiftCmd = cata go
 
 -- | computes the fixed point for the call graph
 callGraphFixedPoint :: 
-    CallGraph -> 
-    CallGraph 
+  CallGraph -> 
+  CallGraph 
 callGraphFixedPoint = until (uncurry (==) <<< go &&& id) go
   where
     go :: CallGraph -> CallGraph
@@ -276,24 +277,23 @@ callGraphFixedPoint = until (uncurry (==) <<< go &&& id) go
             acc & at fun % _Just %~ \(funbound, funfree, funcalls) -> 
             (funbound, funfree `Set.union` (callsfrees `Set.difference` funbound), funcalls)
 
-{- | computes the call graph of a function definition by collecting: 
-        - bound variables 
-        - free variables 
-        - called functions
-N.B. this does NOT recurse.
-
-Strange remark about the bound variables and free variables..
-Technically, when writing 
-@
-f a = case a of
-    b:c -> Just(let f' = b : c in f')
-    [] -> Nothing
-@
-after alpha renaming (which we did a really long time ago), 
-@b,c@ are *bound variables* for f (but NOT f')... This may seem a 
-bit strange, but if we don't do this, we get ``extra'' parameters for 
-@f@ which are undesired.
- -}
+-- | computes the call graph of a function definition by collecting:
+--        - bound variables
+--        - free variables
+--        - called functions
+-- N.B. this does NOT recurse.
+--
+-- Strange remark about the bound variables and free variables..
+-- Technically, when writing
+-- @
+-- f a = case a of
+--    b:c -> Just(let f' = b : c in f')
+--    [] -> Nothing
+-- @
+-- after alpha renaming (which we did a really long time ago),
+-- @b,c@ are *bound variables* for f (but NOT f')... This may seem a
+-- bit strange, but if we don't do this, we get ``extra'' parameters for
+-- @f@ which are undesired.
 callGraphFunDefn :: XFunctionDefn MplPatternCompiled -> CallGraph
 -- we assert that the body should be null from compilation of pattern matching
 callGraphFunDefn (MplFunction funName funTp ((patts, expr) :| bdy)) = assert (null bdy) $ 
@@ -303,6 +303,15 @@ callGraphFunDefn (MplFunction funName funTp ((patts, expr) :| bdy)) = assert (nu
     vars = collectFreeVarsExpr expr
     calls = collectCallsExpr expr
 
+-- callGraphProcDefn :: XProcessDefn MplPatternCompiled -> CallGraph
+-- callGraphProcDefn (MplProcess procName procTp (((patts, ins, outs), cmds) :| bdy)) =
+--   assert (null bdy) $
+--     Map.singleton procName (args, vars `Set.difference` args, calls)
+--   where
+--     args = Set.fromList (fmap getPattVarIdent patts) <> Set.unions (NE.map (collectVarsCmd collectBoundVarsExpr) cmds)
+--     vars = Set.unions $ NE.map (collectVarsCmd collectFreeVarsExpr) cmds
+--     calls = Set.unions $ NE.map collectCallsCmd cmds
+
 {- This will collect the call graph of every let binding -}
 callGraphLetsGather :: 
     TraverseMplExpr t MplPatternCompiled => 
@@ -311,12 +320,12 @@ callGraphLetsGather ::
 callGraphLetsGather = execWriter . traverseMplExpr go
   where
     -- unfortunately, can't just use 'Const' here since the traversal unfortunately needs
-    -- the monad instance.. of course, we could write out the instance completely to not 
+    -- the monad instance.. of course, we could write out the instance completely to not
     -- use the monad, but that's a little bit tedious to write out the traversal completely
     -- without relying on 'Data.Functor.Foldable'
     go :: MplExpr MplPatternCompiled -> Writer CallGraph (MplExpr MplPatternCompiled)
     go = \case 
-        ELet ann stmts expr ->  do
+        ELet ann stmts expr -> do
             traverse_ f stmts
             return $ ELet ann stmts expr
           where
@@ -328,11 +337,9 @@ callGraphLetsGather = execWriter . traverseMplExpr go
                     tell $ callGraphFunDefn fun
                     return res
                 _ -> return res
-
         res -> pure res
 
-
-{- | Gets a map of ALL variables types (including those in let bindings) -}
+-- | Gets a map of ALL variables types (including those in let bindings)
 mkVarsTpMap :: 
     TraverseMplExpr t MplPatternCompiled => 
     t MplPatternCompiled -> 
@@ -345,13 +352,11 @@ mkVarsTpMap = execWriter . traverseMplExpr go
         EVar tp v -> tell (Map.singleton v tp) >> pure (EVar tp v)
         res -> return res
 
-
-{- | Gets all the free variables in an expression (note this DOES NOT recurse through the let bindings). Note
-the ``free variables'' part means that it removes variables bound by a case statement. 
-
-N.B. Not too sure if I'm missing cases with other potential binders other than just case? TODO write some
-test cases to get this resolved.
--}
+-- | Gets all the free variables in an expression (note this DOES NOT recurse through the let bindings). Note
+-- the ``free variables'' part means that it removes variables bound by a case statement.
+--
+-- N.B. Not too sure if I'm missing cases with other potential binders other than just case? TODO write some
+-- test cases to get this resolved.
 collectFreeVarsExpr :: 
     MplExpr MplPatternCompiled -> 
     FreeArgs
@@ -374,17 +379,37 @@ collectFreeVarsExpr = cata go
         -- ERecordF _ records -> foldMapOf (folded % _3) (\(patts, acc) -> acc `Set.difference` foldMap collectBoundVariablesFromPattern patts) records
         res -> fold res
 
-{- | collects all the bound variables in an expression (note this does NOT recurse through the let bindings).. Indeed,
-Extra bound variables will come from case statements or recrods e.g.
-@
-case banana of
-    a:b -> ...
-    [] -> ...
-@
-will have bound variables @a,b@.
+-- collectVarsCmd ::
+--   (MplExpr MplPatternCompiled -> Set (IdP MplLambdaLifted)) ->
+--   MplCmd MplPatternCompiled ->
+--   Set (IdP MplLambdaLifted)
+-- collectVarsCmd f = cata go
+--   where
+--     go :: MplCmdF MplPatternCompiled (Set (IdP MplLambdaLifted)) -> Set (IdP MplLambdaLifted)
+--     go = \case
+--       CRunF ann (Left id) seqs ins outs ->
+--         Set.fromList $ concatMap (Set.toList . f) seqs
+--       CRunF ann (Right expr) seqs ins outs ->
+--         Set.fromList (concatMap (Set.toList . f) seqs)
+--           `Set.union` f expr
+--       CPutF ann expr chp -> f expr
+--       CCaseF ann expr cmds ->
+--         let recSet = Set.unions $ concatMap (NE.toList <$> snd) (NE.toList cmds)
+--          in f expr `Set.union` recSet
+--       CIfF ann expr thenc elsec ->
+--         f expr `Set.union` Set.unions (NE.append thenc elsec)
+--       res -> fold res
 
-N.B. lots of duplciated code from 'collectFreeVarsExpr' and this -- fix this later...
--}
+-- | collects all the bound variables in an expression (note this does NOT recurse through the let bindings).. Indeed,
+-- Extra bound variables will come from case statements or recrods e.g.
+-- @
+-- case banana of
+--    a:b -> ...
+--    [] -> ...
+-- @
+-- will have bound variables @a,b@.
+--
+-- N.B. lots of duplciated code from 'collectFreeVarsExpr' and this -- fix this later...
 collectBoundVarsExpr :: 
     MplExpr MplPatternCompiled -> 
     BoundArgs
@@ -401,13 +426,11 @@ collectBoundVarsExpr = cata go
                 PSimpleListCons _ l r -> Set.fromList $ [l, r]
                 PSimpleListEmpty _ -> mempty
                 PSimpleUnit _ -> mempty
-
         ERecordF _ records -> foldMapOf (folded % _3) (\(patts, acc) -> acc `Set.union` foldMap (Set.singleton . getPattVarIdent) patts) records
         -- ERecordF _ records -> foldMapOf (folded % _3) (\(patts, acc) -> acc `Set.difference` foldMap collectBoundVariablesFromPattern patts) records
         res -> fold res
-    
 
-{- | Gets all the functions called in an expression (note this DOES NOT recurse through the let bindings) -}
+-- | Gets all the functions called in an expression (note this DOES NOT recurse through the let bindings)
 collectCallsExpr :: 
     MplExpr MplPatternCompiled -> 
     Set FunName
@@ -417,3 +440,11 @@ collectCallsExpr = cata go
     go = \case
         ECallF _ idp rst -> idp `Set.insert` fold rst
         res -> fold res
+
+-- collectCallsCmd :: MplCmd MplPatternCompiled -> Set FunName
+-- collectCallsCmd = cata go
+--   where
+--     go :: MplCmdF MplPatternCompiled FreeArgs -> FreeArgs
+--     go = \case
+--       CRunF _ (Left idp) patts _ _ -> Set.singleton idp
+--       res -> fold res

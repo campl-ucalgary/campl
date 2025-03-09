@@ -1011,6 +1011,7 @@ pprintTypeUnificationError = go
         EString ann _ -> ann ^. location % to loctodoc
         EUnit ann -> ann ^. location % to loctodoc
         ETuple ann _ -> ann ^. location % to loctodoc
+        EStore ann _ -> mempty
         -- EProj !(XEProj x) Int (MplExpr x)
         EBuiltInOp _ _ _ _ -> error "no location for built in ops -- not implemented yet"
         -- bugged bnfc?

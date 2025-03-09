@@ -235,6 +235,7 @@ mplAsmCompileStmt ::
     ( MonadState (MplAsmCompileSt x) m
     , Ord (IdP x)
     , Show (IdP x)
+    , HasName (IdP x)
     , AsCompileError err x
     , MonadWriter [err] m) =>
     MplAsmStmt x ->
@@ -274,6 +275,7 @@ mplAsmComsToInstr ::
     ( MonadState (MplAsmCompileSt x) m
     , Ord (IdP x)
     , Show (IdP x)
+    , HasName (IdP x)
     , AsCompileError err x
     , MonadWriter [err] m
     ) =>
@@ -286,6 +288,7 @@ mplAsmComToInstr ::
     ( MonadState (MplAsmCompileSt x) m
     , Ord (IdP x)
     , Show (IdP x)
+    , HasName (IdP x)
     , AsCompileError err x
     , MonadWriter [err] m
     ) =>
@@ -566,36 +569,65 @@ mplAsmComToInstr = \case
             ]
     -}
 
-    -- TODO: technically should do some polarity checks here, and need to check arity
-    CRun _ callp (seqs, ins, outs) -> do
-        ~(Just ixseqs) <- fmap sequenceA $ traverse lookupVarStack seqs
+    CStoreProc _ (Right ((seqs, ins, outs), cmds)) ->  localMplAsmCompileSt id $ do
+            let overlapping = filter ((>1) . length) $ group $ sort $ seqs ++ ins ++ outs
+            tell $ bool [_OverlappingDeclarations # overlapping] [] $ null overlapping
 
+            varStack .= reverse seqs
+            insids <- traverse freshLocalChanOrServiceChanInput ins
+            outsids <- traverse freshLocalChanOrServiceChanOutput outs
+            instrs <- mplAsmComsToInstr cmds
+            return [_IStoreProc # (insids, outsids, Right instrs)]
+
+    CStoreProc _ (Left p) -> do
+
+        -- ~(Just (callid, (pargs, callins, callouts))) <- lookupProc callp
+        proclkup <- lookupProc p
+        let ~(Just (callid, (pargs, callins, callouts))) = proclkup
+
+        if isJust proclkup
+            then do
+                -- return $ map (review _IAccess) ixseqs' ++ [_IRun # (translationmapping, callid, numargs)]
+                return [_IStoreProc # (callins, callouts, Left callid)]
+            else
+                return []
+
+    -- TODO: technically should do some polarity checks here, and need to check arity
+    CRun _ isUsedProc callp (seqs, ins, outs) -> do
+        ~(Just ixseqs) <- fmap sequenceA $ traverse lookupVarStack seqs
 
         ~(Just insids) <- fmap sequenceA $ traverse lookupCh ins 
         ~(Just outssids) <- fmap sequenceA $ traverse lookupCh outs 
 
-        -- ~(Just (callid, (pargs, callins, callouts))) <- lookupProc callp
-        proclkup <- lookupProc callp
-        let ~(Just (callid, (pargs, callins, callouts))) = proclkup
-
-        -- let ixseqs' = reverse ixseqs
-        let ixseqs' = ixseqs
-            -- instranslations = map (Input,) $ zip callins (map snd insids)
-            -- outstranslations = map (Output,) $ zip callouts (map snd outssids)
-            instranslations = zip callins (map snd insids)
-            outstranslations = zip callouts (map snd outssids)
-            translationmapping = instranslations ++ outstranslations 
-
-        if isJust proclkup
+        if isUsedProc
             then do
-                accesses <- localMplAsmCompileSt id $ fmap concat $ for (zip pargs seqs) $ \(fv, v) -> do  
-                    ~(Just ix) <- lookupVarStack v
-                    varStack %= (fv:)
-                    return [_IAccess # ix, _IStore # ()]
+                -- ~(Just vix) <- lookupVarStack callp
+                traceM "in compile"
+                traceM (show seqs)
+                return [_IRun # (Right (map snd insids, map snd outssids), Nothing, length seqs)]
+            else do
+                -- ~(Just (callid, (pargs, callins, callouts))) <- lookupProc callp
+                proclkup <- lookupProc callp
+                let ~(Just (callid, (pargs, callins, callouts))) = proclkup
 
-                -- return $ map (review _IAccess) ixseqs' ++ [_IRun # (translationmapping, callid, numargs)]
-                return $ accesses ++ [_IRun # (coerce $ Map.fromList translationmapping, callid, length seqs)]
-            else return []
+                -- let ixseqs' = reverse ixseqs
+                let ixseqs' = ixseqs
+                    -- instranslations = map (Input,) $ zip callins (map snd insids)
+                    -- outstranslations = map (Output,) $ zip callouts (map snd outssids)
+                    instranslations = zip callins (map snd insids)
+                    outstranslations = zip callouts (map snd outssids)
+                    translationmapping = instranslations ++ outstranslations
+
+                if isJust proclkup
+                    then do
+                        accesses <- localMplAsmCompileSt id $ fmap concat $ for (zip pargs seqs) $ \(fv, v) -> do  
+                            ~(Just ix) <- lookupVarStack v
+                            varStack %= (fv:)
+                            return [_IAccess # ix, _IStore # ()]
+        
+                        -- return $ map (review _IAccess) ixseqs' ++ [_IRun # (translationmapping, callid, numargs)]
+                        return $ accesses ++ [_IRun # (Left (coerce $ Map.fromList translationmapping), Just callid, length seqs)]
+                    else return []
 
     -- TODO: Technically, should do some polarity checking here
     CId _ (lch, rch) -> do

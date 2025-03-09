@@ -301,11 +301,11 @@ parseBnfcExpr (B.SWITCH_EXP switches) = do
     f (B.SWITCH_EXPR_PHRASE a b) = do
       ~[a', b'] <- traverseTryEach parseBnfcExpr [a, b]
       return (a', b')
-parseBnfcExpr (B.STORE_EXPR cxt  _ (B.PROCESS_N id) _) = do
-  return $ _EStore # ((), Left (toChIdentP id))
-parseBnfcExpr (B.STORE_EXPR cxt _ (B.PROCESS_P procc) _) = do
+parseBnfcExpr (B.STORE_EXPR (B.Store (loc, str))  _ (B.PROCESS_N id) _) = do
+  return $ _EStore # (nameOccToChIdentP $ _NameOcc # (Name str, Location loc), Left (toChIdentP id))
+parseBnfcExpr (B.STORE_EXPR (B.Store (loc, str)) _ (B.PROCESS_P procc) _) = do
   procc' <- parseBnfcProcessPhrase procc
-  return $ _EStore # ((), Right procc')
+  return $ _EStore # (nameOccToChIdentP $ _NameOcc # (Name str, Location loc), Right procc')
 parseBnfcExpr (B.DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR ident) =
   exprDestructorConstructorParse (toTermIdentP ident, [])
 parseBnfcExpr (B.DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR ident _ exprs _) = do

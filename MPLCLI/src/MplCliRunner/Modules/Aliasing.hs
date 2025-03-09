@@ -67,7 +67,7 @@ defFunc (FUNCTION_DEFN (PIdent ((line,_),name)) _) =
 defFunc _ = ([],[],[],[]) -- Ignore infix and internal definitions.
 
 defProc :: ProcessDefn -> AllDefs
-defProc (TYPED_PROCESS_DEFN (PIdent ((line,_),name)) _ _ _ _) =
+defProc (TYPED_PROCESS_DEFN (PIdent ((line,_),name)) _ _) =
     ([],[],[],[(name,line)])
 defProc (PROCESS_DEFN (PIdent ((line,_),name)) _) =
     ([],[],[],[(name,line)])

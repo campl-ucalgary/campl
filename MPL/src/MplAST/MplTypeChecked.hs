@@ -183,7 +183,7 @@ type instance XEUnfoldSubPhrase MplTypeChecked =
     MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag)
     -- (MplTypePhrase MplTypeChecked (SeqObjTag CodataDefnTag), XMplType MplTypeChecked)
 type instance XESwitch MplTypeChecked = XMplType MplTypeChecked
-type instance XEStore MplTypeChecked = XMplType MplTypeChecked
+type instance XEStore MplTypeChecked = (IdentT, XMplType MplTypeChecked)
 
 type instance XEIllegalInstr MplTypeChecked = Void
 

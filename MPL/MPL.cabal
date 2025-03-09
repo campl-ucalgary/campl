@@ -4,7 +4,7 @@ cabal-version: 1.18
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4e041f5ad240045ccef2d4d6de2b2abf3ca71730a038cd71edf8dd66c33487d3
+-- hash: 231c45e4107d6a561f2da7a42784eb0b998b5534604eb4b0f9470f6ffc66e48f
 
 name:           MPL
 version:        0.1.0.0
@@ -68,6 +68,8 @@ library
       MplPasses.Passes
       MplPasses.PassesErrors
       MplPasses.PassesErrorsPprint
+      MplPasses.PatternCompiler.HOProcCodeGen
+      MplPasses.PatternCompiler.HOProcCodeGenUtils
       MplPasses.PatternCompiler.PatternCompile
       MplPasses.PatternCompiler.PatternCompileErrors
       MplPasses.PatternCompiler.PatternCompileMplExprSub

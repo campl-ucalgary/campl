@@ -119,7 +119,7 @@ type instance XEUnfold MplParsed = ()
 type instance XEUnfoldPhrase MplParsed = ()
 type instance XEUnfoldSubPhrase MplParsed = ()
 type instance XESwitch MplParsed = ()
-type instance XEStore MplParsed = ()
+type instance XEStore MplParsed = IdentP
 type instance XEIllegalInstr MplParsed = Void
 
 -- Pattern instances..

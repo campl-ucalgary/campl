@@ -158,9 +158,18 @@ seqStep k stec = case steccode of
                  & environment %!~ cons v
                  & stack !~ s
         {- Access(n):c, e, s ---> c, e, e[n]:s -}
-        (IAccess n, e, s) -> {-# SCC "IAccess" #-} pure $ Just $
-            stec & code !~ c
-                 & stack %!~ cons (fromJust $ e ^? element n)
+        (IAccess n, e, s) -> {-# SCC "IAccess" #-} do 
+            pure $ Just $
+                stec & code !~ c
+                     & stack %!~ cons (case e ^? element n of
+                        Just sth -> sth
+                        Nothing ->
+                            trace (show n)
+                            trace "env:"
+                            trace (show e)
+                            trace (show $ e ^? element 0)
+                            error "in nothing!"
+                            )
         {- Call(c'):c, e, s --> c', e, clos(c,e):s [NOT LONGER DOES THIS]-}
         {- Call(c'):c, e_1... e_n,e', s --> c', e_1...e_n, clos(c,e'):s -}
         (ICall cix n, e, s) -> {-# SCC "ICall" #-} do
@@ -283,6 +292,14 @@ seqStep k stec = case steccode of
             stec & code !~ c
                  & stack !~ s
                  & stack %!~ cons (VBool $ n == m)
+        (IStoreProc ins outs idOrinstrs, e, s) -> {-# SCC "IEStoreProc" #-} do
+            instrs <- case idOrinstrs of
+                Left callix -> gviews supercombinators (Arr.! callix)
+                Right instrs -> return instrs
+            return $ Just $ 
+                stec & code !~ c
+                     & stack %!~ cons (VProc (ins, outs) instrs)
+
 
         _ -> k stec
     _ -> k stec
@@ -584,18 +601,30 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
             -- chlkup = t Map.! ch
             Just chlkup = Map.lookup ch t 
 
-        (s, t, e, IRun tmapping callix n) -> do
+        (s, t, e, IRun (Left tmapping) (Just callix) n) -> do
             instrs <- gviews supercombinators (Arr.! callix)
+            traceM ("calling " ++ show callix)
             -- let t' = Map.map (\lch -> t Map.! lch) $ coerce tmapping
             let t' = Map.map (\lch -> fromJust $ Map.lookup lch t) $ coerce tmapping
-
             return $ Just $ stec 
                 & translation !~ t'
                 & environment !~ args
                 & code !~ instrs
           where
             (args, _e') = splitAt n e
-
+        (s, t, (VProc (callins, callouts) instrs):e, IRun (Right (insids, outssids)) Nothing n) -> do
+            traceM "calling a used proc"
+            let
+                instranslations = zip callins insids
+                outstranslations = zip callouts outssids
+                tmapping = instranslations ++ outstranslations 
+            let t' = Map.map (\lch -> fromJust $ Map.lookup lch t) $ coerce $ Map.fromList tmapping
+            return $ Just $ stec 
+                & translation !~ t'
+                & environment !~ args
+                & code !~ instrs
+            where
+                (args, _e') = splitAt n e
         (s, t, e, IHPut ch hcaseix) -> do
             fetchAndWriteChMQueue (chlkup ^. activeQueue) $ QHPut hcaseix
             -- liftIO $ atomically $ traceTranslationLkupWithHeader "hput" chlkup

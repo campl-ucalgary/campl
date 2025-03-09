@@ -219,10 +219,12 @@ renameExpr = cata f
         symtab <- guse envLcl
         let identlkup = lookupProc ident symtab
         tell $ maybe [_OutOfScope # ident] mempty identlkup
-        return $ _EStore # (cxt, Left (_IdentR # (ident, identlkup ^. to fromJust % uniqueTag)))
+        cxt' <- tagIdentP cxt
+        return $ _EStore # (cxt', Left (_IdentR # (ident, identlkup ^. to fromJust % uniqueTag)))
       EStoreF cxt (Right expr) -> do
         expr' <- renameProcBodyPhrase expr
-        return $ _EStore # (cxt, Right expr')
+        cxt' <- tagIdentP cxt
+        return $ _EStore # (cxt', Right expr')
       ETupleF cxt (t0, t1, ts) -> do
         ~(t0' : t1' : ts') <- sequenceA $ t0 : t1 : ts
         return $ _ETuple # (cxt, (t0', t1', ts'))

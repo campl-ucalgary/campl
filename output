@@ -1,0 +1,30 @@
+-- dumped lambda-lifted output
+proc p__21 :: forall . | => TopBot =
+{
+  | => ch__5__OUT -> halt ch__5__OUT
+}
+proc server__22 :: forall . | => Put (Store (| => TopBot) | TopBot) =
+{
+  | => ch__20__OUT -> do
+  {
+    put store (p__21) on ch__20__OUT;
+    halt ch__20__OUT
+  }
+}
+proc client__71 :: forall . | Put (Store (| => TopBot) | TopBot) => TopBot =
+{
+  | ch1__44__INP => ch2__45__OUT -> do
+  {
+    get p__43 on ch1__44__INP;
+    close ch1__44__INP;
+    use (p__43) (| => ch2__45__OUT)
+  }
+}
+proc run__70 :: forall . | => TopBot =
+{
+  | => ch1__69__OUT -> plug
+  {
+    => ch__68__OUT -> server__22 (| => ch__68__OUT);
+    ch__68__INP => ch1__69__OUT -> client__71 (| ch__68__INP => ch1__69__OUT)
+  }
+}

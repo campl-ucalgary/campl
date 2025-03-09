@@ -66,16 +66,34 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 
 import Unsafe.Coerce
+import MplPasses.PatternCompiler.HOProcCodeGen (runHOProcCodeGenDefn)
 
 -- TODO: The let floating should really all be in the writer monad instead
 -- of doing the manual plumbing of passing the state up..
+
+runLambdaLiftPostProcProg ::
+  MplProg MplTypeChecked ->
+  MplProg MplTypeChecked
+runLambdaLiftPostProcProg (MplProg prog) = MplProg $ map runlambdaLiftPostProcStmt prog
+
+-- | lambda lifts the statements (note that where bindings are not moved to the top level)
+runlambdaLiftPostProcStmt ::
+  MplStmt MplTypeChecked ->
+  MplStmt MplTypeChecked
+runlambdaLiftPostProcStmt stmt =
+  MplStmt
+    (NE.fromList (foldMapOf (stmtDefns % folded) runHOProcCodeGenDefn stmt))
+    (stmt ^.. stmtWhereBindings % folded)
+
 
 runPatternCompile' ::
     AsPatternCompileErrors err => 
     (TopLevel, UniqueSupply) -> 
     MplProg MplTypeChecked ->
     Either [err] (MplProg MplPatternCompiled)
-runPatternCompile' (top, sup) = flip evalState (_Env # (top, sup, mempty, mempty)) . runPatternCompile
+runPatternCompile' (top, sup) prog = do
+    let prog' = runLambdaLiftPostProcProg prog
+    (flip evalState (_Env # (top, sup, mempty, mempty)) . runPatternCompile) prog'
 
 runPatternCompile ::
     forall err m .
@@ -245,6 +263,23 @@ patternCompileExpr = cata go
         EListF ann exprs -> do
             (ndefns, exprs') <- fmap (first concat . unzip) $ sequenceA exprs 
             return (ndefns, EList (snd ann) exprs')
+        EStoreF ann p ->
+            case p of
+                --TODO: Check the Right case once more...
+                Left id -> fmap (mempty,) $ pure $ EStore ann (Left id)
+                Right phr@((seqs, ins, outs), cmds) -> do
+                        (ndefns, cmds'') <- do
+                            (ndefns, cmds') <- localEnvSt (over envLcl((foldMap collectPattVars seqs,ins,outs)<>)) $ patternCompileCmds cmds
+                            return (ndefns, ((seqs, ins, outs), cmds'))
+                        let cmds0ins = view (_1 % _2)  cmds''
+                            cmds0outs = view (_1 % _3) cmds''
+                            cmds' = view _2 cmds''
+                            patts = view _1 phr
+
+
+                        (npatts, ncmds) <- patternCompileConcPatPhrases ((seqs, cmds'):| [])
+
+                        return (ndefns, EStore ann $ Right $ ((npatts, cmds0ins, cmds0outs), ncmds))
 
         EStringF ann str -> 
             pure $ (mempty, EString (snd ann) str)
@@ -374,10 +409,15 @@ patternCompileCmds = fmap (second NE.fromList) . go . NE.toList
         ([MplDefn MplPatternCompiled], [MplCmd MplPatternCompiled])
     go [] = pure mempty
     go (cmd:cmds) = case cmd of
-        CRun ann (Left idp) seqs ins outs -> assert (null cmds) $ do
+        CRun ann call seqs ins outs -> assert (null cmds) $ do
             (ndefns, seqs') <- fmap (first fold . unzip) $ traverse patternCompileExpr seqs
+            (callNdefns, call') <- case call of
+                Left id -> return ([], Left id)
+                Right expr -> do
+                    (exprdefn, expr') <- patternCompileExpr expr
+                    return (exprdefn, Right expr')
             -- second (CRun ann idp seqs' ins outs:) <$> go cmds
-            return (ndefns, [CRun () (Left idp) seqs' ins outs])
+            return (callNdefns ++ ndefns, [CRun () call' seqs' ins outs])
             -- @CRun@ should be the lsat command, so no need to do @go cmds@
         CClose ann chp -> deleteChFromContext chp >> second (CClose ann chp:) <$> go cmds
         CHalt ann chp -> assert (null cmds) $ deleteChFromContext chp >> return (mempty, [CHalt ann chp]) 
@@ -1656,7 +1696,11 @@ patternCompileConcPatPhrases pattphrases =
         pattheads :: NonEmpty (MplPattern MplTypeChecked, NonEmpty (MplCmd MplPatternCompiled))
         patttails :: NonEmpty ([MplPattern MplTypeChecked], NonEmpty (MplCmd MplPatternCompiled))
         (pattheads, patttails) = NE.unzip 
-            $ fmap (\(~(p:ps), expr) -> ((p, expr), (ps, expr))) 
+            $ fmap (\(ptts, expr) -> 
+                    case ptts of 
+                        [] -> ((PUnit (Location(-1,-1), TypeBuiltIn (TypeUnitF Nothing)), expr), ([], expr))
+                        (p:ps) -> ((p, expr), (ps, expr))
+                    ) 
             $ NE.fromList patts
 
         {-

@@ -283,8 +283,8 @@ higherOrderCheck notscoped tp
             _TypeConcArrF
               # ( (),
                   seqs'',
-                  outs'',
-                  ins''
+                  ins'',
+                  outs''
                 )
       TypeNegF cxt (_, tp) -> do
         tp' <- tp

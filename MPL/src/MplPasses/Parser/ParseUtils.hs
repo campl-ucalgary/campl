@@ -181,6 +181,9 @@ instance ToNameOcc IdentP where
 toChIdentP :: ToNameOcc ident => ident -> IdentP
 toChIdentP = flip IdentP ChannelLevel . toNameOcc
 
+nameOccToChIdentP :: NameOcc -> IdentP
+nameOccToChIdentP = flip IdentP ChannelLevel
+
 toTermIdentP :: ToNameOcc ident => ident -> IdentP
 toTermIdentP = flip IdentP TermLevel . toNameOcc
 

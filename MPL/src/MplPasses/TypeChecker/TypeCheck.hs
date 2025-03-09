@@ -812,7 +812,26 @@ typeCheckExpr = para f
                     _TypeStoreF # (Just (TypeAnnExpr ann), ttypeproc)
                   )
               ]
-      return (_EStore # (fromJust $ lookupInferredSeqTypeExpr ttype ttypemap, Left ident), [eqn])
+      return (_EStore # ((cxt, fromJust $ lookupInferredSeqTypeExpr ttype ttypemap), Left ident), [eqn])
+    f expr@(EStoreF cxt (Right defn)) = do
+      ttype <- guse (envLcl % typeInfoEnvTypeTag)
+      ttypemap <- guse (envLcl % typeInfoEnvMap)
+      envLcl % typeInfoSymTab % symTabCh .= mempty
+      (ttypephrases, (defn', acceqns)) <-
+        withFreshTypeTag (typeCheckProcessBody defn)
+      let ann = (_EStore # (cxt, Right defn)) :: MplExpr MplRenamed
+          ttypep = annotateTypeTag ttype ann
+          ttypephrases' = annotateTypeTag ttypephrases defn
+          eqn =
+            TypeEqnsExist
+              [ttypep, ttypephrases']
+              $ [ TypeEqnsEq
+                    ( typePtoTypeVar ttypep,
+                      _TypeStoreF # (Just (TypeAnnExpr ann), typePtoTypeVar ttypephrases')
+                    )
+                ]
+                <> acceqns
+      return (_EStore # ((cxt, fromJust $ lookupInferredSeqTypeExpr ttype ttypemap), Right defn'), [eqn])
     f (ELetF cxt lets (_, mexpr)) = do
       st <- guse equality
       sup <- freshUniqueSupply
@@ -1666,6 +1685,8 @@ typeCheckCmd cmd =
               foldMapOf (folded % symEntryInfo) expectedInputPolarity ttypesins
                 <> foldMapOf (folded % symEntryInfo) expectedOutputPolarity ttypesouts
 
+          
+
           (ttypeseqs, (seqs', seqseqns)) <-
             fmap (second unzip . unzip) $
               traverse (withFreshTypeTag . typeCheckExpr) seqs
@@ -1725,10 +1746,13 @@ typeCheckCmd cmd =
                   (map (view symEntryType) ttypesouts)
 
           return (_CRun # (Just procc, Left ident, seqs', ins', outs'), [eqns])
-        CRun cxt (Right expr) seqs ins outs -> do
+        r@(CRun cxt (Right expr) seqs ins outs) -> do
+
           ttypemap <- guse (envLcl % typeInfoEnvMap)
+
           ttypesins <- zoom (envLcl % typeInfoSymTab) $ traverse lookupSymCh ins
-          ttypesouts <- zoom (envLcl % typeInfoSymTab) $ traverse lookupSymCh outs
+
+          ttypesouts <- zoom (envLcl % typeInfoSymTab) $ for outs $ lookupSymCh
 
           (ttypeexpr, (expr', exprEqns)) <- withFreshTypeTag (typeCheckExpr expr)
 
@@ -1743,6 +1767,7 @@ typeCheckCmd cmd =
           zoom (envLcl % typeInfoSymTab) $ do
             for_ ins $ \ch -> symTabCh % at (ch ^. uniqueTag) .= Nothing
             for_ outs $ \ch -> symTabCh % at (ch ^. uniqueTag) .= Nothing
+
           let ttypespins = annotateTypeTags (map (view symEntryType) ttypesins) $ repeat cmd
               ttypespouts = annotateTypeTags (map (view symEntryType) ttypesouts) $ repeat cmd
               ttypespseqs = annotateTypeTags ttypeseqs $ repeat cmd
@@ -1756,15 +1781,15 @@ typeCheckCmd cmd =
                         _TypeStoreF
                           # ( _Just % _TypeAnnCmd # cmd,
                               _TypeConcArrF
-                                # ( (_Just % _TypeAnnCmd # cmd),
-                                    (map typePtoTypeVar ttypespseqs),
-                                    (map typePtoTypeVar ttypespins),
-                                    (map typePtoTypeVar ttypespouts)
+                                # ( _Just % _TypeAnnCmd # cmd,
+                                    map typePtoTypeVar ttypespseqs,
+                                    map typePtoTypeVar ttypespins,
+                                    map typePtoTypeVar ttypespouts
                                   )
                             )
                       )
                   ]
-                    <> exprEqns
+                    <> exprEqns <> concat seqseqns
               ins' =
                 zipWith
                   (\chr tag -> _ChIdentT # (chr, fromJust $ lookupInferredSeqTypeExpr tag ttypemap))
@@ -1803,6 +1828,7 @@ typeCheckCmd cmd =
           ttypemap <- guse (envLcl % typeInfoEnvMap)
 
           ~(SymEntry ttypech info) <- zoom (envLcl % typeInfoSymTab) $ lookupSymCh ch
+
 
           envLcl % typeInfoSymTab % symTabCh % at (ch ^. uniqueTag) .= Nothing
 
