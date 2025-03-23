@@ -8,6 +8,8 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use =<<" #-}
 module MplMach.MplMachStep where
 
 import Optics
@@ -626,6 +628,52 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                 -- SHOpenTerm -> sOpenTerm ch chlkup >> return Nothing
                 SHOpenTerm -> sOpenTerm chlkup >> return Nothing
 
+
+                -- TODO: implement without hardcoded port 4000 (maybe add a list of server ports to env or something?)
+                -- also maybe we don't need this first runMplMach i have no idea lmao
+                SHOpenServer -> 
+                    -- withSocketsDo $ flip runMplMach env $    -- this was causing a type error idfk
+                    do
+                    let slkup = flipTranslationLkup chlkup
+                        hints = defaultHints { addrSocketType = Stream }
+                    addrinf <- liftIO $ fmap head $ getAddrInfo (Just hints) (Just $ env ^. serviceHostName) (Just "4000")
+                    return $ Just $ liftIO $ bracket 
+                        -- open the socket resource
+                        (open addrinf)
+                        -- close the socket (library call)
+                        close
+                        -- run the server? (like the serviceManager function for the other terminals)
+                        -- but we return type IO (...) instead of MplMach MplMachEnv (...) and this is bad??
+                        (flip runMplMach env . serviceSCServer slkup)
+                  where
+                    -- opens the socket with sane defaults (standard C way of opening a socket translated to Haskell)
+                    open addrinf = do
+                        s <- socket (addrFamily addrinf) (addrSocketType addrinf) (addrProtocol addrinf)
+                        setSocketOption s ReuseAddr 1
+                        withFdSocket s setCloseOnExecIfNeeded
+                        bind s $ addrAddress addrinf
+                        listen s 1024
+                        return s
+
+
+                -- TODO: implement without hardcoded ip address and port 4000?
+                SHOpenClient -> 
+                    -- withSocketsDo $ flip runMplMach env $     -- this was causing a type error idfk
+                    do
+                    let slkup = flipTranslationLkup chlkup
+                        hints = defaultHints { addrSocketType = Stream }
+                    addrinf <- liftIO $ fmap head $ getAddrInfo (Just hints) (Just "0.0.0.0") (Just "4000")
+                    return $ Just $ liftIO $ bracket 
+                        (open addrinf) 
+                        close 
+                        (flip runMplMach env . serviceSCClient slkup)
+                  where
+                    open addrinf = do
+                        s <- socket (addrFamily addrinf) (addrSocketType addrinf) (addrProtocol addrinf)
+                        connect s $ addrAddress addrinf
+                        return s
+
+
                 _ -> do
                     fetchAndWriteChMQueue (chlkup ^. activeQueue) $ QSHPut sinstr
                     -- liftIO $ atomically $ traceTranslationLkupWithHeader "ihsput" chlkup
@@ -643,6 +691,30 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
             Just chlkup = Map.lookup ch t 
             -- chlkup = t Map.! ch
 
+        -- ISHCase LocalChan (Map SInstr [Instr])
+        (s, t, e, ISHCase ch shcases) -> do
+            fetchAndWriteChMQueue (chlkup ^. activeQueue) $ QSHCase (stec & code !~ c) shcases
+
+            stec' <- liftIO $ atomically $ do
+                TRACE_TRANSLATION_LKUP_WITH_HEADER("ihscase", chlkup)
+
+                chactivequeue <- chlkup ^. activeQueue % to readChMQueue
+                peekTQueue chactivequeue >>= \case
+                    QSHCase hstec shcases -> do
+                        chotherqueue <- chlkup ^. otherQueue % to readChMQueue
+                        peekTQueue chotherqueue >>= \case
+                            QSHPut sinstr -> do
+                                _ <- readTQueue chactivequeue
+                                _ <- readTQueue chotherqueue
+                                return $ hstec & code !~ shcases Map.! sinstr
+                            _ -> retry
+                    _ -> retry
+
+            return $ Just $ stec'
+          where
+            chlkup = t Map.! ch
+
+        -- IHCase LocalChan (Array HCaseIx [Instr])
         (s, t , e, IHCase ch hcases) -> do
             fetchAndWriteChMQueue (chlkup ^. activeQueue) $ QHCase (stec & code !~ c) hcases
 
@@ -763,6 +835,104 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
 
 -- * Services 
 
+-- * Remote Services (Servers and Clients (SC))
+
+-- waits for connections from SC (remote) clients
+-- TODO: check that the campl process "running" the server has put a split command on the other end 
+-- then we will pass on one of them to the serve remote client function and hold on to the other one for future clients
+serviceSCServer :: 
+    TranslationLkup ->
+    Socket ->
+    MplMach MplMachEnv ()
+serviceSCServer slkup s = forever $ gview equality >>= \env -> liftIO $ do
+    (s', _) <- accept s
+    forkFinally (flip runMplMach env $ serviceSCServiceRemoteClient s' slkup) $ \err -> close s' >> case err of
+        -- oops, shoudln't use 'forever' here, when it is AsyncCancelled, should probably
+        -- just stop recursing.
+        Right () -> return ()
+        Left e -> case fromException e of
+            Just AsyncCancelled -> return ()
+            _ -> throwIO e
+
+-- after we accept a connection from a remote client, 
+-- TODO: add some sort of authentication. either by using a protocol that does or something,,,
+serviceSCServiceRemoteClient ::
+    Socket ->
+    TranslationLkup ->
+    MplMach MplMachEnv ()
+serviceSCServiceRemoteClient s slkup = gview equality >>= \env -> do
+    ~(Just esec, pbts) <- P.runStateT (PA.parse pSNString) (recvPipe s) 
+    -- svmp <- liftIO $ env ^. serviceMap % to readMVar 
+    case esec of
+        -- silly "authentication" to check the client is "who we want"
+        -- when we change the protocol the socket is running then idk if we will still need a check here?
+        Right sec 
+            | "secret_password" == sec -> liftIO $ 
+                runMplMach (serviceClientLoop s slkup pbts (serviceQueueSInstrPipe slkup)) env 
+            | otherwise -> liftIO $ throwIO $ userError "illegal client connection"
+        Left err -> liftIO $ throwIO err
+
+-- a "remote" client for some server
+-- TODO: add some sort of authentication. either by using a protocol that does or something,,,
+serviceSCClient :: 
+    TranslationLkup ->
+    Socket ->
+    MplMach MplMachEnv ()
+serviceSCClient slkup sock = do
+    -- silly "authentication" so that the server "knows it's us"
+    -- when we change the protocol the socket is running then idk if we will still need anything here?
+    liftIO $ sendAll sock $ snInstrToByteString $ SNString "secret_password"
+    loop (recvPipe sock)
+  where
+    loop ps = do
+        (res, ps') <- P.runStateT (PA.parse pSNCmd) ps
+        case res of
+            Just (Right instr) -> case instr of
+                SNGetString -> do
+                    -- we are using service instructions as protocol handle ids basically...
+                    fetchAndWriteChMQueue (slkup ^. activeQueue) $ QSHPut SHGetString
+                    ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER("ihsput", slkup)
+                    n <- liftIO $ atomically $ do
+
+                        TRACE_TRANSLATION_LKUP_WITH_HEADER("get", slkup)
+
+                        -- idk if we want to peek and retry or not??
+                        -- i think we want to retry because we are making a request
+                        chotherqueue <- slkup ^. otherQueue % to readChMQueue
+                        peekTQueue chotherqueue >>= \case
+                            QPut v -> do
+                                _ <- readTQueue chotherqueue
+                                return $ valToStr v
+                            _ -> retry
+
+                    liftIO $ sendAll sock $ snInstrToByteString $ SNString n
+                    loop ps'
+
+                SNPutString -> do
+                    (res, ps'') <- P.runStateT (PA.parse pSNString) ps'
+                    -- the server sent that they are sending a string, so we don't need to loop
+                    -- it's either there or something is wrong
+                    case res of
+                        Just (Right res') -> do
+                            -- we are using service instructions as protocol handle ids basically...
+                            fetchAndWriteChMQueue (slkup ^. activeQueue) $ QSHPut SHPutString
+                            ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER("ihsput", slkup)
+                            fetchAndWriteChMQueue (slkup ^. activeQueue) $ QPut $ strToVal res'
+                            ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER("put", slkup)
+                            loop ps''
+                        bad -> liftIO $ throwIO $ ppShowIllegalStep bad
+
+                SNClose -> do
+                    -- we are using service instructions as protocol handle ids basically...
+                    fetchAndWriteChMQueue (slkup ^. activeQueue) $ QSHPut SHClose 
+                    ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER("ihsput", slkup)
+                    return ()
+
+                bad -> liftIO $ throwIO $ ppShowIllegalStep bad
+            bad -> liftIO $ throwIO $ ppShowIllegalStep bad
+
+
+-- * Local Services (Terminals and Threads)
 
 serviceManager :: 
     (HasMplMachServicesEnv r, MonadFail (MplMach r)) =>
@@ -935,6 +1105,8 @@ serviceClientLoop sock gchlkup psock pinstrs = next pinstrs >>= \case
         SHOpenTerm -> liftIO $ throwIO $ userError $ "illegal service in client: " ++ show SHOpenTerm
         SHSplitNegStringTerm -> liftIO $ throwIO $ userError $ "illegal service in client: " ++ show SHSplitNegStringTerm 
         SHTimeOut -> liftIO $ throwIO $ userError $ "illegal service in client: " ++ show SHTimeOut 
+        SHOpenServer -> liftIO $ throwIO $ userError $ "illegal service in client: " ++ show SHOpenServer
+        SHOpenClient -> liftIO $ throwIO $ userError $ "illegal service in client: " ++ show SHOpenClient
 
 serviceQueueSInstrPipe ::
     ( HasMplMachServicesEnv r ) =>
@@ -1178,6 +1350,8 @@ serviceThread chlkup = loop chlkup
 
             SHOpenThread -> liftIO $ throwIO $ userError $ "illegal service in client: " ++ show SHOpenThread
             SHOpenTerm -> liftIO $ throwIO $ userError $ "illegal service in client: " ++ show SHOpenTerm
+            SHOpenServer -> liftIO $ throwIO $ userError $ "illegal service in client: " ++ show SHOpenServer
+            SHOpenClient -> liftIO $ throwIO $ userError $ "illegal service in client: " ++ show SHOpenClient
 
 
 
@@ -1214,26 +1388,26 @@ sOpenTerm chlkup = void $ do
         -- this gives us the service channel ID that we need to connect to the service client process
         -- note that the host this prints is just local host. 
         -- to connect from a different device, you need the IP address of the "main" device
-        [ "echo \""
-        ,"alacritty -e "
-        , "mpl-client"
-        , " --hostname=" ++ show hn
-        , " --port=" ++ show pn
-        , " --service-ch=" ++ show (show $ coerce @ServiceCh @Int svch)
-        , "\""
-        ]
-
-        
-        -- ORIGINAL
-        -- [ "alacritty -e "
-        -- -- , "'"
+        -- [ "echo \""
+        -- ,"alacritty -e "
         -- , "mpl-client"
         -- , " --hostname=" ++ show hn
         -- , " --port=" ++ show pn
         -- , " --service-ch=" ++ show (show $ coerce @ServiceCh @Int svch)
-        -- -- , "; read"
-        -- -- , "'"
+        -- , "\""
         -- ]
+
+        
+        -- ORIGINAL
+        [ "alacritty -e "
+        -- , "'"
+        , "mpl-client"
+        , " --hostname=" ++ show hn
+        , " --port=" ++ show pn
+        , " --service-ch=" ++ show (show $ coerce @ServiceCh @Int svch)
+        -- , "; read"
+        -- , "'"
+        ]
         -- ORIGINAL
 
         {-

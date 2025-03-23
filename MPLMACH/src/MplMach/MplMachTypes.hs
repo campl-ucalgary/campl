@@ -239,10 +239,11 @@ data IConc
 
     | IHPut LocalChan HCaseIx
 
-    -- | HPut for services
-    | ISHPut LocalChan SInstr 
-
     | IHCase LocalChan (Array HCaseIx [Instr])
+
+    -- | HPut/HCase for services
+    | ISHPut LocalChan SInstr 
+    | ISHCase LocalChan (Map SInstr [Instr])
 
     | IRace [(LocalChan, [Instr])]
   deriving Show
@@ -387,8 +388,9 @@ data QInstr
     | QHPut HCaseIx
     | QHCase Stec (Array HCaseIx [Instr])
 
-    -- special QHPut for services
+    -- special QHPut/QSHCase for services
     | QSHPut SInstr
+    | QSHCase Stec (Map SInstr [Instr])
 
     -- | other channels to race, stec
     -- old definition was 'QRace [LocalChan] Stec', but now we just make them
@@ -414,8 +416,14 @@ data SInstr
 
     | SHSplitNegStringTerm
 
+    | SHOpenServer
+    | SHOpenClient
+
     | SHClose
-  deriving Show
+  deriving (Show, Eq, Ord)
+  -- Ord is so we can create the Map for ISHCase out of the list of SvLabelledMplConcComs in CSHCase
+  -- "The declared order of the constructors in the data declaration determines the ordering in derived Ord instances."
+
 
 {- A networked service instruction -}
 data SNInstr

@@ -20,9 +20,16 @@ data SymEntry x
     = SymProc CallIx
     | SymConcObj (Map (IdP x) HCaseIx)
 
+data ServiceType
+    = ServerClient
+    | ThreadTerminal
+ deriving Show
+
 data MplAsmCompileSt x = MplAsmCompileSt 
     { _varStack :: [IdP x]
     , _channelTranslations :: Map (IdP x) (Polarity, LocalChan)
+    -- serviceTypes indicate whether main func needs to create a thread, terminal, server, or client
+    , _serviceTypes :: Map LocalChan (Polarity, ServiceType)
 
     , _uniqCounters :: MplAsmCompileStUniqs
 
@@ -83,7 +90,7 @@ initMplAsmCompileSt :: MplAsmCompileSt x
 initMplAsmCompileSt = MplAsmCompileSt 
     { _varStack = []
     , _channelTranslations = Map.empty
-
+    , _serviceTypes = Map.empty 
     , _uniqCounters = MplAsmCompileStUniqs 
         { _uniqLocalChan = coerce (0 :: Int)
         -- , _uniqServiceChan = coerce (-10 :: Int)

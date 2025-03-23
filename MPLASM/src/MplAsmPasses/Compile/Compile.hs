@@ -6,6 +6,8 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternGuards #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use ++" #-}
 module MplAsmPasses.Compile.Compile where
 
 import MplMach.MplMachTypes
@@ -34,6 +36,8 @@ import Data.Bool
 
 import Data.Map (Map)
 import qualified Data.Map as Map
+
+import qualified Data.Map.Strict as SMap (fromList)
 
 import Data.Set (Set)
 import qualified Data.Set  as Set
@@ -110,18 +114,32 @@ mplAsmProgToInitMachState prog = case runWriter res of
                 -- indeed, we need the channel translations to compile this.
                 channelTranslations .= Map.fromList (zip ins (map (Input,) insids) ++ zip outs (map (Output,) outsids))
 
+                -- see if it is ServerClient or not?               
+                serviceTypes .= Map.fromList (zip insids (map ((Input,) . serviceType) ins) ++ zip outsids (map ((Output,) . serviceType) outs)) 
+
                 -- compile the instructions
                 maininstrs <- mplAsmComsToInstr coms
                 return $ Just (funid, ((insids, outsids), maininstrs))
             Nothing -> tell [_NoMainFunction # ()] >> return Nothing
 
+        svtypes <- use serviceTypes
+
         let allfuns = second snd mainf : funs
             -- the actual main function that is run needs to open up the proper
             -- service channels, so we do that here.
+            serviceToOpen ch = 
+                case svtypes Map.! ch of
+                    -- if it's input -> make a thread, if it's output -> make a terminal
+                    (Input, ThreadTerminal) -> (ch, MplMach.MplMachTypes.SHOpenThread)
+                    (Output, ThreadTerminal) -> (ch, MplMach.MplMachTypes.SHOpenTerm)
+                    -- if it's input -> make a client, if it's output -> make a server
+                    (Input, ServerClient) -> (ch, MplMach.MplMachTypes.SHOpenClient)
+                    (Output, ServerClient) -> (ch, MplMach.MplMachTypes.SHOpenServer)
             maindef = second 
                 ((++) $ concat   
-                    [ map (review _ISHPut . (,MplMach.MplMachTypes.SHOpenThread)) mainins 
-                    , map (review _ISHPut . (,MplMach.MplMachTypes.SHOpenTerm)) mainouts 
+                    [ -- create an ISHPut LocalChan SInstr for each service channel
+                      map (review _ISHPut . serviceToOpen) mainins 
+                    , map (review _ISHPut . serviceToOpen) mainouts 
                     ]
                     ) 
                 $ snd mainf 
@@ -130,6 +148,11 @@ mplAsmProgToInitMachState prog = case runWriter res of
         return 
             ( coerce @(Array CallIx [Instr]) @MplMachSuperCombinators  (Arr.array (coerce @Int @CallIx 0, coerce @Int @CallIx $ length allfuns - 1) allfuns)
             , maindef )
+
+    serviceType ident = 
+        if "serverclient" `isPrefixOf` str then ServerClient
+        else ThreadTerminal
+            where str = ident ^. name % coerced @Name @String
 
 {- | collects all the elements into the symbol table. Note: this is required to permit mutually
  - recursive declarations between data / codta and functions, etc. -}
@@ -468,6 +491,22 @@ mplAsmComToInstr = \case
                     [_IHCase # 
                         ( chid
                         , Arr.array (coerce @Int @HCaseIx 0, coerce @Int @HCaseIx $ length instrs - 1) instrs)
+                    ]
+            else return []
+
+    CSHCase _ chcaseon svlabelledconccoms -> do
+        -- don't need to check all same because we did that in the previous stage to see if it was a CSHCase
+        lkup <- lookupCh chcaseon 
+        let Just (pol, chid) = lkup
+        if isJust lkup
+            then do
+                instrs <- for svlabelledconccoms $ \(sv, coms) -> localMplAsmCompileSt id $ do
+                    comsinstrs <- mplAsmComsToInstr coms
+                    return (asmServiceToMachService sv, comsinstrs)
+                return 
+                    [_ISHCase # 
+                        ( chid
+                        , SMap.fromList instrs)
                     ]
             else return []
 

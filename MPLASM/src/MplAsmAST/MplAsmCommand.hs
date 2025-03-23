@@ -153,6 +153,9 @@ data MplAsmCom x
     | CSHPut (XCHPut x) MplAsmServices (IdP x)
 
     | CHCase (XCHCase x) (IdP x) [LabelledMplConcComs x]
+
+    | CSHCase (XCHCase x) (IdP x) [SvLabelledMplConcComs x]
+
     | CSplit (XCSplit x) (IdP x) (IdP x, IdP x)
     | CFork (XCFork x) (IdP x) (ForkPhrase x, ForkPhrase x)
     | CPlug (XCPlug x) [IdP x] (PlugPhrase x, PlugPhrase x)
@@ -204,6 +207,7 @@ asmServiceToMachService = \case
 type MplAsmComs x = [MplAsmCom x]
 type LabelledMplSeqComs x = (TypeAndSpec x, [IdP x], MplAsmComs x) 
 type LabelledMplConcComs x = (TypeAndSpec x, MplAsmComs x) 
+type SvLabelledMplConcComs x = (MplAsmServices, MplAsmComs x) 
 -- | @a with a0,a1 : coms @
 type ForkPhrase x = (IdP x, [IdP x], MplAsmComs x)
 type PlugPhrase x = (([IdP x], [IdP x]), MplAsmComs x)

@@ -9,6 +9,8 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# OPTIONS_GHC -fno-warn-partial-type-signatures #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Redundant case" #-}
 module MplAsmPasses.FromLambdaLifted.FromLambdaLifted where
 
 import Optics
@@ -47,6 +49,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
 import Control.Exception
 import Debug.Trace
+import Data.Either
 
 -- libraries
 import Control.Monad.State
@@ -631,15 +634,52 @@ mplAssembleCmd = cata go
             return $ expr' ++ [ Asm.CStore () e, Asm.CPut () e (toAsmIdP ch)]
         CHCaseF _ ch cases -> do
             cases' <- traverse f cases
-            return $ [Asm.CHCase () (toAsmIdP ch) (NE.toList cases')]
+            -- why isn't cases'' a list??
+            -- cases'' :: Either
+            --      (Asm.MplAsmServices, [Asm.MplAsmCom MplAsmFromLambdaLifted])
+            --      (Asm.TypeAndSpec x0, [Asm.MplAsmCom MplAsmFromLambdaLifted])
+            --      (bound at src/MplAsmPasses/FromLambdaLifted/FromLambdaLifted.hs:637:13)
+            -- if all the cases are for service channels then we have an SHCase
+            -- errors like mixing service and non-service handles will be handled in the next stage (Compile.hs)
+            -- which will check the TypeAndSpec of all the handles, so if there was a service handle it will be found.
+            if all isLeft cases' 
+                then return [Asm.CSHCase () (toAsmIdP ch) (lefts $ NE.toList cases')]
+            else return [Asm.CHCase () (toAsmIdP ch) (rights $ NE.toList cases')]
           where
             f (procdefn, phr, cmds) = do
-                let tp = case procdefn of
+                let chpol = ch ^. chIdentRPolarity
+                    tp = case procdefn of
                         ProtocolDefn defn -> defn ^. typePhraseExt % typeClauseName
                         CoprotocolDefn defn -> defn ^. typePhraseExt % typeClauseName
+                    phrname = phr ^. name % coerced
+                    -- the type of the from expression
+                    fromtp = case procdefn of
+                        ProtocolDefn defn -> defn ^. typePhraseFrom
+                        CoprotocolDefn defn -> defn ^. typePhraseFrom
                 cmds' <- sequenceA cmds
-                return (Asm.TypeAndSpec (toAsmIdP tp) (toAsmIdP phr),  concat cmds' )
-            
+                case chpol of
+                    Input ->
+                        -- ServerClient is an input polarity channel for clients
+                        case fromtp of
+                            -- the non-service hput and hcase return something that looks like this:
+                            -- return [ Asm.CHPut () (Asm.TypeAndSpec (toAsmIdP tp) (toAsmIdP phr)) (toAsmIdP ch) ]
+                            -- return [ Asm.CHCase () (toAsmIdP ch) [(Asm.TypeAndSpec (toAsmIdP tp) (toAsmIdP phr), cmds'' )...] ] 
+                            -- the shput returns something that looks like this:
+                            -- return [ Asm.CSHPut () Asm.SHGetString (toAsmIdP ch) ]
+                            -- so i think for shcase we want to return something that looks like this?: 
+                            -- return [ Asm.CSHCase () (toAsmIdP ch) [(Asm.SHGetString, cmds'' )...] ] 
+                            TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeListF _ (TypeBuiltIn (TypeCharF _)))) _)
+                                -- if it's ClientPut then the server will send that they want to get something
+                                | phrname == "ClientPut" -> return $ Left (Asm.SHGetString,  concat cmds' )
+                            TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeListF _ (TypeBuiltIn (TypeCharF _)))) _) 
+                                -- if it's ServerPut then the server will send that they want to put something
+                                | phrname == "ServerPut" -> return $ Left (Asm.SHPutString,  concat cmds' )
+                            TypeBuiltIn (TypeTopBotF _) 
+                                | phrname == "ServerClientClose" -> return $ Left (Asm.SHClose,  concat cmds' )
+                            -- if it's not a service channel then just return what we were before
+                            _ -> return $ Right (Asm.TypeAndSpec (toAsmIdP tp) (toAsmIdP phr),  concat cmds' )
+                    -- for now we have no output service hcases, so just leave it as it was
+                    Output -> return $ Right (Asm.TypeAndSpec (toAsmIdP tp) (toAsmIdP phr),  concat cmds' )
         CHPutF ann phr ch -> do
             let chname = ch ^. nameStr
                 chpol = ch ^. chIdentRPolarity
@@ -722,6 +762,14 @@ mplAssembleCmd = cata go
                         _ -> return [ Asm.CHPut () (Asm.TypeAndSpec (toAsmIdP tp) (toAsmIdP phr)) (toAsmIdP ch) ]
 
                     Output -> case fromtp of
+                        -- ServerClient is an output polarity channel for servers
+                        TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeListF _ (TypeBuiltIn (TypeCharF _)))) _) 
+                            | phrname == "ClientPut" -> return [ Asm.CSHPut () Asm.SHGetString (toAsmIdP ch) ]
+                        TypeBuiltIn (TypePutF _ (TypeBuiltIn (TypeListF _ (TypeBuiltIn (TypeCharF _)))) _) 
+                            | phrname == "ServerPut" -> return [ Asm.CSHPut () Asm.SHPutString (toAsmIdP ch) ]
+                        TypeBuiltIn (TypeTopBotF _) 
+                            | phrname == "ServerClientClose" -> return [ Asm.CSHPut () Asm.SHClose (toAsmIdP ch) ]
+
                         -- String 
                         TypeBuiltIn (TypeGetF _ (TypeBuiltIn (TypeListF _ (TypeBuiltIn (TypeCharF _)))) _) 
                             | phrname == "StringTerminalGet" -> return [ Asm.CSHPut () Asm.SHGetString (toAsmIdP ch) ]
