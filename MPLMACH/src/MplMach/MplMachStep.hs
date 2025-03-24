@@ -163,12 +163,7 @@ seqStep k stec = case steccode of
                 stec & code !~ c
                      & stack %!~ cons (case e ^? element n of
                         Just sth -> sth
-                        Nothing ->
-                            trace (show n)
-                            trace "env:"
-                            trace (show e)
-                            trace (show $ e ^? element 0)
-                            error "in nothing!"
+                        Nothing -> error $ "There is nothing at index " ++ show n ++ " of the environment."
                             )
         {- Call(c'):c, e, s --> c', e, clos(c,e):s [NOT LONGER DOES THIS]-}
         {- Call(c'):c, e_1... e_n,e', s --> c', e_1...e_n, clos(c,e'):s -}
@@ -603,7 +598,6 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
 
         (s, t, e, IRun (Left tmapping) (Just callix) n) -> do
             instrs <- gviews supercombinators (Arr.! callix)
-            traceM ("calling " ++ show callix)
             -- let t' = Map.map (\lch -> t Map.! lch) $ coerce tmapping
             let t' = Map.map (\lch -> fromJust $ Map.lookup lch t) $ coerce tmapping
             return $ Just $ stec 
@@ -612,8 +606,7 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                 & code !~ instrs
           where
             (args, _e') = splitAt n e
-        (s, t, (VProc (callins, callouts) instrs):e, IRun (Right (insids, outssids)) Nothing n) -> do
-            traceM "calling a used proc"
+        ((VProc (callins, callouts) instrs):s, t, e, IRun (Right (insids, outssids)) Nothing n) -> do
             let
                 instranslations = zip callins insids
                 outstranslations = zip callouts outssids

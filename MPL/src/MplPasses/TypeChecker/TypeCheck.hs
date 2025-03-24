@@ -816,6 +816,7 @@ typeCheckExpr = para f
     f expr@(EStoreF cxt (Right defn)) = do
       ttype <- guse (envLcl % typeInfoEnvTypeTag)
       ttypemap <- guse (envLcl % typeInfoEnvMap)
+      prevSymTabCh <- use (envLcl % typeInfoSymTab % symTabCh)
       envLcl % typeInfoSymTab % symTabCh .= mempty
       (ttypephrases, (defn', acceqns)) <-
         withFreshTypeTag (typeCheckProcessBody defn)
@@ -831,6 +832,7 @@ typeCheckExpr = para f
                     )
                 ]
                 <> acceqns
+      envLcl % typeInfoSymTab % symTabCh .= prevSymTabCh
       return (_EStore # ((cxt, fromJust $ lookupInferredSeqTypeExpr ttype ttypemap), Right defn'), [eqn])
     f (ELetF cxt lets (_, mexpr)) = do
       st <- guse equality

@@ -601,10 +601,14 @@ mplAsmComToInstr = \case
 
         if isUsedProc
             then do
-                -- ~(Just vix) <- lookupVarStack callp
-                traceM "in compile"
-                traceM (show seqs)
-                return [_IRun # (Right (map snd insids, map snd outssids), Nothing, length seqs)]
+                accesses <- localMplAsmCompileSt id $ fmap concat $ for seqs $ \v -> do
+                    ~(Just ix) <- lookupVarStack v
+                    varStack %= (v:)
+                    return [_IAccess # ix, _IStore # ()]
+                accessCall <- do
+                    ~(Just ix) <- lookupVarStack callp
+                    return [_IAccess # (ix + length seqs)]
+                return $ accesses ++ accessCall ++ [_IRun # (Right (map snd insids, map snd outssids), Nothing, length seqs)]
             else do
                 -- ~(Just (callid, (pargs, callins, callouts))) <- lookupProc callp
                 proclkup <- lookupProc callp

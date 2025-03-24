@@ -167,7 +167,7 @@ type instance XEList MplTypeChecked = (Location, XMplType MplTypeChecked)
 type instance XEString MplTypeChecked = (Location, XMplType MplTypeChecked)
 type instance XEUnit MplTypeChecked = (Location, XMplType MplTypeChecked)
 type instance XETuple MplTypeChecked = (Location, XMplType MplTypeChecked)
-type instance XEProj MplTypeChecked = Void
+type instance XEProj MplTypeChecked = ()
 type instance XEBuiltInOp MplTypeChecked = (Location, XMplType MplTypeChecked)
 -- built in expression control
 type instance XEIf MplTypeChecked = XMplType MplTypeChecked

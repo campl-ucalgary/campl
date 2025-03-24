@@ -1,10 +1,7 @@
 
-proc p :: | => TopBot =
-    | => ch -> halt ch
-
 proc server :: | => Put( Store( | => TopBot) | TopBot) =
     | => ch -> do
-        put store(p) on ch
+        put store( | => b -> halt b) on ch
         halt ch
 
 proc client :: | Put( Store( | => TopBot) | TopBot) => TopBot =

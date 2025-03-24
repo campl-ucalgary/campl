@@ -1,30 +1,100 @@
--- dumped lambda-lifted output
-proc p__21 :: forall . | => TopBot =
+-- dumped assembled output
+%constructors :
 {
-  | => ch__5__OUT -> halt ch__5__OUT
-}
-proc server__22 :: forall . | => Put (Store (| => TopBot) | TopBot) =
-{
-  | => ch__20__OUT -> do
+  LIST_INTERNAL__ =
   {
-    put store (p__21) on ch__20__OUT;
-    halt ch__20__OUT
+    LIST_INTERNAL_EMPTY__ 0;
+    LIST_INTERNAL_CONS__ 2
+  };
+  UNIT_INTERNAL__ =
+  {
+    UNIT_INTERNAL__ 0
   }
 }
-proc client__71 :: forall . | Put (Store (| => TopBot) | TopBot) => TopBot =
+%processes :
 {
-  | ch1__44__INP => ch2__45__OUT -> do
+  casep113 (n8, u115 | x10 => y12) =
   {
-    get p__43 on ch1__44__INP;
-    close ch1__44__INP;
-    use (p__43) (| => ch2__45__OUT)
+    cInt 0;
+    load u115;
+    eqi;
+    store e119;
+    if e119 then
+    {
+      x10 |=| y12
+    }
+    else
+    {
+      x10 |=| y12
+    }
+  };
+  p78 (u121 | x10 => y12) =
+  {
+    load u121;
+    store e123;
+    load u121;
+    store e125;
+    run casep113 (e123, e125 | x10 => y12)
   }
 }
-proc run__70 :: forall . | => TopBot =
+%processes :
 {
-  | => ch1__69__OUT -> plug
+  q73 (u128 | x50 => y52) =
   {
-    => ch__68__OUT -> server__22 (| => ch__68__OUT);
-    ch__68__INP => ch1__69__OUT -> client__71 (| ch__68__INP => ch1__69__OUT)
+    load u128;
+    store e131;
+    # 0 (e131);
+    store e132;
+    cInt 5;
+    store e134;
+    load u128;
+    store e137;
+    # 1 (e137);
+    store e138;
+    run e138 (e132, e134 | x50 => y52)
   }
+}
+%processes :
+{
+  casep145 (n8, u147 | x10 => y12) =
+  {
+    cInt 0;
+    load u147;
+    eqi;
+    store e149;
+    if e149 then
+    {
+      x10 |=| y12
+    }
+    else
+    {
+      x10 |=| y12
+    }
+  };
+  p__stored78 (u151, u153 | x10 => y12) =
+  {
+    load u151;
+    store e155;
+    case e155 of
+    {
+      UNIT_INTERNAL__ . UNIT_INTERNAL__ () :
+      {
+        load u153;
+        store e157;
+        load u153;
+        store e159;
+        run casep145 (e157, e159 | x10 => y12)
+      }
+    }
+  }
+}
+run (| ch082 => ch184) :
+{
+  UNIT_INTERNAL__ . UNIT_INTERNAL__ ();
+  store e162;
+  sotre_proc p__stored78;
+  store e164;
+  (e162, e164);
+  store e165;
+  run q73 (e165 | ch082 => ch184)
 }

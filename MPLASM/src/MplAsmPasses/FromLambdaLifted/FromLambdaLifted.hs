@@ -565,10 +565,14 @@ mplAssembleExpr = para go
                 return (t' ++ [Asm.CStore () e], e)
             return $ concat vs <> [ Asm.CTuple () es ]
 
-        EProjF _ projnum (_, v) -> assert (projnum >= 0) $ do
-            e <- freshTmpName
-            v' <- v 
-            return $ v' <> [ Asm.CStore () e, Asm.CProj () (fromIntegral projnum) e ]
+        EProjF _ projnum (exp, v) -> assert (projnum >= 0) $
+            case exp of
+                EVar _ e -> 
+                    return [Asm.CProj () (fromIntegral projnum) (toAsmIdP e)]
+                _ -> do
+                    e <- freshTmpName
+                    v' <- v
+                    return $ v' <> [ Asm.CStore () e, Asm.CProj () (fromIntegral projnum) e ]
 
         EIfF _ (_, condc) (_, thenc) (_, elsec) -> do
             e <- freshTmpName

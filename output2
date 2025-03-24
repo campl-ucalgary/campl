@@ -1,0 +1,58 @@
+-- dumped assembled output
+%constructors :
+{
+  LIST_INTERNAL__ =
+  {
+    LIST_INTERNAL_EMPTY__ 0;
+    LIST_INTERNAL_CONS__ 2
+  };
+  UNIT_INTERNAL__ =
+  {
+    UNIT_INTERNAL__ 0
+  }
+}
+%processes :
+{
+  p66 (u98 | x8 => y10) =
+  {
+    x8 |=| y10
+  }
+}
+%processes :
+{
+  q61 (u101 | x38 => y40) =
+  {
+    # 0 (u101);
+    store e105;
+    cInt 5;
+    store e107;
+    # 1 (u101);
+    store e109;
+    run e109 (e105, e107 | x38 => y40)
+  }
+}
+%processes :
+{
+  p__stored66 (u113, u115 | x8 => y10) =
+  {
+    load u113;
+    store e117;
+    case e117 of
+    {
+      UNIT_INTERNAL__ . UNIT_INTERNAL__ () :
+      {
+        x8 |=| y10
+      }
+    }
+  }
+}
+run (| ch070 => ch172) :
+{
+  UNIT_INTERNAL__ . UNIT_INTERNAL__ ();
+  store e120;
+  sotre_proc p__stored66;
+  store e122;
+  (e120, e122);
+  store e123;
+  run q61 (e123 | ch070 => ch172)
+}

@@ -63,7 +63,7 @@ modifyIdentRString f (IdentR idp tag) =
 getUniqueTag :: IdentR -> UniqueTag
 getUniqueTag (IdentR idp tag) = tag
 instance Eq IdentR where
-    a == b = a ^. identRUniqueTag == b ^. identRUniqueTag
+    a == b = a^.identRIdentP == b ^.identRIdentP && a ^. identRUniqueTag == b ^. identRUniqueTag
 
 instance Ord IdentR where
     a <= b = a ^. identRUniqueTag <= b ^. identRUniqueTag

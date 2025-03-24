@@ -16,7 +16,7 @@ import Optics
 
 type HOProcCodeGen a b =
   forall m.
-  ( MonadWriter [MplDefn MplTypeChecked] m
+  ( MonadWriter ([MplDefn MplTypeChecked], [IdP MplTypeChecked]) m
   ) =>
   a ->
   m b
@@ -66,9 +66,12 @@ getPattType = \case
   PChar (_, tp) _ -> tp
   PInt (_, tp) _ -> tp
   PBool (_, tp) _ -> tp
+  
+fst_3 :: (a, b, c) -> a
+fst_3 (a, b, c) = a
 
-search :: [MplPattern MplTypeChecked] -> IdP MplTypeChecked -> Bool
-search [] _ = False
-search (p : ps) id = case p of
-  PVar _ id' -> id == id'
-  _ -> search ps id
+snd_3 :: (a, b, c) -> b
+snd_3 (a, b, c) = b
+
+trd_3 :: (a, b, c) -> c
+trd_3 (a, b, c) = c

@@ -1,0 +1,605 @@
+-- dumped assembled-ast output
+-- super combinators
+MpMachSuperCombinators
+  { _supercombinators =
+      array
+        ( CallIx 0 , CallIx 6 )
+        [ ( CallIx 0
+          , [ ConcInstr
+                (IPlug
+                   [ LocalChan 25 ]
+                   ( ( ( fromList [] , fromList [ LocalChan 25 ] )
+                     , [ SeqInstr (IConst (VChar 'a'))
+                       , SeqInstr IStore
+                       , SeqInstr (ICons (CaseIx 0) 0)
+                       , SeqInstr IStore
+                       , SeqInstr (IAccess 0)
+                       , SeqInstr (IAccess 1)
+                       , SeqInstr (ICons (CaseIx 1) 2)
+                       , SeqInstr IStore
+                       , SeqInstr (IConst (VChar 'b'))
+                       , SeqInstr IStore
+                       , SeqInstr (ICons (CaseIx 0) 0)
+                       , SeqInstr IStore
+                       , SeqInstr (IAccess 0)
+                       , SeqInstr (IAccess 1)
+                       , SeqInstr (ICons (CaseIx 1) 2)
+                       , SeqInstr IStore
+                       , SeqInstr (IAccess 3)
+                       , SeqInstr IStore
+                       , SeqInstr (IAccess 1)
+                       , SeqInstr IStore
+                       , ConcInstr
+                           (IRun
+                              (Left (fromList [ ( LocalChan 14 , LocalChan 25 ) ]))
+                              (Just (CallIx 6))
+                              2)
+                       ]
+                     )
+                   , ( ( fromList [ LocalChan 25 ] , fromList [ LocalChan 0 ] )
+                     , [ ConcInstr
+                           (IPlug
+                              [ LocalChan 26 , LocalChan 27 ]
+                              ( ( ( fromList [ LocalChan 25 , LocalChan 26 ]
+                                  , fromList [ LocalChan 27 ]
+                                  )
+                                , [ ConcInstr
+                                      (IRun
+                                         (Left
+                                            (fromList
+                                               [ ( LocalChan 9 , LocalChan 25 )
+                                               , ( LocalChan 10 , LocalChan 26 )
+                                               , ( LocalChan 11 , LocalChan 27 )
+                                               ]))
+                                         (Just (CallIx 4))
+                                         0)
+                                  ]
+                                )
+                              , ( ( fromList [ LocalChan 27 ]
+                                  , fromList [ LocalChan 0 , LocalChan 26 ]
+                                  )
+                                , [ ConcInstr
+                                      (IPlug
+                                         []
+                                         ( ( ( fromList [] , fromList [ LocalChan 26 ] )
+                                           , [ SeqInstr (IConst (VChar 'c'))
+                                             , SeqInstr IStore
+                                             , SeqInstr (ICons (CaseIx 0) 0)
+                                             , SeqInstr IStore
+                                             , SeqInstr (IAccess 0)
+                                             , SeqInstr (IAccess 1)
+                                             , SeqInstr (ICons (CaseIx 1) 2)
+                                             , SeqInstr IStore
+                                             , SeqInstr (IConst (VChar 'd'))
+                                             , SeqInstr IStore
+                                             , SeqInstr (ICons (CaseIx 0) 0)
+                                             , SeqInstr IStore
+                                             , SeqInstr (IAccess 0)
+                                             , SeqInstr (IAccess 1)
+                                             , SeqInstr (ICons (CaseIx 1) 2)
+                                             , SeqInstr IStore
+                                             , SeqInstr (IAccess 3)
+                                             , SeqInstr IStore
+                                             , SeqInstr (IAccess 1)
+                                             , SeqInstr IStore
+                                             , ConcInstr
+                                                 (IRun
+                                                    (Left
+                                                       (fromList
+                                                          [ ( LocalChan 14 , LocalChan 26 ) ]))
+                                                    (Just (CallIx 6))
+                                                    2)
+                                             ]
+                                           )
+                                         , ( ( fromList [ LocalChan 27 ]
+                                             , fromList [ LocalChan 0 ]
+                                             )
+                                           , [ ConcInstr
+                                                 (IRun
+                                                    (Left
+                                                       (fromList
+                                                          [ ( LocalChan 12 , LocalChan 27 )
+                                                          , ( LocalChan 13 , LocalChan 0 )
+                                                          ]))
+                                                    (Just (CallIx 5))
+                                                    0)
+                                             ]
+                                           )
+                                         ))
+                                  ]
+                                )
+                              ))
+                       ]
+                     )
+                   ))
+            ]
+          )
+        , ( CallIx 1
+          , [ SeqInstr (IAccess 0)
+            , SeqInstr IStore
+            , SeqInstr (IAccess 0)
+            , SeqInstr
+                (ICase
+                   (array
+                      ( CaseIx 0 , CaseIx 0 )
+                      [ ( CaseIx 0
+                        , [ ConcInstr (IHPut (LocalChan 3) (HCaseIx 0))
+                          , ConcInstr
+                              (IFork
+                                 (LocalChan 3)
+                                 ( ( LocalChan 15
+                                   , fromList [ LocalChan 1 ]
+                                   , [ ConcInstr (IId (LocalChan 1) (LocalChan 15)) ]
+                                   )
+                                 , ( LocalChan 16
+                                   , fromList [ LocalChan 2 ]
+                                   , [ ConcInstr (IId (LocalChan 2) (LocalChan 16)) ]
+                                   )
+                                 ))
+                          ]
+                        )
+                      ]))
+            ]
+          )
+        , ( CallIx 2
+          , [ ConcInstr (IHPut (LocalChan 5) (HCaseIx 1))
+            , ConcInstr (IId (LocalChan 5) (LocalChan 4))
+            ]
+          )
+        , ( CallIx 3
+          , [ ConcInstr
+                (IHCase
+                   (LocalChan 7)
+                   (array
+                      ( HCaseIx 0 , HCaseIx 1 )
+                      [ ( HCaseIx 0
+                        , [ ConcInstr
+                              (ISplit (LocalChan 7) ( LocalChan 17 , LocalChan 18 ))
+                          , ConcInstr
+                              (IPlug
+                                 [ LocalChan 19 ]
+                                 ( ( ( fromList [ LocalChan 6 , LocalChan 18 ]
+                                     , fromList [ LocalChan 19 ]
+                                     )
+                                   , [ SeqInstr (IAccess 0)
+                                     , SeqInstr IStore
+                                     , SeqInstr (IAccess 0)
+                                     , SeqInstr IStore
+                                     , ConcInstr
+                                         (IRun
+                                            (Left
+                                               (fromList
+                                                  [ ( LocalChan 6 , LocalChan 6 )
+                                                  , ( LocalChan 7 , LocalChan 18 )
+                                                  , ( LocalChan 8 , LocalChan 19 )
+                                                  ]))
+                                            (Just (CallIx 3))
+                                            1)
+                                     ]
+                                   )
+                                 , ( ( fromList [ LocalChan 17 , LocalChan 19 ]
+                                     , fromList [ LocalChan 8 ]
+                                     )
+                                   , [ SeqInstr (IAccess 0)
+                                     , SeqInstr (IAccess 0)
+                                     , SeqInstr (ITupleElem (TupleIx 0))
+                                     , SeqInstr IStore
+                                     , SeqInstr (IAccess 1)
+                                     , SeqInstr (IAccess 1)
+                                     , SeqInstr (ITupleElem (TupleIx 1))
+                                     , SeqInstr IStore
+                                     , ConcInstr
+                                         (IRun
+                                            (Right
+                                               ( [ LocalChan 17 , LocalChan 19 ]
+                                               , [ LocalChan 8 ]
+                                               ))
+                                            Nothing
+                                            1)
+                                     ]
+                                   )
+                                 ))
+                          ]
+                        )
+                      , ( HCaseIx 1
+                        , [ SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (ITupleElem (TupleIx 0))
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 1)
+                          , SeqInstr (IAccess 1)
+                          , SeqInstr (ITupleElem (TupleIx 1))
+                          , SeqInstr IStore
+                          , ConcInstr
+                              (IRun
+                                 (Right ( [ LocalChan 7 , LocalChan 6 ] , [ LocalChan 8 ] ))
+                                 Nothing
+                                 1)
+                          ]
+                        )
+                      ]))
+            ]
+          )
+        , ( CallIx 4
+          , [ SeqInstr (ICons (CaseIx 0) 0)
+            , SeqInstr IStore
+            , SeqInstr
+                (IStoreProc
+                   [ LocalChan 1 , LocalChan 2 ] [ LocalChan 3 ] (Left (CallIx 1)))
+            , SeqInstr IStore
+            , SeqInstr (IAccess 0)
+            , SeqInstr (IAccess 1)
+            , SeqInstr (ITuple 2)
+            , SeqInstr IStore
+            , SeqInstr (IAccess 0)
+            , SeqInstr IStore
+            , ConcInstr
+                (IRun
+                   (Left
+                      (fromList
+                         [ ( LocalChan 6 , LocalChan 9 )
+                         , ( LocalChan 7 , LocalChan 10 )
+                         , ( LocalChan 8 , LocalChan 11 )
+                         ]))
+                   (Just (CallIx 3))
+                   1)
+            ]
+          )
+        , ( CallIx 5
+          , [ ConcInstr
+                (IHCase
+                   (LocalChan 12)
+                   (array
+                      ( HCaseIx 0 , HCaseIx 1 )
+                      [ ( HCaseIx 0
+                        , [ ConcInstr
+                              (ISplit (LocalChan 12) ( LocalChan 20 , LocalChan 21 ))
+                          , ConcInstr (IGet (LocalChan 20))
+                          , SeqInstr IStore
+                          , ConcInstr (ISHPut (LocalChan 13) SHPutString)
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , ConcInstr (IPut (LocalChan 13))
+                          , ConcInstr (IClose (LocalChan 20))
+                          , ConcInstr
+                              (IRun
+                                 (Left
+                                    (fromList
+                                       [ ( LocalChan 12 , LocalChan 21 )
+                                       , ( LocalChan 13 , LocalChan 13 )
+                                       ]))
+                                 (Just (CallIx 5))
+                                 0)
+                          ]
+                        )
+                      , ( HCaseIx 1
+                        , [ ConcInstr (IGet (LocalChan 12))
+                          , SeqInstr IStore
+                          , ConcInstr (ISHPut (LocalChan 13) SHPutString)
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , ConcInstr (IPut (LocalChan 13))
+                          , ConcInstr (ISHPut (LocalChan 13) SHPutString)
+                          , SeqInstr (IConst (VChar 'a'))
+                          , SeqInstr IStore
+                          , SeqInstr (IConst (VChar 'l'))
+                          , SeqInstr IStore
+                          , SeqInstr (IConst (VChar 'l'))
+                          , SeqInstr IStore
+                          , SeqInstr (IConst (VChar ' '))
+                          , SeqInstr IStore
+                          , SeqInstr (IConst (VChar 'd'))
+                          , SeqInstr IStore
+                          , SeqInstr (IConst (VChar 'a'))
+                          , SeqInstr IStore
+                          , SeqInstr (IConst (VChar 't'))
+                          , SeqInstr IStore
+                          , SeqInstr (IConst (VChar 'a'))
+                          , SeqInstr IStore
+                          , SeqInstr (IConst (VChar ' '))
+                          , SeqInstr IStore
+                          , SeqInstr (IConst (VChar 'h'))
+                          , SeqInstr IStore
+                          , SeqInstr (IConst (VChar 'a'))
+                          , SeqInstr IStore
+                          , SeqInstr (IConst (VChar 's'))
+                          , SeqInstr IStore
+                          , SeqInstr (IConst (VChar ' '))
+                          , SeqInstr IStore
+                          , SeqInstr (IConst (VChar 'r'))
+                          , SeqInstr IStore
+                          , SeqInstr (IConst (VChar 'e'))
+                          , SeqInstr IStore
+                          , SeqInstr (IConst (VChar 'c'))
+                          , SeqInstr IStore
+                          , SeqInstr (IConst (VChar 'i'))
+                          , SeqInstr IStore
+                          , SeqInstr (IConst (VChar 'e'))
+                          , SeqInstr IStore
+                          , SeqInstr (IConst (VChar 'v'))
+                          , SeqInstr IStore
+                          , SeqInstr (IConst (VChar 'e'))
+                          , SeqInstr IStore
+                          , SeqInstr (IConst (VChar 'd'))
+                          , SeqInstr IStore
+                          , SeqInstr (IConst (VChar '!'))
+                          , SeqInstr IStore
+                          , SeqInstr (ICons (CaseIx 0) 0)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 1)
+                          , SeqInstr (ICons (CaseIx 1) 2)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 3)
+                          , SeqInstr (ICons (CaseIx 1) 2)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 5)
+                          , SeqInstr (ICons (CaseIx 1) 2)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 7)
+                          , SeqInstr (ICons (CaseIx 1) 2)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 9)
+                          , SeqInstr (ICons (CaseIx 1) 2)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 11)
+                          , SeqInstr (ICons (CaseIx 1) 2)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 13)
+                          , SeqInstr (ICons (CaseIx 1) 2)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 15)
+                          , SeqInstr (ICons (CaseIx 1) 2)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 17)
+                          , SeqInstr (ICons (CaseIx 1) 2)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 19)
+                          , SeqInstr (ICons (CaseIx 1) 2)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 21)
+                          , SeqInstr (ICons (CaseIx 1) 2)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 23)
+                          , SeqInstr (ICons (CaseIx 1) 2)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 25)
+                          , SeqInstr (ICons (CaseIx 1) 2)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 27)
+                          , SeqInstr (ICons (CaseIx 1) 2)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 29)
+                          , SeqInstr (ICons (CaseIx 1) 2)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 31)
+                          , SeqInstr (ICons (CaseIx 1) 2)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 33)
+                          , SeqInstr (ICons (CaseIx 1) 2)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 35)
+                          , SeqInstr (ICons (CaseIx 1) 2)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 37)
+                          , SeqInstr (ICons (CaseIx 1) 2)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 39)
+                          , SeqInstr (ICons (CaseIx 1) 2)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 41)
+                          , SeqInstr (ICons (CaseIx 1) 2)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , SeqInstr (IAccess 43)
+                          , SeqInstr (ICons (CaseIx 1) 2)
+                          , SeqInstr IStore
+                          , SeqInstr (IAccess 0)
+                          , ConcInstr (IPut (LocalChan 13))
+                          , ConcInstr (ISHPut (LocalChan 13) SHGetString)
+                          , ConcInstr (IGet (LocalChan 13))
+                          , SeqInstr IStore
+                          , ConcInstr (ISHPut (LocalChan 13) SHClose)
+                          , ConcInstr (IClose (LocalChan 13))
+                          , ConcInstr (IHalt (LocalChan 12))
+                          ]
+                        )
+                      ]))
+            ]
+          )
+        , ( CallIx 6
+          , [ ConcInstr
+                (IPlug
+                   [ LocalChan 22 ]
+                   ( ( ( fromList [] , fromList [ LocalChan 22 ] )
+                     , [ SeqInstr (IAccess 1)
+                       , SeqInstr IStore
+                       , SeqInstr (IAccess 0)
+                       , ConcInstr (IPut (LocalChan 22))
+                       , ConcInstr (IHalt (LocalChan 22))
+                       ]
+                     )
+                   , ( ( fromList [ LocalChan 22 ] , fromList [ LocalChan 14 ] )
+                     , [ ConcInstr
+                           (IPlug
+                              [ LocalChan 23 ]
+                              ( ( ( fromList [ LocalChan 22 ] , fromList [ LocalChan 23 ] )
+                                , [ ConcInstr
+                                      (IRun
+                                         (Left
+                                            (fromList
+                                               [ ( LocalChan 4 , LocalChan 22 )
+                                               , ( LocalChan 5 , LocalChan 23 )
+                                               ]))
+                                         (Just (CallIx 2))
+                                         0)
+                                  ]
+                                )
+                              , ( ( fromList [ LocalChan 23 ] , fromList [ LocalChan 14 ] )
+                                , [ ConcInstr
+                                      (IPlug
+                                         [ LocalChan 24 ]
+                                         ( ( ( fromList [] , fromList [ LocalChan 24 ] )
+                                           , [ SeqInstr (IAccess 0)
+                                             , SeqInstr IStore
+                                             , SeqInstr (IAccess 0)
+                                             , ConcInstr (IPut (LocalChan 24))
+                                             , ConcInstr (IHalt (LocalChan 24))
+                                             ]
+                                           )
+                                         , ( ( fromList [ LocalChan 23 , LocalChan 24 ]
+                                             , fromList [ LocalChan 14 ]
+                                             )
+                                           , [ ConcInstr
+                                                 (IRun
+                                                    (Left
+                                                       (fromList
+                                                          [ ( LocalChan 1 , LocalChan 24 )
+                                                          , ( LocalChan 2 , LocalChan 23 )
+                                                          , ( LocalChan 3 , LocalChan 14 )
+                                                          ]))
+                                                    (Just (CallIx 1))
+                                                    0)
+                                             ]
+                                           )
+                                         ))
+                                  ]
+                                )
+                              ))
+                       ]
+                     )
+                   ))
+            ]
+          )
+        ]
+  }
+-- main function
+( ( [] , [ LocalChan 0 ] )
+, [ ConcInstr (ISHPut (LocalChan 0) SHOpenTerm)
+  , ConcInstr
+      (IPlug
+         [ LocalChan 25 ]
+         ( ( ( fromList [] , fromList [ LocalChan 25 ] )
+           , [ SeqInstr (IConst (VChar 'a'))
+             , SeqInstr IStore
+             , SeqInstr (ICons (CaseIx 0) 0)
+             , SeqInstr IStore
+             , SeqInstr (IAccess 0)
+             , SeqInstr (IAccess 1)
+             , SeqInstr (ICons (CaseIx 1) 2)
+             , SeqInstr IStore
+             , SeqInstr (IConst (VChar 'b'))
+             , SeqInstr IStore
+             , SeqInstr (ICons (CaseIx 0) 0)
+             , SeqInstr IStore
+             , SeqInstr (IAccess 0)
+             , SeqInstr (IAccess 1)
+             , SeqInstr (ICons (CaseIx 1) 2)
+             , SeqInstr IStore
+             , SeqInstr (IAccess 3)
+             , SeqInstr IStore
+             , SeqInstr (IAccess 1)
+             , SeqInstr IStore
+             , ConcInstr
+                 (IRun
+                    (Left (fromList [ ( LocalChan 14 , LocalChan 25 ) ]))
+                    (Just (CallIx 6))
+                    2)
+             ]
+           )
+         , ( ( fromList [ LocalChan 25 ] , fromList [ LocalChan 0 ] )
+           , [ ConcInstr
+                 (IPlug
+                    [ LocalChan 26 , LocalChan 27 ]
+                    ( ( ( fromList [ LocalChan 25 , LocalChan 26 ]
+                        , fromList [ LocalChan 27 ]
+                        )
+                      , [ ConcInstr
+                            (IRun
+                               (Left
+                                  (fromList
+                                     [ ( LocalChan 9 , LocalChan 25 )
+                                     , ( LocalChan 10 , LocalChan 26 )
+                                     , ( LocalChan 11 , LocalChan 27 )
+                                     ]))
+                               (Just (CallIx 4))
+                               0)
+                        ]
+                      )
+                    , ( ( fromList [ LocalChan 27 ]
+                        , fromList [ LocalChan 0 , LocalChan 26 ]
+                        )
+                      , [ ConcInstr
+                            (IPlug
+                               []
+                               ( ( ( fromList [] , fromList [ LocalChan 26 ] )
+                                 , [ SeqInstr (IConst (VChar 'c'))
+                                   , SeqInstr IStore
+                                   , SeqInstr (ICons (CaseIx 0) 0)
+                                   , SeqInstr IStore
+                                   , SeqInstr (IAccess 0)
+                                   , SeqInstr (IAccess 1)
+                                   , SeqInstr (ICons (CaseIx 1) 2)
+                                   , SeqInstr IStore
+                                   , SeqInstr (IConst (VChar 'd'))
+                                   , SeqInstr IStore
+                                   , SeqInstr (ICons (CaseIx 0) 0)
+                                   , SeqInstr IStore
+                                   , SeqInstr (IAccess 0)
+                                   , SeqInstr (IAccess 1)
+                                   , SeqInstr (ICons (CaseIx 1) 2)
+                                   , SeqInstr IStore
+                                   , SeqInstr (IAccess 3)
+                                   , SeqInstr IStore
+                                   , SeqInstr (IAccess 1)
+                                   , SeqInstr IStore
+                                   , ConcInstr
+                                       (IRun
+                                          (Left (fromList [ ( LocalChan 14 , LocalChan 26 ) ]))
+                                          (Just (CallIx 6))
+                                          2)
+                                   ]
+                                 )
+                               , ( ( fromList [ LocalChan 27 ] , fromList [ LocalChan 0 ] )
+                                 , [ ConcInstr
+                                       (IRun
+                                          (Left
+                                             (fromList
+                                                [ ( LocalChan 12 , LocalChan 27 )
+                                                , ( LocalChan 13 , LocalChan 0 )
+                                                ]))
+                                          (Just (CallIx 5))
+                                          0)
+                                   ]
+                                 )
+                               ))
+                        ]
+                      )
+                    ))
+             ]
+           )
+         ))
+  ]
+)

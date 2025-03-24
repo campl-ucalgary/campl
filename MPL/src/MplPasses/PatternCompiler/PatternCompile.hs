@@ -66,24 +66,29 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 
 import Unsafe.Coerce
-import MplPasses.PatternCompiler.HOProcCodeGen (runHOProcCodeGenDefn)
+import MplPasses.PatternCompiler.HOProcCodeGen (runHOProcCodeGenDefn, collectProc)
 
 -- TODO: The let floating should really all be in the writer monad instead
 -- of doing the manual plumbing of passing the state up..
 
-runLambdaLiftPostProcProg ::
+runPreProcProg ::
   MplProg MplTypeChecked ->
   MplProg MplTypeChecked
-runLambdaLiftPostProcProg (MplProg prog) = MplProg $ map runlambdaLiftPostProcStmt prog
+runPreProcProg (MplProg prog) =
+    let procSymtab = foldr (flip collectProcesses) (Map.empty) prog
+    in MplProg $ map (runPreProcStmt procSymtab) prog
 
--- | lambda lifts the statements (note that where bindings are not moved to the top level)
-runlambdaLiftPostProcStmt ::
-  MplStmt MplTypeChecked ->
-  MplStmt MplTypeChecked
-runlambdaLiftPostProcStmt stmt =
-  MplStmt
-    (NE.fromList (foldMapOf (stmtDefns % folded) runHOProcCodeGenDefn stmt))
-    (stmt ^.. stmtWhereBindings % folded)
+
+collectProcesses ::
+  Map (IdP MplTypeChecked) (MplDefn MplTypeChecked)
+  -> MplStmt MplTypeChecked  -> Map (IdP MplTypeChecked) (MplDefn MplTypeChecked)
+collectProcesses table stmt = foldr (flip collectProc) table (NE.toList $ _stmtDefns stmt)
+
+
+runPreProcStmt ::
+  Map (IdP MplTypeChecked) (MplDefn MplTypeChecked) -> MplStmt MplTypeChecked -> MplStmt MplTypeChecked
+runPreProcStmt ptable stmt =
+  MplStmt (NE.fromList (foldMapOf (stmtDefns % folded) (runHOProcCodeGenDefn ptable) stmt)) (stmt ^.. stmtWhereBindings % folded)
 
 
 runPatternCompile' ::
@@ -92,7 +97,7 @@ runPatternCompile' ::
     MplProg MplTypeChecked ->
     Either [err] (MplProg MplPatternCompiled)
 runPatternCompile' (top, sup) prog = do
-    let prog' = runLambdaLiftPostProcProg prog
+    let prog' = runPreProcProg prog
     (flip evalState (_Env # (top, sup, mempty, mempty)) . runPatternCompile) prog'
 
 runPatternCompile ::
@@ -168,6 +173,9 @@ patternCompileExpr = cata go
             (ndefns1, r') <- r
             return $ (ndefns0 ++ ndefns1, EPOps ann primop l' r')
         EVarF ann ident -> fmap (mempty,) $ pure $ EVar ann ident
+        EProjF ann i expr -> do
+            (ndefnsexpr, expr') <- expr
+            fmap (mempty,) $ pure $ EProj (TypeBuiltIn (TypeUnitF Nothing)) i expr'
         EIntF ann n -> fmap (mempty,) $ pure $ EInt (snd ann) n
         ECharF ann v -> fmap (mempty,) $ pure $ EChar (snd ann) v
         EDoubleF ann v -> fmap (mempty,) $ pure $ EDouble (snd ann) v

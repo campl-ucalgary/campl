@@ -15,10 +15,10 @@ proc q :: Int, Store( | A => A) | A => A, StringTerminal =
                 get _ on strterm
                 hput StringTerminalClose on strterm
                 close strterm
-                x |=| y                      
+                x |=| y                   
             _ -> do
                 hput StringTerminalPut on strterm
-                put "hello!" on strterm
+                put "hi!" on strterm
                 plug
                     use(p)( | x => z)     
                     q( n - 1, p | z => y, strterm)
