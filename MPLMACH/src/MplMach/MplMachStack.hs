@@ -19,7 +19,10 @@ import Data.Array
 import Data.Traversable
 import Data.Foldable
 
+import System.IO
+import System.IO.Error
 import System.IO.Unsafe
+import Control.Exception
 import Control.Concurrent hiding (yield)
 import Control.Concurrent.MVar
 import Control.Concurrent.STM
@@ -33,6 +36,8 @@ import Control.Monad.Reader
 import MplMach.MplMachTypes
 
 import Data.Map (Map)
+import Data.Char
+import Data.Maybe
 
 import qualified Text.Show.Pretty as PrettyShow
 
@@ -64,6 +69,7 @@ data MplMachServicesEnv = MplMachServicesEnv
     , _servicePortName :: String
     , _serviceChGen :: IORef ServiceCh
     , _serviceMap :: MVar (Map ServiceCh TranslationLkup)
+    , _serverClientChs :: MVar [(String, String)]
     }
 
 
@@ -75,14 +81,18 @@ initMplMachEnv sp = do
     mp <- newMVar mempty
     svch <- newIORef $ coerce @Int @ServiceCh (-10)
     nmvar <- newMVar ()
+    -- do some file IO and parsing?
+    ((svhn, svpn), scchs) <- getServicesHostPortNames
+    mvarscchs <- newMVar scchs
     return $
         MplMachEnv 
             { _supercombinatorEnv = sp
             , _servicesEnv = MplMachServicesEnv 
-                { _serviceHostName = "0.0.0.0"
-                , _servicePortName = "3000"
+                { _serviceHostName = svhn
+                , _servicePortName = svpn
                 , _serviceChGen = svch
                 , _serviceMap = mp
+                , _serverClientChs = mvarscchs
                 }
             , _stdLock = nmvar
             }
@@ -96,6 +106,61 @@ runMplMach ma env = runReaderT (unwrapMplMach ma) env
 
     
 
+getServicesHostPortNames :: IO ((String, String), [(String, String)])
+getServicesHostPortNames = catchIOError tryConfigFile useDefaults
+    where
+        tryConfigFile = withFile "Services/config" ReadMode parseConfigFile
+        useDefaults _ = return (("0.0.0.0", "3000"), [])
+
+
+-- returns ((_serviceHostName, _servicePortName), _serverClientChs)
+parseConfigFile :: Handle -> IO ((String, String), [(String, String)])
+parseConfigFile h = do
+    svs <- getServicesLine
+    scchs <- getServerClientLines
+    return (svs, scchs)
+    where 
+        -- first non-comment line is always assumned to be for services
+        getServicesLine = do
+            maybeLine <- maybeGetLine
+            -- if the file is empty or only comments, then use defaults
+            maybe (return ("0.0.0.0", "3000")) splitHnPn maybeLine
+        
+        -- the rest of the file are all for ServerClient channels
+        getServerClientLines :: IO [(String, String)]
+        getServerClientLines = do
+            maybeLine <- maybeGetLine
+            case maybeLine of
+            -- end of file is empty list
+                Nothing -> return []
+            -- then build up list with rest of file
+                Just ln -> do
+                    hnpn <- splitHnPn ln
+                    hnpns <- getServerClientLines
+                    return $ hnpn : hnpns
+        
+        -- given a hostname:portname line parse the hostname and portname 
+        splitHnPn str = do
+            let is = elemIndices ':' str
+            if length is == 1 then do
+                let i = head is 
+                return (take i str, drop (i+1) str)
+            else throwIO $ userError $ "failed to parse hostname:portname from " ++ str
+    
+        -- return Just first non-comment line or Nothing
+        maybeGetLine = do
+            hIsEOF h >>= \case
+                True -> return Nothing
+                False -> do
+                    ln <- hGetLine h
+                    -- if it's a comment then skip
+                    if isComment ln then maybeGetLine
+                    -- otherwise return the line and remove all whitespace too idk
+                    else return $ Just $ filter (not . isSpace) ln
+        
+        -- i don't think this is monad
+        isComment ln = "--" `isPrefixOf` dropWhile isSpace ln
+        
 
 {- | wrapper for 'newTQueue'. 
 Notes about the debug build: 

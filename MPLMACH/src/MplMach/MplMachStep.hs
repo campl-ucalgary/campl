@@ -642,6 +642,9 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                 -- uses Network.Simple.TCP.TLS
                 SHOpenServer -> do
                     let slkup = flipTranslationLkup chlkup
+                    -- get the host name and port name from the environment and put the list back with this one removed?
+                    mvarhnpns <- gview serverClientChs
+                    (hn, pn) <- liftIO $ modifyMVar mvarhnpns (\((hn, pn):hnpns) -> pure (hnpns, (hn, pn)))
                     -- withSocketsDo $ flip runMplMach env $ do   -- this was causing a type error idfk
                     errcred <- liftIO $ T.credentialLoadX509 "TLS_Server/CA.crt" "TLS_Server/privkey-CA.pem"
                     case errcred of
@@ -652,7 +655,7 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                                 Just certauth -> do
                                     -- server's credentials, certauth to auth client's cred
                                     let params = TLS.makeServerParams cred $ Just certauth
-                                    return $ Just $ TLS.serve params (TLS.Host "0.0.0.0") "4000" (flip runMplMach env . serviceSCServerTLS slkup)
+                                    return $ Just $ TLS.serve params (TLS.Host hn) pn (flip runMplMach env . serviceSCServerTLS slkup)
                                     -- TLS.serve params (TLS.Host "0.0.0.0") "4000" $ \(context, addr) -> do
                                     --     msg <- TLS.recv context
                                     --     unless (isNothing msg) $ do
@@ -687,6 +690,9 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                 -- TODO: implement without hardcoded ip address and port 4000?
                 SHOpenClient -> do
                     let slkup = flipTranslationLkup chlkup
+                    -- get the host name and port name from the environment and put the list back with this one removed?
+                    mvarhnpns <- gview serverClientChs
+                    (hn, pn) <- liftIO $ modifyMVar mvarhnpns (\((hn, pn):hnpns) -> pure (hnpns, (hn, pn)))
                     -- withSocketsDo $ flip runMplMach env $ do    -- this was causing a type error idfk
                     errcred <- liftIO $ T.credentialLoadX509 "TLS_Client/Client.crt" "TLS_Client/privkey-Client.pem"
                     case errcred of
@@ -696,9 +702,9 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                             case maybecertauth of
                                 Just certauth -> do
                                     -- this service ID is going to be matched against the server's cert 
-                                    let params = makeClientParams ("root", fromString ":4000") cred certauth
+                                    let params = makeClientParams ("root", fromString (":" ++ pn)) cred certauth
                                     -- these are the actual IP addr and port for the connection
-                                    return $ Just $ TLS.connect params "0.0.0.0" "4000" (flip runMplMach env . serviceSCClientTLS slkup)
+                                    return $ Just $ TLS.connect params hn pn (flip runMplMach env . serviceSCClientTLS slkup)
                                     -- TLS.connect params "0.0.0.0" "4000" $ \(context, addr) -> do
                                     --     TLS.send context "Hello, this is a test?!"
                                     --     msg <- TLS.recv context

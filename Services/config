@@ -1,0 +1,7 @@
+-- we will probably want to pass the name of the config file as an arg or something? for now i think it's fine to do just have "config" and edit this file between runs. as long as we just look at it in the beginning and then close it, we should be fine to do that.
+-- okay first IP address and port is always for the services server. we should also make it that we have a default if there is no config file for like backwards compatibility i guess
+0.0.0.0:3000
+-- when i run two campl programs on the same computer then i just comment and uncomment these lines so that the services for each program run on different ports
+-- 0.0.0.0:3001
+-- then we will have the ServerClient IP addrs and ports, each on its own line, in the order they appear in the main process. first input polarity (if there are any) and then output polarity (if there are any).
+0.0.0.0:4000
