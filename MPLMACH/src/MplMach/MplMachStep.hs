@@ -66,6 +66,15 @@ import System.IO (isEOF)
 import Network.Socket
 import Network.Socket.ByteString
 
+import qualified Network.TLS as T
+import qualified Network.TLS.Extra as TE
+import qualified Network.Simple.TCP.TLS as TLS (serve, connect, recv, send, makeServerParams, HostPreference( Host ))
+import qualified Data.X509 as X
+import qualified Data.X509.CertificateStore as X
+import qualified Data.X509.Validation as X
+import Data.ByteString.UTF8 (fromString)
+import Data.Default (def)
+
 import System.Process (spawnCommand)
 
 import Debug.Trace
@@ -629,49 +638,87 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                 SHOpenTerm -> sOpenTerm chlkup >> return Nothing
 
 
-                -- TODO: implement without hardcoded port 4000 (maybe add a list of server ports to env or something?)
-                -- also maybe we don't need this first runMplMach i have no idea lmao
-                SHOpenServer -> 
-                    -- withSocketsDo $ flip runMplMach env $    -- this was causing a type error idfk
-                    do
+                -- TODO: implement without hardcoded values (maybe add a list of server or client ip addr and ports to env or something?)
+                -- uses Network.Simple.TCP.TLS
+                SHOpenServer -> do
                     let slkup = flipTranslationLkup chlkup
-                        hints = defaultHints { addrSocketType = Stream }
-                    addrinf <- liftIO $ fmap head $ getAddrInfo (Just hints) (Just $ env ^. serviceHostName) (Just "4000")
-                    return $ Just $ liftIO $ bracket 
-                        -- open the socket resource
-                        (open addrinf)
-                        -- close the socket (library call)
-                        close
-                        -- run the server? (like the serviceManager function for the other terminals)
-                        -- but we return type IO (...) instead of MplMach MplMachEnv (...) and this is bad??
-                        (flip runMplMach env . serviceSCServer slkup)
-                  where
-                    -- opens the socket with sane defaults (standard C way of opening a socket translated to Haskell)
-                    open addrinf = do
-                        s <- socket (addrFamily addrinf) (addrSocketType addrinf) (addrProtocol addrinf)
-                        setSocketOption s ReuseAddr 1
-                        withFdSocket s setCloseOnExecIfNeeded
-                        bind s $ addrAddress addrinf
-                        listen s 1024
-                        return s
+                    -- withSocketsDo $ flip runMplMach env $ do   -- this was causing a type error idfk
+                    errcred <- liftIO $ T.credentialLoadX509 "TLS_Server/CA.crt" "TLS_Server/privkey-CA.pem"
+                    case errcred of
+                        Left err -> liftIO $ throwIO $ userError err
+                        Right cred -> do
+                            maybecertauth <- liftIO $ X.readCertificateStore "TLS_Server/CA.crt"
+                            case maybecertauth of
+                                Just certauth -> do
+                                    -- server's credentials, certauth to auth client's cred
+                                    let params = TLS.makeServerParams cred $ Just certauth
+                                    return $ Just $ TLS.serve params (TLS.Host "0.0.0.0") "4000" (flip runMplMach env . serviceSCServerTLS slkup)
+                                    -- TLS.serve params (TLS.Host "0.0.0.0") "4000" $ \(context, addr) -> do
+                                    --     msg <- TLS.recv context
+                                    --     unless (isNothing msg) $ do
+                                    --         putStr "Received: "
+                                    --         B.putStrLn (fromJust msg)
+                                    --         TLS.send context $ fromString "hi!"
+                                    -- return Nothing
+                                Nothing -> liftIO $ throwIO $ userError "failed to read cert auth into CertificateStore"
+
+                --     let slkup = flipTranslationLkup chlkup
+                --         hints = defaultHints { addrSocketType = Stream }
+                --     addrinf <- liftIO $ fmap head $ getAddrInfo (Just hints) (Just $ env ^. serviceHostName) (Just "4000")
+                --     return $ Just $ liftIO $ bracket 
+                --         -- open the socket resource
+                --         (open addrinf)
+                --         -- close the socket (library call)
+                --         close
+                --         -- run the server? (like the serviceManager function for the other terminals)
+                --         -- but we return type IO (...) instead of MplMach MplMachEnv (...) and this is bad??
+                --         (flip runMplMach env . serviceSCServer slkup)
+                --   where
+                --     -- opens the socket with sane defaults (standard C way of opening a socket translated to Haskell)
+                --     open addrinf = do
+                --         s <- socket (addrFamily addrinf) (addrSocketType addrinf) (addrProtocol addrinf)
+                --         setSocketOption s ReuseAddr 1
+                --         withFdSocket s setCloseOnExecIfNeeded
+                --         bind s $ addrAddress addrinf
+                --         listen s 1024
+                --         return s
 
 
                 -- TODO: implement without hardcoded ip address and port 4000?
-                SHOpenClient -> 
-                    -- withSocketsDo $ flip runMplMach env $     -- this was causing a type error idfk
-                    do
+                SHOpenClient -> do
                     let slkup = flipTranslationLkup chlkup
-                        hints = defaultHints { addrSocketType = Stream }
-                    addrinf <- liftIO $ fmap head $ getAddrInfo (Just hints) (Just "0.0.0.0") (Just "4000")
-                    return $ Just $ liftIO $ bracket 
-                        (open addrinf) 
-                        close 
-                        (flip runMplMach env . serviceSCClient slkup)
-                  where
-                    open addrinf = do
-                        s <- socket (addrFamily addrinf) (addrSocketType addrinf) (addrProtocol addrinf)
-                        connect s $ addrAddress addrinf
-                        return s
+                    -- withSocketsDo $ flip runMplMach env $ do    -- this was causing a type error idfk
+                    errcred <- liftIO $ T.credentialLoadX509 "TLS_Client/Client.crt" "TLS_Client/privkey-Client.pem"
+                    case errcred of
+                        Left err -> liftIO $ throwIO $ userError err
+                        Right cred -> do
+                            maybecertauth <- liftIO $ X.readCertificateStore "TLS_Client/CA.crt"
+                            case maybecertauth of
+                                Just certauth -> do
+                                    -- this service ID is going to be matched against the server's cert 
+                                    let params = makeClientParams ("root", fromString ":4000") cred certauth
+                                    -- these are the actual IP addr and port for the connection
+                                    return $ Just $ TLS.connect params "0.0.0.0" "4000" (flip runMplMach env . serviceSCClientTLS slkup)
+                                    -- TLS.connect params "0.0.0.0" "4000" $ \(context, addr) -> do
+                                    --     TLS.send context "Hello, this is a test?!"
+                                    --     msg <- TLS.recv context
+                                    --     putStr "Received: "
+                                    --     B.putStrLn (fromMaybe "" msg)
+                                    -- return Nothing
+                                Nothing -> liftIO $ throwIO $ userError "failed to read cert auth into CertificateStore"
+
+                --     let slkup = flipTranslationLkup chlkup
+                --         hints = defaultHints { addrSocketType = Stream }
+                --     addrinf <- liftIO $ fmap head $ getAddrInfo (Just hints) (Just "0.0.0.0") (Just "4000")
+                --     return $ Just $ liftIO $ bracket 
+                --         (open addrinf) 
+                --         close 
+                --         (flip runMplMach env . serviceSCClient slkup)
+                --   where
+                --     open addrinf = do
+                --         s <- socket (addrFamily addrinf) (addrSocketType addrinf) (addrProtocol addrinf)
+                --         connect s $ addrAddress addrinf
+                --         return s
 
 
                 _ -> do
@@ -712,7 +759,8 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
 
             return $ Just $ stec'
           where
-            chlkup = t Map.! ch
+            Just chlkup = Map.lookup ch t 
+            -- chlkup = t Map.! ch
 
         -- IHCase LocalChan (Array HCaseIx [Instr])
         (s, t , e, IHCase ch hcases) -> do
@@ -836,6 +884,125 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
 -- * Services 
 
 -- * Remote Services (Servers and Clients (SC))
+
+-- * TLS version of serviceClientLoop basically
+serviceSCServerTLS ::
+    TranslationLkup ->
+    (T.Context, SockAddr) ->
+    MplMach MplMachEnv ()
+serviceSCServerTLS slkup (c,s) = gview equality >>= \env -> do
+    serviceSCServerLoopTLS (c,s) slkup (recvPipeTLS (c,s)) (serviceQueueSInstrPipe slkup)
+
+serviceSCServerLoopTLS ::
+    -- | socket
+    (T.Context, SockAddr) ->
+    -- | Translation lookup
+    TranslationLkup ->
+    -- | producer for the socket
+    Producer ByteString (MplMach MplMachEnv) () ->
+    -- | producer from the instructions
+    Producer SInstr (MplMach MplMachEnv) () ->
+    -- | result
+    MplMach MplMachEnv ()
+serviceSCServerLoopTLS (c,s) gchlkup psock pinstrs = next pinstrs >>= \case
+    Left () -> return ()
+    Right (instr, pinstrs') -> case instr of
+-- String instructions
+        SHGetString -> do
+            -- send that we want an int
+            liftIO $ TLS.send c $ snInstrToByteString SNGetString
+            -- keep looking querying until we actually parse a string
+            (psock', inp) <- loop psock
+
+            -- add it to the queue
+            fetchAndWriteChMQueue (gchlkup ^. activeQueue) $ QPut $ strToVal inp
+
+            serviceSCServerLoopTLS (c,s) gchlkup psock' pinstrs'
+          where
+            loop psock = do
+                ~(mval, psock') <- P.runStateT (PA.parse pSNString) psock 
+                case mval of
+                    Just (Right val) -> return (psock', val)
+                    _ -> loop psock'
+
+        SHPutString -> do
+
+            v <- liftIO $ atomically $ 
+                gchlkup ^. otherQueue % to readChMQueue
+                    >>= readTQueue
+                    >>= \case
+                        QPut v -> return $ valToStr v
+                        bad -> throwSTM $ ppShowIllegalStep bad
+
+            -- send we want to put an int
+            liftIO $ TLS.send c $ snInstrToByteString SNPutString
+
+            -- send actually put the int
+            liftIO $ TLS.send c $ snInstrToByteString $ SNString v
+                
+            serviceSCServerLoopTLS (c,s) gchlkup psock pinstrs'
+
+        SHClose -> do
+            liftIO $ TLS.send c $ snInstrToByteString SNClose
+            return ()
+
+        _ -> liftIO $ throwIO $ userError $ "illegal service in TLS server: " ++ show instr
+
+serviceSCClientTLS ::
+    TranslationLkup ->
+    (T.Context, SockAddr) ->
+    MplMach MplMachEnv ()
+serviceSCClientTLS slkup (c,s) = loop (recvPipeTLS (c,s))
+  where
+    loop ps = do
+        (res, ps') <- P.runStateT (PA.parse pSNCmd) ps
+        case res of
+            Just (Right instr) -> case instr of
+                SNGetString -> do
+                    -- we are using service instructions as protocol handle ids basically...
+                    fetchAndWriteChMQueue (slkup ^. activeQueue) $ QSHPut SHGetString
+                    ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER("ihsput", slkup)
+                    n <- liftIO $ atomically $ do
+
+                        TRACE_TRANSLATION_LKUP_WITH_HEADER("get", slkup)
+
+                        -- idk if we want to peek and retry or not??
+                        -- i think we want to retry because we are making a request
+                        chotherqueue <- slkup ^. otherQueue % to readChMQueue
+                        peekTQueue chotherqueue >>= \case
+                            QPut v -> do
+                                _ <- readTQueue chotherqueue
+                                return $ valToStr v
+                            _ -> retry
+
+                    liftIO $ TLS.send c $ snInstrToByteString $ SNString n
+                    loop ps'
+
+                SNPutString -> do
+                    (res, ps'') <- P.runStateT (PA.parse pSNString) ps'
+                    -- the server sent that they are sending a string, so we don't need to loop
+                    -- it's either there or something is wrong?
+                    case res of
+                        Just (Right res') -> do
+                            -- we are using service instructions as protocol handle ids basically...
+                            fetchAndWriteChMQueue (slkup ^. activeQueue) $ QSHPut SHPutString
+                            ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER("ihsput", slkup)
+                            fetchAndWriteChMQueue (slkup ^. activeQueue) $ QPut $ strToVal res'
+                            ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER("put", slkup)
+                            loop ps''
+                        bad -> liftIO $ throwIO $ ppShowIllegalStep bad
+
+                SNClose -> do
+                    -- we are using service instructions as protocol handle ids basically...
+                    fetchAndWriteChMQueue (slkup ^. activeQueue) $ QSHPut SHClose 
+                    ATOMICALLY_TRACE_TRANSLATION_LKUP_WITH_HEADER("ihsput", slkup)
+                    return ()
+
+                bad -> liftIO $ throwIO $ ppShowIllegalStep bad
+            bad -> liftIO $ throwIO $ ppShowIllegalStep bad
+
+
+-- * OLD
 
 -- waits for connections from SC (remote) clients
 -- TODO: check that the campl process "running" the server has put a split command on the other end 
@@ -1137,6 +1304,23 @@ recvPipe s = go
     rECV_MAX_BYTES_TO_RECEIVE :: Int
     rECV_MAX_BYTES_TO_RECEIVE = 4096
 
+            
+recvPipeTLS :: 
+    ( MonadIO m ) =>
+    (T.Context, SockAddr) ->
+    Producer ByteString m ()
+recvPipeTLS (c,s) = go 
+  where
+    go = do
+        -- idk if this will have the same not blocking if it doesn't receive anything problem?
+        -- i'll remove it i guess. we'll see
+        res <- liftIO $ TLS.recv c
+        unless (isNothing res) $ yield $ fromJust res 
+        go
+
+    -- Network.Simple.TCP.TLS.recv Receives decrypted bytes from the given Context. Returns Nothing on EOF.
+    -- Up to 16384 decrypted bytes will be received at once.
+
 {-| Rougly follows the idea here: https://redis.io/topics/protocol. The specification is as follows.
 
     * Integers the first byte of the reply is ":"
@@ -1421,3 +1605,21 @@ sOpenTerm chlkup = void $ do
         , "'"
         ]
         -}
+
+
+-- this is taken from Network.Simple.TCP.TLS but fixed so that on cert request it just sends its credentials
+-- (the server will just reject if it's the wrong thing)
+makeClientParams :: X.ServiceID -> T.Credential -> X.CertificateStore -> T.ClientParams
+makeClientParams (hn, sp) cred certauth =
+    (T.defaultParamsClient hn sp)
+      { T.clientUseServerNameIndication = True
+      , T.clientSupported = def
+        { T.supportedVersions = [T.TLS13]
+        , T.supportedCiphers = TE.ciphersuite_default
+        , T.supportedSecureRenegotiation = True
+        , T.supportedClientInitiatedRenegotiation = True }
+      , T.clientShared = def { T.sharedCAStore = certauth }
+      , T.clientHooks = def
+        { T.onServerCertificate = X.validateDefault
+        , T.onCertificateRequest = pure . (\_ -> Just cred) }
+      }

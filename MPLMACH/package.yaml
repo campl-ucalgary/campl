@@ -37,6 +37,13 @@ dependencies:
 - containers
 - array
 - process
+- tls
+- network-simple-tls
+- x509
+- x509-store
+- x509-validation
+- utf8-string
+- data-default
 
 # maybe consider using: to get rid of the liftIO so we can use an MTL representation
 # https://hackage.haskell.org/package/exceptions
