@@ -631,7 +631,7 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                         . Map.insert (coerce ch) slkup
                         ) 
                     -}
-                    return $ Just $ liftIO $ runMplMach (serviceThread slkup) env
+                    return $ Just $ Right $ liftIO $ runMplMach (serviceThread slkup) env
 
 
                 -- SHOpenTerm -> sOpenTerm ch chlkup >> return Nothing
@@ -655,7 +655,7 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                                 Just certauth -> do
                                     -- server's credentials, certauth to auth client's cred
                                     let params = TLS.makeServerParams cred $ Just certauth
-                                    return $ Just $ TLS.serve params (TLS.Host hn) pn (flip runMplMach env . serviceSCServerTLS slkup)
+                                    return $ Just $ Left $ TLS.serve params (TLS.Host hn) pn (flip runMplMach env . serviceSCServerTLS slkup)
                                     -- TLS.serve params (TLS.Host "0.0.0.0") "4000" $ \(context, addr) -> do
                                     --     msg <- TLS.recv context
                                     --     unless (isNothing msg) $ do
@@ -704,7 +704,7 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                                     -- this service ID is going to be matched against the server's cert 
                                     let params = makeClientParams ("root", fromString (":" ++ pn)) cred certauth
                                     -- these are the actual IP addr and port for the connection
-                                    return $ Just $ TLS.connect params hn pn (flip runMplMach env . serviceSCClientTLS slkup)
+                                    return $ Just $ Right $ TLS.connect params hn pn (flip runMplMach env . serviceSCClientTLS slkup)
                                     -- TLS.connect params "0.0.0.0" "4000" $ \(context, addr) -> do
                                     --     TLS.send context "Hello, this is a test?!"
                                     --     msg <- TLS.recv context
@@ -737,7 +737,12 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
 
             let next = stec & code !~ c
             case svs of
-                Just sv -> liftIO (concurrently_ (mplMachSteps' next) sv) *> return Nothing
+                -- servers. i think technically we should use the thread id to cancel it when we close the channel
+                -- this will just close the server when the whole program halts i think
+                -- which is better than nothing but not quite right
+                Just (Left sv) -> liftIO (race_ (mplMachSteps' next) sv) *> return Nothing
+                -- threads and clients
+                Just (Right sv) -> liftIO (concurrently_ (mplMachSteps' next) sv) *> return Nothing
                 Nothing -> return $ Just next
                     
           where
