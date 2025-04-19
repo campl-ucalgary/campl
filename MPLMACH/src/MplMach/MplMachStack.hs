@@ -69,7 +69,10 @@ data MplMachServicesEnv = MplMachServicesEnv
     , _servicePortName :: String
     , _serviceChGen :: IORef ServiceCh
     , _serviceMap :: MVar (Map ServiceCh TranslationLkup)
-    , _serverClientChs :: MVar [(String, String)]
+    -- hostname, portname, filepaths to: public key cert, private key, cert auth
+    , _serverClientChs :: MVar [(String, String, String, String, String)]
+    -- might use this for a better way to close servers when the channel is closed
+    -- , _serverClientMap :: MVar (Map LocalChan TranslationLkup)
     }
 
 
@@ -84,6 +87,7 @@ initMplMachEnv sp = do
     -- do some file IO and parsing?
     ((svhn, svpn), scchs) <- getServicesHostPortNames
     mvarscchs <- newMVar scchs
+    -- scmp <- newMVar mempty
     return $
         MplMachEnv 
             { _supercombinatorEnv = sp
@@ -93,6 +97,7 @@ initMplMachEnv sp = do
                 , _serviceChGen = svch
                 , _serviceMap = mp
                 , _serverClientChs = mvarscchs
+                -- , _serverClientMap = scmp
                 }
             , _stdLock = nmvar
             }
@@ -106,7 +111,7 @@ runMplMach ma env = runReaderT (unwrapMplMach ma) env
 
     
 
-getServicesHostPortNames :: IO ((String, String), [(String, String)])
+getServicesHostPortNames :: IO ((String, String), [(String, String, String, String, String)])
 getServicesHostPortNames = catchIOError tryConfigFile useDefaults
     where
         tryConfigFile = withFile "Services/config" ReadMode parseConfigFile
@@ -114,7 +119,7 @@ getServicesHostPortNames = catchIOError tryConfigFile useDefaults
 
 
 -- returns ((_serviceHostName, _servicePortName), _serverClientChs)
-parseConfigFile :: Handle -> IO ((String, String), [(String, String)])
+parseConfigFile :: Handle -> IO ((String, String), [(String, String, String, String, String)])
 parseConfigFile h = do
     svs <- getServicesLine
     scchs <- getServerClientLines
@@ -127,17 +132,23 @@ parseConfigFile h = do
             maybe (return ("0.0.0.0", "3000")) splitHnPn maybeLine
         
         -- the rest of the file are all for ServerClient channels
-        getServerClientLines :: IO [(String, String)]
+        getServerClientLines :: IO [(String, String, String, String, String)]
         getServerClientLines = do
-            maybeLine <- maybeGetLine
-            case maybeLine of
-            -- end of file is empty list
+            maybeHnPn <- maybeGetLine
+            case maybeHnPn of
+                -- end of file is empty list
                 Nothing -> return []
-            -- then build up list with rest of file
-                Just ln -> do
-                    hnpn <- splitHnPn ln
-                    hnpns <- getServerClientLines
-                    return $ hnpn : hnpns
+                -- then build up list with rest of file
+                Just hnpnln -> do
+                    (hn, pn) <- splitHnPn hnpnln
+                    maybeFilepaths <- maybeGetLine
+                    case maybeFilepaths of
+                        -- end of file is parse error. need filepaths
+                        Nothing -> throwIO $ userError "failed to parse pubcert_filepath, privkey_filepath, certauth_filepath"
+                        Just fpln -> do
+                            (pubcert, privkey, certauth) <- splitFilePaths fpln
+                            rest <- getServerClientLines
+                            return $ (hn, pn, pubcert, privkey, certauth) : rest
         
         -- given a hostname:portname line parse the hostname and portname 
         splitHnPn str = do
@@ -146,6 +157,15 @@ parseConfigFile h = do
                 let i = head is 
                 return (take i str, drop (i+1) str)
             else throwIO $ userError $ "failed to parse hostname:portname from " ++ str
+    
+        -- given a filepath,filepath,filepath line parse the filepaths
+        splitFilePaths str = do
+            let is = elemIndices ',' str
+            if length is == 2 then do
+                let i1 = head is 
+                    i2 = head (tail is)
+                return (take i1 str, drop (i1+1) $ take i2 str, drop (i2+1) str)
+            else throwIO $ userError $ "failed to parse filepath,filepath,filepath from " ++ str
     
         -- return Just first non-comment line or Nothing
         maybeGetLine = do

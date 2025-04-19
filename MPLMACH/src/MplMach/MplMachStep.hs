@@ -642,15 +642,15 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                 -- uses Network.Simple.TCP.TLS
                 SHOpenServer -> do
                     let slkup = flipTranslationLkup chlkup
-                    -- get the host name and port name from the environment and put the list back with this one removed?
-                    mvarhnpns <- gview serverClientChs
-                    (hn, pn) <- liftIO $ modifyMVar mvarhnpns (\((hn, pn):hnpns) -> pure (hnpns, (hn, pn)))
+                    -- get the host name, port name, and filepaths from the environment and put the list back with this one removed?
+                    mvarscchs <- gview serverClientChs
+                    (hn, pn, pubcert, privkey, certauth) <- liftIO $ modifyMVar mvarscchs (\(scch:scchs) -> pure (scchs, scch))
                     -- withSocketsDo $ flip runMplMach env $ do   -- this was causing a type error idfk
-                    errcred <- liftIO $ T.credentialLoadX509 "TLS_Server/CA.crt" "TLS_Server/privkey-CA.pem"
+                    errcred <- liftIO $ T.credentialLoadX509 pubcert privkey
                     case errcred of
                         Left err -> liftIO $ throwIO $ userError err
                         Right cred -> do
-                            maybecertauth <- liftIO $ X.readCertificateStore "TLS_Server/CA.crt"
+                            maybecertauth <- liftIO $ X.readCertificateStore certauth
                             case maybecertauth of
                                 Just certauth -> do
                                     -- server's credentials, certauth to auth client's cred
@@ -690,18 +690,19 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                 -- TODO: implement without hardcoded ip address and port 4000?
                 SHOpenClient -> do
                     let slkup = flipTranslationLkup chlkup
-                    -- get the host name and port name from the environment and put the list back with this one removed?
-                    mvarhnpns <- gview serverClientChs
-                    (hn, pn) <- liftIO $ modifyMVar mvarhnpns (\((hn, pn):hnpns) -> pure (hnpns, (hn, pn)))
+                    -- get the host name, port name, and filepaths from the environment and put the list back with this one removed?
+                    mvarscchs <- gview serverClientChs
+                    (hn, pn, pubcert, privkey, certauth) <- liftIO $ modifyMVar mvarscchs (\(scch:scchs) -> pure (scchs, scch))
                     -- withSocketsDo $ flip runMplMach env $ do    -- this was causing a type error idfk
-                    errcred <- liftIO $ T.credentialLoadX509 "TLS_Client/Client.crt" "TLS_Client/privkey-Client.pem"
+                    errcred <- liftIO $ T.credentialLoadX509 pubcert privkey
                     case errcred of
                         Left err -> liftIO $ throwIO $ userError err
                         Right cred -> do
-                            maybecertauth <- liftIO $ X.readCertificateStore "TLS_Client/CA.crt"
+                            maybecertauth <- liftIO $ X.readCertificateStore certauth
                             case maybecertauth of
                                 Just certauth -> do
                                     -- this service ID is going to be matched against the server's cert 
+                                    -- maybe need to just make this "" instead of "root" so we don't need to put anything here when we make the certs
                                     let params = makeClientParams ("root", fromString (":" ++ pn)) cred certauth
                                     -- these are the actual IP addr and port for the connection
                                     return $ Just $ Right $ TLS.connect params hn pn (flip runMplMach env . serviceSCClientTLS slkup)
