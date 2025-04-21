@@ -655,6 +655,8 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                                 Just certauth -> do
                                     -- server's credentials, certauth to auth client's cred
                                     let params = TLS.makeServerParams cred $ Just certauth
+                                    -- also i think we need to do some error handling here so that if serve throws an error it kills the whole program
+                                    -- rn it prints an error but something is still running idk
                                     return $ Just $ Left $ TLS.serve params (TLS.Host hn) pn (flip runMplMach env . serviceSCServerTLS slkup)
                                     -- TLS.serve params (TLS.Host "0.0.0.0") "4000" $ \(context, addr) -> do
                                     --     msg <- TLS.recv context
@@ -702,8 +704,8 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                             case maybecertauth of
                                 Just certauth -> do
                                     -- this service ID is going to be matched against the server's cert 
-                                    -- maybe need to just make this "" instead of "root" so we don't need to put anything here when we make the certs
-                                    let params = makeClientParams ("root", fromString (":" ++ pn)) cred certauth
+                                    -- WHEN THE CERT IS SIGNED THE HOSTNAME PASSED IN THE CONFIG FILE NEEDS TO MATCH
+                                    let params = makeClientParams (hn, fromString (":" ++ pn)) cred certauth
                                     -- these are the actual IP addr and port for the connection
                                     return $ Just $ Right $ TLS.connect params hn pn (flip runMplMach env . serviceSCClientTLS slkup)
                                     -- TLS.connect params "0.0.0.0" "4000" $ \(context, addr) -> do

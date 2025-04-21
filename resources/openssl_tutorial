@@ -1,0 +1,146 @@
+
+# steps taken from: https://www.cs.toronto.edu/~arnold/427/19s/427_19S/tool/ssl/notes.pdf
+
+0) make 3 folders, Server, Client, CA
+1) complete steps 1 a. b. c. so each has their own pair of keys.
+2) complete steps 2 a. b. to generate signing requests and 2 c. to generate a self-signed certificate for the CA.
+3) complete steps 3 a. b. to generate and sign certificates.
+
+notes:
+- two use cases: 
+    1. server client relationship is basically symmetrical, just two dudes on different puters then self signed both sides
+        copy the Server.crt and Client.crt into each other's folders
+        alternatively both devices could have a copy of a CA signing key and certificate and each use that to sign their certs and check the other process's cert
+    2. the server is the CA basically then the server only needs to keep track of its own signature instead of each client's signature.
+        but the clients need to have the server's and their own signed by the server.
+        the server keeps 1 certificate for all the clients it's expecting
+- x509 is the public certificate format expected by credentialLoadX509 which gives us a Credential that we can use in Haskell
+- Common Name is what goes into makeClientParams as the hostname. this needs to match the hostname passed in the config file.
+- we need to change the tutorial above to use x509 v3
+for CA: https://gist.github.com/akrisiun/7440d84138c91ca23d7a33921053659f
+
+i think -extensions v3_ca -reqexts v3_req basically make it like:
+
+authorityKeyIdentifier = keyid, issuer
+basicConstraints = critical, CA:TRUE
+keyUsage = critical, keyCertSign, cRLSign, nonRepudiation, dataEncipherment, 
+https://docs.openssl.org/3.3/man5/x509v3_config/#basic-constraints
+https://pki-tutorial.readthedocs.io/en/stable/extensions.html
+
+for Server/Client
+https://stackoverflow.com/questions/18233835/creating-an-x509-v3-user-certificate-by-signing-csr
+
+# Server
+
+1) a. generate public private key pair
+
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -pkeyopt rsa_keygen_pubexp:3 -out TLS_Server/privkey-Server.pem
+openssl pkey -in TLS_Server/privkey-Server.pem -pubout -out TLS_Server/pubkey-Server.pem
+
+-- if the server is signing its own certificate
+
+openssl req -x509 -new -nodes -key TLS_Server/privkey-Server.pem -sha256 -days 1024 -out TLS_Server/Server.crt -extensions v3_ca -reqexts v3_req
+
+Country Name (2 letter code) [AU]:CA
+State or Province Name (full name) [Some-State]:Alberta
+Locality Name (eg, city) []:Calgary
+Organization Name (eg, company) [Internet Widgits Pty Ltd]:CaMPL
+Organizational Unit Name (eg, section) []:Server
+Common Name (e.g. server FQDN or YOUR name) []:0.0.0.0
+Email Address []:
+
+
+2) a. generate certificate signing request
+
+openssl req -new -key TLS_Server/privkey-Server.pem -out TLS_Server/Server-req.csr
+
+Country Name (2 letter code) [AU]:CA
+State or Province Name (full name) [Some-State]:Alberta
+Locality Name (eg, city) []:Calgary
+Organization Name (eg, company) [Internet Widgits Pty Ltd]:CaMPL
+Organizational Unit Name (eg, section) []:Server
+Common Name (e.g. server FQDN or YOUR name) []:0.0.0.0
+Email Address []:
+
+Please enter the following 'extra' attributes
+to be sent with your certificate request
+A challenge password []:server
+An optional company name []:
+
+3) a. CA generates and signs certificate
+
+openssl x509 -req -in TLS_Server/Server-req.csr -extfile TLS_Server/v3.ext -CA TLS_CA/CA.crt -CAkey TLS_CA/privkey-CA.pem -CAcreateserial -out TLS_Server/Server.crt -days 500 -sha256
+
+v3.ext
+
+authorityKeyIdentifier = keyid, issuer
+basicConstraints = CA:FALSE
+keyUsage = critical, digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+
+
+# Client
+
+1) b. generate public private key pair
+
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -pkeyopt rsa_keygen_pubexp:3 -out TLS_Client/privkey-Client.pem
+openssl pkey -in TLS_Client/privkey-Client.pem -pubout -out TLS_Client/pubkey-Client.pem
+
+-- if the client is signing its own certificate
+
+openssl req -x509 -new -nodes -key TLS_Client/privkey-Client.pem -sha256 -days 1024 -out TLS_Client/Client.crt -extensions v3_ca -reqexts v3_req
+
+Country Name (2 letter code) [AU]:CA
+State or Province Name (full name) [Some-State]:Alberta
+Locality Name (eg, city) []:Calgary
+Organization Name (eg, company) [Internet Widgits Pty Ltd]:CaMPL
+Organizational Unit Name (eg, section) []:Client
+Common Name (e.g. server FQDN or YOUR name) []:0.0.0.0
+Email Address []:
+
+2) b. generate certificate signing request
+
+openssl req -new -key TLS_Client/privkey-Client.pem -out TLS_Client/Client-req.csr
+
+Country Name (2 letter code) [AU]:CA
+State or Province Name (full name) [Some-State]:Alberta
+Locality Name (eg, city) []:Calgary
+Organization Name (eg, company) [Internet Widgits Pty Ltd]:CaMPL
+Organizational Unit Name (eg, section) []:Client
+Common Name (e.g. server FQDN or YOUR name) []:0.0.0.0
+Email Address []:
+
+Please enter the following 'extra' attributes
+to be sent with your certificate request
+A challenge password []:client
+An optional company name []:
+
+3) a. CA generates and signs certificate
+
+openssl x509 -req -in TLS_Client/Client-req.csr -extfile TLS_Client/v3.ext -CA TLS_CA/CA.crt -CAkey TLS_CA/privkey-CA.pem -CAcreateserial -out TLS_Client/Client.crt -days 500 -sha256
+
+v3.ext
+
+authorityKeyIdentifier = keyid, issuer
+basicConstraints = CA:FALSE
+keyUsage = critical, digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+
+
+
+# CA (Certification Authority)
+
+1) c. generate public private key pair
+
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -pkeyopt rsa_keygen_pubexp:3 -out TLS_CA/privkey-CA.pem
+openssl pkey -in TLS_CA/privkey-CA.pem -pubout -out TLS_CA/pubkey-CA.pem
+
+2) c. generate self-signed certificate for the CA
+
+openssl req -x509 -new -nodes -key TLS_CA/privkey-CA.pem -sha256 -days 1024 -out TLS_CA/CA.crt -extensions v3_ca -reqexts v3_req
+
+Country Name (2 letter code) [AU]:CA
+State or Province Name (full name) [Some-State]:Alberta
+Locality Name (eg, city) []:Calgary
+Organization Name (eg, company) [Internet Widgits Pty Ltd]:CaMPL
+Organizational Unit Name (eg, section) []:CA
+Common Name (e.g. server FQDN or YOUR name) []:0.0.0.0
+Email Address []:

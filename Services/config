@@ -3,7 +3,8 @@
 0.0.0.0:3000
 -- when i run two campl programs on the same computer then i just comment and uncomment these lines so that the services for each program run on different ports
 -- 0.0.0.0:3001
--- then we will have the ServerClient IP addrs and ports and then the filepaths, each on a pair of lines, in the order they appear in the main process. first input polarity (if there are any) and then output polarity (if there are any).
+-- then we will have the ServerClient IP addrs and ports and then the pubcert, privkey, certauth filepaths, each on a pair of lines, in the order they appear in the main process. first input polarity (if there are any) and then output polarity (if there are any).
+-- THE HOSTNAME HERE IS WHAT NEEDS TO BE PUT IN THE "COMMON NAME" FEILD WHEN THE CERTIFICATE IS SIGNED
 0.0.0.0:4000
-TLS_Server/CA.crt, TLS_Server/privkey-CA.pem, TLS_Server/CA.crt
--- TLS_Client/Client.crt, TLS_Client/privkey-Client.pem, TLS_Client/CA.crt
+TLS_Server/Server.crt, TLS_Server/privkey-Server.pem, TLS_Server/Client.crt
+-- TLS_Client/Client.crt, TLS_Client/privkey-Client.pem, TLS_Client/Server.crt
