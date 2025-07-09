@@ -1,16 +1,17 @@
 #!/bin/sh
+
 git clone https://github.com/campl-ucalgary/campl.git
-if ! command -v stack &> /dev/null
-    then
-        echo "Installation failed. Please make sure that you have 'stack' installed"
-    else
-        cd campl && stack build
-        echo "stack build >>> done"
-        cd ..
-        mkdir bin
-        cp `find . -name mpl-client | grep install` ./bin
-        cp `find . -name mpl | grep install` ./bin
-        echo "copy executables >>> done"
-        rm -rf campl
-        echo "CaMPL was installed Successfully!";
+
+if ! command -v stack > /dev/null 2>&1; then
+    echo "Installation failed. Please make sure that you have 'stack' installed"
+else
+    cd campl && stack build
+    echo "stack build >>> done"
+    cd ..
+    mkdir bin
+    cp `find . -name mpl-client | grep install` ./bin
+    cp `find . -name mpl | grep install` ./bin
+    echo "copy executables >>> done"
+    rm -rf campl
+    echo "CaMPL was installed Successfully!"
 fi
