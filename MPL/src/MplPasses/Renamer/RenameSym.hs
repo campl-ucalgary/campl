@@ -112,12 +112,12 @@ lookupSym ident prism = join
     . find ((ident ==) . view _1)
 -}
 
-lookupSym :: Eq t => t -> Prism _ _ _ _ -> [(t, SymEntry a)] -> Maybe (SymEntry b)
+lookupSym :: (Eq t, Show t, Show a)=> t -> Prism _ _ _ _ -> [(t, SymEntry a)] -> Maybe (SymEntry b)
 lookupSym ident prism [] = Nothing
 lookupSym ident prism ((ident', entry):rst) 
     -- ident == ident' && has (symEntryInfo % prism) entry = Just entry
     | ident == ident', Just entry' <- entry ^? symEntryInfo % prism
-        = Just $ entry & symEntryInfo .~ entry'
+        =  Just $ entry & symEntryInfo .~ entry'
     | otherwise = lookupSym ident prism rst
 
 lookupSymAny ident = fmap snd . find ((ident ==) . view _1)

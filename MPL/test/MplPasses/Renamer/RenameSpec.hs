@@ -43,7 +43,8 @@ spec = do
         , v8 
         , v9 
         , v10 
-        , v11 
+        , v11
+        , v12 
         ]
 
     mapM_ (`describeAllErrors` ("out of scope", _MplRenameErrors % _OutOfScope))
@@ -266,4 +267,13 @@ defn
 
 fun testing =
     a -> pow(a)
+|]
+
+v12 = [r|
+proc negtest :: | Neg(A),A => =
+    | ch0,ch1 => -> do
+        ch0 |=| neg ch1 
+
+fun f :: A -> Store( | Get(A | TopBot) => TopBot) =
+    a -> store (negtest)
 |]

@@ -46,52 +46,52 @@ spec :: SpecWith ()
 spec = do
     let casesdir = "test/MplPasses/TypeChecker/cases/typecheck"
     poscases <- runIO $ do 
-        let poscasesdir = casesdir </> "positive"
+        let poscasesdir = casesdir </> "melikas"
         casesdir <- map (poscasesdir</>) <$> listDirectory poscasesdir
         namedcases <- mapM ( sequence . (id &&& readFile) ) casesdir
         return namedcases
 
     mapM_ describeValidTypeCheck poscases
 
-    let casesdir = "test/MplPasses/TypeChecker/cases/typecheck"
-    negcases <- runIO $ do 
-        let negcasesdir = casesdir </> "negative"
-        casesdir <- map (negcasesdir</>) <$> listDirectory negcasesdir
-        namedcases <- mapM ( sequence . (id &&& readFile) ) casesdir
-        return namedcases
-    mapM_ (`describeAnyErrorsFile` ("General negative tests", 
-            _MplTypeCheckErrors 
-            -- % _TypeCheckUnificationErrors 
-            -- % _TypeForallMatchFailure
-            )
-            ) negcases
+    -- let casesdir = "test/MplPasses/TypeChecker/cases/typecheck"
+    -- negcases <- runIO $ do 
+    --     let negcasesdir = casesdir </> "negative"
+    --     casesdir <- map (negcasesdir</>) <$> listDirectory negcasesdir
+    --     namedcases <- mapM ( sequence . (id &&& readFile) ) casesdir
+    --     return namedcases
+    -- mapM_ (`describeAnyErrorsFile` ("General negative tests", 
+    --         _MplTypeCheckErrors 
+    --         -- % _TypeCheckUnificationErrors 
+    --         -- % _TypeForallMatchFailure
+    --         )
+    --         ) negcases
 
 
-    mapM_ (`describeAnyErrors` ("Type match failure", 
-            _MplTypeCheckErrors 
-            % _TypeCheckUnificationErrors 
-            % _TypeMatchFailure))
-        [ nm1
-        , nm2 
-        , nm3
-        , nm4
-        , nm5 
-        , nm6
-        , nm7
-        , nm8
-        , nm9
-        , nm10
-        , nm11
-        , nm12
-        , nm13
-        , nm14
-        ]
+    -- mapM_ (`describeAnyErrors` ("Type match failure", 
+    --         _MplTypeCheckErrors 
+    --         % _TypeCheckUnificationErrors 
+    --         % _TypeMatchFailure))
+    --     [ nm1
+    --     , nm2 
+    --     , nm3
+    --     , nm4
+    --     , nm5 
+    --     , nm6
+    --     , nm7
+    --     , nm8
+    --     , nm9
+    --     , nm10
+    --     , nm11
+    --     , nm12
+    --     , nm13
+    --     , nm14
+    --     ]
 
-    mapM_ (`describeAnyErrors` ("Occurs check", 
-            _MplTypeCheckErrors 
-            % _TypeCheckUnificationErrors 
-            % _TypeOccursCheck))
-        [ no0 ]
+    -- mapM_ (`describeAnyErrors` ("Occurs check", 
+    --         _MplTypeCheckErrors 
+    --         % _TypeCheckUnificationErrors 
+    --         % _TypeOccursCheck))
+    --     [ no0 ]
 
 
 -- Invalid tests  

@@ -66,16 +66,39 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 
 import Unsafe.Coerce
+import MplPasses.PatternCompiler.HOProcCodeGen (runHOProcCodeGenDefn, collectProc)
 
 -- TODO: The let floating should really all be in the writer monad instead
 -- of doing the manual plumbing of passing the state up..
+
+runPreProcProg ::
+  MplProg MplTypeChecked ->
+  MplProg MplTypeChecked
+runPreProcProg (MplProg prog) =
+    let procSymtab = foldr (flip collectProcesses) (Map.empty) prog
+    in MplProg $ map (runPreProcStmt procSymtab) prog
+
+
+collectProcesses ::
+  Map (IdP MplTypeChecked) (MplDefn MplTypeChecked)
+  -> MplStmt MplTypeChecked  -> Map (IdP MplTypeChecked) (MplDefn MplTypeChecked)
+collectProcesses table stmt = foldr (flip collectProc) table (NE.toList $ _stmtDefns stmt)
+
+
+runPreProcStmt ::
+  Map (IdP MplTypeChecked) (MplDefn MplTypeChecked) -> MplStmt MplTypeChecked -> MplStmt MplTypeChecked
+runPreProcStmt ptable stmt =
+  MplStmt (NE.fromList (foldMapOf (stmtDefns % folded) (runHOProcCodeGenDefn ptable) stmt)) (stmt ^.. stmtWhereBindings % folded)
+
 
 runPatternCompile' ::
     AsPatternCompileErrors err => 
     (TopLevel, UniqueSupply) -> 
     MplProg MplTypeChecked ->
     Either [err] (MplProg MplPatternCompiled)
-runPatternCompile' (top, sup) = flip evalState (_Env # (top, sup, mempty, mempty)) . runPatternCompile
+runPatternCompile' (top, sup) prog = do
+    let prog' = runPreProcProg prog
+    (flip evalState (_Env # (top, sup, mempty, mempty)) . runPatternCompile) prog'
 
 runPatternCompile ::
     forall err m .
@@ -150,6 +173,9 @@ patternCompileExpr = cata go
             (ndefns1, r') <- r
             return $ (ndefns0 ++ ndefns1, EPOps ann primop l' r')
         EVarF ann ident -> fmap (mempty,) $ pure $ EVar ann ident
+        EProjF ann i expr -> do
+            (ndefnsexpr, expr') <- expr
+            fmap (mempty,) $ pure $ EProj (TypeBuiltIn (TypeUnitF Nothing)) i expr'
         EIntF ann n -> fmap (mempty,) $ pure $ EInt (snd ann) n
         ECharF ann v -> fmap (mempty,) $ pure $ EChar (snd ann) v
         EDoubleF ann v -> fmap (mempty,) $ pure $ EDouble (snd ann) v
@@ -245,6 +271,23 @@ patternCompileExpr = cata go
         EListF ann exprs -> do
             (ndefns, exprs') <- fmap (first concat . unzip) $ sequenceA exprs 
             return (ndefns, EList (snd ann) exprs')
+        EStoreF ann p ->
+            case p of
+                --TODO: Check the Right case once more...
+                Left id -> fmap (mempty,) $ pure $ EStore ann (Left id)
+                Right phr@((seqs, ins, outs), cmds) -> do
+                        (ndefns, cmds'') <- do
+                            (ndefns, cmds') <- localEnvSt (over envLcl((foldMap collectPattVars seqs,ins,outs)<>)) $ patternCompileCmds cmds
+                            return (ndefns, ((seqs, ins, outs), cmds'))
+                        let cmds0ins = view (_1 % _2)  cmds''
+                            cmds0outs = view (_1 % _3) cmds''
+                            cmds' = view _2 cmds''
+                            patts = view _1 phr
+
+
+                        (npatts, ncmds) <- patternCompileConcPatPhrases ((seqs, cmds'):| [])
+
+                        return (ndefns, EStore ann $ Right $ ((npatts, cmds0ins, cmds0outs), ncmds))
 
         EStringF ann str -> 
             pure $ (mempty, EString (snd ann) str)
@@ -374,10 +417,15 @@ patternCompileCmds = fmap (second NE.fromList) . go . NE.toList
         ([MplDefn MplPatternCompiled], [MplCmd MplPatternCompiled])
     go [] = pure mempty
     go (cmd:cmds) = case cmd of
-        CRun ann idp seqs ins outs -> assert (null cmds) $ do
+        CRun ann call seqs ins outs -> assert (null cmds) $ do
             (ndefns, seqs') <- fmap (first fold . unzip) $ traverse patternCompileExpr seqs
+            (callNdefns, call') <- case call of
+                Left id -> return ([], Left id)
+                Right expr -> do
+                    (exprdefn, expr') <- patternCompileExpr expr
+                    return (exprdefn, Right expr')
             -- second (CRun ann idp seqs' ins outs:) <$> go cmds
-            return (ndefns, [CRun () idp seqs' ins outs])
+            return (callNdefns ++ ndefns, [CRun () call' seqs' ins outs])
             -- @CRun@ should be the lsat command, so no need to do @go cmds@
         CClose ann chp -> deleteChFromContext chp >> second (CClose ann chp:) <$> go cmds
         CHalt ann chp -> assert (null cmds) $ deleteChFromContext chp >> return (mempty, [CHalt ann chp]) 
@@ -623,7 +671,7 @@ patternCompileCmds = fmap (second NE.fromList) . go . NE.toList
                 , 
                     [ CRun 
                         ()
-                        casep 
+                        (Left casep)
                         (map (\(PVar ann v) -> EVar ann v) seqs ++ [expr'])
                         ins 
                         outs
@@ -1656,7 +1704,11 @@ patternCompileConcPatPhrases pattphrases =
         pattheads :: NonEmpty (MplPattern MplTypeChecked, NonEmpty (MplCmd MplPatternCompiled))
         patttails :: NonEmpty ([MplPattern MplTypeChecked], NonEmpty (MplCmd MplPatternCompiled))
         (pattheads, patttails) = NE.unzip 
-            $ fmap (\(~(p:ps), expr) -> ((p, expr), (ps, expr))) 
+            $ fmap (\(ptts, expr) -> 
+                    case ptts of 
+                        [] -> ((PUnit (Location(-1,-1), TypeBuiltIn (TypeUnitF Nothing)), expr), ([], expr))
+                        (p:ps) -> ((p, expr), (ps, expr))
+                    ) 
             $ NE.fromList patts
 
         {-

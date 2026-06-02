@@ -108,11 +108,11 @@ data SymEntry a b = SymEntry {
 data SymSeqPhraseType a = SymSeqPhraseType {
     _noStateVarsType :: a
     , _originalType :: a
-}
+} deriving Show
 
 data SymCallType a = 
     SymImplicit (MplType MplTypeSub)
-    | SymExplicit a
+    | SymExplicit a deriving Show
 
 data SymSeqType =
     SymSeqCallType (SymCallType ([TypeP MplTypeChecked], [MplType MplTypeChecked], MplType MplTypeChecked))
@@ -123,8 +123,7 @@ data SymSeqType =
     | SymCodataPhrase 
         ( SymSeqPhraseType 
             ([TypeP MplTypeChecked], ([MplType MplTypeChecked], MplType MplTypeChecked), MplType MplTypeChecked)
-        )
-
+        ) deriving (Show)
 data SymConcType 
     = SymConcCallType (SymCallType 
         ( [TypeP MplTypeChecked]

@@ -83,6 +83,7 @@ type instance XXExpr MplLambdaLifted = Void
 
 -- built in expression types
 type instance XEList MplLambdaLifted = (XMplType MplTypeChecked)
+type instance XEStore MplLambdaLifted = (XMplType MplTypeChecked)
 type instance XEString MplLambdaLifted = (XMplType MplTypeChecked)
 type instance XEUnit MplLambdaLifted = (XMplType MplTypeChecked)
 type instance XETuple MplLambdaLifted = (XMplType MplTypeChecked)
@@ -208,6 +209,7 @@ type instance XTypeUnitF MplLambdaLifted = XTypeUnitF MplTypeChecked
 type instance XTypeBoolF MplLambdaLifted = XTypeBoolF MplTypeChecked
 type instance XTypeListF MplLambdaLifted = XTypeListF MplTypeChecked
 type instance XTypeTupleF MplLambdaLifted = XTypeTupleF MplTypeChecked
+type instance XTypeStoreF MplLambdaLifted = XTypeStoreF MplTypeChecked
 
 type instance XTypeGet MplLambdaLifted = XTypeGet MplTypeChecked
 type instance XTypePut MplLambdaLifted = XTypePut MplTypeChecked

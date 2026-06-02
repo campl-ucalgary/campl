@@ -51,8 +51,19 @@ data IdentR = IdentR {
 $(makeClassy ''IdentR)
 $(makePrisms ''IdentR)
 
+
+modifyIdentRString :: (String -> String) -> IdentR -> IdentR
+modifyIdentRString f (IdentR idp tag) =
+    let IdentP nocc nspc = idp
+        NameOcc n occ = nocc 
+        Name str = n
+        newStr = f str
+    in _IdentR # (_IdentP # (_NameOcc # (_Name # newStr, occ), nspc), tag)
+
+getUniqueTag :: IdentR -> UniqueTag
+getUniqueTag (IdentR idp tag) = tag
 instance Eq IdentR where
-    a == b = a ^. identRUniqueTag == b ^. identRUniqueTag
+    a == b = a^.identRIdentP == b ^.identRIdentP && a ^. identRUniqueTag == b ^. identRUniqueTag
 
 instance Ord IdentR where
     a <= b = a ^. identRUniqueTag <= b ^. identRUniqueTag
@@ -61,7 +72,7 @@ instance HasUniqueTag IdentR where
     uniqueTag = identRUniqueTag 
 
 instance HasIdentP IdentR where
-    identP = identRIdentP 
+    identP = identRIdentP
 
 instance HasName IdentR where
     name = identP % name
@@ -162,6 +173,7 @@ type instance XEUnfold MplRenamed = ()
 type instance XEUnfoldSubPhrase MplRenamed = ()
 type instance XEUnfoldPhrase MplRenamed = ()
 type instance XESwitch MplRenamed = ()
+type instance XEStore MplRenamed = IdentR
 type instance XEIllegalInstr MplRenamed = Void
 
 -- Pattern instances..
@@ -265,6 +277,7 @@ type instance XTypeUnitF MplRenamed = NameOcc
 type instance XTypeBoolF MplRenamed = NameOcc
 type instance XTypeListF MplRenamed = NameOcc
 type instance XTypeTupleF MplRenamed = NameOcc
+type instance XTypeStoreF MplRenamed = NameOcc
 
 type instance XTypeGet MplRenamed = NameOcc
 type instance XTypePut MplRenamed = NameOcc
@@ -273,6 +286,6 @@ type instance XTypePar MplRenamed = NameOcc
 type instance XTypeTopBot MplRenamed = NameOcc
 type instance XTypeNeg MplRenamed = NameOcc
 type instance XTypeSeqArrF MplRenamed = Void
-type instance XTypeConcArrF MplRenamed = Void
+type instance XTypeConcArrF MplRenamed = ()
 
 type instance XXMplBuiltInTypesF MplRenamed = Void

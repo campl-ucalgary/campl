@@ -58,6 +58,7 @@ position token Halt     {"halt"};
 position token Ch_Id    {"|=|"};
 position token Main_run {"%run"};
 position token BBool    {"True"} | {"False"};
+position token StoreProc {"store_proc"};
 
 position token Character '\'' ((char - ["'\\"]) | ('\\' ["'\\nt"])) '\''  ;
 
@@ -207,3 +208,4 @@ separator RACE_PHRASE ";" ;
 AC_CLOSE  .Com ::= Close PIdent ;
 AC_HALT   .Com ::= Halt PIdent ;
 
+AC_STOREPROC  .Com ::= StoreProc PIdent ;

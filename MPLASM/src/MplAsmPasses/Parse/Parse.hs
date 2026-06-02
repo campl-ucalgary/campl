@@ -266,6 +266,7 @@ mplAsmParseCom = go
         B.AC_RUN keyword proc seqs ins outs -> 
             return $ CRun 
                 (toRowCol keyword)
+                False
                 (toLocatedName proc)
                 ( map toLocatedName seqs
                 , map toLocatedName ins

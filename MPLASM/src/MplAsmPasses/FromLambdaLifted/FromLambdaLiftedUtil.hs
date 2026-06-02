@@ -1,3 +1,4 @@
+{-# LANGUAGE InstanceSigs #-}
 module MplAsmPasses.FromLambdaLifted.FromLambdaLiftedUtil where
 
 import Optics
@@ -20,6 +21,7 @@ class ToAsmIdP t where
     toAsmIdP :: t -> Asm.IdP MplAsmFromLambdaLifted
 
 instance ToAsmIdP IdentR where
+    toAsmIdP :: IdentR -> Asm.IdP MplAsmFromLambdaLifted
     toAsmIdP identt = coerce $ concat
         [ identt ^. name % coerced 
         , show (coerce (identt ^. identRUniqueTag) :: Word)

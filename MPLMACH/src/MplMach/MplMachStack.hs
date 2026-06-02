@@ -47,7 +47,7 @@ newtype MplMach r a = MplMach { unwrapMplMach :: ReaderT r IO a }
     , Applicative
     , Monad
     , MonadIO
-    , MonadReader r 
+    , MonadReader r
     , MonadFail
     )
 
@@ -92,9 +92,9 @@ runMplMach ::
     r ->
     IO a 
 runMplMach ma env = runReaderT (unwrapMplMach ma) env
-    
 
-    
+
+
 
 
 {- | wrapper for 'newTQueue'. 
@@ -175,7 +175,7 @@ newGlobalChan = gview equality >>= \env -> liftIO $ atomically $ do
     newChMQueue = fmap CNil newTQueue 
         >>= \q -> ChMQueue <$> newTVar q
 #endif
-    
+
 
 {-| sets a translation lookup to use the channels given by a 'GlobalChan' -}
 setTranslationLkup ::
@@ -229,7 +229,7 @@ getPolChMQueue ::
     ChMQueue
 getPolChMQueue pol = case pol of
     Output -> view chMOutputQueue
-    Input -> view chMInputQueue 
+    Input -> view chMInputQueue
 
 
 
@@ -288,7 +288,7 @@ fetchChMQueue q = liftIO $ atomically (coerce q ^. chMQueueChainRef % to readTVa
     >>= go 
   where 
     go = \case
-        CCons tvarcontinue -> atomically (readTVar tvarcontinue) >>= go 
+        CCons tvarcontinue -> readTVarIO tvarcontinue >>= go 
         CNil tqueue -> return tqueue
 
 {- | fetches and writes the chm queue -}
@@ -302,7 +302,7 @@ fetchAndWriteChMQueue q instr = liftIO $ atomically $ do
     readChMQueue q >>= flip writeTQueue instr
     -- fetchChMQueue q >>= atomically . flip writeTQueue instr
 
-        
+
 
 {- | Simplifies the chain of a chmqueue one step -- retuning (Just simplified) if 
 it can be simplified, otherwise returning Nothing
@@ -410,4 +410,4 @@ freshServiceCh =
             . coerce @ServiceCh @Int
             &&& id)
 
-    
+
