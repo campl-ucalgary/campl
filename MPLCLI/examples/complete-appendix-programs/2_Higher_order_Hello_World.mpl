@@ -1,5 +1,3 @@
--- This example requires the compiler from the higher-order-procs branch
-
 include Prelude
 
 -- from Example 1:
