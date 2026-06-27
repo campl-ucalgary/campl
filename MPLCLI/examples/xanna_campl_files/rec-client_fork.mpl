@@ -13,7 +13,7 @@ proc client :: | => SendMsgs, StringTerminal =
 	| => ch , terminal -> do
 		on terminal do
 			hput StringTerminalPut
-			put "Hello User! Enter message in terminal. Press ENTER to close."
+			put "Enter message in terminal. Press ENTER to close."
 			hput StringTerminalGet
 			get msg
 		if isEmpty(msg)
@@ -65,11 +65,11 @@ proc two_clients :: | => SendMsgs (*) SendMsgs, StringTerminal, StringTerminal =
 	| => two_ch, term1, term2 -> do
 		on term1 do
 			hput StringTerminalPut
-			put "Client 1."
+			put "Hello Client 1!"
 		on term2 do
 			hput StringTerminalPut
-			put "Client 2."
-		fork two_ch as								-- creates two new client processes
+			put "Hello Client 2!"
+		fork two_ch as					-- creates two new client processes
 			ch1 -> client( | => ch1, term1)
 			ch2 -> client( | => ch2, term2)
 

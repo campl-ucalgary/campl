@@ -84,14 +84,14 @@ proc two_clients :: | => Put(NewMsg | RecvMsgs) (*) Put(NewMsg | RecvMsgs), Stri
 		on term2 do
 			hput StringTerminalPut
 			put "Hello Client 2!"
-		fork two_ch as									-- creates two new client processes
+		fork two_ch as					-- creates two new client processes
 			ch1 -> client("Client 1" | => ch1, term1)
 			ch2 -> client("Client 2" | => ch2, term2)
 
 proc non_det_server :: | Put(NewMsg | RecvMsgs) (*) Put(NewMsg | RecvMsgs), Console => =  
 	| two_ch, console => -> do
-		split two_ch into ch1, ch2						-- server splits channel
-		race											-- races clients to receive messages in a non-deterministic order
+		split two_ch into ch1, ch2		-- server splits channel
+		race							-- races clients to receive messages in a non-deterministic order
 			ch1 -> server_race_rec( | ch1, ch2, console => )	-- client on ch1 wins
 			ch2 -> server_race_rec( | ch2, ch1, console => )	-- client on ch2 wins
 				
