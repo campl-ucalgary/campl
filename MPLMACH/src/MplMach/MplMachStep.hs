@@ -1247,7 +1247,7 @@ sOpenTerm chlkup = void $ do
         -- -- , "; read"
         -- -- , "'"
         -- ]
-	
+
         [ "alacritty -e "
         -- , "'"
         , "mpl-client"
