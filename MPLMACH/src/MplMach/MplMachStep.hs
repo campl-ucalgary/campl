@@ -729,20 +729,28 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                 -- _ <- atomically $ rchlkup ^. activeQueue % to (readTQueue <=< readChMQueue)
                 _ <- atomically $ go3 rchlkup 
 
-                concurrently_ 
-                    (void (mplMachSteps' rstec))
-                    (mapConcurrently_ 
-                        ( void 
-                        . atomically 
-                        . view 
-                            ( _1
-                            % _2
-                            % to go3
-                            -- % activeQueue 
-                            -- % to (readTQueue <=< readChMQueue)
-                            )
+                -- concurrently remove all other races (3.2)
+                (mapConcurrently_ 
+                    ( void 
+                    . atomically 
+                    . view 
+                        ( _1
+                        % _2
+                        % to go3
+                        -- % activeQueue 
+                        -- % to (readTQueue <=< readChMQueue)
                         )
-                        (filter ((/=rch) . fst . fst ) raceslkups))
+                    )
+                    (filter ((/=rch) . fst . fst ) raceslkups))
+                        
+                -- then carry on with the rest of the process execution
+                (void (mplMachSteps' rstec))
+
+                -- below is the previous code where we concurrently carried on with the process execution 
+                -- and cleaned up the loser's queues at the same time.
+                -- it caused race conditions with the state of the queues (especially with more than two procs racing)
+                -- because we were cleaning up the queues while more operations were already being performed
+                -- and then it resulted in bad behaviour
 
                 -- mapConcurrently_ id $
                 --     -- run the race which won
