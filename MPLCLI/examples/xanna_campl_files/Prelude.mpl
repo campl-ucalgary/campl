@@ -45,7 +45,6 @@ fun isEmpty :: [A] -> Bool =
 	_ -> False
 
 
-
 -- a // n
 -- 12 // 4 = 3
 -- 13 // 4 = 3
@@ -66,9 +65,19 @@ fun (//) :: Int, Int -> Int =
 
 -- a % n = a - n * floor(a/n)
 fun (%) :: Int, Int -> Int =  
-    a, n -> a - n * a // n
+    a, n -> a - n * (a // n)
 
 
+-- floor(log2 n)
+-- is floor division by 2 until lg(1) = 0 enough to take floor of log?
+-- i hope so. i guess we will find out
+-- assumes x >= 1
+fun lg :: Int -> Int =
+    1 -> 0
+    n -> 1 + lg(n//2)
+
+
+-- assumes x >= 0
 fun intToString :: Int -> [Char] =
     0 -> "0"
     1 -> "1"

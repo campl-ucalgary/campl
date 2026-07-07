@@ -1,12 +1,8 @@
-include Prelude
+include Prelude(isEmpty | )
 
 protocol SendMsgs => S =
 	SendMsg :: Put([Char]|S) => S
 	CloseCh :: TopBot => S
-
-fun isEmpty :: [A] -> Bool =
-	[] -> True
-	_ -> False
 
 -- client code
 proc client :: | => SendMsgs, StringTerminal =

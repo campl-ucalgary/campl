@@ -1,4 +1,4 @@
-include Prelude (intToString, isEmpty | )
+include Prelude (isEmpty, lg, intToString | )
 
 -- sequential type that we are using like a handle
 data NewMsg -> C =
@@ -7,7 +7,7 @@ data NewMsg -> C =
 
 -- used by "linked list" processes
 data FwdMsg -> C =
-    Msg :: NewMsg -> C
+    Msg :: NewMsg, [Char] -> C
     Nil :: -> C
 
 -- recursive channel type for passing an arbitrary number of messages
@@ -61,75 +61,177 @@ proc ptree_add :: | M, PTree( | M) => PTree( | M) =
                     ptree_node( | tree_ch, tree_2, tree_1_out => tree_out)  -- and swap tree_1 and tree_2 to keep balance
 
 
+-- TODO decompose tree node into racer tree node and racer node.
+-- also edit plist code to take in int and generate clients
+
+-- to do check whether this is a balanced tree by adding path of client ids to messages as they go up the tree.
+-- to do how to add another process to the tree
+-- to do how to send a message through the tree from one client to another
+-- to do how to pass a memory cell through the tree from one client to another.
+
+
+-- want to separately label the nodes without the client needing to send its id before the node can send messages
+-- okay we know that the client at the root node is 1, then one side has 2 and then all the even clients, 
+-- and the other side has 3 and then all the odd clients. so if we call fold with 1 and then have an equation of what the 
+    -- children client ids will be, then we can label the nodes i think? they might not actually match but at least we can 
+    -- have a labelling that ensures each one will have a different id.
+
+    -- node n has children n + floor(log2 n) + 1 and n + 2(floor(log2 n) + 1)
+-- added function lg to prelude to take floor(log2 n) using only integer division lmao
+-- so we will be able to assign some channel ids
+-- if we give the fold the total number of clients is there a way for it to figure out which tree is which? so that the ids match?
+    -- and then is there a way to recursively split that number up so that each subtree can also figure it out?
+    -- like we give the fold both the id of the client at that node and some value of the highest client id either globally or locally?
+
 -- higher-order fold process that will "take in" a PTree and two stored processes: a node_proc and a leaf_proc,
 -- connect the channels in the PTree to these processes as suggested by the processes' names  
 -- and "output" a channel connected to the outermost node_proc
 -- in our case, we will give it a stored racer_tree_client_node process and nil_node process code
-proc ptree_h_o_fold :: Store( | X, Y, Y => Y), Store( | => Y) | PTree( | X) => Y =
-    node_proc, leaf_proc | ch_tree => ret_ch -> do
-        hcase ch_tree of
-            PTreeLeaf -> do                -- ch_tree now TopBot
-                close ch_tree
-                use(leaf_proc)( | => ret_ch)
-            PTreeNode -> do                 -- ch_tree now (*) (*)
-                split ch_tree into ch, trees  -- peel one off
-                split trees into tree_1, tree_2
-                plug
-                    ptree_h_o_fold(node_proc, leaf_proc | tree_1 => folded_tree_1) -- recurse on the left
-                    ptree_h_o_fold(node_proc, leaf_proc | tree_2 => folded_tree_2) -- recurse on the right
-                    use(node_proc)( | ch, folded_tree_1, folded_tree_2 => ret_ch)  -- replace node with node_proc
+defn
+    proc ptree_h_o_fold :: Int, Store([Char] | X, Y, Y => Y), Store( | => Y) | PTree( | X) => Y =
+        node_id, node_proc, leaf_proc | ch_tree => ret_ch -> do
+            hcase ch_tree of
+                PTreeLeaf -> do                -- ch_tree now TopBot
+                    close ch_tree
+                    use(leaf_proc)( | => ret_ch)
+                PTreeNode -> do                 -- ch_tree now (*) (*)
+                    split ch_tree into ch, trees  -- peel one off
+                    split trees into tree_1, tree_2
+                    plug
+                        ptree_h_o_fold(node_id + lg(node_id) + 1, node_proc, leaf_proc | tree_1 => folded_tree_1) -- recurse on the left
+                        ptree_h_o_fold(node_id + 2 * (lg(node_id) + 1), node_proc, leaf_proc | tree_2 => folded_tree_2) -- recurse on the right
+                        use(node_proc)( id_str(node_id) | ch, folded_tree_1, folded_tree_2 => ret_ch)  -- replace node with node_proc
+where 
+    fun id_str :: Int -> [Char] =
+        node_id -> intToString(node_id)
 
-
+--
 ---- Testing folded protocol TREE!! race
 
--- client code (recursive, cannot race on handles)
-defn
+-- client code
+
+protocol SendMsgs => S =
+	SendMsg :: Put([Char]|S) => S
+	CloseCh :: TopBot => S
+
+-- client code, uses SendMsgs protocol. should change to have acknowledgement too
+proc client :: | => SendMsgs, StringTerminal =
+	| => ch, terminal -> do
+		on terminal do
+			hput StringTerminalPut
+			put "Enter message in terminal. Press ENTER to close."
+			hput StringTerminalGet
+			get msg
+		if isEmpty(msg)
+			then do
+				on ch do
+					hput CloseCh
+					close
+				on terminal do
+					hput StringTerminalClose
+					halt
+			else do
+				on ch do
+					hput SendMsg
+					put msg
+				client( | => ch, terminal )
+
+-- we connect the above client code to a client_node which hcases both server and client and mediates between them
+defn    
     proc client_wrapper :: [Char] | => Put(NewMsg | RecvMsgs), StringTerminal =
-        cid | => ch, terminal -> do
-            on terminal do
-                hput StringTerminalPut
-                put "Hello " ++ cid ++ "!"
-            client(cid | => ch, terminal)
-    proc client :: [Char] | => Put(NewMsg | RecvMsgs), StringTerminal =
-        cid | => ch, terminal -> do
-            on terminal do
-                hput StringTerminalPut
-                put "Enter message in terminal. Press ENTER to close."
-                hput StringTerminalGet
-                get msg
-            if isEmpty(msg)
-                then do
-                    put End(cid) on ch
-                    client_recurse(cid | => ch, terminal)
-                else do
-                    put Yes(cid ++ ": " ++ msg) on ch
-                    client_recurse(cid | => ch, terminal)
-    proc client_recurse :: [Char] | => RecvMsgs, StringTerminal =
-        cid | => ch, terminal -> do
-            hcase ch of
-                Recv -> do
-                    client(cid | => ch, terminal)
+            cid | => server_ch, terminal -> do
+                on terminal do
+                    hput StringTerminalPut
+                    put "Hello " ++ cid ++ "!"
+                plug
+                    client( | => client_ch, terminal)               -- client_ch has type SendMsgs
+                    client_node(cid | client_ch => server_ch)
+    
+    -- client node has two channels it hcases on
+    -- one from the client and one from the server and it mediates between them, 
+    -- on the client side, it hcases to keep receiving messages (will add functionality to ack that server is still open)
+    -- on the server side, it passes on the messages from the client
+    proc client_node :: [Char] | SendMsgs => Put(NewMsg | RecvMsgs) =
+        cid | client_ch => server_ch -> do
+            hcase client_ch of
+                SendMsg -> do
+                    get msg on client_ch
+                    put Yes(cid ++ ": " ++ msg) on server_ch
+                    hcase server_ch of 
+                        Recv -> client_node(cid | client_ch => server_ch)
+                        Close -> do
+                            close server_ch
+                            client_node_handle_server_close( | client_ch => )    -- this can be a more helpful proc in future
+                CloseCh -> do
+                    close client_ch
+                    client_end_node(cid | => server_ch)
+
+    -- with a SendMsgsWithAck protocol, we would just send negative ack
+    proc client_node_handle_server_close :: | SendMsgs => =
+        | client_ch => -> do
+            hcase client_ch of
+                SendMsg -> do
+                    get _ on client_ch
+                    client_node_handle_server_close( | client_ch => )
+                CloseCh -> do
+                    halt client_ch
+
+    proc client_end_node :: [Char] | => Put(NewMsg | RecvMsgs) =
+        cid | => server_ch -> do
+            put End(cid) on server_ch
+            hcase server_ch of
+                Recv -> client_end_node(cid | => server_ch)      -- keep sending that the client ended until the channel closes
                 Close -> do
-                    close ch
-                    on terminal do
-                        hput StringTerminalClose
-                        halt
+                    halt server_ch
+
+-- client code (does not use SendMsgs, hcases on ch to server)
+-- defn
+--     proc client_wrapper :: [Char] | => Put(NewMsg | RecvMsgs), StringTerminal =
+--         cid | => ch, terminal -> do
+--             on terminal do
+--                 hput StringTerminalPut
+--                 put "Hello " ++ cid ++ "!"
+--             client(cid | => ch, terminal)
+--     proc client :: [Char] | => Put(NewMsg | RecvMsgs), StringTerminal =
+--         cid | => ch, terminal -> do
+--             on terminal do
+--                 hput StringTerminalPut
+--                 put "Enter message in terminal. Press ENTER to close."
+--                 hput StringTerminalGet
+--                 get msg
+--             if isEmpty(msg)
+--                 then do
+--                     put End(cid) on ch
+--                     client_recurse(cid | => ch, terminal)
+--                 else do
+--                     put Yes(cid ++ ": " ++ msg) on ch
+--                     client_recurse(cid | => ch, terminal)
+--     proc client_recurse :: [Char] | => RecvMsgs, StringTerminal =
+--         cid | => ch, terminal -> do
+--             hcase ch of
+--                 Recv -> do
+--                     client(cid | => ch, terminal)
+--                 Close -> do
+--                     close ch
+--                     on terminal do
+--                         hput StringTerminalClose
+--                         halt
 
 -- server code
 proc server :: | Put(FwdMsg | Link), Console => =  
     | clients, console => -> do
         get rec on clients					-- clients now Link
         case rec of
-            Msg(client_msg) -> do
+            Msg(client_msg, trace) -> do
                 hput Fwd on clients			-- clients now Put(FwdMsg | Link)
                 case client_msg of							
                     Yes(msg) -> do
                         hput ConsolePut on console
-                        put msg on console
+                        put msg ++ "  " ++ trace on console
                         server( | clients, console => )
                     End(cid) -> do
                         hput ConsolePut on console
-                        put cid ++ " ended session." on console                        
+                        put cid ++ " ended session. " ++ trace on console                        
                         server( | clients, console => )
             Nil -> do
                 hput Nil on clients             -- again if we set to Fwd, will create a livelock
@@ -147,22 +249,22 @@ proc nil_node :: | => Put(FwdMsg | Link) =
     | => outbox -> do
         put Nil on outbox           -- outbox now Link
         hcase outbox of
-            Fwd -> do                       -- outbox now Put(FwdMsg | Link)
+            Fwd ->                       -- outbox now Put(FwdMsg | Link)
                 nil_node( | => outbox)
             Nil ->                          -- outbox now TopBot
                 halt outbox
 
 -- forward_node forwards messages from client until it closes, then will become nil_node
-proc forward_node :: | Put(NewMsg | RecvMsgs) => Put(FwdMsg | Link) =
-    | client => outbox -> do
+proc forward_node :: [Char] | Put(NewMsg | RecvMsgs) => Put(FwdMsg | Link) =
+    node_id | client => outbox -> do
         get rec on client					-- client now RecvMsgs
         case rec of							
             Yes(msg) -> do
-                put Msg(Yes(msg)) on outbox           -- outbox now Link
+                put Msg(Yes(msg), "Trace: forward node " ++ node_id) on outbox           -- outbox now Link
                 hcase outbox of
                     Fwd -> do               -- outbox now Put(FwdMsg | Link)
                         hput Recv on client         	-- client now Put(NewMsg | RecvMsgs)
-                        forward_node( | client => outbox)
+                        forward_node(node_id | client => outbox)
                     Nil -> do              -- i guess the server could just close us :,((( anyway outbox now TopBot
                         close outbox
                         hput Close on client
@@ -170,7 +272,7 @@ proc forward_node :: | Put(NewMsg | RecvMsgs) => Put(FwdMsg | Link) =
             End(cid) -> do
                 hput Close on client
                 close client
-                put Msg(End(cid)) on outbox         -- outbox now Link
+                put Msg(End(cid), "Trace: forward node " ++ node_id) on outbox         -- outbox now Link
                 hcase outbox of
                     Fwd -> do                       -- outbox now Put(FwdMsg | Link)
                         nil_node( | => outbox)
@@ -186,17 +288,17 @@ proc forward_node :: | Put(NewMsg | RecvMsgs) => Put(FwdMsg | Link) =
 -- this differentiates a client End message to be forwarded from a Nil message from the actual end of the chain.
 -- if racer_node becomes the end of the chain, it becomes a forwarding node for its client
 -- if the client drops off then it only needs to forward msgs up the chain, so it just identifies the channels.
-proc racer_node :: | Put(NewMsg | RecvMsgs), Put(FwdMsg | Link) => Put(FwdMsg | Link) =
-    | client, inbox => outbox -> race
+proc racer_node :: [Char] | Put(NewMsg | RecvMsgs), Put(FwdMsg | Link) => Put(FwdMsg | Link) =
+    node_id | client, inbox => outbox -> race
         client -> do
             get rec on client					-- client now RecvMsgs
             case rec of							
                 Yes(msg) -> do
-                    put Msg(Yes(msg)) on outbox           -- outbox now Link
+                    put Msg(Yes(msg), "Trace: racer node " ++ node_id) on outbox           -- outbox now Link
                     hcase outbox of
                         Fwd -> do               -- outbox now Put(FwdMsg | Link)
                             hput Recv on client         	-- client now Put(NewMsg | RecvMsgs)
-                            racer_node( | client, inbox => outbox)
+                            racer_node(node_id | client, inbox => outbox)
                         Nil -> do               -- i guess the server could just close us :,((( anyway outbox now TopBot
                             close outbox
                             hput Close on client
@@ -207,7 +309,7 @@ proc racer_node :: | Put(NewMsg | RecvMsgs), Put(FwdMsg | Link) => Put(FwdMsg | 
                 End(cid) -> do
                     hput Close on client
                     close client
-                    put Msg(End(cid)) on outbox           -- outbox now Link
+                    put Msg(End(cid), "Trace: racer node " ++ node_id) on outbox           -- outbox now Link
                     hcase outbox of
                         Fwd -> do               -- outbox now Put(FwdMsg | Link)
                             inbox |=| outbox
@@ -219,12 +321,12 @@ proc racer_node :: | Put(NewMsg | RecvMsgs), Put(FwdMsg | Link) => Put(FwdMsg | 
         inbox -> do
             get rec on inbox                    -- inbox now Link
             case rec of			
-                Msg(msg) -> do
-                    put Msg(msg) on outbox           -- outbox now Link
+                Msg(msg, trace) -> do
+                    put Msg(msg, trace ++ ", racer node " ++ node_id) on outbox           -- outbox now Link
                     hcase outbox of
                         Fwd -> do               -- outbox now Put(FwdMsg | Link)
                             hput Fwd on inbox         	-- inbox now Put(FwdMsg | Link)
-                            racer_node( | client, inbox => outbox)
+                            racer_node(node_id | client, inbox => outbox)
                         Nil -> do               -- i guess the server could just close us :,((( anyway outbox now TopBot
                             close outbox
                             hput Nil on inbox
@@ -236,7 +338,7 @@ proc racer_node :: | Put(NewMsg | RecvMsgs), Put(FwdMsg | Link) => Put(FwdMsg | 
                     hput Nil on inbox       -- if we reset to Fwd, we create a livelock :,(
                     close inbox
                     -- forward_node forwards messages from client and when it closes, becomes nil_node
-                    forward_node( | client => outbox)
+                    forward_node(node_id | client => outbox)
 
 
 -- racer tree nodes:
@@ -244,18 +346,18 @@ proc racer_node :: | Put(NewMsg | RecvMsgs), Put(FwdMsg | Link) => Put(FwdMsg | 
 -- this is the case when the client at this node has closed
 -- this is basically the server with two clients from rec-non-det-server
 -- assumes that tree_1 has won a race
-proc racer_tree_node :: | Put(FwdMsg | Link), Put(FwdMsg | Link) => Put(FwdMsg | Link) =
-    | tree_1, tree_2 => root -> do
+proc racer_tree_node :: [Char] | Put(FwdMsg | Link), Put(FwdMsg | Link) => Put(FwdMsg | Link) =
+    node_id | tree_1, tree_2 => root -> do
         get rec on tree_1                   -- tree_1 now Link
         case rec of			
-            Msg(msg) -> do
-                put Msg(msg) on root        -- root now Link
+            Msg(msg, trace) -> do
+                put Msg(msg, trace ++ ", racer tree node " ++ node_id) on root        -- root now Link
                 hcase root of
                     Fwd -> do               -- root now Put(FwdMsg | Link)
                         hput Fwd on tree_1  -- tree_1 now Put(FwdMsg | Link)
                         race                -- in the recursive case, maintain that tree in position 1 is the winner
-                            tree_1 -> racer_tree_node( | tree_1, tree_2 => root)
-                            tree_2 -> racer_tree_node( | tree_2, tree_1 => root)
+                            tree_1 -> racer_tree_node(node_id | tree_1, tree_2 => root)
+                            tree_2 -> racer_tree_node(node_id | tree_2, tree_1 => root)
                     Nil -> do               -- i guess the server could just close us :,((( anyway outbox now TopBot
                         close root
                         hput Nil on tree_1
@@ -301,17 +403,17 @@ proc racer_tree_client_close :: | Put(NewMsg | RecvMsgs), Put(FwdMsg | Link) => 
 -- this is the process that we originally place at each node in the tree
 defn
     -- tree node with a client and two sub trees that are all raced
-    proc racer_tree_client_node :: | Put(NewMsg | RecvMsgs), Put(FwdMsg | Link), Put(FwdMsg | Link) => Put(FwdMsg | Link) =
-        | client, tree_1, tree_2 => root -> race
+    proc racer_tree_client_node :: [Char] | Put(NewMsg | RecvMsgs), Put(FwdMsg | Link), Put(FwdMsg | Link) => Put(FwdMsg | Link) =
+        node_id | client, tree_1, tree_2 => root -> race
             client -> do
                 get rec on client					-- client now RecvMsgs
                 case rec of							
                     Yes(msg) -> do
-                        put Msg(Yes(msg)) on root   -- root now Link
+                        put Msg(Yes(msg), "Trace: racer tree client node " ++ node_id) on root   -- root now Link
                         hcase root of
                             Fwd -> do               -- root now Put(FwdMsg | Link)
                                 hput Recv on client -- client now Put(NewMsg | RecvMsgs)
-                                racer_tree_client_node( | client, tree_1, tree_2 => root)
+                                racer_tree_client_node(node_id | client, tree_1, tree_2 => root)
                             Nil -> do               -- i guess the server could just close us :,((( anyway outbox now TopBot
                                 close root
                                 hput Close on client
@@ -322,31 +424,31 @@ defn
                     End(cid) -> do      
                         hput Close on client
                         close client
-                        put Msg(End(cid)) on root      -- root now Link
+                        put Msg(End(cid), "Trace: racer tree client node " ++ node_id) on root      -- root now Link
                         hcase root of                  -- after client leaves, this is basically the rec-non-det-server with two clients
                             Fwd -> race                -- root now Put(FwdMsg | Link)
-                                tree_1 -> racer_tree_node( | tree_1, tree_2 => root)
-                                tree_2 -> racer_tree_node( | tree_2, tree_1 => root)
+                                tree_1 -> racer_tree_node(node_id | tree_1, tree_2 => root)
+                                tree_2 -> racer_tree_node(node_id | tree_2, tree_1 => root)
                             Nil -> do
                                 close root
                                 race
                                     tree_1 -> racer_tree_close( | tree_1, tree_2 => )
                                     tree_2 -> racer_tree_close( | tree_2, tree_1 => )
-            tree_1 -> racer_tree_1_winner( | client, tree_1, tree_2 => root)
-            tree_2 -> racer_tree_1_winner( | client, tree_2, tree_1 => root)
+            tree_1 -> racer_tree_1_winner(node_id | client, tree_1, tree_2 => root)
+            tree_2 -> racer_tree_1_winner(node_id | client, tree_2, tree_1 => root)
 
     -- helper process to minimize duplicated code 
     -- assumes that the proc at tree_1 has won a race
-    proc racer_tree_1_winner :: | Put(NewMsg | RecvMsgs), Put(FwdMsg | Link), Put(FwdMsg | Link) => Put(FwdMsg | Link) =
-        | client, tree_1, tree_2 => root -> do
+    proc racer_tree_1_winner :: [Char] | Put(NewMsg | RecvMsgs), Put(FwdMsg | Link), Put(FwdMsg | Link) => Put(FwdMsg | Link) =
+        node_id | client, tree_1, tree_2 => root -> do
             get rec on tree_1                           -- tree_1 now Link
             case rec of			
-                Msg(msg) -> do
-                    put Msg(msg) on root            -- root now Link
+                Msg(msg, trace) -> do
+                    put Msg(msg, trace ++ ", racer tree client node " ++ node_id) on root            -- root now Link
                     hcase root of
                         Fwd -> do                   -- root now Put(FwdMsg | Link)
                             hput Fwd on tree_1      -- tree_1 now Put(FwdMsg | Link)
-                            racer_tree_client_node( | client, tree_1, tree_2 => root)
+                            racer_tree_client_node(node_id | client, tree_1, tree_2 => root)
                         Nil -> do                   -- i guess the server could just close us :,((( anyway outbox now TopBot
                             close root
                             hput Nil on tree_1
@@ -355,7 +457,7 @@ defn
                 Nil -> do                       -- tree_1 is gone, so become racer node with client and tree_2
                     hput Nil on tree_1          -- if we reset to Fwd, we create a livelock :,(
                     close tree_1
-                    racer_node( | client, tree_2 => root)
+                    racer_node(node_id | client, tree_2 => root)
 
 
 -- wrapper process that doesn't have client id stored, so client can send it once it's connected after the fold?
@@ -375,30 +477,37 @@ defn
     -- if one of the subtrees then drops off, it will identify the other subtree with the root channel
 -- if one of its subtrees is nil, it will turn into a racer_node (from the linked list version) for the client and other tree
 -- anyway the fold will construct the racer tree and "return" a channel connected to the root of the tree
-proc gen_clients_tree :: Int | PTree( | Put(NewMsg | RecvMsgs) ), Console  => = 
-    cid | ptree, console => -> do
-        on console do
-            hput ConsolePut
-            put "Enter message to create new terminal. Press ENTER to finish terminal generation phase."
-            hput ConsoleGet
-            get msg
-        if isEmpty(msg)
-            then do
-                on console do 
-                    hput ConsolePut
-                    put "Terminal generation phase complete."
-                plug
-                    -- then we race clients using a h_o_fold to turn the list into a racer TREE??
-                    ptree_h_o_fold( store(racer_tree_client_node), store(nil_node) | ptree => raced_ptree)            
-                    server( | raced_ptree, console => )
-            else do        
-                hput ConsoleStringTerminal on console
-                split console into new_console, neg_term
-                plug
-                    neg_term, term => -> neg_term |=| neg term
-                    client_wrapper("Client " ++ intToString(cid) | => ch, term)
-                    ptree_add( | ch, ptree => new_ptree)
-                    gen_clients_tree( cid + 1 | new_ptree, new_console => )
+defn 
+    proc gen_clients_tree :: Int | PTree( | Put(NewMsg | RecvMsgs) ), Console  => = 
+        cid | ptree, console => -> do
+            on console do
+                hput ConsolePut
+                put "Enter number of terminals to generate."
+                hput IntConsoleGet
+                get n
+            gen_n_clients(n, cid | ptree, console => )
+
+    proc gen_n_clients :: Int, Int |  PTree( | Put(NewMsg | RecvMsgs) ), Console  => = 
+        n, cid | ptree, console => -> do
+            if n <= 0
+                then do 
+                    on console do 
+                        hput ConsolePut
+                        put "Terminal generation phase complete."
+                    plug
+                        -- then we race clients using a h_o_fold to turn the list into a racer TREE??
+                        ptree_h_o_fold(1, store(racer_tree_client_node), store(nil_node) | ptree => raced_ptree)            
+                        server( | raced_ptree, console => )
+                else do                    
+                    hput ConsoleStringTerminal on console
+                    split console into new_console, neg_term
+                    plug
+                        neg_term, term => -> neg_term |=| neg term
+                        client_wrapper("Client " ++ intToString(cid) | => ch, term)
+                        ptree_add( | ch, ptree => new_ptree)
+                        gen_n_clients(n - 1, cid + 1 | new_ptree, new_console => )
+
+
 
 -- makes a non-deterministic tree? server in two phases. 
 -- first phase generates arbitrarily many clients using the console and adds the channels to a tree
