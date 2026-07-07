@@ -64,6 +64,7 @@ typeLocationSpan ::
     , HasLocation (XTypeBoolF x)
     , HasLocation (XTypeListF x)
     , HasLocation (XTypeTupleF x)
+    , HasLocation (XTypeStoreF x)
 
     , HasLocation (XTypeGet x)
     , HasLocation (XTypePut x)
@@ -130,7 +131,7 @@ typeLocationSpan = cata go
             TypeUnitF ann -> locationToSpan ann
             TypeBoolF ann -> locationToSpan ann
             TypeListF ann rst -> locationToSpan ann <> rst
-
+            TypeStoreF ann rst -> locationToSpan ann <> rst
             TypeSeqArrF _ann dom codom -> sconcat $ NE.cons codom dom
             TypeConcArrF _ann seqs ins outs -> fold $ concat [seqs, ins, outs]
 

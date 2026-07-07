@@ -212,7 +212,7 @@ typeCheckPattern = para f
                 _SymEntry # 
                     ( _SymImplicit # typePtoTypeVar ttypep 
                     , _SymSeqCall % _ExprCallPattern # res )
-
+ 
             return (res, eqns)
 
         PIntF cxt v -> do 

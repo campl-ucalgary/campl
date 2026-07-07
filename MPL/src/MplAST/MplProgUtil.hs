@@ -159,9 +159,13 @@ instance TraverseMplExpr MplCmd x where
     traverseMplExpr k = cata go
       where
         go = \case
-            CRunF ann idp seqs ins outs -> do
-                seqs' <- traverse (traverseMplExpr k) seqs 
-                return $ CRun ann idp seqs' ins outs
+            CRunF ann (Left id) seqs ins outs -> do
+                seqs' <- traverse (traverseMplExpr k) seqs
+                return $ CRun ann (Left id) seqs' ins outs
+            CRunF ann (Right expr) seqs ins outs -> do
+                seqs' <- traverse (traverseMplExpr k) seqs
+                expr' <- traverseMplExpr k expr
+                return $ CRun ann (Right expr') seqs' ins outs
             CPutF ann expr chp -> do
                 expr' <- traverseMplExpr k expr
                 return $ CPut ann expr' chp

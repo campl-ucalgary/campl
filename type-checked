@@ -1,0 +1,9 @@
+-- dumped pattern-compiled output
+proc q__59 :: forall T39 T34 . T39, Store (T39 | T34 => T34) | T34 => T34 =
+{
+  u__63, u__65 | a__14__INP => b__16__OUT -> use (p__10) (u__63 | a__14__INP => b__16__OUT)
+}
+proc run__66 :: forall . | => TopBot =
+{
+  | => x__49__OUT -> halt x__49__OUT
+}

@@ -123,6 +123,7 @@ type instance XXExpr MplPatternCompiled = Void
 -- built in expression types
 type instance XEList MplPatternCompiled = (XMplType MplTypeChecked)
 type instance XEString MplPatternCompiled = (XMplType MplTypeChecked)
+type instance XEStore MplPatternCompiled = (IdentT, XMplType MplTypeChecked)
 type instance XEUnit MplPatternCompiled = (XMplType MplTypeChecked)
 type instance XETuple MplPatternCompiled = (XMplType MplTypeChecked)
 type instance XEProj MplPatternCompiled = (XMplType MplTypeChecked)
@@ -248,6 +249,7 @@ type instance XTypeUnitF MplPatternCompiled = XTypeUnitF MplTypeChecked
 type instance XTypeBoolF MplPatternCompiled = XTypeBoolF MplTypeChecked
 type instance XTypeListF MplPatternCompiled = XTypeListF MplTypeChecked
 type instance XTypeTupleF MplPatternCompiled = XTypeTupleF MplTypeChecked
+type instance XTypeStoreF MplPatternCompiled = XTypeStoreF MplTypeChecked
 
 type instance XTypeGet MplPatternCompiled = XTypeGet MplTypeChecked
 type instance XTypePut MplPatternCompiled = XTypePut MplTypeChecked

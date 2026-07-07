@@ -70,13 +70,13 @@ data ContextInfo =
 
 type instance IdP MplCmdFreeVars = IdP MplParsed
 type instance ChP MplCmdFreeVars = ChP MplParsed
-
 type instance XMplExpr MplCmdFreeVars = XMplExpr MplParsed
 type instance XMplPattern MplCmdFreeVars = XMplPattern MplParsed
 
 -- Process Command
 type instance XMplCmd MplCmdFreeVars = MplCmd MplCmdFreeVars
 type instance XCRun MplCmdFreeVars = XCRun MplParsed
+
 type instance XCClose MplCmdFreeVars = KeyWordNameOcc
 type instance XCHalt MplCmdFreeVars = KeyWordNameOcc
 type instance XCGet MplCmdFreeVars = KeyWordNameOcc

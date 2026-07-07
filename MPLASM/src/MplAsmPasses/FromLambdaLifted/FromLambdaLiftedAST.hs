@@ -55,6 +55,7 @@ type instance Asm.XCId MplAsmFromLambdaLifted = ()
 type instance Asm.XCRace MplAsmFromLambdaLifted = ()
 type instance Asm.XCClose MplAsmFromLambdaLifted = ()
 type instance Asm.XCHalt MplAsmFromLambdaLifted = ()
+type instance Asm.XCStoreProc MplAsmFromLambdaLifted = ()
 
 instance Pretty (Asm.TypeAndSpec MplAsmFromLambdaLifted) where
     pretty (Asm.TypeAndSpec tp spec) = pretty tp <> dot <> pretty spec

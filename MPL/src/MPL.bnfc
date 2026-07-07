@@ -93,6 +93,9 @@ position token HPut {"hput"} ;
 position token Split {"split"} ;
 position token Fork {"fork"} ;
 
+position token StoreType {"Store"} ;
+position token Store {"store"} ;
+position token Use {"use"} ;
 position token Case {"case"} ;
 
 position token UIdent (upper (letter | digit | '_')*) ;
@@ -154,6 +157,7 @@ MPL_UNIT_TYPE           . MplType2 ::= LBracket RBracket ;
 MPL_BRACKETED_TYPE      . MplType2 ::= LBracket MplType RBracket ;
 MPL_LIST_TYPE           . MplType2 ::= LSquareBracket MplType RSquareBracket ;
 MPL_TUPLE_TYPE          . MplType2 ::= LBracket MplType "," [TupleListType] RBracket ;
+MPL_STORE_TYPE          . MplType2  ::= StoreType LBracket ProcessType RBracket ;
 
 internal MPL_SEQ_ARROW_TYPE  . MplType2 ::= "forall" [ForallVarList] "." [MplType] "->" MplType ;
 internal MPL_CONC_ARROW_TYPE . MplType2 ::= "forall" [ForallVarList] "." [MplType] "|" [MplType] "=>" [MplType] ;
@@ -289,6 +293,10 @@ UNFOLD_EXPR      . Expr10 ::= "unfold" Expr "of" "{" [UnfoldExprPhrase] "}" ;
 CASE_EXPR        . Expr10 ::= Case Expr "of" "{" [PattExprPhrase] "}" ;
 SWITCH_EXP       . Expr10 ::= "switch" "{" [SwitchExprPhrase] "}" ;
 
+STORE_EXPR       . Expr10 ::= Store LBracket ProcessNp RBracket;
+
+PROCESS_P       . ProcessNp ::= ProcessPhrase ;
+PROCESS_N       . ProcessNp ::= PIdent ;
 
 DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR    . Expr10 ::= UIdent LBracket [Expr] RBracket ;
 DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR . Expr10 ::= UIdent ;
@@ -400,8 +408,11 @@ separator nonempty PattExprPhrase ";" ;
 --  MPL Process definition
 -- ====================================================================
 
+PROCESS_TYPE . ProcessType ::= [MplType]  "|" [MplType] "=>" [MplType] ;
+
+
 TYPED_PROCESS_DEFN . ProcessDefn ::= 
-    "proc" PIdent "::" [MplType]  "|" [MplType] "=>" [MplType]
+    "proc" PIdent "::" ProcessType
                    "=" "{" [ProcessPhrase] "}" ;
 
 internal INTERNAL_TYPED_PROCESS_DEFN . ProcessDefn ::= 
@@ -452,12 +463,14 @@ separator nonempty ProcessCommand ";" ;
 -- PROCESS_SWITCH . ProcessCommand ::= "switch" "{" [ProcessSwitchPhrase] "}";
 -----------------------------
 
-PROCESS_RUN   .   ProcessCommand ::= PIdent LBracket [Expr] "|" [PIdent] "=>" [PIdent] RBracket ;
+PROCESS_NAME  . ProcessCall ::= PIdent;
+PROCESS_USE   . ProcessCall ::= Use LBracket Expr RBracket;
+
+PROCESS_RUN   .   ProcessCommand ::= ProcessCall LBracket [Expr] "|" [PIdent] "=>" [PIdent] RBracket ;
 PROCESS_CLOSE .   ProcessCommand ::= Close PIdent ;
 PROCESS_HALT  .   ProcessCommand ::= Halt PIdent ;
 -- Process run, for qualified names
 PROCESS_QRUN  .   ProcessCommand ::= UIdent "." PIdent LBracket [Expr] "|" [PIdent] "=>" [PIdent] RBracket ;
-
 
 PROCESS_GET   .   ProcessCommand ::= Get Pattern "on" PIdent ;
 PROCESS_PUT   .   ProcessCommand ::= Put Expr "on" PIdent ;

@@ -1,0 +1,23 @@
+-- dumped lambda-lifted output
+proc p__66 :: forall T24 . Int | T24 => T24 =
+{
+  u__98 | x__8__INP => y__10__OUT -> x__8__INP |=| y__10__OUT
+}
+proc q__61 :: forall T52 . Store (Int | T52 => T52) | T52 => T52 =
+{
+  u__101 | x__38__INP => y__40__OUT -> use (__INTERNAL_PROJ_1 (u__101)) (__INTERNAL_PROJ_0 (u__101), 5 | x__38__INP => y__40__OUT)
+}
+defn
+{
+  proc run__65 :: forall T88 . | T88 => T88 =
+  {
+    | ch0__70__INP => ch1__72__OUT -> q__61 (((), store (p__stored__66)) | ch0__70__INP => ch1__72__OUT)
+  };
+  proc p__stored__66 :: forall T24 . Int | T24 => T24 =
+  {
+    u__105, u__107 | x__8__INP => y__10__OUT -> case u__105 of
+    {
+      () -> x__8__INP |=| y__10__OUT
+    }
+  }
+}
