@@ -244,8 +244,8 @@ _InternalConcTypeParser :: Prism' String InternalConcTypes
 _InternalConcTypeParser = prism' embed match
   where
     tmp = 
-        [ ("Get", InternalGet)
-        , ("Put", InternalPut)
+        [ ("Get", InternalGet), ("Up", InternalGet)
+        , ("Put", InternalPut), ("Down", InternalPut)
         , ("TopBot", InternalTopBot)
         , ("(*)", InternalTensor)
         , ("(+)", InternalPar)
