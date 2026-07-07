@@ -685,7 +685,7 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                     process concurrently as well (3.2).
             -}
             let raceslkups = fmap (first (id &&& (t Map.!))) races 
-                lchs = map fst races
+                lchs = map fst races                                    -- this isn't used? what is it for?
 
             -- This is (1)
             for_ raceslkups $ \((_lch, chlkup), rc) -> 
@@ -707,12 +707,9 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                 -- _ <- atomically $ rchlkup ^. activeQueue % to (readTQueue <=< readChMQueue)
                 _ <- atomically $ go3 rchlkup 
 
-
-                mapConcurrently_ id $
-                    -- run the race which won
-                    void (mplMachSteps' rstec) :
-                    -- concurrently remove all other races (3.2)
-                    map 
+                concurrently_ 
+                    (void (mplMachSteps' rstec))
+                    (mapConcurrently_ 
                         ( void 
                         . atomically 
                         . view 
@@ -723,7 +720,25 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                             -- % to (readTQueue <=< readChMQueue)
                             )
                         )
-                        (filter ((/=rch) . fst . fst ) raceslkups)
+                        (filter ((/=rch) . fst . fst ) raceslkups))
+
+                -- mapConcurrently_ id $
+                --     -- run the race which won
+                --     void (mplMachSteps' rstec) :
+                --     -- concurrently remove all other races (3.2)
+                --     -- then doesn't this need to be mapConcurrently ??
+                --     map 
+                --         ( void 
+                --         . atomically 
+                --         . view 
+                --             ( _1
+                --             % _2
+                --             % to go3
+                --             -- % activeQueue 
+                --             -- % to (readTQueue <=< readChMQueue)
+                --             )
+                --         )
+                --         (filter ((/=rch) . fst . fst ) raceslkups)
 
             return Nothing
           where
@@ -738,6 +753,7 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                         chotherqueue <- chlkup ^. otherQueue % to readChMQueue
                         peekTQueue chotherqueue >>= \case
                             QPut _ -> return (lch, rstec, chlkup)
+                            -- when we want to race splits and hcases, we will need to update this case to have QFork and QHPut or something
                             _ -> retry
                     _ -> retry
 
