@@ -1,15 +1,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE CPP #-}
 module MplMach.MplMachRunner where
 
-import Optics 
+import Optics
 
+#ifndef WASM
 import Network.Socket
+#endif
 import MplMach.MplMachStep
 import MplMach.MplMachTypes
 import MplMach.MplMachStack
-
-import Network.Socket
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -45,6 +46,35 @@ mplMachRunnner ::
     (([LocalChan], [LocalChan]), [Instr]) -> 
     -- | resulting in IO monad
     IO ()
+#ifdef WASM
+-- wasm: no socket server and no child processes. Terminal services fork
+-- themselves in-process (see 'sOpenTerm'); we run the machine and then wait
+-- for the services to drain before returning.
+mplMachRunnner env ((mainins, mainouts), instrs) = flip runMplMach env $ do
+    gmainins <- for mainins $ ((flip (,) <$> newGlobalChan) <*>) . pure
+    gmainouts <- for mainouts $ ((flip (,) <$> newGlobalChan) <*>) . pure
+    let maint = Map.fromList $ concat
+            [ gmainins & mapped % _2 %~
+                \gch -> InputLkup
+                    { _activeQueue = gch ^. coerced % chMInputQueue
+                    , _otherQueue = gch ^. coerced % chMOutputQueue
+                    }
+            , gmainouts & mapped % _2 %~
+                \gch -> OutputLkup
+                    { _activeQueue = gch ^. coerced % chMOutputQueue
+                    , _otherQueue = gch ^. coerced % chMInputQueue
+                    }
+            ]
+        stec = Stec mempty maint mempty instrs
+    liftIO $ do
+        res <- try (runMplMach (mplMachSteps stec) env)
+        case res of
+            Right () -> busyloop
+            Left err -> throwIO (err :: SomeException)
+  where
+    busyloop = readMVar (env ^. serviceMap) >>= \svmp ->
+        bool (threadDelay 10000 *> busyloop) (return ()) (Map.null svmp)
+#else
 mplMachRunnner env ((mainins, mainouts), instrs) = withSocketsDo $ flip runMplMach env $ do
     let hints = defaultHints { addrSocketType = Stream }
     addrinf <- liftIO $ fmap head $ getAddrInfo (Just hints) (Just $ env ^. serviceHostName) (Just $ env ^. servicePortName)
@@ -125,4 +155,5 @@ mplMachRunnner env ((mainins, mainouts), instrs) = withSocketsDo $ flip runMplMa
 
 
             return ()
+#endif
 

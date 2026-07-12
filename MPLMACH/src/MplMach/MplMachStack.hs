@@ -29,6 +29,7 @@ import Control.Arrow
 
 import Control.Monad.IO.Class
 import Control.Monad.Reader
+import Control.Monad (join, void, when, unless, forever, forM_, replicateM, (<=<), (>=>))
 
 import MplMach.MplMachTypes
 
@@ -36,7 +37,9 @@ import Data.Map (Map)
 
 import qualified Text.Show.Pretty as PrettyShow
 
+#ifndef WASM
 import Network.Socket
+#endif
 
 import Debug.Trace
 
