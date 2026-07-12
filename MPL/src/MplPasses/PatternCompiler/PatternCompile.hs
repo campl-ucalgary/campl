@@ -30,6 +30,7 @@ import MplUtil.UniqueSupply
 import Control.Monad.Except
 import Control.Monad.Writer
 import Control.Monad.State
+import Control.Monad (replicateM, void, guard, foldM, when, unless, (<=<), (>=>))
 import Control.Arrow
 import Control.Applicative.Lift
 import Data.Functor.Compose

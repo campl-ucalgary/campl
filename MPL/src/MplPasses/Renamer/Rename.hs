@@ -14,6 +14,7 @@ import Control.Arrow
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer
+import Control.Monad (replicateM, void, guard, foldM, when, unless, (<=<), (>=>))
 import Data.Bool
 import Data.Foldable
 import Data.Functor.Foldable (Base, cata, embed)
@@ -185,9 +186,6 @@ renameExpr ::
     (MplExpr MplRenamed)
 renameExpr = cata f
   where
-    f ::
-      Base (MplExpr MplParsed) (_ (MplExpr MplRenamed)) ->
-      (_ (MplExpr MplRenamed))
     f = \case
       EPOpsF cxt op a b -> do
         a' <- a
@@ -233,9 +231,6 @@ renameExpr = cata f
         cases' <- traverse g cases
         return $ _ECase # (cxt, caseon', cases')
         where
-          g ::
-            (MplPattern MplParsed, _ (MplExpr MplRenamed)) ->
-            _ (MplPattern MplRenamed, MplExpr MplRenamed)
           g (patt, mexpr) = do
             symtab <- guse envLcl
             patt' <- renamePattern patt
@@ -288,7 +283,6 @@ renameExpr = cata f
         expr' <- expr
         return $ _ELet # (cxt, stmts', expr')
         where
-          f :: MplStmt MplParsed -> _ (MplStmt MplRenamed)
           f stmt = do
             st <- guse equality
             lcl <- guse envLcl
@@ -346,7 +340,6 @@ renameCmd ::
   Rename (MplCmd MplCmdFreeVars) (MplCmd MplRenamed)
 renameCmd = f
   where
-    f :: MplCmd MplCmdFreeVars -> _ (MplCmd MplRenamed)
     f (CRun cxt call seqs ins outs) = do
       symtab <- guse envLcl
       call' <- case call of
@@ -589,10 +582,6 @@ renameCmd = f
 
       return $ CPlugs (keyword, plugged') (phr1', phr2', phrs')
       where
-        g ::
-          _ ->
-          ((), ([IdentP], [IdentP]), NonEmpty (MplCmd MplCmdFreeVars)) ->
-          _ ((), ([ChIdentR], [ChIdentR]), NonEmpty (MplCmd MplRenamed))
         g plugged ((), (ins, outs), cmds) = do
           -- traceShowM plugged
           initsymtab <- guse envLcl

@@ -17,6 +17,7 @@ import Control.Arrow
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer
+import Control.Monad.Fix (MonadFix)
 import Data.Functor.Foldable (Base, cata, para)
 import Data.Kind
 import Data.List
@@ -192,9 +193,6 @@ higherOrderCheck notscoped tp
 
     go = para f
 
-    f ::
-      Base (MplType MplTypeSub) (MplType MplTypeSub, _ (Maybe (MplType MplTypeChecked))) ->
-      (_ (Maybe (MplType MplTypeChecked)))
     f (TypeVarF cxt n) = return $ Just $ TypeVar Nothing (typeIdentTToTypeT n)
     f (TypeWithNoArgsF cxt n) = return $ Just $ TypeWithNoArgs (snd cxt) n
     f (TypeSeqWithArgsF cxt n args) = do

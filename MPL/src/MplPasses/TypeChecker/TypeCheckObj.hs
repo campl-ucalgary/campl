@@ -83,7 +83,6 @@ typeCheckTypeClauseSpine spine = do
 
     return nspine
   where
-    f :: _ -> MplTypeClause MplRenamed t -> _ (MplTypeClause MplTypeChecked t)
     f spine clause = do
         rec ~mphrases <- clause ^. typeClausePhrases % to (g clause')
             let clause' = MplTypeClause 
@@ -93,9 +92,7 @@ typeCheckTypeClauseSpine spine = do
                         mphrases
                         spine
         return $ clause' 
-    g :: (MplTypeClause MplTypeChecked t) -> [MplTypePhrase MplRenamed t] ->
-        _ ([MplTypePhrase MplTypeChecked t])
-    g clause phrases = traverse (kindCheckPhrase . (clause,)) phrases 
+    g clause phrases = traverse (kindCheckPhrase . (clause,)) phrases
 
 
 class KindCheckObjArgsKindEnv (t :: ObjectDefnTag) where

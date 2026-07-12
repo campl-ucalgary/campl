@@ -17,6 +17,7 @@ import MplPasses.Parser.ParseErrors
 
 import Control.Monad.Writer
 import Control.Monad.Except
+import Control.Monad (guard)
 import Text.Read
 
 import qualified Data.List.NonEmpty as NE

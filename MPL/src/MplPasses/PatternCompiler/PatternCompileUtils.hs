@@ -30,6 +30,7 @@ import Control.Monad.State
 import Control.Monad.Writer
 import Control.Monad.Reader
 import Control.Monad.Except
+import Control.Monad (void)
 
 import Data.List
 import Data.Coerce
