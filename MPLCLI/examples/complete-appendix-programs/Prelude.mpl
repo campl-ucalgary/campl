@@ -20,7 +20,7 @@ coprotocol S => Console =
     ConsolePut :: S => Get( [Char] | S) 
     ConsoleGet :: S => Put( [Char] | S) 
     ConsoleClose :: S => TopBot 
-    ConsoleStringTerminal :: S => S (+) Neg(StringTerminal)
+    ConsoleStringTerminal :: S => S (*) Neg(StringTerminal)
 
 coprotocol S => IntConsole =
     IntConsolePut :: S => Get( Int | S) 
