@@ -1,4 +1,28 @@
-include Prelude (isEmpty | )
+-- include Prelude (isEmpty | )
+
+-- This opens a terminal for which one may
+-- output strings and get strings on.
+protocol StringTerminal => S =
+    StringTerminalGet :: Get([Char]| S) => S
+    StringTerminalPut :: Put([Char]| S) => S
+    StringTerminalClose :: TopBot => S
+
+-- This allows the console to input and output strings, and to
+-- open new string terminals.
+coprotocol S => Console =
+    ConsolePut :: S => Get([Char]| S)
+    ConsoleGet :: S => Put([Char]| S)
+    ConsoleClose :: S => TopBot
+
+-- The 'append' function
+fun (++) :: [A],[A] -> [A] =
+    a,[]      -> a
+    [],a      -> a
+    (b:bs),cs -> b : (bs ++ cs)
+	
+fun isEmpty :: [A] -> Bool =
+	[] -> True
+	_ -> False
 
 -- sequential type that we are using like a handle (but we can also send messages at the same time)
 data Msg -> M =
