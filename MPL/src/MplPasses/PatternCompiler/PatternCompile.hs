@@ -724,7 +724,12 @@ patternCompileCmds = fmap (second NE.fromList) . go . NE.toList
             (ndefns0, cond') <- patternCompileExpr cond
             (ndefns1, cthen') <- localEnvSt id $ patternCompileCmds cthen
             (ndefns2, celse') <- localEnvSt id $ patternCompileCmds celse
-            return (ndefns0 ++ ndefns1 ++ ndefns0, [CIf () cond' cthen' celse']) 
+            -- all three groups of floated definitions must be
+            -- emitted exactly once: anything dropped here (e.g. a
+            -- process floated by a @case@ in the else branch) is
+            -- still called by the compiled command and would fail
+            -- assembly as an out-of-scope process.
+            return (ndefns0 ++ ndefns1 ++ ndefns2, [CIf () cond' cthen' celse'])
             -- fmap pure $ CIf () <$> patternCompileExpr cond <*> patternCompileCmds cthen <*> patternCompileCmds celse
             -- @go cmds@ should always be empty list here
 

@@ -241,3 +241,27 @@ pCharToLocationChar :: B.PChar -> Maybe (Location, Char)
 pCharToLocationChar a@(B.PChar (_, str)) =
     (toLocation a,) <$> (readMaybe str :: Maybe Char)
 
+-- | Unescapes the body (quotes already stripped) of a string literal
+-- or string pattern. The lexer's @PString@ token (see @MPL.bnfc@)
+-- only admits the escapes @\\n \\t \\r \\f \\\\ \\\"@ inside a string,
+-- so the catch-all case keeping an unrecognized escape verbatim is
+-- unreachable from parsed source; it exists to keep this total.
+unescapeString :: String -> String
+unescapeString ('\\':c:rst) = case c of
+    'n'  -> '\n' : unescapeString rst
+    't'  -> '\t' : unescapeString rst
+    'r'  -> '\r' : unescapeString rst
+    'f'  -> '\f' : unescapeString rst
+    '\\' -> '\\' : unescapeString rst
+    '"'  -> '"'  : unescapeString rst
+    _    -> '\\' : c : unescapeString rst
+unescapeString (c:rst) = c : unescapeString rst
+unescapeString [] = []
+
+-- | Converts a string token to its location and unescaped contents.
+-- Both string literals (@STRING_EXPR@) and string patterns
+-- (@STR_PATTERN@) must go through this, so that a pattern such as
+-- @"a\\nb"@ matches the identical literal.
+pStringToLocationString :: B.PString -> (Location, String)
+pStringToLocationString (B.PString (pos, str)) =
+    (toLocation pos, unescapeString . init . tail $ str)

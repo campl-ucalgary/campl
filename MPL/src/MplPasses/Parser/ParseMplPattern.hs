@@ -63,9 +63,10 @@ parseBnfcPattern (B.TUPLE_PATTERN lbr p0 (p1:ps) rbr) = do
     f (B.TUPLE_LIST_PATTERN patt) = parseBnfcPattern patt
 parseBnfcPattern (B.TUPLE_PATTERN lbr p0 _  rbr) = error "Internal bnfc parsing error -- tuple list is empty"
 
--- TODO: we need char patterns!
-parseBnfcPattern (B.STR_PATTERN (B.PString (loc, str))) = 
-    return $ _PString # (toLocation loc, init $ tail str)
+-- must unescape exactly like string literals (same helper), or the
+-- pattern "a\nb" could never match the literal "a\nb".
+parseBnfcPattern (B.STR_PATTERN pstr) =
+    return $ _PString # pStringToLocationString pstr
 
 parseBnfcPattern (B.CHAR_PATTERN v) = 
     case pCharToLocationChar v of

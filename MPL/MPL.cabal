@@ -65,6 +65,7 @@ library
       MplPasses.Parser.ParseMplPattern
       MplPasses.Parser.ParseMplType
       MplPasses.Parser.ParseUtils
+      MplPasses.Parser.ResolveBuiltinOps
       MplPasses.Passes
       MplPasses.PassesErrors
       MplPasses.PassesErrorsPprint

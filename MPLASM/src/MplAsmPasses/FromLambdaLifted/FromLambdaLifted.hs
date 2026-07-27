@@ -143,31 +143,32 @@ mplAssembleProg uniq prog =
     -- get some fresh unique supplies
     ~(s0:_:_) = uniqueSupplies uniq
 
-    -- we find the bottom most definition named @run@ as the main function 
-    -- (honestly quite confusing how this is done, but it should hopefully work)
-    -- I don't think this is totally correct being totally honest
+    -- we find the bottom most definition named @run@ as the main function.
+    -- The paramorphisms give each step both the untouched tail (used to
+    -- stop searching once @run@ is found) and the recursed result (used
+    -- to keep searching when the current defn/stmt is not @run@).
     stmts :: [MplStmt MplLambdaLifted]
     maybemain :: Maybe (MplProcess MplLambdaLifted)
     (stmts, maybemain) = first reverse . para f . reverse $ prog'
 
-    f :: ListF 
-            (MplStmt MplLambdaLifted) 
-            ([MplStmt MplLambdaLifted], ([MplStmt MplLambdaLifted], Maybe _)) -> 
+    f :: ListF
+            (MplStmt MplLambdaLifted)
+            ([MplStmt MplLambdaLifted], ([MplStmt MplLambdaLifted], Maybe _)) ->
         ([MplStmt MplLambdaLifted], Maybe _)
     f = \case
-        Cons stmt (lst, (stmts, _)) -> case para g (stmt ^. stmtDefns % to NE.toList) of
+        Cons stmt (lst, (stmts, mmain)) -> case para g (stmt ^. stmtDefns % to NE.toList) of
+            (_, Nothing) -> (stmt : stmts, mmain)
             (notmains, mainf) -> if null notmains
                 then (lst, mainf)
-                else (MplStmt (NE.fromList notmains) [] : lst, mainf)
+                else (MplStmt (NE.fromList notmains) (stmt ^. stmtWhereBindings) : lst, mainf)
           where
-            g :: ListF (MplDefn MplLambdaLifted) ([MplDefn MplLambdaLifted], ([MplDefn MplLambdaLifted], Maybe _)) -> 
+            g :: ListF (MplDefn MplLambdaLifted) ([MplDefn MplLambdaLifted], ([MplDefn MplLambdaLifted], Maybe _)) ->
                 ([MplDefn MplLambdaLifted], Maybe _)
-            g = \case 
-                Cons defn (lst', _) 
-                    | Just proc <- defn ^? _ProcessDefn -> if proc ^. procName % nameStr == "run"
-                        then ( lst' , Just proc)
-                        else (defn : lst', Nothing)
-                    | otherwise -> (defn : lst', Nothing)
+            g = \case
+                Cons defn (lst', (rest, mmain'))
+                    | Just proc <- defn ^? _ProcessDefn, proc ^. procName % nameStr == "run" ->
+                        (lst', Just proc)
+                    | otherwise -> (defn : rest, mmain')
                 Nil -> (mempty, mzero)
         Nil -> (mempty, mzero)
 

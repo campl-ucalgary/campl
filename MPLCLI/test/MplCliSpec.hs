@@ -13,11 +13,13 @@ spec :: Spec
 spec = do
     {- curdir <- runIO $ getCurrentDirectory ; error curdir -}
     collectAndRunTests "test/cases/ifcond"
+    collectAndRunTests "test/cases/boolops"
+    collectAndRunTests "test/cases/append"
     collectAndRunTests "test/cases/tupleproj"
     collectAndRunTests "test/cases/list"
     collectAndRunTests "test/cases/data"
     collectAndRunTests "test/cases/codata"
     collectAndRunTests "test/cases/funcall"
     collectAndRunTests "test/cases/simpleconc"
+    collectAndRunTests "test/cases/strings"
     
-

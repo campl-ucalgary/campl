@@ -20,6 +20,7 @@ import MplAST.MplParsed
 import qualified MplPasses.Parser.BnfcParse as B
 import MplPasses.Parser.MacroRemover
 import MplPasses.Parser.ParseErrors
+import MplPasses.Parser.ResolveBuiltinOps
 import MplPasses.Parser.ParseMplPattern
 import MplPasses.Parser.ParseMplType
 import MplPasses.Parser.ParseUtils
@@ -41,6 +42,7 @@ runParse' =
     . runWriter
     . runExceptT
     . runParse
+    . MplPasses.Parser.ResolveBuiltinOps.resolveBuiltinOps -- Gives ||, &&, ++ their built-in meaning.
     . MplPasses.Parser.MacroRemover.removeMacros -- Gets rid of 'on' blocks and infix operators.
 
 -- | Parses an Mpl program
@@ -266,17 +268,10 @@ parseBnfcExpr (B.CHAR_EXPR v) =
 parseBnfcExpr (B.LIST_EXPR lbr exprs rbr) = do
   exprs' <- traverse parseBnfcExpr exprs
   return $ _EList # (toLocation lbr, exprs')
-parseBnfcExpr (B.STRING_EXPR (B.PString (loc, str))) =
-  return $ _EString # (toLocation loc, helper $ init $ tail str)
-  where
-    helper ('\\' : c : rst) = case c of
-      'n' -> '\n' : helper rst
-      't' -> '\t' : helper rst
-      'r' -> '\r' : helper rst
-      'f' -> '\f' : helper rst
-      _ -> error "impossible bnfc error happened"
-    helper (c : rst) = c : helper rst
-    helper [] = []
+-- string literals and string patterns share one unescaper, so a
+-- pattern can always match the equal literal (see ParseUtils).
+parseBnfcExpr (B.STRING_EXPR pstr) =
+  return $ _EString # pStringToLocationString pstr
 parseBnfcExpr (B.UNIT_EXPR lbr rbr) =
   return $ _EUnit # toLocation lbr
 parseBnfcExpr (B.FOLD_EXPR expr phrases) = do
