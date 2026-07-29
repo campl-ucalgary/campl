@@ -1,12 +1,9 @@
-include Prelude (intToString, isEmpty | )
-
-
+include Prelude (isEmpty | )
 
 -- More details explaining how I solved the problems:
 -- How to write a non-deterministic server that recursively races two processes as they each send arbitrarily many messages? This was a problem because, if the clients are sending arbitrarily many messages using a SendMsgs protocol, the non-deterministic server would need to be able to race on the hcases of each channel, but this is not currently supported (and I don't feel like changing the compiler right now). I wanted to be able to demo a deterministic server and then a non-deterministic server to show why non-determinism is important, and I think the impact of this is stronger when a client can send arbitrarily many messages in a row without needing to wait for the other. Therefore, I needed to solve this problem with the current syntax to be able to write such a program. You can see the code I wrote to solve this in the attached demo. The TLDR of my solution was to use a sequential datatype, NewMsg, like a handle and make the channel type a RecvMsgs coprotocol (so the server is setting the channel type to receive a message and the client is hcasing) then we can define the server with a Put(NewMsg|RecvMsgs) channel, which it can race on, and the client indicates that it wants to send a message by sending the Yes(msg) constructor with the message! The server can case on the NewMsg type to see if it's Yes(msg) or End(client_id) and then reset the channel type using hput. The program is only 20 lines longer than the deterministic case! The downside is that we did need to change the client code to use a coprotocol which makes it a little clunky.
 -- How to generate arbitrarily many clients and race them recursively? Priyaa and I were trying to solve this in Estonia, but we got stuck. I have now solved this in a few different ways. All of the solutions have a client terminal generation phase to generate arbitrarily many clients and then the server is called to print messages from however many clients were generated.
 -- First, I wrote a server that had a channel type of a plist of clients channels. To do this I wrote another implementation of plist_cons which raced the new channel with the first channel in the list and put the winner in the first position and recursively raced the loser against the rest of the list. I called it  plist_cons_race. As the clients are generated, 
-
 
 -- sequential type that we are using like a handle (but we can also send messages at the same time)
 data NewMsg -> C =

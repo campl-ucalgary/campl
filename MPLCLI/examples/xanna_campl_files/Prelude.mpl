@@ -62,6 +62,21 @@ fun (//) :: Int, Int -> Int =
         a - n < 0 -> 0
         True -> 1 + (a - n) // n
 
+-- -- this function doesn't work because there aren't actually doubles in this language, so adding to a "double" doesn't even work somehow?
+-- fun doubleToIntPositive :: Double -> Int =
+--     x -> switch
+--         x <= 0 -> 0
+--         x > 0 -> 1 + doubleToIntPositive(x - 1.0)
+
+-- -- also we can't even use decimals with multiplication because it doesn't even parse?
+-- fun doubleToInt :: Double -> Int =
+--     x -> switch
+--         x < 0 -> -1 * doubleToIntPositive(-1 * x)
+--         x >= 0 -> doubleToIntPositive(x)
+
+-- -- we could implement integer division if this language actually had doubles
+-- fun (//) :: Int, Int -> Int =  
+--     a, n -> doubleToInt(a / n)
 
 -- a % n = a - n * floor(a/n)
 fun (%) :: Int, Int -> Int =  
