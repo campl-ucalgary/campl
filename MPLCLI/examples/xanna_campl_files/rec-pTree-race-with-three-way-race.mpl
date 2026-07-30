@@ -83,6 +83,8 @@ proc ptree_add :: | M, PTree( | M) => PTree( | M) =
     -- and then is there a way to recursively split that number up so that each subtree can also figure it out?
     -- like we give the fold both the id of the client at that node and some value of the highest client id either globally or locally?
 
+-- TODO: update compiler to allow use of imported functions to compute values passed into use (line 105)
+
 -- higher-order fold process that will "take in" a PTree and two stored processes: a node_proc and a leaf_proc,
 -- connect the channels in the PTree to these processes as suggested by the processes' names  
 -- and "output" a channel connected to the outermost node_proc
