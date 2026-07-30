@@ -441,7 +441,7 @@ typeCheckExpr = para f
           ttypelp = annotateTypeTag ttypel lexpr
           ttyperp = annotateTypeTag ttyper rexpr
 
-      let addsubmul =
+      let addsubmuldiv =
             let eqn =
                   TypeEqnsExist [ttypelp, ttyperp] $
                     [ TypeEqnsEq (typePtoTypeVar ttypep, typePtoTypeVar ttypelp),
@@ -455,21 +455,22 @@ typeCheckExpr = para f
              in ( EPOps (fromJust $ lookupInferredSeqTypeExpr ttype ttypemap) op l' r',
                   [eqn]
                 )
-          -- duplicated code from @addsubmul@
-          div =
-            let eqn =
-                  TypeEqnsExist [ttypelp, ttyperp] $
-                    [ TypeEqnsEq (typePtoTypeVar ttypep, typePtoTypeVar ttypelp),
-                      TypeEqnsEq (typePtoTypeVar ttypep, typePtoTypeVar ttyperp),
-                      TypeEqnsEq (typePtoTypeVar ttypep, _TypeDoubleF % _Just % _TypeAnnExpr # opexpr),
-                      TypeEqnsEq (typePtoTypeVar ttypelp, _TypeDoubleF % _Just % _TypeAnnExpr # lexpr),
-                      TypeEqnsEq (typePtoTypeVar ttyperp, _TypeDoubleF % _Just % _TypeAnnExpr # rexpr)
-                    ]
-                      <> leqns
-                      <> reqns
-             in ( EPOps (fromJust $ lookupInferredSeqTypeExpr ttype ttypemap) op l' r',
-                  [eqn]
-                )
+          -- -- if we ever add doubles to the language, we can change above back to addsubmul, and use this div
+          -- -- duplicated code from @addsubmul@
+          -- div =
+          --   let eqn =
+          --         TypeEqnsExist [ttypelp, ttyperp] $
+          --           [ TypeEqnsEq (typePtoTypeVar ttypep, typePtoTypeVar ttypelp),
+          --             TypeEqnsEq (typePtoTypeVar ttypep, typePtoTypeVar ttyperp),
+          --             TypeEqnsEq (typePtoTypeVar ttypep, _TypeDoubleF % _Just % _TypeAnnExpr # opexpr),
+          --             TypeEqnsEq (typePtoTypeVar ttypelp, _TypeDoubleF % _Just % _TypeAnnExpr # lexpr),
+          --             TypeEqnsEq (typePtoTypeVar ttyperp, _TypeDoubleF % _Just % _TypeAnnExpr # rexpr)
+          --           ]
+          --             <> leqns
+          --             <> reqns
+          --    in ( EPOps (fromJust $ lookupInferredSeqTypeExpr ttype ttypemap) op l' r',
+          --         [eqn]
+          --       )
           eqneq =
             let eqn =
                   TypeEqnsExist [ttypelp, ttyperp] $
@@ -511,10 +512,10 @@ typeCheckExpr = para f
                 )
 
       return $ case op of
-        PrimitiveAdd -> addsubmul
-        PrimitiveSub -> addsubmul
-        PrimitiveMul -> addsubmul
-        PrimitiveDiv -> div
+        PrimitiveAdd -> addsubmuldiv
+        PrimitiveSub -> addsubmuldiv
+        PrimitiveMul -> addsubmuldiv
+        PrimitiveDiv -> addsubmuldiv
         PrimitiveEq -> eqneq
         PrimitiveNeq -> eqneq
         PrimitiveLt -> ineq
