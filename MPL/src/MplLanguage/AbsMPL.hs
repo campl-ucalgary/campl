@@ -144,7 +144,7 @@ data InfixUop
     | InfixUop7 InfixU7op
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
-data ProcessNp = PROCESS_P ProcessPhrase | PROCESS_N PIdent
+data ProcessNp = PROCESS_P ProcessPhrase | PROCESS_N PIdent | PROCESS_QN UIdent PIdent
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data UnfoldExprPhrase = UNFOLD_EXPR_PHRASE Pattern [FoldExprPhrase]
