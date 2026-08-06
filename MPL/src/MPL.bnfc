@@ -297,6 +297,7 @@ STORE_EXPR       . Expr10 ::= Store LBracket ProcessNp RBracket;
 
 PROCESS_P       . ProcessNp ::= ProcessPhrase ;
 PROCESS_N       . ProcessNp ::= PIdent ;
+PROCESS_QN      . ProcessNp ::= UIdent PIdent ;
 
 DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR    . Expr10 ::= UIdent LBracket [Expr] RBracket ;
 DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR . Expr10 ::= UIdent ;
