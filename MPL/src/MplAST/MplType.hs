@@ -75,6 +75,9 @@ type family XTypeStoreF x
 
 -- type family XTypeSeqVar x
 
+type family XTypeRaceableInput x
+type family XTypeRaceableOutput x
+
 type family XTypeGet x
 
 type family XTypePut x
@@ -102,6 +105,7 @@ data MplType x
     TypeWithNoArgs !(XTypeWithNoArgs x) (IdP x)
   | TypeSeqWithArgs !(XTypeSeqWithArgs x) (IdP x) [MplType x]
   | TypeSeqVarWithArgs !(XTypeSeqVarWithArgs x) (TypeP x) [MplType x]
+    -- this is for a protocol/coprotocol
   | TypeConcWithArgs !(XTypeConcWithArgs x) (IdP x) ([MplType x], [MplType x])
   | TypeConcVarWithArgs !(XTypeConcVarWithArgs x) (TypeP x) ([MplType x], [MplType x])
   | TypeBuiltIn !(MplBuiltInTypesF x (MplType x))
@@ -119,6 +123,9 @@ data MplBuiltInTypesF x r
   | TypeParF !(XTypePar x) r r
   | TypeNegF !(XTypeNeg x) r
   | TypeTopBotF !(XTypeTopBot x)
+    -- types that indicate a channel is in a race
+  | TypeRaceableInputF !(XTypeRaceableInput x) r    -- Put, Tensor, Protocol
+  | TypeRaceableOutputF !(XTypeRaceableOutput x) r  -- Get, Par, Coprotocol
   | -- built in non primitive types
     -- TypeStringF !(XTypeStringF x)
     TypeUnitF !(XTypeUnitF x)
@@ -135,6 +142,8 @@ data MplBuiltInTypesF x r
 embedBuiltInTypes ::
   ( XTypeTupleF x1 ~ XTypeTupleF x2,
     -- , XTypeStringF x1 ~ XTypeStringF x2
+    XTypeRaceableInput x1 ~ XTypeRaceableInput x2,
+    XTypeRaceableOutput x1 ~ XTypeRaceableOutput x2,
     XTypeTensor x1 ~ XTypeTensor x2,
     XTypeCharF x1 ~ XTypeCharF x2,
     XTypeDoubleF x1 ~ XTypeDoubleF x2,
@@ -162,6 +171,8 @@ embedBuiltInTypes (TypeTensorF cxt a b) = TypeTensorF cxt a b
 embedBuiltInTypes (TypeParF cxt a b) = TypeParF cxt a b
 embedBuiltInTypes (TypeNegF cxt a) = TypeNegF cxt a
 embedBuiltInTypes (TypeTopBotF cxt) = TypeTopBotF cxt
+embedBuiltInTypes (TypeRaceableInputF cxt a) = TypeRaceableInputF cxt a
+embedBuiltInTypes (TypeRaceableOutputF cxt a) = TypeRaceableOutputF cxt a
 -- embedBuiltInTypes (TypeStringF cxt) = TypeStringF cxt
 embedBuiltInTypes (TypeUnitF cxt) = TypeUnitF cxt
 embedBuiltInTypes (TypeBoolF cxt) = TypeBoolF cxt
@@ -193,6 +204,8 @@ type ForallMplType (c :: Type -> Constraint) x =
     c (XTypeStoreF x),
     -- , c (XTypeSeqVar x)
 
+    c (XTypeRaceableInput x),
+    c (XTypeRaceableOutput x),
     c (XTypeGet x),
     c (XTypePut x),
     c (XTypeTensor x),

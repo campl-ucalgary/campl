@@ -279,6 +279,8 @@ type instance XTypeListF MplRenamed = NameOcc
 type instance XTypeTupleF MplRenamed = NameOcc
 type instance XTypeStoreF MplRenamed = NameOcc
 
+type instance XTypeRaceableInput MplRenamed = NameOcc
+type instance XTypeRaceableOutput MplRenamed = NameOcc
 type instance XTypeGet MplRenamed = NameOcc
 type instance XTypePut MplRenamed = NameOcc
 type instance XTypeTensor MplRenamed = NameOcc

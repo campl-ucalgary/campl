@@ -782,6 +782,8 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                         chotherqueue <- chlkup ^. otherQueue % to readChMQueue
                         peekTQueue chotherqueue >>= \case
                             QPut _ -> return (lch, rstec, chlkup)
+                            QFork _ _ -> return (lch, rstec, chlkup)
+                            QHPut _ -> return (lch, rstec, chlkup)
                             _ -> retry
                     _ -> retry
 

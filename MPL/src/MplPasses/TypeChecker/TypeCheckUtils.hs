@@ -234,7 +234,16 @@ higherOrderCheck notscoped tp
             % _TypeTopBotF
             # Nothing
       -- (cxt ^? _TypeChAnnNameOcc)
-
+      TypeRaceableInputF cxt (_, ch) -> do
+        ch' <- ch
+        return $ do
+          ch'' <- ch'
+          return $ _TypeRaceableInputF # (Nothing, ch'')
+      TypeRaceableOutputF cxt (_, ch) -> do
+        ch' <- ch
+        return $ do
+          ch'' <- ch'
+          return $ _TypeRaceableOutputF # (Nothing, ch'')
       TypeGetF cxt (_, seq) (_, conc) -> do
         seq' <- seq
         conc' <- conc

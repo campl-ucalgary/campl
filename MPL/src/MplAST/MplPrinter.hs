@@ -308,6 +308,8 @@ instance (PPrint (IdP x) t, PPrint (TypeP x) t) => MplTypeToBnfc (MplType x) t w
             [f seq]
             [f conc]
             bnfcKeyword
+        TypeRaceableInputF _cxt ch -> B.MPL_UIDENT_ARGS_TYPE (toBnfcIdent proxy "Raceable Input Polarity") bnfcKeyword [f ch] bnfcKeyword
+        TypeRaceableOutputF _cxt ch -> B.MPL_UIDENT_ARGS_TYPE (toBnfcIdent proxy "Raceable Output Polarity") bnfcKeyword [f ch] bnfcKeyword
         TypeTopBotF cxt -> B.MPL_UIDENT_NO_ARGS_TYPE (toBnfcIdent proxy "TopBot")
         TypeNegF cxt tp -> B.MPL_UIDENT_ARGS_TYPE (toBnfcIdent proxy "Neg") bnfcKeyword [f tp] bnfcKeyword
         TypeIntF _cxt -> B.MPL_UIDENT_NO_ARGS_TYPE $ toBnfcIdent proxy "Int"

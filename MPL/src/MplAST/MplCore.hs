@@ -66,6 +66,8 @@ typeLocationSpan ::
     , HasLocation (XTypeTupleF x)
     , HasLocation (XTypeStoreF x)
 
+    , HasLocation (XTypeRaceableInput x)
+    , HasLocation (XTypeRaceableOutput x)
     , HasLocation (XTypeGet x)
     , HasLocation (XTypePut x)
     , HasLocation (XTypeTensor x)
@@ -120,6 +122,8 @@ typeLocationSpan = cata go
             TypeIntF ann -> locationToSpan ann
             TypeCharF ann -> locationToSpan ann
             TypeDoubleF ann -> locationToSpan ann
+            TypeRaceableInputF ann c -> sconcat $ locationToSpan ann :| [c]
+            TypeRaceableOutputF ann c -> sconcat $ locationToSpan ann :| [c]
             TypeGetF ann l r -> sconcat $ locationToSpan ann :| [l, r]
             TypePutF ann l r -> sconcat $ locationToSpan ann :| [l, r]
             TypeTensorF ann l r -> sconcat $ locationToSpan ann :| [l, r]

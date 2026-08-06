@@ -235,22 +235,22 @@ substituteDelta (v, sub) tp = res
 
 
 matchCont ::
-    ( AsTypeUnificationError e x
+    ( AsTypeUnificationError e MplTypeSub
     , MonadError e m
-    , Eq (IdP x)
-    , Eq (TypeP x)
-    , Show (TypeP x)
-    , PPrint (MplType x) MplRenamed
-    , PPrint (IdP x) MplRenamed
-    , PPrint (TypeP x) MplRenamed
+    -- , Eq (IdP x)
+    -- , Eq (TypeP x)
+    -- , Show (TypeP x)
+    -- , PPrint (MplType x) MplRenamed
+    -- , PPrint (IdP x) MplRenamed
+    -- , PPrint (TypeP x) MplRenamed
 
-    , ForallMplType Show x
-    , Show (IdP x)
+    -- , ForallMplType Show x
+    -- , Show (IdP x)
     ) =>
-    MplType x ->
-    MplType x ->
-    (MplType x -> MplType x -> m [(TypeP x, MplType x)]) ->
-    m [(TypeP x, MplType x)]
+    MplType MplTypeSub ->
+    MplType MplTypeSub ->
+    (MplType MplTypeSub -> MplType MplTypeSub -> m [(TypeP MplTypeSub, MplType MplTypeSub)]) ->
+    m [(TypeP MplTypeSub, MplType MplTypeSub)]
 matchCont ty0 ty1 k = f ty0 ty1
   where
     -- TODO: Why did we remove this? Simply because it doesn't really make
@@ -288,6 +288,32 @@ matchCont ty0 ty1 k = f ty0 ty1
             concat <$> traverse (uncurry f) (zip (args0 <> args1) (brgs0 <> brgs1))
         | otherwise = k type0 type1
     -- TypeConcVarWithArgs !(XTypeConcVarWithArgs x) (TypeP x) ([MplType x], [MplType x])
+
+    -- cases with the raceable types
+    -- only allow possible ch type var subs with valid polarity
+
+    -- i needed to change all the type signatures because we need to enforce that
+    -- cxt is type XTypeConcWithArgs MplTypeSub = (Maybe TypeAnn, MplConcObjDefn MplTypeCheckedClause)
+    -- so that we can case on whether it's a protocol or a coprotocol
+    f type0@(TypeConcWithArgs cxt _ _) type1@(TypeBuiltIn (TypeRaceableOutputF _ ch)) =
+        case snd cxt of
+            CoprotocolDefn _ -> f type0 ch
+            ProtocolDefn _ -> k type0 type1
+    f type0@(TypeBuiltIn (TypeRaceableOutputF _ ch)) type1@(TypeConcWithArgs cxt _ _) =
+        case snd cxt of
+            CoprotocolDefn _ -> f ch type1
+            ProtocolDefn _ -> k type0 type1
+            _ -> k ch type1
+    f type0@(TypeConcWithArgs cxt _ _) type1@(TypeBuiltIn (TypeRaceableInputF _ ch)) =
+        case snd cxt of
+            CoprotocolDefn _ -> k type0 type1
+            ProtocolDefn _ -> f type0 ch
+            _ -> k type0 ch
+    f type0@(TypeBuiltIn (TypeRaceableInputF _ ch)) type1@(TypeConcWithArgs cxt _ _) =
+        case snd cxt of
+            CoprotocolDefn _ -> k type0 type1
+            ProtocolDefn _ -> f ch type1
+            _ -> k ch type1
 
     -- TODO: Actually, I think there's a bug here... 
     -- We really should check if we are matching concurrent types with 
@@ -329,15 +355,35 @@ matchCont ty0 ty1 k = f ty0 ty1
                     <*> traverse (uncurry f) (zip ls rs)
         (TypeStoreF _cxt0 tp0, TypeStoreF _cxt1 tp1) ->
             f tp0 tp1
+
         (TypeGetF cxt0 seq0 conc0, TypeGetF cxt1 seq1 conc1) ->
             concat <$> sequenceA [f seq0 seq1, f conc0 conc1]
         (TypePutF cxt0 seq0 conc0, TypePutF cxt1 seq1 conc1) ->
             concat <$> sequenceA [f seq0 seq1, f conc0 conc1]
 
+        -- cases with the raceable types 
+        -- only allow possible ch type var subs with valid polarity
+        (TypeGetF _ _ _, TypeRaceableOutputF _ ch) -> f type0 ch
+        (TypeRaceableOutputF _ ch, TypeGetF _ _ _) -> f ch type1
+        (TypePutF _ _ _, TypeRaceableInputF _ ch) -> f type0 ch
+        (TypeRaceableInputF _ ch, TypePutF _ _ _) -> f ch type1
+
         (TypeParF cxt0 a0 b0, TypeParF cxt1 a1 b1) ->
             (<>) <$> f a0 a1 <*> f b0 b1
         (TypeTensorF cxt0 a0 b0, TypeTensorF cxt1 a1 b1) ->
             (<>) <$> f a0 a1 <*> f b0 b1
+
+        -- cases with the raceable types 
+        -- only allow possible ch type var subs with valid polarity
+        (TypeParF _ _ _, TypeRaceableOutputF _ ch) -> f type0 ch
+        (TypeRaceableOutputF _ ch, TypeParF _ _ _) -> f ch type1
+        (TypeTensorF _ _ _, TypeRaceableInputF _ ch) -> f type0 ch
+        (TypeRaceableInputF _ ch, TypeTensorF _ _ _) -> f ch type1
+
+        -- cases matching two raceable types 
+        -- only allow possible ch type var subs with valid polarity
+        (TypeRaceableInputF _ cha, TypeRaceableInputF _ chb) -> f cha chb
+        (TypeRaceableOutputF _ cha, TypeRaceableOutputF _ chb) -> f cha chb
 
         (TypeSeqArrF cxt0 froms0 to0, TypeSeqArrF cxt1 froms1 to1)
             | length froms0 == length froms1 ->
@@ -361,42 +407,42 @@ matchCont ty0 ty1 k = f ty0 ty1
 
 {- | This is literally matching as you would expect from a unification algorithm -}
 match ::
-    ( AsTypeUnificationError e x
+    ( AsTypeUnificationError e MplTypeSub
     , MonadError e m
-    , Eq (IdP x)
-    , Eq (TypeP x)
-    , Show (TypeP x)
-    , PPrint (MplType x) MplRenamed
-    , PPrint (IdP x) MplRenamed
-    , PPrint (TypeP x) MplRenamed
+    -- , Eq (IdP x)
+    -- , Eq (TypeP x)
+    -- , Show (TypeP x)
+    -- , PPrint (MplType x) MplRenamed
+    -- , PPrint (IdP x) MplRenamed
+    -- , PPrint (TypeP x) MplRenamed
 
-    , ForallMplType Show x
-    , Show (IdP x)
+    -- , ForallMplType Show x
+    -- , Show (IdP x)
     ) =>
-    MplType x ->
-    MplType x ->
-    m [(TypeP x, MplType x)]
+    MplType MplTypeSub ->
+    MplType MplTypeSub ->
+    m [(TypeP MplTypeSub, MplType MplTypeSub)]
 match ty0 ty1 = matchCont ty0 ty1 k
   where
     k type0 type1 = (throwError $ _TypeMatchFailure # (type0,type1))
 
 {- | This matches but cuts some slack for @Int@ and @Double@-}
 matchNumNudge ::
-    ( AsTypeUnificationError e x
+    ( AsTypeUnificationError e MplTypeSub
     , MonadError e m
-    , Eq (IdP x)
-    , Eq (TypeP x)
-    , Show (TypeP x)
-    , PPrint (MplType x) MplRenamed
-    , PPrint (IdP x) MplRenamed
-    , PPrint (TypeP x) MplRenamed
+    -- , Eq (IdP x)
+    -- , Eq (TypeP x)
+    -- , Show (TypeP x)
+    -- , PPrint (MplType x) MplRenamed
+    -- , PPrint (IdP x) MplRenamed
+    -- , PPrint (TypeP x) MplRenamed
 
-    , ForallMplType Show x
-    , Show (IdP x)
+    -- , ForallMplType Show x
+    -- , Show (IdP x)
     ) =>
-    MplType x ->
-    MplType x ->
-    m [(TypeP x, MplType x)]
+    MplType MplTypeSub ->
+    MplType MplTypeSub ->
+    m [(TypeP MplTypeSub, MplType MplTypeSub)]
 matchNumNudge ty0 ty1 = matchCont ty0 ty1 k
   where
     k type0@(TypeBuiltIn a) type1@(TypeBuiltIn b) = case (a,b) of
@@ -476,21 +522,21 @@ mkValidSub v exp = bool (pure (v, exp))
 essentially eliminate all occurences of that substitution (if possible)
 -}
 coalesce ::
-    ( AsTypeUnificationError e x
-    , Eq (TypeP x)
-    , Eq (IdP x)
-    , Show (TypeP x)
-    , PPrint (MplType x) MplRenamed
-    , PPrint (IdP x) MplRenamed
-    , PPrint (TypeP x) MplRenamed
+    ( AsTypeUnificationError e MplTypeSub
+    -- , Eq (TypeP x)
+    -- , Eq (IdP x)
+    -- , Show (TypeP x)
+    -- , PPrint (MplType x) MplRenamed
+    -- , PPrint (IdP x) MplRenamed
+    -- , PPrint (TypeP x) MplRenamed
 
-    , ForallMplType Show x
-    , Show (IdP x)
+    -- , ForallMplType Show x
+    -- , Show (IdP x)
 
     , MonadError e m ) =>
-    Sub x ->
-    [Sub x] ->
-    m [Sub x]
+    Sub MplTypeSub ->
+    [Sub MplTypeSub] ->
+    m [Sub MplTypeSub]
 coalesce (s, ssub) = fmap concat . traverse go
   where
     go ((t, tsub))
@@ -505,28 +551,28 @@ Input: A substitution
 Output: The potentially /nudged/ substitution, and the rest of the substitutions.
  -}
 coalesceNumNudge ::
-    forall e x m.
-    ( AsTypeUnificationError e x
-    , Eq (TypeP x)
-    , Eq (IdP x)
-    , Show (TypeP x)
-    , PPrint (MplType x) MplRenamed
-    , PPrint (IdP x) MplRenamed
-    , PPrint (TypeP x) MplRenamed
+    forall e m.
+    ( AsTypeUnificationError e MplTypeSub
+    -- , Eq (TypeP x)
+    -- , Eq (IdP x)
+    -- , Show (TypeP x)
+    -- , PPrint (MplType x) MplRenamed
+    -- , PPrint (IdP x) MplRenamed
+    -- , PPrint (TypeP x) MplRenamed
 
-    , ForallMplType Show x
-    , Show (IdP x)
+    -- , ForallMplType Show x
+    -- , Show (IdP x)
 
-    -- we require that these annotations should be the same
-    , XTypeDoubleF x ~ XTypeIntF x
+    -- -- we require that these annotations should be the same
+    -- , XTypeDoubleF x ~ XTypeIntF x
 
     , MonadError e m ) =>
-    Sub x ->
-    [Sub x] ->
-    m ([Sub x], Sub x)
+    Sub MplTypeSub ->
+    [Sub MplTypeSub] ->
+    m ([Sub MplTypeSub], Sub MplTypeSub)
 coalesceNumNudge (s, ssub) = flip runStateT (s,ssub) . go
   where
-    go :: [(TypeP x, MplType x)] -> StateT (TypeP x, MplType x) m [(TypeP x, MplType x)]
+    go :: [(TypeP MplTypeSub, MplType MplTypeSub)] -> StateT (TypeP MplTypeSub, MplType MplTypeSub) m [(TypeP MplTypeSub, MplType MplTypeSub)]
     go [] = return []
     go ((t, tsub):rst) = do
         (s, ssub) <- get
@@ -545,23 +591,23 @@ coalesceNumNudge (s, ssub) = flip runStateT (s,ssub) . go
 
 {-| linearize.  This is unification for a set of constraints essentially. -}
 linearize ::
-    ( AsTypeUnificationError e x
-    , Eq (TypeP x)
-    , Ord (TypeP x)
-    , Eq (IdP x)
-    , Show (TypeP x)
-    , PPrint (MplType x) MplRenamed
-    , PPrint (IdP x) MplRenamed
-    , PPrint (TypeP x) MplRenamed
-    , ForallMplType Show x
-    , Show (IdP x)
+    ( AsTypeUnificationError e MplTypeSub
+    -- , Eq (TypeP x)
+    -- , Ord (TypeP x)
+    -- , Eq (IdP x)
+    -- , Show (TypeP x)
+    -- , PPrint (MplType x) MplRenamed
+    -- , PPrint (IdP x) MplRenamed
+    -- , PPrint (TypeP x) MplRenamed
+    -- , ForallMplType Show x
+    -- , Show (IdP x)
 
-    -- we require that these annotations should be the same
-    , XTypeDoubleF x ~ XTypeIntF x
+    -- -- we require that these annotations should be the same
+    -- , XTypeDoubleF x ~ XTypeIntF x
 
     , MonadError e m ) =>
-    [Sub x] ->
-    m [Sub x]
+    [Sub MplTypeSub] ->
+    m [Sub MplTypeSub]
 linearize = go
   where
     go [] = pure []
@@ -638,24 +684,24 @@ deleteSubList v = f
 
 {- | solves the type equations (essentially the unification algorithm) -}
 solveTypeEqns ::
-    forall m e x.
-    ( AsTypeUnificationError e x
-    , Ord (TypeP x)
-    , Eq (IdP x)
-    , Show (TypeP x)
+    forall m e.
+    ( AsTypeUnificationError e MplTypeSub
+    -- , Ord (TypeP x)
+    -- , Eq (IdP x)
+    -- , Show (TypeP x)
 
-    , PPrint (MplType x) MplRenamed
-    , PPrint (IdP x) MplRenamed
-    , PPrint (TypeP x) MplRenamed
+    -- , PPrint (MplType x) MplRenamed
+    -- , PPrint (IdP x) MplRenamed
+    -- , PPrint (TypeP x) MplRenamed
 
-    -- we require that these annotations should be the same
-    , XTypeDoubleF x ~ XTypeIntF x
+    -- -- we require that these annotations should be the same
+    -- , XTypeDoubleF x ~ XTypeIntF x
 
-    , ForallMplType Show x
-    , Show (IdP x)
+    -- , ForallMplType Show x
+    -- , Show (IdP x)
     , MonadError e m ) =>
-    TypeEqns x ->
-    m (Package x)
+    TypeEqns MplTypeSub ->
+    m (Package MplTypeSub)
 solveTypeEqns eqns = cata f eqns >>= traverseOf packageSubs linearize
 {-
 solveTypeEqns eqns = do
@@ -665,7 +711,7 @@ solveTypeEqns eqns = do
     return res
 -}
   where
-    f :: Base (TypeEqns x) (m (Package x)) -> m (Package x)
+    f :: Base (TypeEqns MplTypeSub) (m (Package MplTypeSub)) -> m (Package MplTypeSub)
     f (TypeEqnsEqF (a,b)) = do
         subs <- matchNumNudge a b
         return $ mempty & packageSubs .~ subs
@@ -703,25 +749,25 @@ surfaceSubs surface pkg = foldr go pkg surface
         _ -> pkg
 
 packageExistentialElim  ::
-    forall e x m.
-    ( AsTypeUnificationError e x
-    , Ord (TypeP x)
-    , Eq (TypeP x)
-    , Eq (IdP x)
-    , Show (TypeP x)
-    , PPrint (MplType x) MplRenamed
-    , PPrint (IdP x) MplRenamed
-    , PPrint (TypeP x) MplRenamed
+    forall e m.
+    ( AsTypeUnificationError e MplTypeSub
+    -- , Ord (TypeP x)
+    -- , Eq (TypeP x)
+    -- , Eq (IdP x)
+    -- , Show (TypeP x)
+    -- , PPrint (MplType x) MplRenamed
+    -- , PPrint (IdP x) MplRenamed
+    -- , PPrint (TypeP x) MplRenamed
 
-    , ForallMplType Show x
-    , Show (IdP x)
+    -- , ForallMplType Show x
+    -- , Show (IdP x)
 
-    -- we require that these annotations should be the same
-    , XTypeDoubleF x ~ XTypeIntF x
+    -- -- we require that these annotations should be the same
+    -- , XTypeDoubleF x ~ XTypeIntF x
 
     , MonadError e m ) =>
-    Package x ->
-    m (Package x)
+    Package MplTypeSub ->
+    m (Package MplTypeSub)
 packageExistentialElim pkg = do
     -- We don't linearize at each level -- helps performance a bit I guess and this is unneccessasry as well.
     -- foldrM f pkg' (pkg ^. packageExisVar) >>= traverseOf packageSubs linearize
@@ -731,7 +777,7 @@ packageExistentialElim pkg = do
                -- & packageSubs %~ filter (not . isTrivialSub)
                & packageSubs %~ id
 
-    f :: TypeP x -> Package x -> m (Package x)
+    f :: TypeP MplTypeSub -> Package MplTypeSub -> m (Package MplTypeSub)
     f v acc = let subs = acc ^. packageSubs % to (alignSubs v) in case lookupSubList v subs of
         Just sub -> do
             let subs' = deleteSubList v subs
@@ -749,33 +795,33 @@ packageExistentialElim pkg = do
     collectvars (tp, mpltp) = tp : mplTypeCollectTypeP mpltp
 
 packageUniversalElim  ::
-    forall e m x.
-    ( AsTypeUnificationError e x
-    , Ord (TypeP x)
-    , Eq (TypeP x)
-    , Eq (IdP x)
-    , Show (TypeP x)
-    , PPrint (MplType x) MplRenamed
-    , PPrint (IdP x) MplRenamed
-    , PPrint (TypeP x) MplRenamed
+    forall e m.
+    ( AsTypeUnificationError e MplTypeSub
+    -- , Ord (TypeP x)
+    -- , Eq (TypeP x)
+    -- , Eq (IdP x)
+    -- , Show (TypeP x)
+    -- , PPrint (MplType x) MplRenamed
+    -- , PPrint (IdP x) MplRenamed
+    -- , PPrint (TypeP x) MplRenamed
 
-    , ForallMplType Show x
-    , Show (IdP x)
+    -- , ForallMplType Show x
+    -- , Show (IdP x)
 
-    -- we require that these annotations should be the same
-    , XTypeDoubleF x ~ XTypeIntF x
+    -- -- we require that these annotations should be the same
+    -- , XTypeDoubleF x ~ XTypeIntF x
 
     , MonadError e m ) =>
-    [([TypeP x], TypeP x, MplType x)] ->
-    Package x ->
-    m (Package x)
+    [([TypeP MplTypeSub], TypeP MplTypeSub, MplType MplTypeSub)] ->
+    Package MplTypeSub ->
+    m (Package MplTypeSub)
 packageUniversalElim vs pkg = traverseOf packageSubs linearize pkg >>= flip (foldrM f) vs
   where
-    f :: ([TypeP x], TypeP x, MplType x) -> Package x -> m (Package x)
+    f :: ([TypeP MplTypeSub], TypeP MplTypeSub, MplType MplTypeSub) -> Package MplTypeSub -> m (Package MplTypeSub)
     f (foralls, v, vtp) acc = acc' ^. packageSubs % to (pure . fromJust . lookup v) >>= \tp -> do
             let throwerr = throwError $ _TypeForallMatchFailure # (vtp, tp)
 
-                g :: [(TypeP x, MplType x)] -> m ()
+                g :: [(TypeP MplTypeSub, MplType MplTypeSub)] -> m ()
                 g [] = return ()
                 g ((l, (TypeBuiltIn (TypeNegF _ (TypeBuiltIn (TypeNegF _ r))))):rst)  =  g $ (l,r):rst
 
@@ -897,6 +943,8 @@ pprintTypeUnificationError = go
             TypeCharF cxt -> fmap anntodoc cxt
             TypeDoubleF cxt -> fmap anntodoc cxt
 
+            TypeRaceableInputF cxt _ -> fmap anntodoc cxt
+            TypeRaceableOutputF cxt _ -> fmap anntodoc cxt
             TypeGetF cxt _ _ -> fmap anntodoc cxt
             TypePutF cxt _ _ -> fmap anntodoc cxt
             TypeTensorF cxt _ _ -> fmap anntodoc cxt
@@ -991,7 +1039,7 @@ pprintTypeUnificationError = go
         CRun {} -> mempty
 
         CPlugs _ _ -> mempty
-        CRace _ _ -> mempty
+        CRace ann _ -> ann ^. coerced @KeyWordNameOcc @NameOcc % nameOccLocation % to loctodoc
         CSwitch _ _ -> mempty
         CIf ann _ _ _ -> ann ^. coerced @KeyWordNameOcc @NameOcc % nameOccLocation % to loctodoc
 

@@ -1974,6 +1974,8 @@ typeCheckCmd cmd =
                 return (ttypech', (cmds', cmdseqns))
 
               let ttypepunwrapped = fromJust $ instantiateTypeWithSubs cmdann subs $ unwrappedtp
+                  -- this becomes the TypeConcWithArgs type, and the ProtocolDefn or CorptocolDefn is in first argument,
+                  -- we can just case on that in the type eqns solving part to know whether the channel is raceable
                   ttypepclause = fromJust $ case def of
                     ProtocolDefn phrase ->
                       phrase
@@ -2353,32 +2355,63 @@ typeCheckCmd cmd =
 
           return (_CRace # (cxt, (ch', cmds') :| races'), eqns)
           where
-            -- instantiates the race equations because races must have the type
-            -- be of get or put (depending on polarity)...
+            -- instantiates race equations to indicate this channel is used in a race
+            -- and therefore must be "raceable" i.e. information is travelling towards it
+            -- this means that if the channel's polarity is
+              -- input then the channel type must be Put, Tensor, or a Protocol
+              -- output then the channel type must be Get, Par, or a Coprotocol
+            -- we add a type equation to indicate which of these two groups the channel is in
+            -- instantiateRaceEqn :: ChP MplRenamed -> TypeIdentT -> n ([TypeIdentT], TypeEqns MplTypeSub) 
             instantiateRaceEqn ch ttypepch = do
-              ttypechgetseq <- freshTypeTag
-              ttypechgetconc <- freshTypeTag
-              let ttypepchgetseq = annotateTypeTag ttypechgetseq cmd
-                  ttypepchgetconc = annotateTypeTag ttypechgetconc cmd
+              ttypech_new <- freshTypeTag
+              let ttypepch_new = annotateTypeTag ttypech_new cmd
                   eqn =
                     TypeEqnsEq
                       ( typePtoTypeVar ttypepch,
+                        -- depending on ch polarity
                         inputOutput
                           (ch ^. polarity)
-                          ( _TypePutF
-                              # ( _Just % _TypeAnnCmd # cmd,
-                                  typePtoTypeVar ttypepchgetseq,
-                                  typePtoTypeVar ttypepchgetconc
-                                )
-                          )
-                          ( _TypeGetF
-                              # ( _Just % _TypeAnnCmd # cmd,
-                                  typePtoTypeVar ttypepchgetseq,
-                                  typePtoTypeVar ttypepchgetconc
-                                )
-                          )
+                          -- if it's input pol then Put, Tensor, or a Protocol
+                          ( _TypeRaceableInputF # ( _Just % _TypeAnnCmd # cmd, typePtoTypeVar ttypepch_new) )
+                          -- if it's output pol then Get, Par, or a Coprotocol
+                          ( _TypeRaceableOutputF # ( _Just % _TypeAnnCmd # cmd, typePtoTypeVar ttypepch_new) )
                       )
-              return ([ttypepchgetseq, ttypepchgetconc], eqn)
+              -- return list of type tags and the equation
+              return ([ttypepch_new], eqn)
+
+            -- -- original race code
+            -- -- instantiates the race equations because races must have the type
+            -- -- -- be of get or put (depending on polarity)...
+            -- instantiateRaceEqn ch ttypepch = do
+            --   ttypechgetseq <- freshTypeTag   -- type of seq value being recieved
+            --   ttypechgetconc <- freshTypeTag  -- continuation channel type
+            --   let ttypepchgetseq = annotateTypeTag ttypechgetseq cmd
+            --       ttypepchgetconc = annotateTypeTag ttypechgetconc cmd
+            --       -- builds single type equation for the channel
+            --       eqn =
+            --         TypeEqnsEq
+            --           ( typePtoTypeVar ttypepch,
+            --             -- depending on ch polarity
+            --             inputOutput
+            --               (ch ^. polarity)
+            --               -- if it's input pol then Put
+            --               ( _TypePutF
+            --                   # ( _Just % _TypeAnnCmd # cmd,
+            --                       typePtoTypeVar ttypepchgetseq,
+            --                       typePtoTypeVar ttypepchgetconc
+            --                     )
+            --               )
+            --               -- if it's output pol then Get
+            --               ( _TypeGetF
+            --                   # ( _Just % _TypeAnnCmd # cmd,
+            --                       typePtoTypeVar ttypepchgetseq,
+            --                       typePtoTypeVar ttypepchgetconc
+            --                     )
+            --               )
+            --           )
+            --   -- return list of type tags and the equation
+            --   return ([ttypepchgetseq, ttypepchgetconc], eqn)
+
         CPlugs (cxt, plugs) (phr1, phr2, phrs) -> do
           ttypemap <- guse (envLcl % typeInfoEnvMap)
 

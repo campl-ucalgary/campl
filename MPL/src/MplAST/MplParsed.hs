@@ -221,6 +221,8 @@ type instance XTypeListF MplParsed = NameOcc
 type instance XTypeTupleF MplParsed = NameOcc
 type instance XTypeStoreF MplParsed = NameOcc
 
+type instance XTypeRaceableInput MplParsed = NameOcc
+type instance XTypeRaceableOutput MplParsed = NameOcc
 type instance XTypeGet MplParsed = NameOcc
 type instance XTypePut MplParsed = NameOcc
 type instance XTypeTensor MplParsed = NameOcc
