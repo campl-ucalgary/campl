@@ -97,7 +97,7 @@ Infixl5op literals are recognized by the regular expression
 `````["+-"]`````
 
 Infixl6op literals are recognized by the regular expression
-`````["*/"]`````
+`````["%*/"]`````
 
 ChId literals are recognized by the regular expression
 `````{"|=|"}`````

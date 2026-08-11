@@ -183,6 +183,7 @@ mplAsmComToBnfcCom = cata go
         CSubIntF _ -> B.AC_SUB bnfcKeyword
         CMulIntF _ -> B.AC_MUL bnfcKeyword
         CDivIntF _ -> B.AC_DIVQ bnfcKeyword
+        CModIntF _ -> B.AC_DIVR bnfcKeyword
         CConstructorF _ (TypeAndSpec  a b) args ->
             B.AC_CONSTRUCTOR_ARGS 
                 (toBnfcIdent a) 
@@ -349,8 +350,10 @@ instance BnfcKeyword B.Mul where
     bnfcKeyword = B.Mul (invalidPosition, "mul")
 
 instance BnfcKeyword B.Quot where
-    bnfcKeyword = B.Quot (invalidPosition, "quot[TODO]")
+    bnfcKeyword = B.Quot (invalidPosition, "quot")
 
+instance BnfcKeyword B.Rem where
+    bnfcKeyword = B.Rem (invalidPosition, "rem")
 
 instance BnfcKeyword B.Rec where
     bnfcKeyword = B.Rec (invalidPosition, "rec")

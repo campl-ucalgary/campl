@@ -383,6 +383,7 @@ mplAssembleExpr = para go
                 PrimitiveMul -> pure [Asm.CMulInt ()]
                 PrimitiveSub -> pure [Asm.CSubInt ()]
                 PrimitiveDiv -> pure [Asm.CDivInt ()]
+                PrimitiveMod -> pure [Asm.CModInt ()]
                 PrimitiveLt -> pure [Asm.CLtInt ()]
                 PrimitiveGt -> pure [Asm.CGtInt ()]
                 PrimitiveLeq -> pure [Asm.CLeqInt ()]

@@ -102,7 +102,7 @@ $d + \. $d + (e \- ? $d +)?
     { tok (eitherResIdent T_Infixl5op) }
 
 -- token Infixl6op
-[\* \/]
+[\% \* \/]
     { tok (eitherResIdent T_Infixl6op) }
 
 -- token ChId

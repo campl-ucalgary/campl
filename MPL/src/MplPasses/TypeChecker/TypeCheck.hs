@@ -516,6 +516,7 @@ typeCheckExpr = para f
         PrimitiveSub -> addsubmuldiv
         PrimitiveMul -> addsubmuldiv
         PrimitiveDiv -> addsubmuldiv
+        PrimitiveMod -> addsubmuldiv
         PrimitiveEq -> eqneq
         PrimitiveNeq -> eqneq
         PrimitiveLt -> ineq

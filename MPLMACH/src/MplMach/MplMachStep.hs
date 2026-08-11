@@ -258,6 +258,10 @@ seqStep k stec = case steccode of
             stec & code !~ c
                  & stack !~ s
                  & stack %!~ cons (VInt $ n `div` m)
+        (IModInt, e, VInt n : VInt m : s) -> {-# SCC "IModInt" #-} pure $ Just $
+            stec & code !~ c
+                 & stack !~ s
+                 & stack %!~ cons (VInt $ n `mod` m)
         (IEqInt, e, VInt n : VInt m : s) -> {-# SCC "IEqInt" #-} pure $ Just $
             stec & code !~ c
                  & stack !~ s

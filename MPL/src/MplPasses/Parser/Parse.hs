@@ -247,6 +247,7 @@ parseBnfcExpr (B.INFIXL6_EXPR a (B.Infixl6op (pos, op)) b) = do
   case op of
     "*" -> return $ _EPOps # (toLocation pos, PrimitiveMul, a', b')
     "/" -> return $ _EPOps # (toLocation pos, PrimitiveDiv, a', b')
+    "%" -> return $ _EPOps # (toLocation pos, PrimitiveMod, a', b')
     _ -> error $ "not implemented: " ++ op
 parseBnfcExpr (B.INFIXR7_EXPR a op b) =
   error $ "not implemented instr" ++ show op

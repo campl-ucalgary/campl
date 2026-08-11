@@ -42,7 +42,7 @@ position token Colon ':' ;
 --       so that the user-defined operators take precedence
 position token Infixl3op ({"=="}|{"/="}|'<'|'>'|{"<="}|{">="});
 position token Infixl5op ('+'|'-');
-position token Infixl6op ('*'|'/'); --  | '%'
+position token Infixl6op ('*'|'/'|'%'); -- we are bringing mod back B)
 
 -- Custom-defined infix operators.
 -- They begin with a special character, followed by a non-zero sequence of less-special characters.

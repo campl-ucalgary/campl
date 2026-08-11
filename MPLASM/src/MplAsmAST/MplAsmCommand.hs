@@ -152,6 +152,7 @@ data MplAsmCom x
   | CSubInt (XCIntArith x)
   | CMulInt (XCIntArith x)
   | CDivInt (XCIntArith x)
+  | CModInt (XCIntArith x)
   | -- | data type, handle, arguments
     CConstructor (XCConstructor x) (TypeAndSpec x) [IdP x]
   | -- | data type, handle, arguments, expression to destruct

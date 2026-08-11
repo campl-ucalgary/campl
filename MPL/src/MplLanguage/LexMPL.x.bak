@@ -185,10 +185,6 @@ s p l i t
 f o r k
     { tok (eitherResIdent T_Fork) }
 
--- token Race
-r a c e
-    { tok (eitherResIdent T_Race) }
-
 -- token StoreType
 S t o r e
     { tok (eitherResIdent T_StoreType) }
@@ -269,7 +265,6 @@ data Tok
   | T_HPut !String
   | T_Split !String
   | T_Fork !String
-  | T_Race !String
   | T_StoreType !String
   | T_Store !String
   | T_Use !String
@@ -374,7 +369,6 @@ tokenText t = case t of
   PT _ (T_HPut s) -> s
   PT _ (T_Split s) -> s
   PT _ (T_Fork s) -> s
-  PT _ (T_Race s) -> s
   PT _ (T_StoreType s) -> s
   PT _ (T_Store s) -> s
   PT _ (T_Use s) -> s
@@ -421,10 +415,10 @@ resWords =
        (b "of" 25
           (b "let" 23 (b "into" 22 (b "include" 21 N N) N) (b "neg" 24 N N))
           (b "potato" 28 (b "plug" 27 (b "on" 26 N N) N) (b "proc" 29 N N)))
-       (b "with" 35
-          (b "unfold" 33
-             (b "then" 32 (b "switch" 31 N N) N) (b "where" 34 N N))
-          (b "|" 37 (b "{" 36 N N) (b "}" 38 N N))))
+       (b "where" 35
+          (b "then" 33
+             (b "switch" 32 (b "race" 31 N N) N) (b "unfold" 34 N N))
+          (b "|" 38 (b "{" 37 (b "with" 36 N N) N) (b "}" 39 N N))))
   where
   b s n = B bs (TS bs n)
     where

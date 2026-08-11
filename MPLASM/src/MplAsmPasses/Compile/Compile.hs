@@ -337,6 +337,7 @@ mplAsmComToInstr = \case
     CSubInt _ -> return [_ISubInt # ()]
     CMulInt _ -> return [_IMulInt # ()]
     CDivInt _ -> return [_IDivInt # ()]
+    CModInt _ -> return [_IModInt # ()]
     CConstructor _ typeandspec args -> do
         ~(Just (caseix, numargs)) <- lookupData typeandspec
         tell $ bool [ _IllegalConstructorCall # (typeandspec, numargs, genericLength args)] [] $ genericLength args == numargs
