@@ -28,9 +28,8 @@ type instance Asm.XCInt MplAsmFromLambdaLifted = ()
 type instance Asm.XCChar MplAsmFromLambdaLifted = ()
 type instance Asm.XCBool MplAsmFromLambdaLifted = ()
 type instance Asm.XCIntCmp MplAsmFromLambdaLifted = ()
-
-type instance Asm.XCEqChar MplAsmFromLambdaLifted = ()
-type instance Asm.XCLeqChar MplAsmFromLambdaLifted = ()
+type instance Asm.XCBoolCmp MplAsmFromLambdaLifted = ()
+type instance Asm.XCCharCmp MplAsmFromLambdaLifted = ()
 
 type instance Asm.XCIntArith MplAsmFromLambdaLifted = ()
 type instance Asm.XCConstructor MplAsmFromLambdaLifted = ()

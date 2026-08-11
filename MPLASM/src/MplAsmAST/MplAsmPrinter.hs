@@ -177,7 +177,13 @@ mplAsmComToBnfcCom = cata go
         -- TODO: properly add this in the bnfc grammer and don't use the same instruction
         CLtIntF _ -> B.AC_LEQ bnfcKeyword
         CLeqIntF _ -> B.AC_LEQ bnfcKeyword
-        CLeqCharF _ -> B.AC_LEQ bnfcKeyword
+        CGeqIntF _ -> B.AC_LEQ bnfcKeyword
+        CGtIntF _ -> B.AC_LEQ bnfcKeyword
+        
+        CLeqCharF _ -> B.AC_LEQC bnfcKeyword
+        CLtCharF _ -> B.AC_LEQC bnfcKeyword
+        CGeqCharF _ -> B.AC_LEQC bnfcKeyword
+        CGtCharF _ -> B.AC_LEQC bnfcKeyword
 
         CAddIntF _ -> B.AC_ADD bnfcKeyword
         CSubIntF _ -> B.AC_SUB bnfcKeyword
@@ -328,6 +334,9 @@ instance BnfcKeyword B.CInt where
 instance BnfcKeyword B.CChar where
     bnfcKeyword = B.CChar (invalidPosition, "cChar")
 
+instance BnfcKeyword B.CBool where
+    bnfcKeyword = B.CBool (invalidPosition, "cBool")
+
 instance BnfcKeyword B.EqI where
     bnfcKeyword = B.EqI (invalidPosition, "eqi")
 
@@ -336,6 +345,12 @@ instance BnfcKeyword B.EqB where
 
 instance BnfcKeyword B.EqC where
     bnfcKeyword = B.EqC (invalidPosition, "eqc")
+    
+instance BnfcKeyword B.LeqI where
+    bnfcKeyword = B.LeqI (invalidPosition, "leq")
+
+instance BnfcKeyword B.LeqC where
+    bnfcKeyword = B.LeqC (invalidPosition, "leqc")
 
 instance BnfcKeyword B.Case where
     bnfcKeyword = B.Case (invalidPosition, "case")
@@ -400,14 +415,8 @@ instance BnfcKeyword B.Halt where
 instance BnfcKeyword B.Main_run where
     bnfcKeyword = B.Main_run (invalidPosition, "run")
 
-instance BnfcKeyword B.CBool where
-    bnfcKeyword = B.CBool (invalidPosition, "cBool")
-
 instance BnfcKeyword B.Shput where
     bnfcKeyword = B.Shput (invalidPosition, "shput")
-
-instance BnfcKeyword B.LeqI where
-    bnfcKeyword = B.LeqI (invalidPosition, "leq")
 
 instance BnfcKeyword B.StoreProc where
     bnfcKeyword = B.StoreProc (invalidPosition, "sotre_proc")

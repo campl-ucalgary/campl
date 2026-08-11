@@ -291,6 +291,22 @@ seqStep k stec = case steccode of
             stec & code !~ c
                  & stack !~ s
                  & stack %!~ cons (VBool $ n == m)
+        (ILeqChar, e, VChar n : VChar m : s) -> {-# SCC "ILeqChar" #-} pure $ Just $
+            stec & code !~ c
+                 & stack !~ s
+                 & stack %!~ cons (VBool $ n <= m)
+        (IGeqChar, e, VChar n : VChar m : s) -> {-# SCC "IGeqChar" #-} pure $ Just $
+            stec & code !~ c
+                 & stack !~ s
+                 & stack %!~ cons (VBool $ n >= m)
+        (ILtChar, e, VChar n : VChar m : s) -> {-# SCC "ILtChar" #-} pure $ Just $
+            stec & code !~ c
+                 & stack !~ s
+                 & stack %!~ cons (VBool $ n < m)
+        (IGtChar, e, VChar n : VChar m : s) -> {-# SCC "IGtChar" #-} pure $ Just $
+            stec & code !~ c
+                 & stack !~ s
+                 & stack %!~ cons (VBool $ n > m)
         (IStoreProc ins outs idOrinstrs, e, s) -> {-# SCC "IEStoreProc" #-} do
             instrs <- case idOrinstrs of
                 Left callix -> gviews supercombinators (Arr.! callix)

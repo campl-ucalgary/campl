@@ -284,6 +284,9 @@ data ISeq
 
     | IEqChar
     | ILeqChar
+    | IGeqChar
+    | ILtChar
+    | IGtChar
 
     -- data instructions...
     -- | pushes the i'th constructor onto the stack with the top n elements in the stack

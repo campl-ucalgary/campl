@@ -59,6 +59,8 @@ typeLocationSpan ::
     , HasLocation (XTypeIntF x)
     , HasLocation (XTypeCharF x)
     , HasLocation (XTypeDoubleF x)
+    , HasLocation (XTypeEqableF x)
+    , HasLocation (XTypeOrdableF x)
     -- , HasLocation (XTypeStringF x)
     , HasLocation (XTypeUnitF x)
     , HasLocation (XTypeBoolF x)
@@ -122,6 +124,8 @@ typeLocationSpan = cata go
             TypeIntF ann -> locationToSpan ann
             TypeCharF ann -> locationToSpan ann
             TypeDoubleF ann -> locationToSpan ann
+            TypeEqableF ann c -> sconcat $ locationToSpan ann :| [c]
+            TypeOrdableF ann c -> sconcat $ locationToSpan ann :| [c]
             TypeRaceableInputF ann c -> sconcat $ locationToSpan ann :| [c]
             TypeRaceableOutputF ann c -> sconcat $ locationToSpan ann :| [c]
             TypeGetF ann l r -> sconcat $ locationToSpan ann :| [l, r]

@@ -303,17 +303,14 @@ matchCont ty0 ty1 k = f ty0 ty1
         case snd cxt of
             CoprotocolDefn _ -> f ch type1
             ProtocolDefn _ -> k type0 type1
-            _ -> k ch type1
     f type0@(TypeConcWithArgs cxt _ _) type1@(TypeBuiltIn (TypeRaceableInputF _ ch)) =
         case snd cxt of
             CoprotocolDefn _ -> k type0 type1
             ProtocolDefn _ -> f type0 ch
-            _ -> k type0 ch
     f type0@(TypeBuiltIn (TypeRaceableInputF _ ch)) type1@(TypeConcWithArgs cxt _ _) =
         case snd cxt of
             CoprotocolDefn _ -> k type0 type1
             ProtocolDefn _ -> f ch type1
-            _ -> k ch type1
 
     -- TODO: Actually, I think there's a bug here... 
     -- We really should check if we are matching concurrent types with 
@@ -341,6 +338,23 @@ matchCont ty0 ty1 k = f ty0 ty1
         (TypeDoubleF _cxt0, TypeDoubleF _cxt1) -> return []
         (TypeCharF _cxt0, TypeCharF _cxt1) -> return []
         (TypeBoolF _cxt0, TypeBoolF _cxt1) -> return []
+
+        -- check if the == and /= ops are defined on them:
+        (TypeIntF _cxt0, TypeEqableF _cxt1 tv) -> f type0 tv
+        (TypeEqableF _cxt0 tv, TypeIntF _cxt1) -> f tv type1
+        (TypeCharF _cxt0, TypeEqableF _cxt1 tv) -> f type0 tv
+        (TypeEqableF _cxt0 tv, TypeCharF _cxt1) -> f tv type1
+        (TypeBoolF _cxt0, TypeEqableF _cxt1 tv) -> f type0 tv
+        (TypeEqableF _cxt0 tv, TypeBoolF _cxt1) -> f tv type1
+        (TypeEqableF _cxt0 tv0, TypeEqableF _cxt1 tv1) -> f tv0 tv1
+        
+        -- check if the <=, <, >=, and > ops are defined on them:
+        (TypeIntF _cxt0, TypeOrdableF _cxt1 tv) -> f type0 tv
+        (TypeOrdableF _cxt0 tv, TypeIntF _cxt1) -> f tv type1
+        (TypeCharF _cxt0, TypeOrdableF _cxt1 tv) -> f type0 tv
+        (TypeOrdableF _cxt0 tv, TypeCharF _cxt1) -> f tv type1
+        (TypeOrdableF _cxt0 tv0, TypeOrdableF _cxt1 tv1) -> f tv0 tv1
+
         (TypeUnitF _cxt0, TypeUnitF _cxt1) -> return []
         (TypeListF _cxt0 a, TypeListF _cxt1 b) -> f a b
 
@@ -941,6 +955,8 @@ pprintTypeUnificationError = go
         TypeBuiltIn res -> case res of
             TypeIntF cxt -> fmap anntodoc cxt
             TypeCharF cxt -> fmap anntodoc cxt
+            TypeEqableF cxt _ -> fmap anntodoc cxt
+            TypeOrdableF cxt _ -> fmap anntodoc cxt
             TypeDoubleF cxt -> fmap anntodoc cxt
 
             TypeRaceableInputF cxt _ -> fmap anntodoc cxt

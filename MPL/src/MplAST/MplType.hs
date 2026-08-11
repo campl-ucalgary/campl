@@ -62,6 +62,9 @@ type family XTypeCharF x
 
 type family XTypeDoubleF x
 
+type family XTypeEqableF x
+type family XTypeOrdableF x
+
 -- type family XTypeStringF x
 type family XTypeUnitF x
 
@@ -116,6 +119,8 @@ data MplBuiltInTypesF x r
     TypeIntF !(XTypeIntF x)
   | TypeCharF !(XTypeCharF x)
   | TypeDoubleF !(XTypeDoubleF x)
+  | TypeEqableF !(XTypeEqableF x) r
+  | TypeOrdableF !(XTypeOrdableF x) r
   | -- primitive concurrent types
     TypeGetF !(XTypeGet x) r r
   | TypePutF !(XTypePut x) r r
@@ -155,6 +160,8 @@ embedBuiltInTypes ::
     XTypeTopBot x1 ~ XTypeTopBot x2,
     XTypePut x1 ~ XTypePut x2,
     XTypeIntF x1 ~ XTypeIntF x2,
+    XTypeEqableF x1 ~ XTypeEqableF x2,
+    XTypeOrdableF x1 ~ XTypeOrdableF x2,
     XTypeGet x1 ~ XTypeGet x2,
     XTypeNeg x1 ~ XTypeNeg x2,
     XTypeBoolF x1 ~ XTypeBoolF x2,
@@ -165,6 +172,8 @@ embedBuiltInTypes ::
 embedBuiltInTypes (TypeIntF cxt) = TypeIntF cxt
 embedBuiltInTypes (TypeCharF cxt) = TypeCharF cxt
 embedBuiltInTypes (TypeDoubleF cxt) = TypeDoubleF cxt
+embedBuiltInTypes (TypeEqableF cxt a) = TypeEqableF cxt a
+embedBuiltInTypes (TypeOrdableF cxt a) = TypeOrdableF cxt a
 embedBuiltInTypes (TypeGetF cxt a b) = TypeGetF cxt a b
 embedBuiltInTypes (TypePutF cxt a b) = TypePutF cxt a b
 embedBuiltInTypes (TypeTensorF cxt a b) = TypeTensorF cxt a b
@@ -195,6 +204,8 @@ type ForallMplType (c :: Type -> Constraint) x =
     c (XTypeIntF x),
     c (XTypeCharF x),
     c (XTypeDoubleF x),
+    c (XTypeEqableF x),
+    c (XTypeOrdableF x),
     -- , c (XTypeStringF x)
     c (XTypeUnitF x),
     c (XTypeBoolF x),

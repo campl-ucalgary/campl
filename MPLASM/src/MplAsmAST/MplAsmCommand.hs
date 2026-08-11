@@ -37,9 +37,9 @@ type family XCBool x
 
 type family XCIntCmp x
 
-type family XCEqChar x
+type family XCCharCmp x
 
-type family XCLeqChar x
+type family XCBoolCmp x
 
 type family XCIntArith x
 
@@ -95,8 +95,8 @@ type ForallMplAsmCom c x =
     c (XCChar x),
     c (XCBool x),
     c (XCIntCmp x),
-    c (XCEqChar x),
-    c (XCLeqChar x),
+    c (XCCharCmp x),
+    c (XCBoolCmp x),
     c (XCConstructor x),
     c (XCDestructor x),
     c (XCCase x),
@@ -140,14 +140,17 @@ data MplAsmCom x
   | CBool (XCBool x) Bool
   | -- TODO: These SHOULD NOT all use the Eq int type family
     -- and, or other bool operators
-    CEqBool (XCIntCmp x)
+    CEqBool (XCBoolCmp x)
   | CEqInt (XCIntCmp x)
   | CLtInt (XCIntCmp x)
   | CLeqInt (XCIntCmp x)
   | CGtInt (XCIntCmp x)
   | CGeqInt (XCIntCmp x)
-  | CEqChar (XCEqChar x)
-  | CLeqChar (XCLeqChar x)
+  | CEqChar (XCCharCmp x)
+  | CLeqChar (XCCharCmp x)
+  | CLtChar (XCCharCmp x)
+  | CGtChar (XCCharCmp x)
+  | CGeqChar (XCCharCmp x)
   | CAddInt (XCIntArith x)
   | CSubInt (XCIntArith x)
   | CMulInt (XCIntArith x)

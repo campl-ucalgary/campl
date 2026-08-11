@@ -6,6 +6,12 @@ coprotocol S => Console =
     ConsoleGet :: S => Put( [Char] | S)
     ConsoleClose :: S => TopBot 
 
+data Other () -> Z =
+    Val :: Int -> Z
+    
+fun (+??) =
+    a,b -> Val(0)
+
 -- Used to make sure it is properly recursing into the subtrees.
 fun (+++) =
     a,b -> 0
@@ -34,19 +40,53 @@ fun b =
     2 -> (<=)(0+++0,0+++0)
     -- 3 -> (/=)(0+++0,0+++0)
     4 -> (<)(0+++0,0+++0)
-    -- 5 -> (>)(0+++0,0+++0)
+    5 -> (>)(0+++0,0+++0)
     n -> False
 
+-- testing primitive bool operations
 fun c =
-    0 -> (||)(0++++0,0++++0)
-    1 -> (&&)(0++++0,0++++0)
+    0 -> (==)(0++++0,0++++0)
+    1 -> (||)(0++++0,0++++0)
+    2 -> (&&)(0++++0,0++++0)
     -- 2 -> (!!)(0++++0,0++++0)
     n -> False
 
--- testing that primitive char comparison works
+-- testing primitive char operations
 fun d =
-    0 -> (==)('a' *** 'a','a' *** 'a')
+    0 -> (==)(0***0,0***0)
+    1 -> (>=)(0***0,0***0)
+    2 -> (<=)(0***0,0***0)
+    -- 3 -> (/=)(0***0,0***0)
+    4 -> (<)(0***0,0***0)
+    5 -> (>)(0***0,0***0)
     n -> False
+
+-- -- previously this was:
+-- -- assembler error "mpl: illegal use of eq instruction on unsupported type (TODO: make this error message better). 
+-- -- CallStack (from HasCallStack):
+-- --   error, called at src/MplAsmPasses/FromLambdaLifted/FromLambdaLifted.hs:397:26 in MPLASM-0.1.0.0-7ksTEgDj5MY73yVbDTyaRv:MplAsmPasses.FromLambdaLifted.FromLambdaLifted"
+-- -- now this is:
+-- -- mpl: type check / semantic error:
+-- --  •  Match failure with types
+
+-- --         Equatable (T781)
+
+-- --     and
+
+-- --         Other ()
+
+-- --     arising from expression
+
+-- --         +?? (0, 0)
+
+-- --     at line 69 and column 16 and expression
+
+-- --         +?? (0, 0)
+
+-- --     at line 69 and column 16
+-- fun e =
+--     0 -> (==)(0+??0,0+??0)
+--     n -> False
 
 -- can be used to implement a string comp function 
 fun (&==) :: [Char], [Char] -> Bool =

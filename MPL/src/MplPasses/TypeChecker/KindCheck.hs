@@ -360,6 +360,36 @@ primitiveKindCheck = para f
                     ] [] $ noerr
 
                 return $ bool Nothing (_Just % _TypeBoolF # Just cxt) noerr
+            
+            TypeEqableF ann (lr, l) -> do
+                ekd <- guse kindCheckExpectedPrimitiveKind 
+                let noerr = ekd == _SeqKind # ()
+                tell $ review _ExternalError $ bool 
+                    [_KindPrimtiveMismatchExpectedButGot # 
+                        ( ekd
+                        , _SeqKind # ()
+                        , _TypeEqableF # (ann, lr))
+                    ] [] $ noerr                
+                kindCheckExpectedPrimitiveKind .= _SeqKind # ()
+                (l', llg) <- listen l
+                return $ bool Nothing
+                    (review _TypeEqableF <$> ((Just ann,) <$> l'))
+                    $ noerr && has _Empty llg 
+            
+            TypeOrdableF ann (lr, l) -> do
+                ekd <- guse kindCheckExpectedPrimitiveKind 
+                let noerr = ekd == _SeqKind # ()
+                tell $ review _ExternalError $ bool 
+                    [_KindPrimtiveMismatchExpectedButGot # 
+                        ( ekd
+                        , _SeqKind # ()
+                        , _TypeOrdableF # (ann, lr))
+                    ] [] $ noerr                
+                kindCheckExpectedPrimitiveKind .= _SeqKind # ()
+                (l', llg) <- listen l
+                return $ bool Nothing
+                    (review _TypeOrdableF <$> ((Just ann,) <$> l'))
+                    $ noerr && has _Empty llg 
 
             TypeTupleF cxt (t0,t1,ts) -> do
                 ekd <- guse kindCheckExpectedPrimitiveKind 

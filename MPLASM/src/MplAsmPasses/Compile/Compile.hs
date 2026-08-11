@@ -331,7 +331,12 @@ mplAsmComToInstr = \case
     CLeqInt _  -> return [_ILeqInt # ()]
     CGeqInt _  -> return [_IGeqInt # ()]
     CLtInt _  -> return [_ILtInt # ()]
+    CGtInt _  -> return [_IGtInt # ()]
+
     CLeqChar _ -> return [_ILeqChar # ()]
+    CGeqChar _  -> return [_IGeqChar # ()]
+    CLtChar _  -> return [_ILtChar # ()]
+    CGtChar _  -> return [_IGtChar # ()]
 
     CAddInt _ -> return [_IAddInt # ()]
     CSubInt _ -> return [_ISubInt # ()]

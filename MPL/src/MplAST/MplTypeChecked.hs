@@ -148,6 +148,8 @@ type instance XEInt MplTypeChecked = (Location, XMplType MplTypeChecked)
 type instance XEChar MplTypeChecked = (Location, XMplType MplTypeChecked)
 type instance XEDouble MplTypeChecked = (Location, XMplType MplTypeChecked)
 type instance XEBool MplTypeChecked = (Location, XMplType MplTypeChecked)
+-- type instance XEEqable MplTypeChecked = (Location, XMplType MplTypeChecked)
+-- type instance XEOrdable MplTypeChecked = (Location, XMplType MplTypeChecked)
 type instance XECase MplTypeChecked = XMplType MplTypeChecked
 type instance XECasePattern MplTypeChecked = XMplPattern MplTypeChecked 
 
@@ -209,6 +211,8 @@ type instance XPString MplTypeChecked = (Location, XMplType MplTypeChecked)
 type instance XPInt MplTypeChecked = (Location, XMplType MplTypeChecked)
 type instance XPBool MplTypeChecked = (Location, XMplType MplTypeChecked)
 type instance XPChar MplTypeChecked = (Location, XMplType MplTypeChecked)
+-- type instance XPEqable MplTypeChecked = (Location, XMplType MplTypeChecked)
+-- type instance XPOrdable MplTypeChecked = (Location, XMplType MplTypeChecked)
 type instance XPList MplTypeChecked = (Location, XMplType MplTypeChecked)
 type instance XPListCons MplTypeChecked = (Location, XMplType MplTypeChecked)
 
@@ -284,6 +288,8 @@ type instance XTypeWithNoArgs MplTypeChecked =
 type instance XXType MplTypeChecked = Void
 type instance XTypeIntF MplTypeChecked = Maybe NameOcc
 type instance XTypeCharF MplTypeChecked = Maybe NameOcc
+type instance XTypeEqableF MplTypeChecked = Maybe NameOcc
+type instance XTypeOrdableF MplTypeChecked = Maybe NameOcc
 type instance XTypeDoubleF MplTypeChecked = Maybe NameOcc
 -- type instance XTypeStringF MplTypeChecked = Maybe NameOcc
 type instance XTypeUnitF MplTypeChecked = Maybe NameOcc

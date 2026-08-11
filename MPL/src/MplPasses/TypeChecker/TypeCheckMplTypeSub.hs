@@ -69,6 +69,9 @@ type instance XTypeDoubleF MplTypeSub = Maybe TypeAnn
 
 type instance XTypeCharF MplTypeSub = Maybe TypeAnn
 
+type instance XTypeEqableF MplTypeSub = Maybe TypeAnn
+type instance XTypeOrdableF MplTypeSub = Maybe TypeAnn
+
 -- type instance XTypeStringF MplTypeSub = Maybe NameOcc
 type instance XTypeUnitF MplTypeSub = Maybe TypeAnn
 
@@ -244,6 +247,14 @@ instantiateTypeWithSubs ann sublist = cata f
       TypeCharF cxt -> return $ _TypeCharF # ann
       TypeBoolF cxt -> return $ _TypeBoolF # ann
       TypeUnitF cxt -> return $ _TypeUnitF # ann
+      TypeEqableF cxt var -> do
+        var' <- var
+        return var'
+        -- return $ _TypeEqableF # (annotate cxt, var')
+      TypeOrdableF cxt var ->  do
+        var' <- var
+        return var'
+        -- return $ _TypeOrdableF # (annotate cxt, var')
       TypeListF cxt rst -> do
         rst' <- rst
         return $ _TypeListF # (ann, rst')

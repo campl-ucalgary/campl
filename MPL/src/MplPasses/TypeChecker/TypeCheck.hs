@@ -436,10 +436,15 @@ typeCheckExpr = para f
       (ttypel, (l', leqns)) <- withFreshTypeTag ml
       (ttyper, (r', reqns)) <- withFreshTypeTag mr
 
+      ttypevar_l <- freshTypeTag
+      ttypevar_r <- freshTypeTag
+
       let opexpr = EPOps cxt op lexpr rexpr :: MplExpr MplRenamed
           ttypep = annotateTypeTag ttype opexpr
           ttypelp = annotateTypeTag ttypel lexpr
           ttyperp = annotateTypeTag ttyper rexpr
+          ttypepvar_l = annotateTypeTag ttypevar_l lexpr
+          ttypepvar_r = annotateTypeTag ttypevar_r rexpr                
 
       let addsubmuldiv =
             let eqn =
@@ -471,11 +476,15 @@ typeCheckExpr = para f
           --    in ( EPOps (fromJust $ lookupInferredSeqTypeExpr ttype ttypemap) op l' r',
           --         [eqn]
           --       )
+
+          -- equalities == and (not equalities \=) are defined on equatable built-in types, i.e. ints, chars, and bools
           eqneq =
             let eqn =
-                  TypeEqnsExist [ttypelp, ttyperp] $
+                  TypeEqnsExist [ttypelp, ttyperp, ttypepvar_l, ttypepvar_r] $
                     [ TypeEqnsEq (typePtoTypeVar ttypep, _TypeBoolF % _Just % _TypeAnnExpr # opexpr),
-                      TypeEqnsEq (typePtoTypeVar ttypelp, typePtoTypeVar ttyperp)
+                      TypeEqnsEq (typePtoTypeVar ttypelp, typePtoTypeVar ttyperp),
+                      TypeEqnsEq (typePtoTypeVar ttypelp, _TypeEqableF # ( _Just % _TypeAnnExpr # lexpr, typePtoTypeVar ttypepvar_l)),
+                      TypeEqnsEq (typePtoTypeVar ttyperp, _TypeEqableF # ( _Just % _TypeAnnExpr # rexpr, typePtoTypeVar ttypepvar_r))
                     ]
                       <> leqns
                       <> reqns
@@ -483,14 +492,14 @@ typeCheckExpr = para f
                   [eqn]
                 )
 
-          -- inequalities on numbers
+          -- inequalities <=, <, >=, > are defined on orderable built-in types, i.e. ints and chars.
           ineq =
             let eqn =
-                  TypeEqnsExist [ttypelp, ttyperp] $
+                  TypeEqnsExist [ttypelp, ttyperp, ttypepvar_l, ttypepvar_r] $
                     [ TypeEqnsEq (typePtoTypeVar ttypep, _TypeBoolF % _Just % _TypeAnnExpr # opexpr),
                       TypeEqnsEq (typePtoTypeVar ttypelp, typePtoTypeVar ttyperp),
-                      TypeEqnsEq (typePtoTypeVar ttypelp, _TypeIntF % _Just % _TypeAnnExpr # lexpr),
-                      TypeEqnsEq (typePtoTypeVar ttyperp, _TypeIntF % _Just % _TypeAnnExpr # rexpr)
+                      TypeEqnsEq (typePtoTypeVar ttypelp, _TypeOrdableF # ( _Just % _TypeAnnExpr # lexpr, typePtoTypeVar ttypepvar_l)),
+                      TypeEqnsEq (typePtoTypeVar ttyperp, _TypeOrdableF # ( _Just % _TypeAnnExpr # rexpr, typePtoTypeVar ttypepvar_r))
                     ]
                       <> leqns
                       <> reqns

@@ -53,8 +53,8 @@ type instance XCChar MplAsmParsed = RowCol
 type instance XCBool MplAsmParsed = RowCol
 type instance XCIntCmp MplAsmParsed = RowCol
 
-type instance XCEqChar MplAsmParsed = RowCol
-type instance XCLeqChar MplAsmParsed = RowCol
+type instance XCCharCmp MplAsmParsed = RowCol
+type instance XCBoolCmp MplAsmParsed = RowCol
 
 type instance XCIntArith MplAsmParsed = RowCol
 type instance XCConstructor MplAsmParsed = RowCol

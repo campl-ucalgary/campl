@@ -211,6 +211,16 @@ higherOrderCheck notscoped tp
       TypeBoolF _cxt -> return $ Just $ TypeBoolF Nothing
       {- built in primitives -}
       TypeUnitF _cxt -> return $ Just $ TypeUnitF Nothing
+      TypeEqableF _cxt (_, var) -> do
+        var' <- var
+        return $ do
+          var'' <- var'
+          return $ _TypeEqableF # (Nothing, var'')
+      TypeOrdableF _cxt (_, var) -> do
+        var' <- var
+        return $ do
+          var'' <- var'
+          return $ _TypeOrdableF # (Nothing, var'')
       TypeListF _cxt rst -> do
         rst' <- snd rst
         return $ fmap (TypeListF Nothing) rst'

@@ -316,6 +316,10 @@ instance (PPrint (IdP x) t, PPrint (TypeP x) t) => MplTypeToBnfc (MplType x) t w
         TypeDoubleF _cxt -> B.MPL_UIDENT_NO_ARGS_TYPE $ toBnfcIdent proxy "Double"
         TypeCharF _cxt -> B.MPL_UIDENT_NO_ARGS_TYPE $ toBnfcIdent proxy "Char"
         TypeBoolF _cxt -> B.MPL_UIDENT_NO_ARGS_TYPE $ toBnfcIdent proxy "Bool"
+        
+        TypeEqableF _cxt var -> B.MPL_UIDENT_ARGS_TYPE (toBnfcIdent proxy "Equatable") bnfcKeyword [f var] bnfcKeyword
+        TypeOrdableF _cxt var -> B.MPL_UIDENT_ARGS_TYPE (toBnfcIdent proxy "Orderable") bnfcKeyword [f var] bnfcKeyword
+        
         TypeUnitF _cxt -> B.MPL_UNIT_TYPE bnfcKeyword bnfcKeyword
         TypeListF _cxt rst -> B.MPL_LIST_TYPE bnfcKeyword (f rst) bnfcKeyword
         TypeTupleF cxt (t0, t1, ts) ->

@@ -384,15 +384,27 @@ mplAssembleExpr = para go
                 PrimitiveSub -> pure [Asm.CSubInt ()]
                 PrimitiveDiv -> pure [Asm.CDivInt ()]
                 PrimitiveMod -> pure [Asm.CModInt ()]
-                PrimitiveLt -> pure [Asm.CLtInt ()]
-                PrimitiveGt -> pure [Asm.CGtInt ()]
-                PrimitiveLeq -> pure [Asm.CLeqInt ()]
-                PrimitiveGeq -> pure [Asm.CGeqInt ()]
+                PrimitiveLt -> case getExprType lexpr of 
+                    TypeBuiltIn (TypeIntF _) -> pure [Asm.CLtInt ()]
+                    TypeBuiltIn (TypeCharF _) -> pure [Asm.CLtChar ()]
+                    _ -> error $ "illegal use of lt < instruction on unsupported type in expression: " ++ show lexpr ++ "(TODO: make this error message better)." 
+                PrimitiveGt -> case getExprType lexpr of 
+                    TypeBuiltIn (TypeIntF _) -> pure [Asm.CGtInt ()]
+                    TypeBuiltIn (TypeCharF _) -> pure [Asm.CGtChar ()]
+                    _ -> error $ "illegal use of gt > instruction on unsupported type in expression: " ++ show lexpr ++ "(TODO: make this error message better)." 
+                PrimitiveLeq -> case getExprType lexpr of 
+                    TypeBuiltIn (TypeIntF _) -> pure [Asm.CLeqInt ()]
+                    TypeBuiltIn (TypeCharF _) -> pure [Asm.CLeqChar ()]
+                    _ -> error $ "illegal use of leq <= instruction on unsupported type in expression: " ++ show lexpr ++ "(TODO: make this error message better)." 
+                PrimitiveGeq -> case getExprType lexpr of 
+                    TypeBuiltIn (TypeIntF _) -> pure [Asm.CGeqInt ()]
+                    TypeBuiltIn (TypeCharF _) -> pure [Asm.CGeqChar ()]
+                    _ -> error $ "illegal use of geq >= instruction on unsupported type in expression: " ++ show lexpr ++ "(TODO: make this error message better)." 
                 PrimitiveEq -> case getExprType lexpr of 
                     TypeBuiltIn (TypeIntF _) -> pure [Asm.CEqInt ()]
                     TypeBuiltIn (TypeBoolF _) -> pure [Asm.CEqBool ()]
                     TypeBuiltIn (TypeCharF _) -> pure [Asm.CEqChar ()]
-                    _ -> error "illegal use of eq instruction on unsupported type (TODO: make this error message better). "
+                    _ -> error $ "illegal use of eq == instruction on unsupported type in expression: " ++ show lexpr ++ "(TODO: make this error message better)." 
                 _ -> error $ "assembling of operation is not implemented yet " ++ show op
         
             
@@ -1050,14 +1062,25 @@ getExprType ::
     MplExpr MplLambdaLifted -> 
     MplType MplTypeChecked
 getExprType = \case
+    -- this is probably not how we should be removing the TypeEqableF and TypeOrdableF,
+    -- but at least we'll catch errors at type checking instead of assembling
+    EVar (TypeBuiltIn (TypeEqableF _ ann)) _ -> ann
+    EVar (TypeBuiltIn (TypeOrdableF _ ann)) _ -> ann
     EVar ann _ -> ann
+    EInt (TypeBuiltIn (TypeEqableF _ ann)) _ -> ann
+    EInt (TypeBuiltIn (TypeOrdableF _ ann)) _ -> ann
     EInt ann _ -> ann
+    EChar (TypeBuiltIn (TypeEqableF _ ann)) _ -> ann
+    EChar (TypeBuiltIn (TypeOrdableF _ ann)) _ -> ann
     EChar ann _ -> ann
     EDouble ann _ -> ann
     EPOps ann _ _ _ -> ann
+    EBool (TypeBuiltIn (TypeEqableF _ ann)) _ -> ann
     EBool ann _ -> ann
     ECase ann _ _ -> ann
     EObjCall ann _ _ -> snd ann
+    ECall (TypeBuiltIn (TypeEqableF _ ann)) _ _ -> ann
+    ECall (TypeBuiltIn (TypeOrdableF _ ann)) _ _ -> ann
     ECall ann _ _ -> ann
     ERecord ann _ -> ann
     EList ann _ -> ann

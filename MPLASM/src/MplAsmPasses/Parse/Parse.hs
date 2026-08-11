@@ -122,6 +122,7 @@ mplAsmParseCom = go
     {-
     B.AC_UNSTRING Unstring
     -}
+        B.AC_EQB eqb -> pure $ CEqBool (toRowCol eqb)
         B.AC_LEQ leqi -> pure $ CLeqInt (toRowCol leqi)
         B.AC_EQI eqi -> pure $ CEqInt (toRowCol eqi)
         B.AC_LEQC leqc -> pure $ CLeqChar (toRowCol leqc)

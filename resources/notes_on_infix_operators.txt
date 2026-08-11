@@ -39,7 +39,7 @@ All operators except the '^' row are left-associative.
     User-defined starting with:          Built-in
     |                                   ||
     &                                   &&
-    > < !                               == >= <= <       (not implemented: '>' '/=')
+    > < !                               == >= <= < >      (not implemented: '/=')
     + -                                 ++ + -
     * / %                               * / %
     ^ (NOTE: right-associative)
@@ -58,7 +58,7 @@ and may optionally be followed by sequence containing any of the following chara
 
 Please note that custom-defined infix operators cannot override built-in tokens, which include:
 
-    + - * / <= >= /= |
+    + - * / % == < <= >= > /= | || &&
 
 Additionally, to keep the tokenizer working, you cannot define:
 
