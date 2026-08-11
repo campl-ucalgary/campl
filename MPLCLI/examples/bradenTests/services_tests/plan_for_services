@@ -1,0 +1,67 @@
+
+-- goals: enforce only one channel of type Console
+-- to do this we will enforce that the name of the channel that uses the ConsolePut etc.
+-- handles is called Console.
+-- while we are doing this, we might as well enforce the names of the other service channels too
+
+-- the plan is to have three service channel types (for now)
+
+-- Console
+-- Terminal
+-- Timer
+
+-- with their corresponding handles
+
+-- the plan is to initialize the symbol table with these already in it, so a user doesn't
+-- need to write out the definitions of the services.
+
+-- but for backwards compatability, we will only send warnings (not errors) for if
+    -- a user defines a protocol/coprotocol with these handles
+    -- a user defines a protocol called "StringTerminal" for example
+-- and in both cases we will internally just point to the same sym tab entry rather than
+-- make a new one
+
+-- then to enforce that there is only one Console, we will check at the very end 
+-- just before we run the main process that there is only one channel with type Console
+-- we know that it will have this type because we will be using the built in def
+
+
+-- okay some things i want to test before i start screwing around
+
+-- 1. these two should not work and throw an error
+-- more than one console (with types Console): works perfectly fine
+-- more than one console (without type sig): works perfectly fine
+
+-- 2. this should throw a warning that it's depreceated to use a different name than Console but still run
+-- different name than Console: works perfectly fine
+
+-- 3. this should throw an error, but it should specifically say that Console is a coprotocol and should be input pol
+-- put console (without type) on the output side, using hput with console handles:  
+    -- type check / semantic error with hput commands on wrong channel polarity
+-- put console (with type) on the output side, using hput with console handles:
+    -- same type check / semantic error with hput commands on wrong channel polarity
+
+-- 4. this should not work, and it should probably say that you cannot hcase on service channels
+-- and it should say that Console is wrong polarity
+-- same as above but with hcase on service handles
+    -- (with/without types) IT WORKS??
+    -- okay it doesn't actually *work* but the program runs and makes a terminal window and then hangs
+    -- which is more than it should "work"
+
+-- 5. this should not work, and it should say that protocol/coprotocol handles must be unique
+-- (i should test what happens with a non-service channel situation)
+-- both Console and StringConsole defs using the same handles
+    -- works without type signature
+    -- with type signature, it depends on which type you use!
+    -- if Console is defined first and then StringConsole is defined second,
+        -- then type sig "proc run :: | StringConsole => = " works
+        -- but type sig "proc run :: | Console => = " does't work
+
+-- 6. robin says that this should not work :,((( and should say that
+-- the handle is defined for a different service (namely the Timer service)
+-- Console channel type with Timer handle: works perfectly fine
+
+-- 7. maybe this is fine? i feel like it should maybe say that the run proc can't be called
+-- and maybe have a specific error message?
+-- if another process calls the run process is a rename error for an out of scope identifier `run'
+
