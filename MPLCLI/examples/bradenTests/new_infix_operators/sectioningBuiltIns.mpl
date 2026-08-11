@@ -6,12 +6,6 @@ coprotocol S => Console =
     ConsoleGet :: S => Put( [Char] | S)
     ConsoleClose :: S => TopBot 
 
-data Other () -> Z =
-    Val :: Int -> Z
-    
-fun (+??) =
-    a,b -> Val(0)
-
 -- Used to make sure it is properly recursing into the subtrees.
 fun (+++) =
     a,b -> 0
@@ -61,11 +55,27 @@ fun d =
     5 -> (>)(0***0,0***0)
     n -> False
 
--- -- previously this was:
+-- now let's do a weird test that should not work:
+
+-- custom data types should not work with primitive == eq comparison
+data Other () -> Z =
+    Val :: Int -> Z
+    
+fun (+??) =
+    a,b -> Val(0)
+
+-- fun e =
+--     0 -> (==)(0+??0,0+??0)       -- this should cause an error, ideally at type check
+--     n -> False
+
+-- -- it did not originally do this however.
+-- -- previously it gave the error was:
 -- -- assembler error "mpl: illegal use of eq instruction on unsupported type (TODO: make this error message better). 
 -- -- CallStack (from HasCallStack):
 -- --   error, called at src/MplAsmPasses/FromLambdaLifted/FromLambdaLifted.hs:397:26 in MPLASM-0.1.0.0-7ksTEgDj5MY73yVbDTyaRv:MplAsmPasses.FromLambdaLifted.FromLambdaLifted"
--- -- now this is:
+
+-- -- then i messed around with the type checker
+-- -- now the error we get is:
 -- -- mpl: type check / semantic error:
 -- --  •  Match failure with types
 
@@ -84,26 +94,21 @@ fun d =
 -- --         +?? (0, 0)
 
 -- --     at line 69 and column 16
--- fun e =
---     0 -> (==)(0+??0,0+??0)
---     n -> False
 
--- can be used to implement a string comp function 
-fun (&==) :: [Char], [Char] -> Bool =
-    [], [] -> True
-    (x:xs), [] -> False
-    [], (x:xs) -> False
-    (x:xs), (y:ys) -> (x == y) && (xs &== ys)
+
+fun show_bool :: Bool -> [Char] =
+    True -> "True"
+    False -> "False"
 
 -- A simple function.
 proc helloworld :: | Console => = 
     | console => -> do
-        if ("hi" &== "hi")
+        let a = 'a'
+            b = 'b'
+        in if (a <= b)
             then on console do
                 hput ConsolePut
-                put "enter anything to finish"
-                hput ConsoleGet
-                get _
+                put "testing char leq 'a' <= 'b': " ++ show_bool(a <= b)
                 hput ConsoleClose
                 halt
             else on console do

@@ -355,6 +355,10 @@ matchCont ty0 ty1 k = f ty0 ty1
         (TypeOrdableF _cxt0 tv, TypeCharF _cxt1) -> f tv type1
         (TypeOrdableF _cxt0 tv0, TypeOrdableF _cxt1 tv1) -> f tv0 tv1
 
+        -- and something can be both as long as whatever its actual type is type checks
+        (TypeEqableF _cxt0 tv0, TypeOrdableF _cxt1 tv1) -> f tv0 tv1
+        (TypeOrdableF _cxt0 tv0, TypeEqableF _cxt1 tv1) -> f tv0 tv1
+
         (TypeUnitF _cxt0, TypeUnitF _cxt1) -> return []
         (TypeListF _cxt0 a, TypeListF _cxt1 b) -> f a b
 
