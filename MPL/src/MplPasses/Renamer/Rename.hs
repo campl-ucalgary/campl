@@ -54,8 +54,14 @@ runRename' (top, sup) =
 
 runRename ::
   Rename (MplProg MplParsed) (MplProg MplRenamed)
-runRename (MplProg stmts) =
-  MplProg <$> traverse renameStmt stmts
+runRename (MplProg stmts) = do
+  -- check if any of the definitions in the program overlap?
+  tell $
+    overlappingDeclarations $
+      foldMap (NE.toList . mplStmtTopLevelIdents) stmts
+  -- then recurse on each statement
+  stmts' <- traverse renameStmt stmts
+  return $ MplProg stmts'
 
 renameStmt ::
   Rename (MplStmt MplParsed) (MplStmt MplRenamed)
