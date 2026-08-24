@@ -40,9 +40,13 @@ instance Foldable t => OverlappingDeclarations (t IdentP) where
       where
         idents' = toList idents
         identseqclasses = 
-            groupBy 
-                (\a b -> a ^. name == b ^. name 
-                    && a ^. namespace == b ^. namespace) 
+            -- groupBy 
+            --     (\a b -> a ^. name == b ^. name 
+            --         && a ^. namespace == b ^. namespace) 
+            --     idents'
+            groupBy (\a b -> a ^. name == b ^. name && a ^. namespace == b ^. namespace)
+                -- add a sort so that the groupBy will actually group any duplicates regardless of where they appear in the list
+                $ sortOn (\i -> (i ^. name, i ^. namespace))
                 idents'
 
         duplicates = foldMap f identseqclasses

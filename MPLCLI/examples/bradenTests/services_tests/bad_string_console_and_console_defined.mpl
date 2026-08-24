@@ -2,6 +2,12 @@
 
 -- StringConsole and Console definitions
 
+-- now getting rename error!!
+
+-- mpl: rename error:
+--  •  Overlapping declarations with `ConsoleClose' at line 9 and column 5 `ConsoleClose' at line 16 and column 5
+--  •  Overlapping declarations with `ConsoleGet' at line 8 and column 5 `ConsoleGet' at line 13 and column 5
+--  •  Overlapping declarations with `ConsolePut' at line 7 and column 5 `ConsolePut' at line 12 and column 5
 
 coprotocol S => StringConsole = 
     ConsolePut :: S => Get( [Char] | S)
