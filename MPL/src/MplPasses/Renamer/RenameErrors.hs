@@ -140,6 +140,11 @@ updateErrorType errors =
         else _OverlappingDeclarations # decs
     _ -> errors
 
+isServiceOverlapError :: (AsRenameErrors e) => e -> Bool
+isServiceOverlapError errors =
+  case errors ^? _OverlappingDeclarationWithServices of
+    Just _ -> True
+    _ -> False
 
 -- default out of scope lookup
 outOfScopeWith :: 

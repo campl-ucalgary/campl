@@ -60,11 +60,12 @@ runRename (MplProg stmts) = do
         foldMap (NE.toList . mplStmtTopLevelIdents) stmts
       (service_overlaps, overlapping_decs') = partition isServiceName overlapping_decs
       service_overlaps' = map updateErrorType service_overlaps
-
-  tell overlapping_decs'
+      (service_overlaps'', overlapping_decs'') = partition isServiceOverlapError service_overlaps'
+  
+  tell (overlapping_decs' ++ overlapping_decs'')
 
   -- uncommenting the next line will throw an error if the user has defined services
-  -- tell service_overlaps'
+  -- tell service_overlaps''
   
   -- the plan is that instead of telling service errors, we are going to
   -- print a warning? somehow? and quietly replace the user defined services 
