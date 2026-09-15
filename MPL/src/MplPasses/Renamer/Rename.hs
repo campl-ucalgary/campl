@@ -56,9 +56,20 @@ runRename ::
   Rename (MplProg MplParsed) (MplProg MplRenamed)
 runRename (MplProg stmts) = do
   -- check if any of the definitions in the program overlap?
-  tell $
-    overlappingDeclarations $
-      foldMap (NE.toList . mplStmtTopLevelIdents) stmts
+  let overlapping_decs = overlappingDeclarations $
+        foldMap (NE.toList . mplStmtTopLevelIdents) stmts
+      (service_overlaps, overlapping_decs') = partition isServiceName overlapping_decs
+      service_overlaps' = map updateErrorType service_overlaps
+
+  tell overlapping_decs'
+
+  -- uncommenting the next line will throw an error if the user has defined services
+  -- tell service_overlaps'
+  
+  -- the plan is that instead of telling service errors, we are going to
+  -- print a warning? somehow? and quietly replace the user defined services 
+  -- with the built-in services
+
   -- then recurse on each statement
   stmts' <- traverse renameStmt stmts
   return $ MplProg stmts'

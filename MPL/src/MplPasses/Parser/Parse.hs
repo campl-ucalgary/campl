@@ -21,6 +21,7 @@ import qualified MplPasses.Parser.BnfcParse as B
 import MplPasses.Parser.MacroRemover
 import MplPasses.Parser.ParseErrors
 import MplPasses.Parser.ResolveBuiltinOps
+import MplPasses.Parser.AddServices
 import MplPasses.Parser.ParseMplPattern
 import MplPasses.Parser.ParseMplType
 import MplPasses.Parser.ParseUtils
@@ -41,7 +42,8 @@ runParse' =
     (Right prg, w) -> Right prg
     . runWriter
     . runExceptT
-    . runParse
+    . runParse    
+    . MplPasses.Parser.AddServices.addServices -- prepend the services definitions
     . MplPasses.Parser.ResolveBuiltinOps.resolveBuiltinOps -- Gives ||, &&, ++ their built-in meaning.
     . MplPasses.Parser.MacroRemover.removeMacros -- Gets rid of 'on' blocks and infix operators.
 
