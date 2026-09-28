@@ -163,21 +163,23 @@ instance CollectSymTab (MplDefn MplRenamed) where
             CoprotocolDefn n -> querySpines n (_CoprotocolDefnTag # ()) 
                 (_SymConcPhraseInfo % _CoprotocolDefnTag # ())
       where
+        -- each clause is like a single protocol/coprotocol
         querySpines spine tp tpphrase = 
             foldMapOf (typeClauseSpineClauses % folded)
                 (flip queryTypeClause tp) spine
             ++ foldMapOf (typeClauseSpineClauses % folded)
                 (flip queryTypePhrase tpphrase) spine
 
-        queryTypeClause clause tp = clause ^. typeClauseName 
+        -- here we are actually putting thngs in the symbol table??
+        queryTypeClause clause tp = clause ^. typeClauseName        -- protocol names are identR after renaming
             % to (set (mapped % _2 % symEntryInfo) 
-                    (_Just % _SymTypeClause # tp) 
-                . collectSymTab)
+                    (_Just % _SymTypeClause # tp)       -- and we are overwriting the Nothing with this info
+                . collectSymTab)                        -- so this is calling the identR instance?
         queryTypePhrase clause tpphrase = 
-            foldMapOf (typeClausePhrases % traversed % typePhraseName)
+            foldMapOf (typeClausePhrases % traversed % typePhraseName) -- again we are getting the name of each handle
                 ( set (mapped % _2 % symEntryInfo) 
-                    (_Just # tpphrase)
-                . collectSymTab) 
+                    (_Just # tpphrase)                  -- and then overwriting the nothing with this info
+                . collectSymTab)                        -- and calling the identR instance
                 clause
 
     collectSymTab (FunctionDefn (MplFunction name _ _)) = 
@@ -185,8 +187,10 @@ instance CollectSymTab (MplDefn MplRenamed) where
     collectSymTab (ProcessDefn (MplProcess name _ _)) = 
         [(name ^. identRIdentP, SymEntry (name ^. uniqueTag) (_Just % _SymProcInfo # ()))]
 
+-- okay so this is like collectSymTab :: IdentR -> SymTab
 instance CollectSymTab IdentR where
-    collectSymTab = pure <<< view identRIdentP &&& flip SymEntry Nothing . view uniqueTag
+    collectSymTab = pure <<< view identRIdentP &&& flip SymEntry Nothing . view uniqueTag   -- so we are doing this?
+-- which makes it like [(identRIdentP, SymEntry uniqueTag Nothing)]
 
 instance CollectSymTab ChIdentR where
     collectSymTab ch = (ch ^. chIdentRIdentR % to collectSymTab) 

@@ -64,12 +64,13 @@ runRename (MplProg stmts) = do
   
   tell (overlapping_decs' ++ overlapping_decs'')
 
-  -- uncommenting the next line will throw an error if the user has defined services
-  -- tell service_overlaps''
+  -- throw an error if the user has defined services
+  tell service_overlaps''
   
-  -- the plan is that instead of telling service errors, we are going to
-  -- print a warning? somehow? and quietly replace the user defined services 
-  -- with the built-in services
+  -- the plan was to print a warning (instead of throwing an error) somehow? 
+  -- and quietly replace the user defined service defns with the built-in service defns
+  -- however this turned out to be quite complicated, so we have abandoned that
+  -- and we are just throwing errors for user defined services
 
   -- then recurse on each statement
   stmts' <- traverse renameStmt stmts
@@ -78,17 +79,25 @@ runRename (MplProg stmts) = do
 renameStmt ::
   Rename (MplStmt MplParsed) (MplStmt MplRenamed)
 renameStmt (MplStmt defns wheres) = do
+  -- check for overlapping declarations among the where statements
   tell $
     overlappingDeclarations $
       foldMap (NE.toList . mplStmtTopLevelIdents) wheres
+
+  -- get the current state of the global symbol table
   gbl <- guse envGbl
 
+  -- rename each defn in the wheres
   wheres' <- traverse renameStmt wheres
 
+  -- add defns from wheres to the global symbol table
   envGbl .= collectSymTab wheres' <> gbl
 
+  -- rename the defns that use these wheres
   defns' <- NE.fromList <$> renameDefns (NE.toList defns)
 
+  -- then overwrite the global symbol table (i.e. remove the wheres)
+  -- and add the globally visibile/usable definitions from this defn
   envGbl .= collectSymTab defns' <> gbl
 
   return $ MplStmt defns' wheres'
@@ -100,9 +109,14 @@ renameDefns ::
 renameDefns (defn : defns) = do
   uniqsup <- freshUniqueSupply
   -- rec defn' <- (`evalStateT` (_RenameEnv # (uniqsup, symtab)))
+  -- okay rec is like let but for mutually recursive and monadic things
+      -- re?set the local sym tab to have everything from the global one
   rec defn' <- envLcl .= symtab >> renameDefn defn
+      -- add this defn' to the global symbol tab
       envGbl %= (collectSymTab defn' <>)
+      -- recurse over the rest of the defns?
       defns' <- renameDefns defns
+      -- update symbol table with global defns?
       symtab <- guse envGbl
 
   return (defn' : defns')
@@ -452,6 +466,7 @@ renameCmd = f
           chlkup' = fromJust chlkup
           ch' = _ChIdentR # (_IdentR # (ch, chlkup' ^. uniqueTag), chlkup' ^. symEntryInfo)
       return $ CPut cxt expr' ch'
+    
     f (CHCase cxt ch cases) = do
       symtab <- guse envLcl
       tell $ outOfScopeWith lookupCh symtab ch

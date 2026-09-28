@@ -42,6 +42,10 @@ import Debug.Trace
 
 import Data.Foldable
 
+-- okay when you define a bunch of mutually recursive protocols together
+-- you just write protocol once and then each name and put "and" in between each one
+-- and the spine is what we are calling all those individual protocol/coprotocol defns
+-- so each clause in the spine is like one protocol definition
 renameTypeClauseSpine :: 
     ( TypeClauseVarsSymTab t 
     , OverlappingDeclarations (MplTypeClauseSpine MplParsed t) 
@@ -53,6 +57,8 @@ renameTypeClauseSpine ::
 renameTypeClauseSpine spine = do
     -- Need to test for overlapping declarations of the 
     -- arguments and the state vars
+
+    -- i don't know if we need to do this anymore?
     tell $ overlappingDeclarations spine
 
     -- TODO: This should all be moved into 1 traverse call, so it puts things
@@ -65,6 +71,7 @@ renameTypeClauseSpine spine = do
     stargs' <- nubBy ((==) `on` fst) . concat 
         <$> traverse typeClauseVarsSymTab (spine ^. typeClauseSpineClauses)
 
+    -- add the state var and sequential/concurrent args to the symbol table
     envLcl %= (stargs'<>)
 
     -- rename the type clauses
@@ -127,6 +134,7 @@ instance RenameTypeClause (SeqObjTag t) where
             , phrases' 
             , ())
 
+-- this renaming one protocol/coprotocol defn
 instance RenameTypeClause (ConcObjTag t) where
     renameTypeClause clause = do
         symtab <- guse envLcl
@@ -142,6 +150,7 @@ instance RenameTypeClause (ConcObjTag t) where
             -- look this up
             st' = fromJust $ lookupTypeVar (clause ^. typeClauseStateVar) symtab
 
+        -- rename all the handles
         phrases' <- traverse 
             (renameTypePhrase 
                 (clause ^. typeClauseStateVar, st' ^. uniqueTag)) 
@@ -210,14 +219,18 @@ instance RenameTypePhrase (SeqObjTag CodataDefnTag) where
             , ()
             )
 
+-- this is renaming one handle for a protocol
 instance RenameTypePhrase (ConcObjTag ProtocolDefnTag) where
     renameTypePhrase st typephrase = do
         symtab <- guse envLcl
+        -- tag the handle name
         name' <- typephrase ^. typePhraseName % to tagIdentP 
+        -- the from is the channel type and the to is the state var
         let vfrom = typephrase ^. typePhraseFrom
             vto = typephrase ^. typePhraseTo
             vto' = _IdentR # (vto, snd st)
 
+        -- rename the channel type that this handle sets
         vfrom' <- (`runReaderT`symtab) . renameScopedType $ vfrom
 
         -- tell $ bool [] [_ExpectedStateVarButGot # (fst st, vto)] (vto /= fst st)
@@ -229,14 +242,18 @@ instance RenameTypePhrase (ConcObjTag ProtocolDefnTag) where
             , ()
             )
 
+-- this is renaming one handle for a coprotocol
 instance RenameTypePhrase (ConcObjTag CoprotocolDefnTag) where
     renameTypePhrase st typephrase = do
         symtab <- guse envLcl
+        -- tag the handle name
         name' <- typephrase ^. typePhraseName % to tagIdentP 
+        -- the from is the state var and the to is the channel type
         let vfrom = typephrase ^. typePhraseFrom
             vfrom' = _IdentR # (vfrom, snd st)
             vto = typephrase ^. typePhraseTo
 
+        -- rename the channel type that this handle sets
         vto' <- (`runReaderT`symtab) . renameScopedType $ vto
 
         -- tell $ bool [] [_ExpectedStateVarButGot # (fst st, vfrom)] (vfrom /= fst st)
