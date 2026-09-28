@@ -1,24 +1,11 @@
 
 
--- this should give an overlapping declarations error and not necessarily a 
--- services depreiated error
--- coprotocol S => Console = 
---     ConsolePut :: S => Get( [Char] | S)
---     ConsoleGet :: S => Put( [Char] | S)
---     ConsoleClose :: S => TopBot     
-
-coprotocol S => Timer = 
-    Timer :: S => Get(Int|S (*) Put(()|TopBot))
-    TimerClose :: S => TopBot
-
-coprotocol S => Timer = 
-    Timer :: S => Get(Int|S (*) Put(()|TopBot))
-    TimerClose :: S => TopBot
+-- this should give an out of scope error
 
 proc run :: | Console, Timer => =
     | console, timer => -> do
         on timer do
-            hput Timer
+            hput Timerz     -- right here right
             put 30000
         split timer into timer_new, time_counter
         on console do

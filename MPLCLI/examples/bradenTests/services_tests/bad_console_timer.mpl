@@ -2,13 +2,13 @@
 
 -- Console channel type with Timer handle
 
-
-coprotocol S => Console = 
-    ConsolePut :: S => Get( [Char] | S)
-    ConsoleGet :: S => Put( [Char] | S)
-    ConsoleClose :: S => TopBot     
-    Timer :: S => Get(Int|S (*) Put(()|TopBot))
-    TimerClose :: S => TopBot
+-- get user-def services are depreceated error
+-- coprotocol S => Console = 
+--     ConsolePut :: S => Get( [Char] | S)
+--     ConsoleGet :: S => Put( [Char] | S)
+--     ConsoleClose :: S => TopBot     
+--     Timer :: S => Get(Int|S (*) Put(()|TopBot))
+--     TimerClose :: S => TopBot
 
 proc run :: | Console => =
     | console => -> do
@@ -27,3 +27,23 @@ proc run :: | Console => =
             put "timer ended"
             hput ConsoleClose
             halt
+
+-- and now get match failure error
+-- mpl: type check / semantic error:
+--  •  Match failure with types
+
+--         Timer (|)
+
+--     and
+
+--         Console (|)
+
+--     arising from command
+
+--         hput Timer on console
+
+--     at line 16 and column 13 and command
+
+--         hput ConsolePut on console_new
+
+--     at line 20 and column 13

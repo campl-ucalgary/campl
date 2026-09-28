@@ -1,11 +1,19 @@
 
 
--- what happens if we have a locally defined thing that overlaps (currecntly isn't caught as an overlapping dec error)
+-- what happens if we have a locally defined thing that overlaps?
+    -- TODO: need to check that locally defined types are not used in
+    -- definitions in a way that exposes them to the greater scope
+    -- e.g. Weird should not be able to set itself to a locally defined type
+    -- this should throw an error saying that it can't use this locally defined
+    -- type in this way
+-- the locally defined thing should shadow the globally defined one
+-- but we should not be able to define a globally available type that
+-- exposes a locally defined type
 
-coprotocol S => Console =
-    ConsolePut :: S => Get( [Char] | S)
-    ConsoleGet :: S => Put( [Char] | S)
-    ConsoleClose :: S => TopBot  
+-- coprotocol S => Console =
+--     ConsolePut :: S => Get( [Char] | S)
+--     ConsoleGet :: S => Put( [Char] | S)
+--     ConsoleClose :: S => TopBot  
 
 coprotocol S => SendMsgs =
     SendMsg :: S => Get( [Char] | S)
@@ -13,20 +21,18 @@ coprotocol S => SendMsgs =
 
 defn
     coprotocol S => Weird = 
-        -- this is changing it to the local SendMsgs which then causes a type check error instead of a rename error
+        -- this should throw an error that says locally defined types can't be exposed like this
         Weird :: S => SendMsgs 
 
 where
-    -- this should probably cause an overlapping declaration error
     coprotocol S => SendMsgs = 
-        IntPut :: S => Get( Int | S)
-        IntGet :: S => Put( Int | S)
+        SendMsg :: S => Get( [Char] | S)
         Close :: S => TopBot 
 
 proc process1 =
     | ch => -> on ch do
         hput Weird
-        hput SendMsg            -- type check error here because this isn't the local SendMsgs (obviously)
+        hput SendMsg     -- type check error here because this isn't the local SendMsgs (obviously)
         put "hello console"
         hput Close
         halt 
@@ -54,7 +60,7 @@ proc run :: | Console => =
                 Weird -> process2( | console => ch)
 
 
--- instead of a rename error, we get the following error
+-- we get the following error
 
 -- mpl: type check / semantic error:
 --  •  Match failure with types
@@ -69,9 +75,9 @@ proc run :: | Console => =
 
 --         hput Weird on ch
 
---     at line 28 and column 9 and command
+--     at line 34 and column 9 and command
 
 --         hput SendMsg on ch
 
---     at line 29 and column 9
---  •  Cannot call `process1' at line 51 and column 9 (most likely because the term is invalid).
+--     at line 35 and column 9
+--  •  Cannot call `process1' at line 57 and column 9 (most likely because the term is invalid).

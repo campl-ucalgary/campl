@@ -3,10 +3,10 @@
 -- more than one console (with types)
 
 
-coprotocol S => Console = 
-    ConsolePut :: S => Get( [Char] | S)
-    ConsoleGet :: S => Put( [Char] | S)
-    ConsoleClose :: S => TopBot  
+-- coprotocol S => Console = 
+--     ConsolePut :: S => Get( [Char] | S)
+--     ConsoleGet :: S => Put( [Char] | S)
+--     ConsoleClose :: S => TopBot  
 
 proc run :: | Console, Console => =
     | console1, console2 => -> plug
@@ -24,3 +24,6 @@ proc run :: | Console, Console => =
                 put "hello console 2"
                 hput ConsoleClose
                 halt
+
+-- mpl: assembler error:
+-- Main run process has more than one service channel of type Console: console1 at line 12 and column 7, console2 at line 12 and column 17

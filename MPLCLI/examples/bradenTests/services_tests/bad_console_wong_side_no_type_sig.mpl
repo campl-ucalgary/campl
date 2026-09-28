@@ -3,15 +3,15 @@
 -- Console channel wrong polarity
 
 
-coprotocol S => Console = 
-    ConsolePut :: S => Get( [Char] | S)
-    ConsoleGet :: S => Put( [Char] | S)
-    ConsoleClose :: S => TopBot  
+-- coprotocol S => Console = 
+--     ConsolePut :: S => Get( [Char] | S)
+--     ConsoleGet :: S => Put( [Char] | S)
+--     ConsoleClose :: S => TopBot  
 
 proc process =
     | => channel -> on channel do
         hput ConsolePut
-        put "hello Snails console"
+        put "hello console"
         hput ConsoleClose
         halt
 

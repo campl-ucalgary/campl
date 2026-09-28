@@ -4,14 +4,14 @@
 -- the Timer service with its Timer handle
 -- no rename error! because the type and handle are in different name spaces!   
 
-coprotocol S => Console = 
-    ConsolePut :: S => Get( [Char] | S)
-    ConsoleGet :: S => Put( [Char] | S)
-    ConsoleClose :: S => TopBot     
+-- coprotocol S => Console = 
+--     ConsolePut :: S => Get( [Char] | S)
+--     ConsoleGet :: S => Put( [Char] | S)
+--     ConsoleClose :: S => TopBot     
 
-coprotocol S => Timer = 
-    Timer :: S => Get(Int|S (*) Put(()|TopBot))
-    TimerClose :: S => TopBot
+-- coprotocol S => Timer = 
+--     Timer :: S => Get(Int|S (*) Put(()|TopBot))
+--     TimerClose :: S => TopBot
 
 proc run :: | Console, Timer => =
     | console, timer => -> do
