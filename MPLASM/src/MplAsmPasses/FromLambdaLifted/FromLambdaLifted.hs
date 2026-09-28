@@ -131,6 +131,9 @@ mplAssembleProg uniq prog =
         asmstmts <- fmap concat $ traverse mplAssembleStmt stmts
         asmmain <- case maybemain of
             Just mainf -> assert (null rst) $ fmap Just $ do 
+                -- check for errors if services aren't being used properly
+                tell $ checkServices ins outs                
+                -- assemble the main run process    
                 res <- mplAssembleProcDefn mainf
                 return res 
               where
@@ -387,25 +390,38 @@ mplAssembleExpr = para go
                 PrimitiveLt -> case getExprType lexpr of 
                     TypeBuiltIn (TypeIntF _) -> pure [Asm.CLtInt ()]
                     TypeBuiltIn (TypeCharF _) -> pure [Asm.CLtChar ()]
-                    _ -> error $ "illegal use of lt < instruction on unsupported type in expression: " ++ show lexpr ++ "(TODO: make this error message better)." 
+                    _ -> do
+                        tell $ [ _NoPrimitiveEqualityOperator # (show lexpr) ]
+                        pure []
                 PrimitiveGt -> case getExprType lexpr of 
                     TypeBuiltIn (TypeIntF _) -> pure [Asm.CGtInt ()]
                     TypeBuiltIn (TypeCharF _) -> pure [Asm.CGtChar ()]
-                    _ -> error $ "illegal use of gt > instruction on unsupported type in expression: " ++ show lexpr ++ "(TODO: make this error message better)." 
+                    _ -> do
+                        tell $ [ _NoPrimitiveEqualityOperator # (show lexpr) ]
+                        pure []
                 PrimitiveLeq -> case getExprType lexpr of 
                     TypeBuiltIn (TypeIntF _) -> pure [Asm.CLeqInt ()]
                     TypeBuiltIn (TypeCharF _) -> pure [Asm.CLeqChar ()]
-                    _ -> error $ "illegal use of leq <= instruction on unsupported type in expression: " ++ show lexpr ++ "(TODO: make this error message better)." 
+                    _ -> do
+                        tell $ [ _NoPrimitiveEqualityOperator # (show lexpr) ]
+                        pure []
                 PrimitiveGeq -> case getExprType lexpr of 
                     TypeBuiltIn (TypeIntF _) -> pure [Asm.CGeqInt ()]
                     TypeBuiltIn (TypeCharF _) -> pure [Asm.CGeqChar ()]
-                    _ -> error $ "illegal use of geq >= instruction on unsupported type in expression: " ++ show lexpr ++ "(TODO: make this error message better)." 
+                    _ -> do
+                        tell $ [ _NoPrimitiveEqualityOperator # (show lexpr) ]
+                        pure []
                 PrimitiveEq -> case getExprType lexpr of 
                     TypeBuiltIn (TypeIntF _) -> pure [Asm.CEqInt ()]
                     TypeBuiltIn (TypeBoolF _) -> pure [Asm.CEqBool ()]
                     TypeBuiltIn (TypeCharF _) -> pure [Asm.CEqChar ()]
-                    _ -> error $ "illegal use of eq == instruction on unsupported type in expression: " ++ show lexpr ++ "(TODO: make this error message better)." 
-                _ -> error $ "assembling of operation is not implemented yet " ++ show op
+                    _ -> do
+                        tell $ [ _NoPrimitiveEqualityOperator # (show lexpr) ]
+                        pure []
+                _ -> do
+                        tell $ [ _NoPrimitiveEqualityOperator # 
+                            ("assembling of operation is not implemented yet " ++ show op) ]
+                        pure []
         
             
         EVarF _ idp -> pure [Asm.CLoad () (toAsmIdP idp)]
