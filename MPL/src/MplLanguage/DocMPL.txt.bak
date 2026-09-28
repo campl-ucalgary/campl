@@ -97,7 +97,7 @@ Infixl5op literals are recognized by the regular expression
 `````["+-"]`````
 
 Infixl6op literals are recognized by the regular expression
-`````["*/"]`````
+`````["%*/"]`````
 
 ChId literals are recognized by the regular expression
 `````{"|=|"}`````
@@ -211,13 +211,13 @@ All other symbols are terminals.
   |  |  **|**  | //PIdent//
   |  |  **|**  | //PIdent// ``,`` //[PIdent]//
   | //MplProg// | -> | //[MplStmt]//
+  | //[MplStmt]// | -> | **eps**
+  |  |  **|**  | //MplStmt// //[MplStmt]//
   | //MplStmt// | -> | ``defn`` ``{`` //[MplDefn]// ``}`` ``where`` ``{`` //[MplWhere]// ``}``
   |  |  **|**  | ``defn`` ``{`` //[MplDefn]// ``}``
   |  |  **|**  | //MplDefn//
   | //[MplDefn]// | -> | //MplDefn//
   |  |  **|**  | //MplDefn// ``;`` //[MplDefn]//
-  | //[MplStmt]// | -> | **eps**
-  |  |  **|**  | //MplStmt// //[MplStmt]//
   | //MplWhere// | -> | //MplStmt//
   | //[MplWhere]// | -> | **eps**
   |  |  **|**  | //MplWhere//
