@@ -51,6 +51,7 @@ import Debug.Trace
 -- libraries
 import Control.Monad.State
 import Control.Monad.Writer
+import Control.Monad (mzero, void, guard, replicateM, (<=<), (>=>))
 import Data.Functor.Base ( ListF (..), NonEmptyF (..) )
 import Data.Functor.Foldable ( cata, para, Base )
 

@@ -16,6 +16,7 @@ import Control.Exception
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer
+import Control.Monad (replicateM, void, guard, foldM, when, unless, (<=<), (>=>))
 import Data.Foldable
 import Data.Functor.Const
 import Data.Functor.Foldable hiding (fold)
@@ -127,7 +128,6 @@ lambdaLiftExpr ::
         (MplExpr MplLambdaLifted)
 lambdaLiftExpr = cata go 
   where
-    go :: MplExprF MplPatternCompiled (_ (MplExpr MplLambdaLifted)) -> _ (MplExpr MplLambdaLifted)
     go = \case
         EPOpsF ann opty l r -> EPOps ann opty <$> l <*> r
         EVarF ann idp -> pure $ EVar ann idp
@@ -184,7 +184,6 @@ lambdaLiftExpr = cata go
             traverse_ f stmts
             expr
           where
-            f :: MplStmt MplPatternCompiled -> _ ()
             f stmt = do
                 traverse_ f $ stmt ^. stmtWhereBindings
                 {- Why is this filter here? 
@@ -215,7 +214,6 @@ lambdaLiftCmd ::
         (MplCmd MplLambdaLifted)
 lambdaLiftCmd = cata go 
   where
-    go :: MplCmdF MplPatternCompiled (_ (MplCmd MplLambdaLifted)) -> _ (MplCmd MplLambdaLifted)
     go = \case 
         CRunF ann (Right expr) seqs ins outs -> do
           expr' <- lambdaLiftExpr expr

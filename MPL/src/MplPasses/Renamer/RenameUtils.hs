@@ -18,6 +18,7 @@ import MplPasses.Env
 import Control.Monad.State
 import Control.Monad.Writer
 import Control.Monad.Reader
+import Control.Monad.Fix (MonadFix)
 
 import MplPasses.Renamer.RenameSym
 import MplPasses.Renamer.RenameErrors

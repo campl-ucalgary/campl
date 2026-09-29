@@ -19,6 +19,7 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer
+import Control.Monad.Fix (MonadFix)
 import Data.Bool
 import Data.Coerce
 import Data.Foldable
@@ -386,9 +387,6 @@ typeCheckExpr ::
     (MplExpr MplTypeChecked, [TypeEqns MplTypeSub])
 typeCheckExpr = para f
   where
-    f ::
-      Base (MplExpr MplRenamed) (MplExpr MplRenamed, _ (MplExpr MplTypeChecked, [TypeEqns MplTypeSub])) ->
-      _ (MplExpr MplTypeChecked, [TypeEqns MplTypeSub])
     f (EVarF cxt n) = do
       ttype <- guse (envLcl % typeInfoEnvTypeTag)
       ttypemap <- guse (envLcl % typeInfoEnvMap)

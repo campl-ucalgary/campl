@@ -8,6 +8,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE ForeignFunctionInterface #-}
 module MplMach.MplMachStep where
 
 import Optics
@@ -61,10 +62,14 @@ import Text.Read
 import Data.Coerce
 import System.IO (isEOF)
 
+#ifdef WASM
+import GHC.Wasm.Prim
+#else
 import Network.Socket
 import Network.Socket.ByteString
 
 import System.Process (spawnCommand)
+#endif
 
 import Debug.Trace
 import qualified Text.Show.Pretty as PrettyShow
@@ -651,18 +656,25 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
 
 
         (s, t, e, ISHPut ch sinstr) -> do
-            svs <- case sinstr of 
+            svs <- case sinstr of
+#ifdef WASM
+                -- On the browser the "main console" (an OpenThread service) is
+                -- just another xterm pane, so service it the same way as a
+                -- terminal: open a JS pane and forward its I/O over the bridge.
+                SHOpenThread -> sOpenTerm chlkup >> return Nothing
+#else
                 SHOpenThread -> do
                     svmap <- gview serviceMap
                     let slkup =  flipTranslationLkup chlkup
-                    -- Don't add to the map since this thread will wait anyways 
+                    -- Don't add to the map since this thread will wait anyways
                     {-
                     _ <- liftIO $ modifyMVar_ svmap
                         ( pure
                         . Map.insert (coerce ch) slkup
-                        ) 
+                        )
                     -}
                     return $ Just $ liftIO $ runMplMach (serviceThread slkup) env
+#endif
 
 
                 -- SHOpenTerm -> sOpenTerm ch chlkup >> return Nothing
@@ -830,7 +842,8 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
 -- * Services 
 
 
-serviceManager :: 
+#ifndef WASM
+serviceManager ::
     (HasMplMachServicesEnv r, MonadFail (MplMach r)) =>
     Socket ->
     MplMach r ()
@@ -1030,6 +1043,7 @@ recvPipe s = go
 
     rECV_MAX_BYTES_TO_RECEIVE :: Int
     rECV_MAX_BYTES_TO_RECEIVE = 4096
+#endif
 
 {-| Rougly follows the idea here: https://redis.io/topics/protocol. The specification is as follows.
 
@@ -1248,52 +1262,136 @@ serviceThread chlkup = loop chlkup
 
 
 
+#ifdef WASM
+-- * WASM service bridge
+--
+-- On wasm there are no sockets or child processes. A terminal service is a JS
+-- xterm pane; we service its channel in-process (mirroring 'serviceThread') and
+-- do I/O through JavaScript FFI imports provided by the host worker.
+
+foreign import javascript unsafe "__camplSvOpen($1, $2)"
+    js_svOpen :: Int -> Int -> IO ()
+foreign import javascript unsafe "__camplSvPut($1, $2)"
+    js_svPut :: Int -> JSString -> IO ()
+foreign import javascript safe "__camplSvGet($1)"
+    js_svGet :: Int -> IO JSString
+foreign import javascript unsafe "__camplSvClose($1)"
+    js_svClose :: Int -> IO ()
+
+svPutStr :: Int -> String -> IO ()
+svPutStr sid = js_svPut sid . toJSString
+
+svGetStr :: Int -> IO String
+svGetStr sid = fromJSString <$> js_svGet sid
+
+{- | opens a terminal (wasm): create a JS xterm pane and fork an in-process
+service handler for its channel. -}
+sOpenTerm ::
+    TranslationLkup ->
+    MplMach MplMachEnv ()
+sOpenTerm chlkup = do
+    env <- gview equality
+    svmap <- gview serviceMap
+    svch <- freshServiceCh
+    let slkup = flipTranslationLkup chlkup
+        sid = coerce @ServiceCh @Int svch
+    liftIO $ modifyMVar_ svmap (pure . Map.insert svch slkup)
+    liftIO $ js_svOpen sid 0
+    liftIO $ void $ forkIO $
+        runMplMach (wasmServiceThread sid slkup) env
+            `finally` ( modifyMVar_ svmap (pure . Map.delete svch)
+                      *> js_svClose sid )
+
+-- | In-process terminal service for wasm: like 'serviceThread', but I/O goes
+-- through the JS bridge instead of stdin/stdout.
+wasmServiceThread ::
+    Int ->
+    TranslationLkup ->
+    MplMach MplMachEnv ()
+wasmServiceThread sid = loop
+  where
+    loop chlkup = gview equality >>= \env -> do
+        sinstr <- liftIO $ atomically $ do
+            chotherqueue <- chlkup ^. otherQueue % to readChMQueue
+            peekTQueue chotherqueue >>= \case
+                QSHPut sinstr -> readTQueue chotherqueue >> return sinstr
+                _ -> retry
+        case sinstr of
+            SHGetInt -> do
+                n <- liftIO $ inputLoopInt sid
+                fetchAndWriteChMQueue (chlkup ^. activeQueue) (QPut (VInt n))
+                loop chlkup
+            SHPutInt -> do
+                ~(QPut (VInt n)) <- liftIO $ atomically $
+                    chlkup ^. otherQueue % to (readTQueue <=< readChMQueue)
+                liftIO $ svPutStr sid (show n ++ "\n")
+                loop chlkup
+            SHGetChar -> do
+                c <- liftIO $ inputLoopChar sid
+                fetchAndWriteChMQueue (chlkup ^. activeQueue) (QPut (VChar c))
+                loop chlkup
+            SHPutChar -> do
+                ~(QPut (VChar n)) <- liftIO $ atomically $
+                    chlkup ^. otherQueue % to (readTQueue <=< readChMQueue)
+                liftIO $ svPutStr sid [n]
+                loop chlkup
+            SHGetString -> do
+                str <- liftIO $ svGetStr sid
+                fetchAndWriteChMQueue (chlkup ^. activeQueue) (QPut (strToVal str))
+                loop chlkup
+            SHPutString -> do
+                ~(QPut inp) <- liftIO $ atomically $
+                    chlkup ^. otherQueue % to (readTQueue <=< readChMQueue)
+                liftIO $ svPutStr sid (valToStr inp ++ "\n")
+                loop chlkup
+            SHTimeOut -> do
+                ~(QPut (VInt n)) <- liftIO $ atomically $ chlkup ^. otherQueue % to (readTQueue <=< readChMQueue)
+                ~(QSplit lch rch) <- liftIO $ atomically $ chlkup ^. otherQueue % to (readTQueue <=< readChMQueue)
+                let lch' = setTranslationLkup chlkup lch
+                    rch' = setTranslationLkup chlkup rch
+                liftIO $ concurrently_ (runMplMach (wasmServiceThread sid lch') env) $ do
+                    threadDelay n
+                    fetchAndWriteChMQueue (rch' ^. activeQueue) (QPut unitVCons)
+                return ()
+            SHSplitNegStringTerm -> do
+                ~(QSplit glch grch) <- liftIO $ atomically $ chlkup ^. otherQueue % to (peekTQueue <=< readChMQueue)
+                let llkup = setTranslationLkup chlkup glch
+                    rlkup = setTranslationLkup chlkup grch
+                sOpenTerm rlkup
+                loop llkup
+            SHClose -> return ()
+            SHOpenThread -> liftIO $ throwIO $ userError $ "illegal service in client: " ++ show SHOpenThread
+            SHOpenTerm -> liftIO $ throwIO $ userError $ "illegal service in client: " ++ show SHOpenTerm
+
+    inputLoopInt s = svGetStr s >>= \str -> case readMaybe str of
+        Just n -> return (n :: Int)
+        Nothing -> inputLoopInt s
+    inputLoopChar s = svGetStr s >>= \case
+        (c : _) -> return c
+        _ -> inputLoopChar s
+#else
 {- | opens a terminal. It expects
 -}
 sOpenTerm ::
     TranslationLkup ->
-        -- ^ the correspnding lookup in that processes translation 
+        -- ^ the correspnding lookup in that processes translation
     MplMach MplMachEnv ()
 sOpenTerm chlkup = void $ do
     svmap <- gview serviceMap
-    svch <- freshServiceCh 
-    _ <- liftIO $ modifyMVar_ svmap 
-        ( pure . Map.insert svch (flipTranslationLkup chlkup) ) 
+    svch <- freshServiceCh
+    _ <- liftIO $ modifyMVar_ svmap
+        ( pure . Map.insert svch (flipTranslationLkup chlkup) )
 
-    -- silly way of doing services. 
+    -- silly way of doing services.
     -- like actually so silly. still can't believe
     -- this was decided to do it this way...
     hn <- gview serviceHostName
     pn <- gview servicePortName
     liftIO $ spawnCommand $ concat
-        -- [ "open -na \"alacritty\" --args  -e "
-        -- -- , "'"
-        -- , "mpl-client"
-        -- , " --hostname=" ++ show hn
-        -- , " --port=" ++ show pn
-        -- , " --service-ch=" ++ show (show $ coerce @ServiceCh @Int svch)
-        -- -- , "; read"
-        -- -- , "'"
-        -- ]
-	
         [ "alacritty -e "
-        -- , "'"
         , "mpl-client"
         , " --hostname=" ++ show hn
         , " --port=" ++ show pn
         , " --service-ch=" ++ show (show $ coerce @ServiceCh @Int svch)
-        -- , "; read"
-        -- , "'"
         ]
-
-        {-
-        [ "xterm -e "
-        , "'"
-        , "mpl-client"
-        , " --hostname=" ++ show hn
-        , " --port=" ++ show pn
-        , " --service-ch=" ++ show (show $ coerce @ServiceCh @Int svch)
-        , "; read"
-        , "'"
-        ]
-        -}
+#endif

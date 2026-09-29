@@ -36,6 +36,7 @@ import Data.Map (Map)
 
 import Control.Monad.State
 import Control.Monad.Writer
+import Data.Monoid (All (..), Any (..), First (..), getAll, getAny, getFirst)
 
 import Data.Traversable
 

@@ -43,6 +43,7 @@ import Control.Monad.Writer
 import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Except
+import Data.Monoid (All (..), Any (..), getAll, getAny)
 import Control.Monad
 
 import Control.Arrow hiding ((<+>))
@@ -106,10 +107,10 @@ instance ( PPrint (MplType x) y, PPrint (IdP x) y, PPrint (TypeP x) y) => PPrint
                 $ [ hsep [pretty "exists", pretty (map (pprint proxy) exists), pretty "s.t."] ]
                     <> map f rst ]
 
-        f (TypeEqnsForall forall rst) = vsep
+        f (TypeEqnsForall forallVars rst) = vsep
             [ nest 2
                 $ vsep
-                $ [ hsep [pretty "forall", pretty (map g forall), pretty "s.t."] ]
+                $ [ hsep [pretty "forall", pretty (map g forallVars), pretty "s.t."] ]
                     <> map f rst
             ]
           where
