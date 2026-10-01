@@ -10,6 +10,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
+{-# LANGUAGE MonoLocalBinds #-}
 
 module MplPasses.TypeChecker.TypeCheckUtils where
 
@@ -193,6 +194,9 @@ higherOrderCheck notscoped tp
 
     go = para f
 
+    f :: (AsTypeCheckSemanticErrors e, MonadWriter [e] w, Applicative w, Functor w) =>
+      Base (MplType MplTypeSub) (MplType MplTypeSub, w (Maybe (MplType MplTypeChecked))) ->
+      (w (Maybe (MplType MplTypeChecked)))
     f (TypeVarF cxt n) = return $ Just $ TypeVar Nothing (typeIdentTToTypeT n)
     f (TypeWithNoArgsF cxt n) = return $ Just $ TypeWithNoArgs (snd cxt) n
     f (TypeSeqWithArgsF cxt n args) = do

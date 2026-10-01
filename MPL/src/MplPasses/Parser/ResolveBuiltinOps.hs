@@ -55,6 +55,8 @@ module MplPasses.Parser.ResolveBuiltinOps (resolveBuiltinOps) where
 import MplPasses.Parser.BnfcParse as B
 
 import Control.Monad.Writer
+import Control.Monad (when)
+
 import qualified Data.Set as Set
 
 -- | The names this pass gives a built-in meaning when the program

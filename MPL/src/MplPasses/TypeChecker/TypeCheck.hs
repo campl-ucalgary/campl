@@ -356,7 +356,7 @@ typeCheckFunBody bdy@(patts, expr) = do
   ttypemap <- guse (envLcl % typeInfoEnvMap)
 
   ~(ttypepatts, (patts', pattacceqns)) <-
-    second NE.unzip . NE.unzip
+    second unzip . unzip
       <$> traverse (withFreshTypeTag . typeCheckPattern) patts
 
   ~(ttypeexpr, (expr', expracceqn)) <- withFreshTypeTag . typeCheckExpr $ expr
@@ -1577,7 +1577,7 @@ typeCheckProcessBody procbdy@((patts, ins, outs), cmds) = do
   ttypemap <- guse (envLcl % typeInfoEnvMap)
 
   (ttypepatts, (patts', pattacceqns)) <-
-    second NE.unzip . NE.unzip
+    second unzip . unzip
       <$> traverse (withFreshTypeTag . typeCheckPattern) patts
 
   ttypeins <- traverse freshChTypeTag ins
