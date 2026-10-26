@@ -116,7 +116,7 @@ defn
 
     -- client code
     -- initially send a message indicating the id of the client proc
-    proc client_wrapper :: [Char] | => Put(NewMsg | RecvMsgs), StringTerminal =
+    proc client_wrapper :: [Char] | => Put(NewMsg | RecvMsgs), Terminal =
         cid | => ch, terminal -> do
             on terminal do
                 hput StringTerminalPut
@@ -124,7 +124,7 @@ defn
             client(cid | => ch, terminal)
 
     -- recursively prompt for user input as long as the server is accepting messages
-    proc client :: [Char] | => Put(NewMsg | RecvMsgs), StringTerminal =
+    proc client :: [Char] | => Put(NewMsg | RecvMsgs), Terminal =
         cid | => ch, terminal -> do
             on terminal do
                 hput StringTerminalPut
@@ -139,7 +139,7 @@ defn
                     put Yes(cid ++ ": " ++ msg) on ch
                     client_recurse(cid | => ch, terminal)
 
-    proc client_recurse :: [Char] | => RecvMsgs, StringTerminal =
+    proc client_recurse :: [Char] | => RecvMsgs, Terminal =
         cid | => ch, terminal -> do
             hcase ch of
                 Recv -> do
