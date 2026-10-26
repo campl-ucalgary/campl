@@ -204,8 +204,6 @@ instance Print MplLanguage.AbsMPL.Split where
   prt _ (MplLanguage.AbsMPL.Split (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Fork where
   prt _ (MplLanguage.AbsMPL.Fork (_,i)) = doc $ showString i
-instance Print MplLanguage.AbsMPL.Race where
-  prt _ (MplLanguage.AbsMPL.Race (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.StoreType where
   prt _ (MplLanguage.AbsMPL.StoreType (_,i)) = doc $ showString i
 instance Print MplLanguage.AbsMPL.Store where
@@ -229,6 +227,10 @@ instance Print MplLanguage.AbsMPL.MplProg where
   prt i = \case
     MplLanguage.AbsMPL.MPL_PROG mplstmts -> prPrec i 0 (concatD [prt 0 mplstmts])
 
+instance Print [MplLanguage.AbsMPL.MplStmt] where
+  prt _ [] = concatD []
+  prt _ (x:xs) = concatD [prt 0 x, prt 0 xs]
+
 instance Print MplLanguage.AbsMPL.MplStmt where
   prt i = \case
     MplLanguage.AbsMPL.MPL_DEFN_STMS_WHERE mpldefns mplwheres -> prPrec i 0 (concatD [doc (showString "defn"), doc (showString "{"), prt 0 mpldefns, doc (showString "}"), doc (showString "where"), doc (showString "{"), prt 0 mplwheres, doc (showString "}")])
@@ -239,10 +241,6 @@ instance Print [MplLanguage.AbsMPL.MplDefn] where
   prt _ [] = concatD []
   prt _ [x] = concatD [prt 0 x]
   prt _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
-
-instance Print [MplLanguage.AbsMPL.MplStmt] where
-  prt _ [] = concatD []
-  prt _ (x:xs) = concatD [prt 0 x, prt 0 xs]
 
 instance Print MplLanguage.AbsMPL.MplWhere where
   prt i = \case
@@ -589,7 +587,7 @@ instance Print MplLanguage.AbsMPL.ProcessCommand where
     MplLanguage.AbsMPL.PROCESS_FORK fork pident forkphrases -> prPrec i 0 (concatD [prt 0 fork, prt 0 pident, doc (showString "as"), doc (showString "{"), prt 0 forkphrases, doc (showString "}")])
     MplLanguage.AbsMPL.PROCESS_ID pident1 chid pident2 -> prPrec i 0 (concatD [prt 0 pident1, prt 0 chid, prt 0 pident2])
     MplLanguage.AbsMPL.PROCESS_NEG pident1 chid pident2 -> prPrec i 0 (concatD [prt 0 pident1, prt 0 chid, doc (showString "neg"), prt 0 pident2])
-    MplLanguage.AbsMPL.PROCESS_RACE race racephrases -> prPrec i 0 (concatD [prt 0 race, doc (showString "{"), prt 0 racephrases, doc (showString "}")])
+    MplLanguage.AbsMPL.PROCESS_RACE racephrases -> prPrec i 0 (concatD [doc (showString "race"), doc (showString "{"), prt 0 racephrases, doc (showString "}")])
     MplLanguage.AbsMPL.PROCESS_PLUG plugphrases -> prPrec i 0 (concatD [doc (showString "plug"), doc (showString "{"), prt 0 plugphrases, doc (showString "}")])
     MplLanguage.AbsMPL.PROCESS_CASE case_ expr processcasephrases -> prPrec i 0 (concatD [prt 0 case_, prt 0 expr, doc (showString "of"), doc (showString "{"), prt 0 processcasephrases, doc (showString "}")])
     MplLanguage.AbsMPL.PROCESS_IF expr processcommandsblock1 processcommandsblock2 -> prPrec i 0 (concatD [doc (showString "if"), prt 0 expr, doc (showString "then"), prt 0 processcommandsblock1, doc (showString "else"), prt 0 processcommandsblock2])

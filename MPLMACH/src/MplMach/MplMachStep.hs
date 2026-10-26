@@ -739,7 +739,7 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                     THEN FINALLY continute this process (not concurrently!!)
             -}
             let raceslkups = fmap (first (id &&& (t Map.!))) races 
-                lchs = map fst races
+                lchs = map fst races                                    -- this isn't used? what is it for?
 
             -- This is (1)
             for_ raceslkups $ \((_lch, chlkup), rc) -> 
@@ -1388,6 +1388,16 @@ sOpenTerm chlkup = void $ do
     hn <- gview serviceHostName
     pn <- gview servicePortName
     liftIO $ spawnCommand $ concat
+        -- [ "open -na \"alacritty\" --args  -e "
+        -- -- , "'"
+        -- , "mpl-client"
+        -- , " --hostname=" ++ show hn
+        -- , " --port=" ++ show pn
+        -- , " --service-ch=" ++ show (show $ coerce @ServiceCh @Int svch)
+        -- -- , "; read"
+        -- -- , "'"
+        -- ]
+
         [ "alacritty -e "
         , "mpl-client"
         , " --hostname=" ++ show hn

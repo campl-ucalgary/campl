@@ -277,8 +277,8 @@ _InternalConcTypeParser :: Prism' String InternalConcTypes
 _InternalConcTypeParser = prism' embed match
   where
     tmp =
-      [ ("Get", InternalGet),
-        ("Put", InternalPut),
+      [ ("Get", InternalGet), ("Up", InternalGet),
+        ("Put", InternalPut), ("Down", InternalPut),
         ("TopBot", InternalTopBot),
         ("(*)", InternalTensor),
         ("(+)", InternalPar),
@@ -288,6 +288,7 @@ _InternalConcTypeParser = prism' embed match
     embed n = fst . fromJust $ find ((n ==) . snd) tmp
 
     match n = snd <$> find ((n ==) . fst) tmp
+    
 
 data InternalSeqPrimitiveTypes
   = InternalInt

@@ -116,6 +116,7 @@ instance PPrint PrimitiveOperators x where
         PrimitiveSub -> "-"
         PrimitiveMul -> "*"
         PrimitiveDiv -> "/"
+        PrimitiveMod -> "%"
         PrimitiveEq -> "=="
         PrimitiveNeq -> "/="
         PrimitiveLt -> "<"
@@ -694,6 +695,7 @@ instance
         PrimitiveSub -> B.INFIXL5_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
         PrimitiveMul -> B.INFIXL6_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
         PrimitiveDiv -> B.INFIXL6_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
+        PrimitiveMod -> B.INFIXL6_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
         PrimitiveEq -> B.INFIXL3_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
         PrimitiveNeq -> B.INFIXL3_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
         PrimitiveLeq -> B.INFIXL3_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
@@ -953,8 +955,8 @@ instance PPrint ChIdentT x where
   pprint proxy n = n ^. chIdentTChIdentR % to (pprint proxy)
 
 instance {-# OVERLAPPING #-} PPrint ChIdentT MplTypeChecked where
-  -- pprint proxy n = n ^. chIdentTChIdentR % to (pprint proxy) ++ " :: "++ n ^. chIdentTType % to (pprint proxy)
-  pprint proxy n = n ^. chIdentTChIdentR % to (pprint proxy)
+  pprint proxy n = n ^. chIdentTChIdentR % to (pprint proxy) ++ " :: "++ n ^. chIdentTType % to (pprint proxy)
+--   pprint proxy n = n ^. chIdentTChIdentR % to (pprint proxy)
 
 instance PPrint B.MplProg x where
   pprint _ = B.printTree

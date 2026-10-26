@@ -12,7 +12,7 @@ import qualified MplAsmAST.MplAsmProg as Asm
 import qualified MplAsmAST.MplAsmCore as Asm
 import qualified MplAsmPasses.PassesErrorsPprint as Asm
 
-import Data.Text.Prettyprint.Doc
+import Prettyprinter
 
 data MplAsmFromLambdaLifted 
 
