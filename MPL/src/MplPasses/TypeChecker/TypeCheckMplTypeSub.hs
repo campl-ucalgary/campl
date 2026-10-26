@@ -69,6 +69,9 @@ type instance XTypeDoubleF MplTypeSub = Maybe TypeAnn
 
 type instance XTypeCharF MplTypeSub = Maybe TypeAnn
 
+type instance XTypeEqableF MplTypeSub = Maybe TypeAnn
+type instance XTypeOrdableF MplTypeSub = Maybe TypeAnn
+
 -- type instance XTypeStringF MplTypeSub = Maybe NameOcc
 type instance XTypeUnitF MplTypeSub = Maybe TypeAnn
 
@@ -87,6 +90,9 @@ type instance XTypePut MplTypeSub = Maybe TypeAnn
 type instance XTypeTensor MplTypeSub = Maybe TypeAnn
 
 type instance XTypePar MplTypeSub = Maybe TypeAnn
+
+type instance XTypeRaceableInput MplTypeSub = Maybe TypeAnn
+type instance XTypeRaceableOutput MplTypeSub = Maybe TypeAnn
 
 type instance XTypeTopBot MplTypeSub = Maybe TypeAnn
 
@@ -241,6 +247,14 @@ instantiateTypeWithSubs ann sublist = cata f
       TypeCharF cxt -> return $ _TypeCharF # ann
       TypeBoolF cxt -> return $ _TypeBoolF # ann
       TypeUnitF cxt -> return $ _TypeUnitF # ann
+      TypeEqableF cxt var -> do
+        var' <- var
+        return var'
+        -- return $ _TypeEqableF # (annotate cxt, var')
+      TypeOrdableF cxt var ->  do
+        var' <- var
+        return var'
+        -- return $ _TypeOrdableF # (annotate cxt, var')
       TypeListF cxt rst -> do
         rst' <- rst
         return $ _TypeListF # (ann, rst')
@@ -255,6 +269,12 @@ instantiateTypeWithSubs ann sublist = cata f
         ins' <- sequenceA ins
         outs' <- sequenceA outs
         return $ _TypeConcArrF # (ann, seqs', ins', outs')
+      TypeRaceableInputF cxt ch ->  do
+        ch' <- ch
+        return $ _TypeRaceableInputF # (annotate cxt, ch')
+      TypeRaceableOutputF cxt ch -> do
+        ch' <- ch
+        return $ _TypeRaceableOutputF # (annotate cxt, ch')
       TypeGetF cxt seq conc -> do
         seq' <- seq
         conc' <- conc
@@ -334,6 +354,7 @@ instance TypeClauseToMplType (SeqObjTag CodataDefnTag) where
             % to (map (review _TypeVar . (Just $ SeqKind (),) . NamedType))
         )
 
+-- first argument stores whether this was a protocol definition or a coprotcol definition
 instance TypeClauseToMplType (ConcObjTag ProtocolDefnTag) where
   typeClauseToMplType clause =
     _TypeConcWithArgs

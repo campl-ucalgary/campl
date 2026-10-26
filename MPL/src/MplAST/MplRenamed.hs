@@ -272,6 +272,8 @@ type instance XXType MplRenamed = Void
 type instance XTypeIntF MplRenamed = NameOcc
 type instance XTypeCharF MplRenamed = NameOcc
 type instance XTypeDoubleF MplRenamed = NameOcc
+type instance XTypeEqableF MplRenamed = NameOcc
+type instance XTypeOrdableF MplRenamed = NameOcc
 -- type instance XTypeStringF MplRenamed = NameOcc
 type instance XTypeUnitF MplRenamed = NameOcc
 type instance XTypeBoolF MplRenamed = NameOcc
@@ -279,6 +281,8 @@ type instance XTypeListF MplRenamed = NameOcc
 type instance XTypeTupleF MplRenamed = NameOcc
 type instance XTypeStoreF MplRenamed = NameOcc
 
+type instance XTypeRaceableInput MplRenamed = NameOcc
+type instance XTypeRaceableOutput MplRenamed = NameOcc
 type instance XTypeGet MplRenamed = NameOcc
 type instance XTypePut MplRenamed = NameOcc
 type instance XTypeTensor MplRenamed = NameOcc

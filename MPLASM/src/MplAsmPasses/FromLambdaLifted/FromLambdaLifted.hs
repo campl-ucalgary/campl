@@ -131,6 +131,9 @@ mplAssembleProg uniq prog =
         asmstmts <- fmap concat $ traverse mplAssembleStmt stmts
         asmmain <- case maybemain of
             Just mainf -> assert (null rst) $ fmap Just $ do 
+                -- check for errors if services aren't being used properly
+                tell $ checkServices ins outs                
+                -- assemble the main run process    
                 res <- mplAssembleProcDefn mainf
                 return res 
               where
@@ -383,16 +386,42 @@ mplAssembleExpr = para go
                 PrimitiveMul -> pure [Asm.CMulInt ()]
                 PrimitiveSub -> pure [Asm.CSubInt ()]
                 PrimitiveDiv -> pure [Asm.CDivInt ()]
-                PrimitiveLt -> pure [Asm.CLtInt ()]
-                PrimitiveGt -> pure [Asm.CGtInt ()]
-                PrimitiveLeq -> pure [Asm.CLeqInt ()]
-                PrimitiveGeq -> pure [Asm.CGeqInt ()]
+                PrimitiveMod -> pure [Asm.CModInt ()]
+                PrimitiveLt -> case getExprType lexpr of 
+                    TypeBuiltIn (TypeIntF _) -> pure [Asm.CLtInt ()]
+                    TypeBuiltIn (TypeCharF _) -> pure [Asm.CLtChar ()]
+                    _ -> do
+                        tell $ [ _NoPrimitiveEqualityOperator # (show lexpr) ]
+                        pure []
+                PrimitiveGt -> case getExprType lexpr of 
+                    TypeBuiltIn (TypeIntF _) -> pure [Asm.CGtInt ()]
+                    TypeBuiltIn (TypeCharF _) -> pure [Asm.CGtChar ()]
+                    _ -> do
+                        tell $ [ _NoPrimitiveEqualityOperator # (show lexpr) ]
+                        pure []
+                PrimitiveLeq -> case getExprType lexpr of 
+                    TypeBuiltIn (TypeIntF _) -> pure [Asm.CLeqInt ()]
+                    TypeBuiltIn (TypeCharF _) -> pure [Asm.CLeqChar ()]
+                    _ -> do
+                        tell $ [ _NoPrimitiveEqualityOperator # (show lexpr) ]
+                        pure []
+                PrimitiveGeq -> case getExprType lexpr of 
+                    TypeBuiltIn (TypeIntF _) -> pure [Asm.CGeqInt ()]
+                    TypeBuiltIn (TypeCharF _) -> pure [Asm.CGeqChar ()]
+                    _ -> do
+                        tell $ [ _NoPrimitiveEqualityOperator # (show lexpr) ]
+                        pure []
                 PrimitiveEq -> case getExprType lexpr of 
                     TypeBuiltIn (TypeIntF _) -> pure [Asm.CEqInt ()]
                     TypeBuiltIn (TypeBoolF _) -> pure [Asm.CEqBool ()]
                     TypeBuiltIn (TypeCharF _) -> pure [Asm.CEqChar ()]
-                    _ -> error "illegal use of eq instruction on unsupported type (TODO: make this error message better). "
-                _ -> error $ "assembling of operation is not implemented yet " ++ show op
+                    _ -> do
+                        tell $ [ _NoPrimitiveEqualityOperator # (show lexpr) ]
+                        pure []
+                _ -> do
+                        tell $ [ _NoPrimitiveEqualityOperator # 
+                            ("assembling of operation is not implemented yet " ++ show op) ]
+                        pure []
         
             
         EVarF _ idp -> pure [Asm.CLoad () (toAsmIdP idp)]
@@ -1049,14 +1078,25 @@ getExprType ::
     MplExpr MplLambdaLifted -> 
     MplType MplTypeChecked
 getExprType = \case
+    -- this is probably not how we should be removing the TypeEqableF and TypeOrdableF,
+    -- but at least we'll catch errors at type checking instead of assembling
+    EVar (TypeBuiltIn (TypeEqableF _ ann)) _ -> ann
+    EVar (TypeBuiltIn (TypeOrdableF _ ann)) _ -> ann
     EVar ann _ -> ann
+    EInt (TypeBuiltIn (TypeEqableF _ ann)) _ -> ann
+    EInt (TypeBuiltIn (TypeOrdableF _ ann)) _ -> ann
     EInt ann _ -> ann
+    EChar (TypeBuiltIn (TypeEqableF _ ann)) _ -> ann
+    EChar (TypeBuiltIn (TypeOrdableF _ ann)) _ -> ann
     EChar ann _ -> ann
     EDouble ann _ -> ann
     EPOps ann _ _ _ -> ann
+    EBool (TypeBuiltIn (TypeEqableF _ ann)) _ -> ann
     EBool ann _ -> ann
     ECase ann _ _ -> ann
     EObjCall ann _ _ -> snd ann
+    ECall (TypeBuiltIn (TypeEqableF _ ann)) _ _ -> ann
+    ECall (TypeBuiltIn (TypeOrdableF _ ann)) _ _ -> ann
     ECall ann _ _ -> ann
     ERecord ann _ -> ann
     EList ann _ -> ann

@@ -1,10 +1,10 @@
 -- This is a full test of every syntactic device and use of the 'on' directive.
 -- If this compiles, and the AST looks right, then the 'on' syntax is working.
 
-coprotocol S => Console = 
-    ConsolePut :: S => Get( [Char] | S)
-    ConsoleGet :: S => Put( [Char] | S)
-    ConsoleClose :: S => TopBot 
+-- coprotocol S => Console = 
+--     ConsolePut :: S => Get( [Char] | S)
+--     ConsoleGet :: S => Put( [Char] | S)
+--     ConsoleClose :: S => TopBot 
 
 protocol Nope => S =
     NothingToDoHere :: TopBot => S

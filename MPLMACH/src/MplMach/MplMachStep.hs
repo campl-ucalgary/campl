@@ -258,6 +258,10 @@ seqStep k stec = case steccode of
             stec & code !~ c
                  & stack !~ s
                  & stack %!~ cons (VInt $ n `div` m)
+        (IModInt, e, VInt n : VInt m : s) -> {-# SCC "IModInt" #-} pure $ Just $
+            stec & code !~ c
+                 & stack !~ s
+                 & stack %!~ cons (VInt $ n `mod` m)
         (IEqInt, e, VInt n : VInt m : s) -> {-# SCC "IEqInt" #-} pure $ Just $
             stec & code !~ c
                  & stack !~ s
@@ -287,6 +291,22 @@ seqStep k stec = case steccode of
             stec & code !~ c
                  & stack !~ s
                  & stack %!~ cons (VBool $ n == m)
+        (ILeqChar, e, VChar n : VChar m : s) -> {-# SCC "ILeqChar" #-} pure $ Just $
+            stec & code !~ c
+                 & stack !~ s
+                 & stack %!~ cons (VBool $ n <= m)
+        (IGeqChar, e, VChar n : VChar m : s) -> {-# SCC "IGeqChar" #-} pure $ Just $
+            stec & code !~ c
+                 & stack !~ s
+                 & stack %!~ cons (VBool $ n >= m)
+        (ILtChar, e, VChar n : VChar m : s) -> {-# SCC "ILtChar" #-} pure $ Just $
+            stec & code !~ c
+                 & stack !~ s
+                 & stack %!~ cons (VBool $ n < m)
+        (IGtChar, e, VChar n : VChar m : s) -> {-# SCC "IGtChar" #-} pure $ Just $
+            stec & code !~ c
+                 & stack !~ s
+                 & stack %!~ cons (VBool $ n > m)
         (IStoreProc ins outs idOrinstrs, e, s) -> {-# SCC "IEStoreProc" #-} do
             instrs <- case idOrinstrs of
                 Left callix -> gviews supercombinators (Arr.! callix)
@@ -703,8 +723,8 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                     do NOT modify anything!)
 
                 (3) Once we have a winner, first update the queue that won (3.1),
-                    THEN, concurrently update all the queues and continute this 
-                    process concurrently as well (3.2).
+                    then, concurrently update all the queues (3.2).
+                    THEN FINALLY continute this process (not concurrently!!)
             -}
             let raceslkups = fmap (first (id &&& (t Map.!))) races 
                 lchs = map fst races                                    -- this isn't used? what is it for?
@@ -729,7 +749,7 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                 -- _ <- atomically $ rchlkup ^. activeQueue % to (readTQueue <=< readChMQueue)
                 _ <- atomically $ go3 rchlkup 
 
-                -- concurrently remove all other races (3.2)
+                 -- concurrently remove all other races (3.2)
                 (mapConcurrently_ 
                     ( void 
                     . atomically 
@@ -739,15 +759,15 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                         % to go3
                         -- % activeQueue 
                         -- % to (readTQueue <=< readChMQueue)
-                        )
+                        )     
                     )
-                    (filter ((/=rch) . fst . fst ) raceslkups))
-                        
+                    (filter ((/=rch) . fst . fst ) raceslkups)) 
+                                  
                 -- then carry on with the rest of the process execution
                 (void (mplMachSteps' rstec))
 
                 -- below is the previous code where we concurrently carried on with the process execution 
-                -- and cleaned up the loser's queues at the same time.
+                -- and cleaned up the losers' queues at the same time.
                 -- it caused race conditions with the state of the queues (especially with more than two procs racing)
                 -- because we were cleaning up the queues while more operations were already being performed
                 -- and then it resulted in bad behaviour
@@ -756,7 +776,6 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                 --     -- run the race which won
                 --     void (mplMachSteps' rstec) :
                 --     -- concurrently remove all other races (3.2)
-                --     -- then doesn't this need to be mapConcurrently ??
                 --     map 
                 --         ( void 
                 --         . atomically 
@@ -783,7 +802,8 @@ concStep k stec = gview equality >>= \env -> let mplMachSteps' inpstec = runMplM
                         chotherqueue <- chlkup ^. otherQueue % to readChMQueue
                         peekTQueue chotherqueue >>= \case
                             QPut _ -> return (lch, rstec, chlkup)
-                            -- when we want to race splits and hcases, we will need to update this case to have QFork and QHPut or something
+                            QFork _ _ -> return (lch, rstec, chlkup)
+                            QHPut _ -> return (lch, rstec, chlkup)
                             _ -> retry
                     _ -> retry
 

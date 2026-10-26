@@ -21,6 +21,7 @@ import qualified MplPasses.Parser.BnfcParse as B
 import MplPasses.Parser.MacroRemover
 import MplPasses.Parser.ParseErrors
 import MplPasses.Parser.ResolveBuiltinOps
+import MplPasses.Parser.AddServices
 import MplPasses.Parser.ParseMplPattern
 import MplPasses.Parser.ParseMplType
 import MplPasses.Parser.ParseUtils
@@ -41,7 +42,8 @@ runParse' =
     (Right prg, w) -> Right prg
     . runWriter
     . runExceptT
-    . runParse
+    . runParse    
+    . MplPasses.Parser.AddServices.addServices -- prepend the services definitions
     . MplPasses.Parser.ResolveBuiltinOps.resolveBuiltinOps -- Gives ||, &&, ++ their built-in meaning.
     . MplPasses.Parser.MacroRemover.removeMacros -- Gets rid of 'on' blocks and infix operators.
 
@@ -247,6 +249,7 @@ parseBnfcExpr (B.INFIXL6_EXPR a (B.Infixl6op (pos, op)) b) = do
   case op of
     "*" -> return $ _EPOps # (toLocation pos, PrimitiveMul, a', b')
     "/" -> return $ _EPOps # (toLocation pos, PrimitiveDiv, a', b')
+    "%" -> return $ _EPOps # (toLocation pos, PrimitiveMod, a', b')
     _ -> error $ "not implemented: " ++ op
 parseBnfcExpr (B.INFIXR7_EXPR a op b) =
   error $ "not implemented instr" ++ show op
@@ -431,13 +434,27 @@ parseBnfcCmd (B.PROCESS_ID a cxt b) =
   return $ _CId # (coerce $ toNameOcc cxt, (toChIdentP a, toChIdentP b))
 parseBnfcCmd (B.PROCESS_NEG a cxt b) =
   return $ _CIdNeg # (coerce $ toNameOcc cxt, (toChIdentP a, toChIdentP b))
+-- we can't have exact location info for errors with races because there is no context here...
+-- and we can't add a context here because "race" is a layout word so its position cannot be stored with it,,,,,,,
+-- so we will use the position of the first race phrase??
 parseBnfcCmd (B.PROCESS_RACE races) = do
+  -- races' <- traverseTryEach f races
   races' <- traverseTryEach f races
-  return $
-    _CRace
-      # ( buggedKeywordNameOcc "race",
-          NE.fromList races'
-        )
+  case races' of
+    (ch_ip, cmds):races'' -> do
+      return $
+        _CRace
+          -- we are using the first channel defined in the race
+          # ( coerce $ toNameOcc ch_ip,
+              NE.fromList races'
+            )
+    _ -> do
+      return $
+        _CRace
+          -- we are using the first channel defined in the race
+          # ( buggedKeywordNameOcc "race",
+              NE.fromList races'
+            )
   where
     f (B.RACE_PHRASE ch cmds) = do
       cmds' <- parseBnfcCmdBlock cmds
@@ -458,6 +475,10 @@ parseBnfcCmd (B.PROCESS_PLUG phrases) = do
                 --
                 -- TODO: currently, with the grammar given, it is impossible to explictly provide channels to
                 -- be plugged against, but this system should support this in the future.
+
+                -- unfortunately this still has not been added. i wish that a layout keyword was added aFTER
+                -- plug like "plug as" or something so that "as" could be the layout word and "plug could have the position"
+                -- i am just going to try to use the location of the first plug phrase instead
               ),
               (a, b, cs)
             )
@@ -517,6 +538,7 @@ parseBnfcCmd (B.PROCESS_IF expr cthen celse) = do
           cthen',
           celse'
         )
+
 
 buggedKeywordNameOcc :: String -> KeyWordNameOcc
 buggedKeywordNameOcc str =

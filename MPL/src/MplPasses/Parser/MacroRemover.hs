@@ -253,7 +253,9 @@ remExp (STORE_EXPR s l p r) = STORE_EXPR s l p' r
   where
     p' = case p of
       PROCESS_P phr -> PROCESS_P $ remPhrase phr
-      _ -> p
+      -- A qualified store operation: merge the module name and process name.
+      PROCESS_QN modName procName -> PROCESS_N (mergeQualifiedName modName procName)
+      PROCESS_N n -> PROCESS_N n
 remExp (DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR i lb es rb) =
   DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR i lb (map remExp es) rb
 remExp (DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR i) =

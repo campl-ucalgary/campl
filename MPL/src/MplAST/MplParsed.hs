@@ -214,6 +214,8 @@ type instance XXType MplParsed = Void
 type instance XTypeIntF MplParsed = NameOcc
 type instance XTypeCharF MplParsed = NameOcc
 type instance XTypeDoubleF MplParsed = NameOcc
+type instance XTypeEqableF MplParsed = NameOcc
+type instance XTypeOrdableF MplParsed = NameOcc
 -- type instance XTypeStringF MplParsed = NameOcc
 type instance XTypeUnitF MplParsed = NameOcc
 type instance XTypeBoolF MplParsed = NameOcc
@@ -221,6 +223,8 @@ type instance XTypeListF MplParsed = NameOcc
 type instance XTypeTupleF MplParsed = NameOcc
 type instance XTypeStoreF MplParsed = NameOcc
 
+type instance XTypeRaceableInput MplParsed = NameOcc
+type instance XTypeRaceableOutput MplParsed = NameOcc
 type instance XTypeGet MplParsed = NameOcc
 type instance XTypePut MplParsed = NameOcc
 type instance XTypeTensor MplParsed = NameOcc

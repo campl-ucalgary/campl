@@ -122,6 +122,7 @@ mplAsmParseCom = go
     {-
     B.AC_UNSTRING Unstring
     -}
+        B.AC_EQB eqb -> pure $ CEqBool (toRowCol eqb)
         B.AC_LEQ leqi -> pure $ CLeqInt (toRowCol leqi)
         B.AC_EQI eqi -> pure $ CEqInt (toRowCol eqi)
         B.AC_LEQC leqc -> pure $ CLeqChar (toRowCol leqc)
@@ -134,7 +135,8 @@ mplAsmParseCom = go
         B.AC_ADD keyword -> pure $ CAddInt (toRowCol keyword)
         B.AC_SUB keyword -> pure $ CSubInt (toRowCol keyword)
         B.AC_MUL keyword -> pure $ CMulInt (toRowCol keyword)
-        B.AC_DIVR keyword -> pure $ CDivInt (toRowCol keyword)
+        B.AC_DIVQ keyword -> pure $ CDivInt (toRowCol keyword)
+        B.AC_DIVR keyword -> pure $ CModInt (toRowCol keyword)
     {-
     | B.AC_DIVQ Quot
     | B.AC_DIVR Rem

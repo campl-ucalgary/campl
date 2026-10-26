@@ -436,10 +436,15 @@ typeCheckExpr = para f
       (ttypel, (l', leqns)) <- withFreshTypeTag ml
       (ttyper, (r', reqns)) <- withFreshTypeTag mr
 
+      ttypevar_l <- freshTypeTag
+      ttypevar_r <- freshTypeTag
+
       let opexpr = EPOps cxt op lexpr rexpr :: MplExpr MplRenamed
           ttypep = annotateTypeTag ttype opexpr
           ttypelp = annotateTypeTag ttypel lexpr
           ttyperp = annotateTypeTag ttyper rexpr
+          ttypepvar_l = annotateTypeTag ttypevar_l lexpr
+          ttypepvar_r = annotateTypeTag ttypevar_r rexpr                
 
       let addsubmuldiv =
             let eqn =
@@ -471,11 +476,15 @@ typeCheckExpr = para f
           --    in ( EPOps (fromJust $ lookupInferredSeqTypeExpr ttype ttypemap) op l' r',
           --         [eqn]
           --       )
+
+          -- equalities == and (not equalities \=) are defined on equatable built-in types, i.e. ints, chars, and bools
           eqneq =
             let eqn =
-                  TypeEqnsExist [ttypelp, ttyperp] $
+                  TypeEqnsExist [ttypelp, ttyperp, ttypepvar_l, ttypepvar_r] $
                     [ TypeEqnsEq (typePtoTypeVar ttypep, _TypeBoolF % _Just % _TypeAnnExpr # opexpr),
-                      TypeEqnsEq (typePtoTypeVar ttypelp, typePtoTypeVar ttyperp)
+                      TypeEqnsEq (typePtoTypeVar ttypelp, typePtoTypeVar ttyperp),
+                      TypeEqnsEq (typePtoTypeVar ttypelp, _TypeEqableF # ( _Just % _TypeAnnExpr # lexpr, typePtoTypeVar ttypepvar_l)),
+                      TypeEqnsEq (typePtoTypeVar ttyperp, _TypeEqableF # ( _Just % _TypeAnnExpr # rexpr, typePtoTypeVar ttypepvar_r))
                     ]
                       <> leqns
                       <> reqns
@@ -483,14 +492,14 @@ typeCheckExpr = para f
                   [eqn]
                 )
 
-          -- inequalities on numbers
+          -- inequalities <=, <, >=, > are defined on orderable built-in types, i.e. ints and chars.
           ineq =
             let eqn =
-                  TypeEqnsExist [ttypelp, ttyperp] $
+                  TypeEqnsExist [ttypelp, ttyperp, ttypepvar_l, ttypepvar_r] $
                     [ TypeEqnsEq (typePtoTypeVar ttypep, _TypeBoolF % _Just % _TypeAnnExpr # opexpr),
                       TypeEqnsEq (typePtoTypeVar ttypelp, typePtoTypeVar ttyperp),
-                      TypeEqnsEq (typePtoTypeVar ttypelp, _TypeIntF % _Just % _TypeAnnExpr # lexpr),
-                      TypeEqnsEq (typePtoTypeVar ttyperp, _TypeIntF % _Just % _TypeAnnExpr # rexpr)
+                      TypeEqnsEq (typePtoTypeVar ttypelp, _TypeOrdableF # ( _Just % _TypeAnnExpr # lexpr, typePtoTypeVar ttypepvar_l)),
+                      TypeEqnsEq (typePtoTypeVar ttyperp, _TypeOrdableF # ( _Just % _TypeAnnExpr # rexpr, typePtoTypeVar ttypepvar_r))
                     ]
                       <> leqns
                       <> reqns
@@ -516,6 +525,7 @@ typeCheckExpr = para f
         PrimitiveSub -> addsubmuldiv
         PrimitiveMul -> addsubmuldiv
         PrimitiveDiv -> addsubmuldiv
+        PrimitiveMod -> addsubmuldiv
         PrimitiveEq -> eqneq
         PrimitiveNeq -> eqneq
         PrimitiveLt -> ineq
@@ -1974,6 +1984,8 @@ typeCheckCmd cmd =
                 return (ttypech', (cmds', cmdseqns))
 
               let ttypepunwrapped = fromJust $ instantiateTypeWithSubs cmdann subs $ unwrappedtp
+                  -- this becomes the TypeConcWithArgs type, and the ProtocolDefn or CorptocolDefn is in first argument,
+                  -- we can just case on that in the type eqns solving part to know whether the channel is raceable
                   ttypepclause = fromJust $ case def of
                     ProtocolDefn phrase ->
                       phrase
@@ -2353,32 +2365,63 @@ typeCheckCmd cmd =
 
           return (_CRace # (cxt, (ch', cmds') :| races'), eqns)
           where
-            -- instantiates the race equations because races must have the type
-            -- be of get or put (depending on polarity)...
+            -- instantiates race equations to indicate this channel is used in a race
+            -- and therefore must be "raceable" i.e. information is travelling towards it
+            -- this means that if the channel's polarity is
+              -- input then the channel type must be Put, Tensor, or a Protocol
+              -- output then the channel type must be Get, Par, or a Coprotocol
+            -- we add a type equation to indicate which of these two groups the channel is in
+            -- instantiateRaceEqn :: ChP MplRenamed -> TypeIdentT -> n ([TypeIdentT], TypeEqns MplTypeSub) 
             instantiateRaceEqn ch ttypepch = do
-              ttypechgetseq <- freshTypeTag
-              ttypechgetconc <- freshTypeTag
-              let ttypepchgetseq = annotateTypeTag ttypechgetseq cmd
-                  ttypepchgetconc = annotateTypeTag ttypechgetconc cmd
+              ttypech_new <- freshTypeTag
+              let ttypepch_new = annotateTypeTag ttypech_new cmd
                   eqn =
                     TypeEqnsEq
                       ( typePtoTypeVar ttypepch,
+                        -- depending on ch polarity
                         inputOutput
                           (ch ^. polarity)
-                          ( _TypePutF
-                              # ( _Just % _TypeAnnCmd # cmd,
-                                  typePtoTypeVar ttypepchgetseq,
-                                  typePtoTypeVar ttypepchgetconc
-                                )
-                          )
-                          ( _TypeGetF
-                              # ( _Just % _TypeAnnCmd # cmd,
-                                  typePtoTypeVar ttypepchgetseq,
-                                  typePtoTypeVar ttypepchgetconc
-                                )
-                          )
+                          -- if it's input pol then Put, Tensor, or a Protocol
+                          ( _TypeRaceableInputF # ( _Just % _TypeAnnCmd # cmd, typePtoTypeVar ttypepch_new) )
+                          -- if it's output pol then Get, Par, or a Coprotocol
+                          ( _TypeRaceableOutputF # ( _Just % _TypeAnnCmd # cmd, typePtoTypeVar ttypepch_new) )
                       )
-              return ([ttypepchgetseq, ttypepchgetconc], eqn)
+              -- return list of type tags and the equation
+              return ([ttypepch_new], eqn)
+
+            -- -- original race code
+            -- -- instantiates the race equations because races must have the type
+            -- -- -- be of get or put (depending on polarity)...
+            -- instantiateRaceEqn ch ttypepch = do
+            --   ttypechgetseq <- freshTypeTag   -- type of seq value being recieved
+            --   ttypechgetconc <- freshTypeTag  -- continuation channel type
+            --   let ttypepchgetseq = annotateTypeTag ttypechgetseq cmd
+            --       ttypepchgetconc = annotateTypeTag ttypechgetconc cmd
+            --       -- builds single type equation for the channel
+            --       eqn =
+            --         TypeEqnsEq
+            --           ( typePtoTypeVar ttypepch,
+            --             -- depending on ch polarity
+            --             inputOutput
+            --               (ch ^. polarity)
+            --               -- if it's input pol then Put
+            --               ( _TypePutF
+            --                   # ( _Just % _TypeAnnCmd # cmd,
+            --                       typePtoTypeVar ttypepchgetseq,
+            --                       typePtoTypeVar ttypepchgetconc
+            --                     )
+            --               )
+            --               -- if it's output pol then Get
+            --               ( _TypeGetF
+            --                   # ( _Just % _TypeAnnCmd # cmd,
+            --                       typePtoTypeVar ttypepchgetseq,
+            --                       typePtoTypeVar ttypepchgetconc
+            --                     )
+            --               )
+            --           )
+            --   -- return list of type tags and the equation
+            --   return ([ttypepchgetseq, ttypepchgetconc], eqn)
+
         CPlugs (cxt, plugs) (phr1, phr2, phrs) -> do
           ttypemap <- guse (envLcl % typeInfoEnvMap)
 

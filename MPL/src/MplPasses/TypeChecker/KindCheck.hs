@@ -360,6 +360,36 @@ primitiveKindCheck = para f
                     ] [] $ noerr
 
                 return $ bool Nothing (_Just % _TypeBoolF # Just cxt) noerr
+            
+            TypeEqableF ann (lr, l) -> do
+                ekd <- guse kindCheckExpectedPrimitiveKind 
+                let noerr = ekd == _SeqKind # ()
+                tell $ review _ExternalError $ bool 
+                    [_KindPrimtiveMismatchExpectedButGot # 
+                        ( ekd
+                        , _SeqKind # ()
+                        , _TypeEqableF # (ann, lr))
+                    ] [] $ noerr                
+                kindCheckExpectedPrimitiveKind .= _SeqKind # ()
+                (l', llg) <- listen l
+                return $ bool Nothing
+                    (review _TypeEqableF <$> ((Just ann,) <$> l'))
+                    $ noerr && has _Empty llg 
+            
+            TypeOrdableF ann (lr, l) -> do
+                ekd <- guse kindCheckExpectedPrimitiveKind 
+                let noerr = ekd == _SeqKind # ()
+                tell $ review _ExternalError $ bool 
+                    [_KindPrimtiveMismatchExpectedButGot # 
+                        ( ekd
+                        , _SeqKind # ()
+                        , _TypeOrdableF # (ann, lr))
+                    ] [] $ noerr                
+                kindCheckExpectedPrimitiveKind .= _SeqKind # ()
+                (l', llg) <- listen l
+                return $ bool Nothing
+                    (review _TypeOrdableF <$> ((Just ann,) <$> l'))
+                    $ noerr && has _Empty llg 
 
             TypeTupleF cxt (t0,t1,ts) -> do
                 ekd <- guse kindCheckExpectedPrimitiveKind 
@@ -450,6 +480,37 @@ primitiveKindCheck = para f
                     Nothing
                     (review _TypeConcArrF <$>  (((),,,) <$> ss'' <*> is'' <*> os''))
                     $ noerr && sslg && islg && oslg
+                        
+            TypeRaceableInputF ann (lr, l) -> do
+                ekd <- guse kindCheckExpectedPrimitiveKind 
+                let noerr = ekd == _ConcKind # ()
+                tell $ review _ExternalError $ bool 
+                    [_KindPrimtiveMismatchExpectedButGot # 
+                        ( ekd
+                        , _ConcKind # ()
+                        , _TypeRaceableInputF # (ann, lr))
+                    ] [] $ noerr                
+                kindCheckExpectedPrimitiveKind .= _ConcKind # ()
+                (l', llg) <- listen l
+                return $ bool Nothing
+                    (review _TypeRaceableInputF <$> ((Just ann,) <$> l'))
+                    $ noerr && has _Empty llg 
+            
+            TypeRaceableOutputF ann (lr, l) -> do            
+                ekd <- guse kindCheckExpectedPrimitiveKind 
+                let noerr = ekd == _ConcKind # ()
+                tell $ review _ExternalError $ bool 
+                    [_KindPrimtiveMismatchExpectedButGot # 
+                        ( ekd
+                        , _ConcKind # ()
+                        , _TypeRaceableOutputF # (ann, lr))
+                    ] [] $ noerr                
+                kindCheckExpectedPrimitiveKind .= _ConcKind # ()
+                (l', llg) <- listen l
+                return $ bool Nothing
+                    (review _TypeRaceableOutputF <$> ((Just ann,) <$> l'))
+                    $ noerr && has _Empty llg 
+
             TypeGetF ann (lr, l) (rr, r) -> do
                 ekd <- guse kindCheckExpectedPrimitiveKind 
                 let noerr = ekd == _ConcKind # ()

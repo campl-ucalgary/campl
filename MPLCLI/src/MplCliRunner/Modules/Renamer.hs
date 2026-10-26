@@ -118,6 +118,13 @@ refPC fs@(_, _, f, _) (PROCESS_RUN (PROCESS_NAME (PIdent (xy, name))) lb exprs c
       (Left n) -> PROCESS_RUN (PROCESS_NAME (PIdent (xy, n))) lb es c1s c2s rb
       (Right (n1, n2)) ->
         PROCESS_QRUN (UIdent (xy, n1)) (PIdent (xy, n2)) lb es c1s c2s rb
+-- the other proc run case for using a proc stored in a higher-order message
+refPC fs (PROCESS_RUN (PROCESS_USE use lb1 expr rb1) lb2 exprs c1s c2s rb2) =
+  -- need to recurse on the sequential values passed into the process
+  case (map (refExpr fs) exprs) of
+    -- i don't actually know if we need to recurse on the stored proc expression but i guess it will figure it out
+    es -> case (refExpr fs expr) of
+      e -> PROCESS_RUN (PROCESS_USE use lb1 e rb1) lb2 es c1s c2s rb2
 refPC fs@(_, _, _, f) (PROCESS_QRUN (UIdent (xy1, modName)) (PIdent (xy2, objName)) lb exprs c1s c2s rb) =
   case (map (refExpr fs) exprs) of
     es -> case (f (modName, objName)) of
@@ -259,10 +266,26 @@ refExpr fs (CASE_EXPR theCaseCommand expr peps) =
   CASE_EXPR theCaseCommand (refExpr fs expr) (map (refPEP fs) peps)
 refExpr fs (SWITCH_EXP seps) =
   SWITCH_EXP (map (refSEP fs) seps)
-refExpr fs (STORE_EXPR s lb p rb) =
+-- so actually if we are storing a process using its name,
+refExpr fs@(_, _, uf, qf) (STORE_EXPR s lb p rb) =
   case p of
     PROCESS_P phr -> STORE_EXPR s lb (PROCESS_P $ refPP fs phr) rb
-    _ -> STORE_EXPR s lb p rb
+    -- we can't just completely ignore it...
+    -- _ -> STORE_EXPR s lb p rb
+    -- we need to check if the name we are storing is qualified or needs to be or whatever
+    PROCESS_N (PIdent (xy, name)) -> 
+      case (uf name) of
+        (Left n) -> STORE_EXPR s lb (PROCESS_N (PIdent (xy, n))) rb
+        -- name was imported from module n1 under local name n2
+        -- i needed to add another constructor for qualified process names
+        (Right (n1, n2)) -> 
+          STORE_EXPR s lb (PROCESS_QN (UIdent (xy, n1)) (PIdent (xy, n2))) rb
+    -- so then we have another case
+    PROCESS_QN (UIdent (xy1, modName)) (PIdent (xy2, objName)) ->
+      case (qf (modName, objName)) of
+        (Left n) -> STORE_EXPR s lb (PROCESS_N (PIdent (xy1, n))) rb
+        (Right (n1, n2)) ->
+          STORE_EXPR s lb (PROCESS_QN (UIdent (xy1, n1)) (PIdent (xy2, n2))) rb
 refExpr fs (DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR name lb exprs rb) =
   DESTRUCTOR_CONSTRUCTOR_ARGS_EXPR name lb (map (refExpr fs) exprs) rb
 refExpr fs (DESTRUCTOR_CONSTRUCTOR_NO_ARGS_EXPR name) =

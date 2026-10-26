@@ -116,6 +116,7 @@ instance PPrint PrimitiveOperators x where
         PrimitiveSub -> "-"
         PrimitiveMul -> "*"
         PrimitiveDiv -> "/"
+        PrimitiveMod -> "%"
         PrimitiveEq -> "=="
         PrimitiveNeq -> "/="
         PrimitiveLt -> "<"
@@ -308,12 +309,18 @@ instance (PPrint (IdP x) t, PPrint (TypeP x) t) => MplTypeToBnfc (MplType x) t w
             [f seq]
             [f conc]
             bnfcKeyword
+        TypeRaceableInputF _cxt ch -> B.MPL_UIDENT_ARGS_TYPE (toBnfcIdent proxy "Raceable Input Polarity") bnfcKeyword [f ch] bnfcKeyword
+        TypeRaceableOutputF _cxt ch -> B.MPL_UIDENT_ARGS_TYPE (toBnfcIdent proxy "Raceable Output Polarity") bnfcKeyword [f ch] bnfcKeyword
         TypeTopBotF cxt -> B.MPL_UIDENT_NO_ARGS_TYPE (toBnfcIdent proxy "TopBot")
         TypeNegF cxt tp -> B.MPL_UIDENT_ARGS_TYPE (toBnfcIdent proxy "Neg") bnfcKeyword [f tp] bnfcKeyword
         TypeIntF _cxt -> B.MPL_UIDENT_NO_ARGS_TYPE $ toBnfcIdent proxy "Int"
         TypeDoubleF _cxt -> B.MPL_UIDENT_NO_ARGS_TYPE $ toBnfcIdent proxy "Double"
         TypeCharF _cxt -> B.MPL_UIDENT_NO_ARGS_TYPE $ toBnfcIdent proxy "Char"
         TypeBoolF _cxt -> B.MPL_UIDENT_NO_ARGS_TYPE $ toBnfcIdent proxy "Bool"
+        
+        TypeEqableF _cxt var -> B.MPL_UIDENT_ARGS_TYPE (toBnfcIdent proxy "Equatable") bnfcKeyword [f var] bnfcKeyword
+        TypeOrdableF _cxt var -> B.MPL_UIDENT_ARGS_TYPE (toBnfcIdent proxy "Orderable") bnfcKeyword [f var] bnfcKeyword
+        
         TypeUnitF _cxt -> B.MPL_UNIT_TYPE bnfcKeyword bnfcKeyword
         TypeListF _cxt rst -> B.MPL_LIST_TYPE bnfcKeyword (f rst) bnfcKeyword
         TypeTupleF cxt (t0, t1, ts) ->
@@ -688,6 +695,7 @@ instance
         PrimitiveSub -> B.INFIXL5_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
         PrimitiveMul -> B.INFIXL6_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
         PrimitiveDiv -> B.INFIXL6_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
+        PrimitiveMod -> B.INFIXL6_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
         PrimitiveEq -> B.INFIXL3_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
         PrimitiveNeq -> B.INFIXL3_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
         PrimitiveLeq -> B.INFIXL3_EXPR (f exp0) (toBnfcIdent proxy op) (f exp1)
@@ -947,8 +955,8 @@ instance PPrint ChIdentT x where
   pprint proxy n = n ^. chIdentTChIdentR % to (pprint proxy)
 
 instance {-# OVERLAPPING #-} PPrint ChIdentT MplTypeChecked where
-  -- pprint proxy n = n ^. chIdentTChIdentR % to (pprint proxy) ++ " :: "++ n ^. chIdentTType % to (pprint proxy)
-  pprint proxy n = n ^. chIdentTChIdentR % to (pprint proxy)
+  pprint proxy n = n ^. chIdentTChIdentR % to (pprint proxy) ++ " :: "++ n ^. chIdentTType % to (pprint proxy)
+--   pprint proxy n = n ^. chIdentTChIdentR % to (pprint proxy)
 
 instance PPrint B.MplProg x where
   pprint _ = B.printTree
